@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "system/system_assertions.h"
+#include "system/system_critical_section.h"
 #include "system/system_semaphore.h"
 #include "system/system_time.h"
 
@@ -17,6 +18,8 @@
 /** Internal structure describing a single semaphore object */
 struct _system_semaphore
 {
+    system_critical_section cs; /* needed for multiple enter support */
+
 #ifdef _WIN32
     HANDLE semaphore;
 #else
@@ -34,6 +37,8 @@ EMERALD_API system_semaphore system_semaphore_create(uint32_t semaphore_capacity
                       "Invalid semaphore capacity requested.");
     ASSERT_DEBUG_SYNC(semaphore_default_value <= semaphore_capacity,
                       "Invalid semaphore's default value requested.");
+
+    semaphore_ptr->cs = system_critical_section_create();
 
 #ifdef _WIN32
     semaphore_ptr->semaphore = ::CreateSemaphore(0,                  /* lpSemaphoreAttributes */
@@ -92,8 +97,12 @@ EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
                                          &timeout_msec);
         }
 
-        result = ::WaitForSingleObject(semaphore_ptr->semaphore,
-                                       timeout_msec);
+        system_critical_section_enter(semaphore_ptr->cs);
+        {
+            result = ::WaitForSingleObject(semaphore_ptr->semaphore,
+                                           timeout_msec);
+        }
+        system_critical_section_leave(semaphore_ptr->cs);
 
         if (out_has_timed_out_ptr != NULL)
         {
@@ -102,7 +111,11 @@ EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
 #else
         if (timeout == SYSTEM_TIME_INFINITE)
         {
-            sem_wait(&semaphore_ptr->semaphore);
+            system_critical_section_enter(semaphore_ptr->cs);
+            {
+                sem_wait(&semaphore_ptr->semaphore);
+            }
+            system_critical_section_leave(semaphore_ptr->cs);
         }
         else
         {
@@ -116,8 +129,12 @@ EMERALD_API void system_semaphore_enter(system_semaphore semaphore,
             timeout_api.tv_sec  = timeout_msec / 1000;
             timeout_api.tv_nsec = long(timeout_msec % 1000) * NSEC_PER_SEC;
 
-            result = sem_timedwait(&semaphore_ptr->semaphore,
-                                   &timeout_api);
+            system_critical_section_enter(semaphore_ptr->cs);
+            {
+                result = sem_timedwait(&semaphore_ptr->semaphore,
+                                       &timeout_api);
+            }
+            system_critical_section_leave(semaphore_ptr->cs);
 
             if (result == -1        &&
                 errno  == ETIMEDOUT)
@@ -147,17 +164,21 @@ EMERALD_API void system_semaphore_enter_multiple(system_semaphore semaphore,
 
     if (semaphore_ptr != NULL)
     {
-        for (uint32_t n_release = 0;
-                      n_release < count;
-                    ++n_release)
+        system_critical_section_enter(semaphore_ptr->cs);
         {
+            for (uint32_t n_release = 0;
+                          n_release < count;
+                        ++n_release)
+            {
 #ifdef _WIN32
-            ::WaitForSingleObject(semaphore_ptr->semaphore,
-                                  INFINITE);
+                ::WaitForSingleObject(semaphore_ptr->semaphore,
+                                      INFINITE);
 #else
-            sem_wait(&semaphore_ptr->semaphore);
+                sem_wait(&semaphore_ptr->semaphore);
 #endif
+            }
         }
+        system_critical_section_leave(semaphore_ptr->cs);
     }
 }
 
@@ -209,6 +230,8 @@ EMERALD_API void system_semaphore_release(system_semaphore semaphore)
 
     if (semaphore_ptr != NULL)
     {
+        system_critical_section_release(semaphore_ptr->cs);
+
 #ifdef _WIN32
         ::CloseHandle(semaphore_ptr->semaphore);
 #else

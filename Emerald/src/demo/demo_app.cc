@@ -8,6 +8,7 @@
 #include "demo/demo_window.h"
 #include "main.h"
 #include "scene_renderer/scene_renderer_materials.h"
+#include "ral/ral_scheduler.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -19,6 +20,7 @@ typedef struct _demo_app
     system_callback_manager  callback_manager;
     system_critical_section  cs;
     scene_renderer_materials materials;
+    ral_scheduler            scheduler;
     system_hash64map         window_name_to_window_map;
     varia_primitive_renderer primitive_renderer;
 
@@ -27,6 +29,7 @@ typedef struct _demo_app
         callback_manager          = system_callback_manager_create ((_callback_id) DEMO_APP_CALLBACK_ID_COUNT);
         cs                        = system_critical_section_create ();
         materials                 = scene_renderer_materials_create();
+        scheduler                 = ral_scheduler_create           ();
         window_name_to_window_map = system_hash64map_create        (sizeof(demo_window) );
     }
 
@@ -46,6 +49,13 @@ typedef struct _demo_app
                 scene_renderer_materials_release(materials);
 
                 materials = NULL;
+            }
+
+            if (scheduler != NULL)
+            {
+                ral_scheduler_release(scheduler);
+
+                scheduler = NULL;
             }
 
             if (window_name_to_window_map != NULL)
@@ -212,6 +222,13 @@ PUBLIC EMERALD_API void demo_app_get_property(demo_app_property property,
         case DEMO_APP_PROPERTY_CALLBACK_MANAGER:
         {
             *(system_callback_manager*) out_result_ptr = app.callback_manager;
+
+            break;
+        }
+
+        case DEMO_APP_PROPERTY_GPU_SCHEDULER:
+        {
+            *(ral_scheduler*) out_result_ptr = app.scheduler;
 
             break;
         }

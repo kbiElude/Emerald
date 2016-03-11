@@ -32,6 +32,9 @@ typedef enum
     /* not settable; system_callback_manager */
     DEMO_APP_PROPERTY_CALLBACK_MANAGER,
 
+    /* not settable; ral_scheduler */
+    DEMO_APP_PROPERTY_GPU_SCHEDULER,
+
     /* not settable; scene_renderer_materials */
     DEMO_APP_PROPERTY_MATERIAL_MANAGER,
 

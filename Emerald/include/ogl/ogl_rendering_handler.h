@@ -14,6 +14,13 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
 
 typedef enum
 {
+    OGL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED,
+    OGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK,
+    OGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED,
+} ogl_rendering_handler_execution_mode;
+
+typedef enum
+{
     /* ogl_context; settable. */
     OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_CONTEXT,
 
@@ -133,7 +140,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
                                                                                    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
                                                                                    void*                                      user_arg,
                                                                                    bool                                       swap_buffers_afterward = false,
-                                                                                   bool                                       block_until_available  = true);
+                                                                                   ogl_rendering_handler_execution_mode       execution_mode         = OGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
 
 /** TODO */
 PUBLIC void ogl_rendering_handler_set_private_property(ogl_rendering_handler                  handler,

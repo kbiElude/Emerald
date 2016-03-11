@@ -3630,7 +3630,7 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_con
                                                                          PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback,
                                                                          void*                                      user_arg,
                                                                          bool                                       swap_buffers_afterward,
-                                                                         bool                                       block_until_available)
+                                                                         ogl_rendering_handler_execution_mode       execution_mode)
 {
     bool                  result            = false;
     _ogl_context*         context_ptr       = (_ogl_context*) context;
@@ -3646,7 +3646,7 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_con
                                                                             pfn_callback,
                                                                             user_arg,
                                                                             swap_buffers_afterward,
-                                                                            block_until_available);
+                                                                            execution_mode);
     }
     else
     {

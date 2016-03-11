@@ -10,6 +10,7 @@
 #include "ogl/ogl_context_bo_bindings.h"
 #include "ogl/ogl_context_sampler_bindings.h"
 #include "ogl/ogl_context_texture_compression.h"
+#include "ogl/ogl_rendering_handler.h"
 #include "raGL/raGL_backend.h"
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_context,
@@ -267,8 +268,8 @@ PUBLIC bool ogl_context_release_managers(ogl_context);
 PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context,
                                                                          PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
                                                                          void*,
-                                                                         bool swap_buffers_afterward = false,
-                                                                         bool block_until_available  = true);
+                                                                         bool                                 swap_buffers_afterward = false,
+                                                                         ogl_rendering_handler_execution_mode execution_mode         = OGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
 
 /** TODO.
  *

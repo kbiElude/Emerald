@@ -1386,7 +1386,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
                                                                                    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
                                                                                    void*                                      user_arg,
                                                                                    bool                                       swap_buffers_afterward,
-                                                                                   bool                                       block_until_available)
+                                                                                   ogl_rendering_handler_execution_mode       execution_mode)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
@@ -1408,7 +1408,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
     {
         bool should_continue = false;
 
-        if (block_until_available)
+        if (execution_mode != OGL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED)
         {
             system_critical_section_enter(rendering_handler_ptr->callback_request_cs);
 
@@ -1425,8 +1425,12 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
             rendering_handler_ptr->callback_request_user_arg          = user_arg;
             rendering_handler_ptr->pfn_callback_proc                  = pfn_callback_proc;
 
-            system_event_set        (rendering_handler_ptr->callback_request_event);
-            system_event_wait_single(rendering_handler_ptr->callback_request_ack_event);
+            system_event_set(rendering_handler_ptr->callback_request_event);
+
+            if (execution_mode != OGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK)
+            {
+                system_event_wait_single(rendering_handler_ptr->callback_request_ack_event);
+            }
 
             system_critical_section_leave(rendering_handler_ptr->callback_request_cs);
         }

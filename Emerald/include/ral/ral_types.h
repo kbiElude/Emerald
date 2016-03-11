@@ -10,6 +10,7 @@ DECLARE_HANDLE(ral_framebuffer);
 DECLARE_HANDLE(ral_graphics_state);
 DECLARE_HANDLE(ral_program);
 DECLARE_HANDLE(ral_sampler);
+DECLARE_HANDLE(ral_scheduler);
 DECLARE_HANDLE(ral_shader);
 DECLARE_HANDLE(ral_texture);
 DECLARE_HANDLE(ral_texture_pool);
@@ -20,7 +21,8 @@ typedef enum
     RAL_BACKEND_TYPE_ES,
     RAL_BACKEND_TYPE_GL,
 
-    RAL_BACKEND_TYPE_UNKNOWN
+    RAL_BACKEND_TYPE_UNKNOWN,
+    RAL_BACKEND_TYPE_COUNT = RAL_BACKEND_TYPE_UNKNOWN
 } ral_backend_type;
 
 typedef enum

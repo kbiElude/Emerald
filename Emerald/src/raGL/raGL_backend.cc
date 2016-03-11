@@ -13,6 +13,7 @@
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_program.h"
 #include "ral/ral_sampler.h"
+#include "ral/ral_scheduler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "raGL/raGL_backend.h"
@@ -171,6 +172,8 @@ PRIVATE void        _raGL_backend_get_object_vars                               
                                                                                   system_critical_section* out_cs_ptr,
                                                                                   system_hash64map*        out_hashmap_ptr,
                                                                                   bool*                    out_is_owner_ptr);
+PRIVATE void        _raGL_backend_helper_context_renderer_callback               (ogl_context              context,
+                                                                                  void*                    unused);
 PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*              callback_arg_data,
                                                                                   void*                    backend);
 PRIVATE void        _raGL_backend_on_buffer_to_buffer_copy_request               (const void*              callback_arg_data,
@@ -215,18 +218,18 @@ PRIVATE void        _raGL_backend_subscribe_for_texture_notifications           
 void _raGL_backend_global::deinit()
 {
     system_critical_section_enter(_global.cs);
-
-    for (uint32_t n_helper_context = 0;
-                  n_helper_context < N_HELPER_CONTEXTS;
-                ++n_helper_context)
     {
-        demo_window_close(_global.helper_contexts[n_helper_context].helper_window);
+        for (uint32_t n_helper_context = 0;
+                      n_helper_context < N_HELPER_CONTEXTS;
+                    ++n_helper_context)
+        {
+            demo_window_close(_global.helper_contexts[n_helper_context].helper_window);
 
-        _global.helper_contexts[n_helper_context].helper_backend = NULL;
-        _global.helper_contexts[n_helper_context].helper_context = NULL;
-        _global.helper_contexts[n_helper_context].helper_window  = NULL;
+            _global.helper_contexts[n_helper_context].helper_backend = NULL;
+            _global.helper_contexts[n_helper_context].helper_context = NULL;
+            _global.helper_contexts[n_helper_context].helper_window  = NULL;
+        }
     }
-
     system_critical_section_leave(_global.cs);
 }
 
@@ -293,6 +296,26 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
 
     _global.backend_type = backend_type;
 
+    /* Assign the helper rendering thread to RAL scheduler.
+     *
+     * NOTE: We deliberately skip the zeroth helper context. It acts as a root context for all spawned
+     *       rendering contexts. When creating a new GL context, it *must* be unbound from the rendering
+     *       thread, or else the new context is not created successfully.
+     *       It's a pity we need to mantain such a zombie context, but working around this would be very
+     *       error-prone.
+     **/
+    for (uint32_t n_helper_context = 1;
+                  n_helper_context < N_HELPER_CONTEXTS;
+                ++n_helper_context)
+    {
+        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(_global.helper_contexts[n_helper_context].helper_context),
+                                                         _raGL_backend_helper_context_renderer_callback,
+                                                         (void*) n_helper_context,
+                                                         false,  /* swap_buffers_afterward */
+                                                         OGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK);
+
+    }
+
     system_critical_section_leave(_global.cs);
 }
 
@@ -303,6 +326,8 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
                              ral_backend_type          in_backend_type)
 {
     static_assert(N_HELPER_CONTEXTS >= 1, "");
+
+    _global.backend_type = in_backend_type;
 
     if (_global.helper_contexts[0].helper_backend != NULL)
     {
@@ -659,6 +684,19 @@ PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*           backend_ptr,
                               "Unrecognized raGL_backend_object_type value.");
         }
     } /* switch (object_type) */
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_helper_context_renderer_callback(ogl_context context,
+                                                            void*       unused)
+{
+    ral_scheduler scheduler = NULL;
+
+    demo_app_get_property(DEMO_APP_PROPERTY_GPU_SCHEDULER,
+                         &scheduler);
+
+    ral_scheduler_use_backend_thread(scheduler,
+                                     _global.backend_type);
 }
 
 /** TODO */
@@ -2272,6 +2310,13 @@ PUBLIC void raGL_backend_release(void* backend)
 
         if (!is_helper_context)
         {
+            ral_scheduler scheduler = NULL;
+
+            demo_app_get_property             (DEMO_APP_PROPERTY_GPU_SCHEDULER,
+                                              &scheduler);
+            ral_scheduler_free_backend_threads(scheduler,
+                                               _global.backend_type);
+
             system_critical_section_enter(_global.cs);
             {
                 --_global.n_owners;
