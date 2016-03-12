@@ -1234,7 +1234,8 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     }
 
     if (!ral_program_attach_shader(mesh_ptr->po_scalar_field_polygonizer,
-                                   cs) )
+                                   cs,
+                                   true /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Failed to attach a RAL shader to a RAL program");

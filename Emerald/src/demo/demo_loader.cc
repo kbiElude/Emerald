@@ -559,7 +559,8 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                                &shader_body);
 
                         if (!ral_program_attach_shader(new_program,
-                                                       new_shader) )
+                                                       new_shader,
+                                                       true /* async */) )
                         {
                             ASSERT_DEBUG_SYNC(false,
                                               "Failed to attach a RAL shader to a RAL program.");

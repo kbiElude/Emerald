@@ -318,9 +318,11 @@ PRIVATE void _varia_skybox_init_spherical_projection_texture(_varia_skybox* skyb
     }
 
     if (!ral_program_attach_shader(skybox_ptr->program,
-                                   result_shaders[0]) ||
+                                   result_shaders[0],
+                                   true /* async */) ||
         !ral_program_attach_shader(skybox_ptr->program,
-                                   result_shaders[1]))
+                                   result_shaders[1],
+                                   true /* async */))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not attach shaders to the skybox program");

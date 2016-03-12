@@ -458,9 +458,11 @@ PRIVATE void _scene_renderer_frustum_preview_init_rendering_thread_callback(ogl_
                                &vs_body);
 
         if (!ral_program_attach_shader(preview_ptr->po,
-                                       fs) ||
+                                       fs,
+                                       true /* async */) ||
             !ral_program_attach_shader(preview_ptr->po,
-                                       vs) )
+                                       vs,
+                                       true /* async */) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "RAL program configuration failed.");

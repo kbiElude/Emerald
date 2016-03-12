@@ -204,9 +204,11 @@ PRIVATE void _ui_scrollbar_init_program(ui             ui_instance,
 
     /* Set up program object */
     if (!ral_program_attach_shader(scrollbar_ptr->program_slider,
-                                   fs) ||
+                                   fs,
+                                   true /* async */) ||
         !ral_program_attach_shader(scrollbar_ptr->program_slider,
-                                   vs))
+                                   vs,
+                                   true /* async */))
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");

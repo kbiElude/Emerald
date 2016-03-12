@@ -228,12 +228,24 @@ PUBLIC void stage_step_light_init(ral_context  context,
                                                                 system_hashed_ansi_string_create("light vertex") );
 
     ral_program_attach_shader(_light_program,
-                              shaders_fragment_static_get_shader(fragment_shader) );
+                              shaders_fragment_static_get_shader(fragment_shader),
+                              true /* async */);
     ral_program_attach_shader(_light_program,
-                              shaders_vertex_combinedmvp_generic_get_shader(vertex_shader) );
+                              shaders_vertex_combinedmvp_generic_get_shader(vertex_shader),
+                              true /* async */);
 
     shaders_fragment_static_release           (fragment_shader);
     shaders_vertex_combinedmvp_generic_release(vertex_shader);
+
+    /* Generate VAO */
+    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+
+    ogl_context_get_property(ral_context_get_gl_context(context),
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+
+    entrypoints_ptr->pGLGenVertexArrays(1, /* n */
+                                       &_light_vao_id);
 
     /* Retrieve attribute/uniform locations */
     const ral_program_variable*    color_uniform_ral_ptr          = NULL;
@@ -291,16 +303,6 @@ PUBLIC void stage_step_light_init(ral_context  context,
                                             system_hashed_ansi_string_create("dataVS"),
                                             RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
                                            &_light_program_datavs_ub_bp);
-
-    /* Generate VAO */
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-
-    ogl_context_get_property(ral_context_get_gl_context(context),
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    entrypoints_ptr->pGLGenVertexArrays(1, /* n */
-                                       &_light_vao_id);
 
     /* Add ourselves to the pipeline */
     ogl_pipeline_stage_step_declaration light_preview_stage_step;

@@ -323,9 +323,11 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
                            &vs_body_has);
 
     if (!ral_program_attach_shader(text_ptr->draw_text_program,
-                                   result_shaders[0]) ||
+                                   result_shaders[0],
+                                   true /* async */) ||
         !ral_program_attach_shader(text_ptr->draw_text_program,
-                                   result_shaders[1]) )
+                                   result_shaders[1],
+                                   true /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not link text drawing program.");

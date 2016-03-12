@@ -335,11 +335,29 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
 
     /* Configure & link the program object */
     if (!ral_program_attach_shader(metaballs_ptr->po,
-                                   cs))
+                                   cs,
+                                   true /* async */))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Failed to attach RAL shader to the metaballs RAL program");
     }
+
+    /* Prepare a BO which is going to hold the scalar field data */
+    ral_buffer_create_info scalar_field_buffer_create_info;
+
+    scalar_field_buffer_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    scalar_field_buffer_create_info.property_bits    = 0;
+    scalar_field_buffer_create_info.size             = sizeof(float)                   *
+                                                       metaballs_ptr->grid_size_xyz[0] *
+                                                       metaballs_ptr->grid_size_xyz[1] *
+                                                       metaballs_ptr->grid_size_xyz[2];
+    scalar_field_buffer_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
+    scalar_field_buffer_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+    ral_context_create_buffers(metaballs_ptr->context,
+                               1, /* n_buffers */
+                              &scalar_field_buffer_create_info,
+                              &metaballs_ptr->scalar_field_bo);
 
     /* Retrieve properties of the "props" UB */
     const raGL_program          program_raGL                           = ral_context_get_program_gl(metaballs_ptr->context,
@@ -370,23 +388,6 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
 
     metaballs_ptr->po_props_ub_bo_offset_metaball_data = uniform_metaball_data_variable_ral_ptr->block_offset;
     metaballs_ptr->po_props_ub_bo_offset_n_metaballs   = uniform_n_metaballs_variable_ral_ptr->block_offset;
-
-    /* Prepare a BO which is going to hold the scalar field data */
-    ral_buffer_create_info scalar_field_buffer_create_info;
-
-    scalar_field_buffer_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-    scalar_field_buffer_create_info.property_bits    = 0;
-    scalar_field_buffer_create_info.size             = sizeof(float)                   *
-                                                       metaballs_ptr->grid_size_xyz[0] *
-                                                       metaballs_ptr->grid_size_xyz[1] *
-                                                       metaballs_ptr->grid_size_xyz[2];
-    scalar_field_buffer_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
-    scalar_field_buffer_create_info.user_queue_bits  = 0xFFFFFFFF;
-
-    ral_context_create_buffers(metaballs_ptr->context,
-                               1, /* n_buffers */
-                              &scalar_field_buffer_create_info,
-                              &metaballs_ptr->scalar_field_bo);
 
     /* All done! */
     ral_context_delete_objects(metaballs_ptr->context,

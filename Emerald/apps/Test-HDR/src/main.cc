@@ -895,33 +895,11 @@ void _window_closing_callback_handler(system_window window,
                                &_linear_program);
 
     ral_program_attach_shader(_linear_program,
-                             shaders_fragment_texture2D_linear_get_shader(_linear_fp) );
+                             shaders_fragment_texture2D_linear_get_shader(_linear_fp),
+                             true /* async */);
     ral_program_attach_shader(_linear_program,
-                             shaders_vertex_fullscreen_get_shader(_vp) );
-
-    raGL_program linear_po_raGL = ral_context_get_program_gl(_context,
-                                                             _linear_program);
-
-    ral_program_get_block_variable_by_name(_linear_program,
-                                           system_hashed_ansi_string_create(""),
-                                           system_hashed_ansi_string_create("exposure"),
-                                          &_linear_program_exposure_uniform_ral_ptr);
-    raGL_program_get_uniform_by_name      (linear_po_raGL,
-                                           system_hashed_ansi_string_create("tex"),
-                                          &_linear_program_tex_uniform_raGL_ptr);
-
-    _linear_program_ub = ral_program_block_buffer_create(_context,
-                                                         _linear_program,
-                                                         system_hashed_ansi_string_create("data") );
-
-    ral_buffer linear_po_ub_ral = NULL;
-
-    ral_program_block_buffer_get_property(_linear_program_ub,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &linear_po_ub_ral);
-    ral_buffer_get_property              (linear_po_ub_ral,
-                                          RAL_BUFFER_PROPERTY_SIZE,
-                                         &_linear_program_ub_bo_size);
+                             shaders_vertex_fullscreen_get_shader(_vp),
+                             true /* async */);
 
     /* Create Reinhardt texture program */
     const ral_program_create_info reinhardt_po_create_info =
@@ -940,33 +918,11 @@ void _window_closing_callback_handler(system_window window,
                                &_reinhardt_program);
 
     ral_program_attach_shader(_reinhardt_program,
-                              shaders_fragment_texture2D_reinhardt_get_shader(_reinhardt_fp) );
+                              shaders_fragment_texture2D_reinhardt_get_shader(_reinhardt_fp),
+                              true /* async */);
     ral_program_attach_shader(_reinhardt_program,
-                              shaders_vertex_fullscreen_get_shader(_vp) );
-
-    raGL_program reinhardt_po_raGL = ral_context_get_program_gl(_context,
-                                                                _reinhardt_program);
-
-    ral_program_get_block_variable_by_name(_reinhardt_program,
-                                           system_hashed_ansi_string_create(""),
-                                           system_hashed_ansi_string_create("exposure"),
-                                          &_reinhardt_program_exposure_uniform_ral_ptr);
-    raGL_program_get_uniform_by_name      (reinhardt_po_raGL,
-                                           system_hashed_ansi_string_create("tex"),
-                                          &_reinhardt_program_tex_uniform_raGL_ptr);
-
-    _reinhardt_program_ub = ral_program_block_buffer_create(_context,
-                                                            _reinhardt_program,
-                                                            system_hashed_ansi_string_create("data") );
-
-    ral_buffer reinhardt_program_ub_bo_ral = NULL;
-
-    ral_program_block_buffer_get_property(_reinhardt_program_ub,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &reinhardt_program_ub_bo_ral);
-    ral_buffer_get_property              (reinhardt_program_ub_bo_ral,
-                                          RAL_BUFFER_PROPERTY_SIZE,
-                                         &_reinhardt_program_ub_bo_size);
+                              shaders_vertex_fullscreen_get_shader(_vp),
+                              true /* async */);
 
     /* Create global Reinhardt post-processors */
     uint32_t texture_size[2] =
@@ -1001,33 +957,11 @@ void _window_closing_callback_handler(system_window window,
                                &_filmic_program);
 
     ral_program_attach_shader(_filmic_program,
-                              shaders_fragment_texture2D_filmic_get_shader(_filmic_fp) );
+                              shaders_fragment_texture2D_filmic_get_shader(_filmic_fp),
+                              true /* async */);
     ral_program_attach_shader(_filmic_program,
-                              shaders_vertex_fullscreen_get_shader(_vp) );
-
-    raGL_program filmic_po_raGL = ral_context_get_program_gl(_context,
-                                                             _filmic_program);
-
-    ral_program_get_block_variable_by_name(_filmic_program,
-                                           system_hashed_ansi_string_create(""),
-                                           system_hashed_ansi_string_create("exposure"),
-                                          &_filmic_program_exposure_uniform_ral_ptr);
-    raGL_program_get_uniform_by_name      (filmic_po_raGL,
-                                           system_hashed_ansi_string_create("tex"),
-                                          &_filmic_program_tex_uniform_raGL_ptr);
-
-    _filmic_program_ub = ral_program_block_buffer_create(_context,
-                                                         _filmic_program,
-                                                         system_hashed_ansi_string_create("data") );
-
-    ral_buffer filmic_program_ub_bo_ral = NULL;
-
-    ral_program_block_buffer_get_property(_filmic_program_ub,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &filmic_program_ub_bo_ral);
-    ral_buffer_get_property              (filmic_program_ub_bo_ral,
-                                          RAL_BUFFER_PROPERTY_SIZE,
-                                         &_filmic_program_ub_bo_size);
+                              shaders_vertex_fullscreen_get_shader(_vp),
+                              true /* async */);
 
     /* Create Filmic Customizable texture program */
     const ral_program_create_info filmic_customizable_po_create_info =
@@ -1036,24 +970,82 @@ void _window_closing_callback_handler(system_window window,
         system_hashed_ansi_string_create("Filmic Customizable Main")
     };
 
-    _filmic_customizable_fp      = shaders_fragment_texture2D_filmic_customizable_create(_context,
-                                                                                         true, /* should_revert_y */
-                                                                                         system_hashed_ansi_string_create("Filmic Customizable FP"));
+    _filmic_customizable_fp = shaders_fragment_texture2D_filmic_customizable_create(_context,
+                                                                                    true, /* should_revert_y */
+                                                                                    system_hashed_ansi_string_create("Filmic Customizable FP"));
 
     ral_context_create_programs(_context,
                                 1, /* n_create_info_items */
                                &filmic_customizable_po_create_info,
                                &_filmic_customizable_program);
 
-
     ral_program_attach_shader(_filmic_customizable_program,
-                              shaders_fragment_texture2D_filmic_customizable_get_shader(_filmic_customizable_fp) );
+                              shaders_fragment_texture2D_filmic_customizable_get_shader(_filmic_customizable_fp),
+                              true /* async */);
     ral_program_attach_shader(_filmic_customizable_program,
-                              shaders_vertex_fullscreen_get_shader(_vp) );
+                              shaders_vertex_fullscreen_get_shader(_vp),
+                              true /* async */);
 
+    /* Retrieve program properties */
+    raGL_program filmic_po_raGL              = ral_context_get_program_gl(_context,
+                                                                          _filmic_program);
     raGL_program filmic_customizable_po_raGL = ral_context_get_program_gl(_context,
                                                                           _filmic_customizable_program);
+    raGL_program linear_po_raGL              = ral_context_get_program_gl(_context,
+                                                                          _linear_program);
+    raGL_program reinhardt_po_raGL           = ral_context_get_program_gl(_context,
+                                                                          _reinhardt_program);
 
+    ral_buffer filmic_program_ub_bo_ral              = NULL;
+    ral_buffer filmic_customizable_program_ub_bo_ral = NULL;
+    ral_buffer linear_po_ub_ral                      = NULL;
+    ral_buffer reinhardt_program_ub_bo_ral           = NULL;
+
+
+    _filmic_program_ub              = ral_program_block_buffer_create(_context,
+                                                                      _filmic_program,
+                                                                      system_hashed_ansi_string_create("data") );
+    _filmic_customizable_program_ub = ral_program_block_buffer_create(_context,
+                                                                      _filmic_customizable_program,
+                                                                      system_hashed_ansi_string_create("data") );
+    _linear_program_ub              = ral_program_block_buffer_create(_context,
+                                                                      _linear_program,
+                                                                      system_hashed_ansi_string_create("data") );
+    _reinhardt_program_ub           = ral_program_block_buffer_create(_context,
+                                                                      _reinhardt_program,
+                                                                      system_hashed_ansi_string_create("data") );
+
+
+    ral_program_block_buffer_get_property(_filmic_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &filmic_program_ub_bo_ral);
+    ral_program_block_buffer_get_property(_filmic_customizable_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &filmic_customizable_program_ub_bo_ral);
+    ral_program_block_buffer_get_property(_linear_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &linear_po_ub_ral);
+    ral_program_block_buffer_get_property(_reinhardt_program_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &reinhardt_program_ub_bo_ral);
+
+    ral_buffer_get_property(filmic_program_ub_bo_ral,
+                            RAL_BUFFER_PROPERTY_SIZE,
+                           &_filmic_program_ub_bo_size);
+    ral_buffer_get_property(filmic_customizable_program_ub_bo_ral,
+                            RAL_BUFFER_PROPERTY_SIZE,
+                           &_filmic_customizable_program_ub_bo_size);
+    ral_buffer_get_property(linear_po_ub_ral,
+                            RAL_BUFFER_PROPERTY_SIZE,
+                           &_linear_program_ub_bo_size);
+    ral_buffer_get_property(reinhardt_program_ub_bo_ral,
+                            RAL_BUFFER_PROPERTY_SIZE,
+                           &_reinhardt_program_ub_bo_size);
+
+    ral_program_get_block_variable_by_name(_filmic_program,
+                                           system_hashed_ansi_string_create(""),
+                                           system_hashed_ansi_string_create("exposure"),
+                                          &_filmic_program_exposure_uniform_ral_ptr);
     ral_program_get_block_variable_by_name(_filmic_customizable_program,
                                            system_hashed_ansi_string_create(""),
                                            system_hashed_ansi_string_create("a"),
@@ -1086,26 +1078,31 @@ void _window_closing_callback_handler(system_window window,
                                            system_hashed_ansi_string_create(""),
                                            system_hashed_ansi_string_create("f"),
                                           &_filmic_customizable_program_f_uniform_ral_ptr);
-    raGL_program_get_uniform_by_name      (filmic_customizable_po_raGL,
-                                           system_hashed_ansi_string_create("tex"),
-                                          &_filmic_customizable_program_tex_uniform_raGL_ptr);
     ral_program_get_block_variable_by_name(_filmic_customizable_program,
                                            system_hashed_ansi_string_create(""),
                                            system_hashed_ansi_string_create("w"),
                                           &_filmic_customizable_program_w_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(_reinhardt_program,
+                                           system_hashed_ansi_string_create(""),
+                                           system_hashed_ansi_string_create("exposure"),
+                                          &_reinhardt_program_exposure_uniform_ral_ptr);
+    ral_program_get_block_variable_by_name(_linear_program,
+                                           system_hashed_ansi_string_create(""),
+                                           system_hashed_ansi_string_create("exposure"),
+                                          &_linear_program_exposure_uniform_ral_ptr);
 
-    _filmic_customizable_program_ub = ral_program_block_buffer_create(_context,
-                                                                      _filmic_customizable_program,
-                                                                      system_hashed_ansi_string_create("data") );
-
-    ral_buffer filmic_customizable_program_ub_bo_ral = NULL;
-
-    ral_program_block_buffer_get_property(_filmic_customizable_program_ub,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &filmic_customizable_program_ub_bo_ral);
-    ral_buffer_get_property              (filmic_customizable_program_ub_bo_ral,
-                                          RAL_BUFFER_PROPERTY_SIZE,
-                                         &_filmic_customizable_program_ub_bo_size);
+    raGL_program_get_uniform_by_name(filmic_po_raGL,
+                                     system_hashed_ansi_string_create("tex"),
+                                    &_filmic_program_tex_uniform_raGL_ptr);
+    raGL_program_get_uniform_by_name(filmic_customizable_po_raGL,
+                                     system_hashed_ansi_string_create("tex"),
+                                    &_filmic_customizable_program_tex_uniform_raGL_ptr);
+    raGL_program_get_uniform_by_name(reinhardt_po_raGL,
+                                     system_hashed_ansi_string_create("tex"),
+                                    &_reinhardt_program_tex_uniform_raGL_ptr);
+    raGL_program_get_uniform_by_name(linear_po_raGL,
+                                     system_hashed_ansi_string_create("tex"),
+                                    &_linear_program_tex_uniform_raGL_ptr);
 
     /* Open curve editor */
     curve_editor_show(_context);

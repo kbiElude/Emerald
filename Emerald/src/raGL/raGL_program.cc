@@ -14,12 +14,14 @@
 #include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
+#include "system/system_event.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_threads.h"
 #include <sstream>
 
 /** Internal definitions */
@@ -49,9 +51,12 @@ typedef struct
     system_resizable_vector   active_uniforms_raGL;   /* holds _raGL_program_variable instances */
     ral_context               context;                /* DO NOT retain - context owns the instance! */
     GLuint                    id;
+    system_critical_section   link_cs;
     bool                      link_status;
+    system_thread_id          link_thread_id;
     system_hashed_ansi_string program_info_log;
     ral_program               program_ral;
+    system_event              queries_enabled_event;
 
     system_hash64map             block_name_to_binding_map;
     uint32_t                     n_ssb_bindings;
@@ -92,32 +97,34 @@ typedef struct
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void _raGL_program_attach_shader_callback    (ogl_context             context,
-                                                     void*                    in_arg);
-/** TODO */
-PRIVATE void _raGL_program_clear_bindings_metadata   (_raGL_program*          program_ptr,
-                                                      bool                    should_release);
-PRIVATE void _raGL_program_create_callback           (ogl_context             context,
-                                                     void*                    in_arg);
-PRIVATE void _raGL_program_detach_shader_callback    (ogl_context             context,
-                                                     void*                    in_arg);
-PRIVATE char*_raGL_program_get_binary_blob_file_name (_raGL_program*          program_ptr);
-PRIVATE char*_raGL_program_get_source_code_file_name (_raGL_program*          program_ptr);
-PRIVATE void _raGL_program_link_callback             (ogl_context             context,
-                                                      void*                   in_arg);
-PRIVATE bool _raGL_program_load_binary_blob          (ogl_context,
-                                                      _raGL_program*          program_ptr);
-PRIVATE void _raGL_program_on_shader_compile_callback(const void*             callback_data,
-                                                      void*                   user_arg);
-PRIVATE void _raGL_program_release                   (void*                   program);
-PRIVATE void _raGL_program_release_active_attributes (system_resizable_vector active_attributes);
-PRIVATE void _raGL_program_release_active_uniforms   (system_resizable_vector active_uniforms);
-PRIVATE void _raGL_program_release_callback          (ogl_context             context,
-                                                      void*                   in_arg);
-PRIVATE void _raGL_program_save_binary_blob          (ogl_context,
-                                                      _raGL_program*          program_ptr);
-PRIVATE void _raGL_program_save_shader_sources       (_raGL_program*          program_ptr);
-
+PRIVATE void _raGL_program_attach_shader_callback            (ogl_context             context,
+                                                             void*                    in_arg);
+/** TODO */                                                  
+PRIVATE void _raGL_program_clear_bindings_metadata           (_raGL_program*          program_ptr,
+                                                              bool                    should_release);
+PRIVATE void _raGL_program_create_callback                   (ogl_context             context,
+                                                             void*                    in_arg);
+PRIVATE void _raGL_program_detach_shader_callback            (ogl_context             context,
+                                                             void*                    in_arg);
+PRIVATE char*_raGL_program_get_binary_blob_file_name         (_raGL_program*          program_ptr);
+PRIVATE char*_raGL_program_get_source_code_file_name         (_raGL_program*          program_ptr);
+PRIVATE void _raGL_program_link_callback                     (ogl_context             context,
+                                                              void*                   in_arg);
+PRIVATE bool _raGL_program_load_binary_blob                  (ogl_context,
+                                                              _raGL_program*          program_ptr);
+PRIVATE void _raGL_program_on_shader_compile_callback        (const void*             callback_data,
+                                                              void*                   user_arg);
+PRIVATE void _raGL_program_release                           (void*                   program);
+PRIVATE void _raGL_program_release_active_attributes         (system_resizable_vector active_attributes);
+PRIVATE void _raGL_program_release_active_uniforms           (system_resizable_vector active_uniforms);
+PRIVATE void _raGL_program_release_callback                  (ogl_context             context,
+                                                              void*                   in_arg);
+PRIVATE void _raGL_program_save_binary_blob                  (ogl_context,
+                                                              _raGL_program*          program_ptr);
+PRIVATE void _raGL_program_save_shader_sources               (_raGL_program*          program_ptr);
+PRIVATE void _raGL_program_subscribe_for_shader_notifications(_raGL_program*          program_ptr,
+                                                              raGL_shader             shader,
+                                                              bool                    should_subscribe);
 
 /** TODO */
 PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
@@ -503,6 +510,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
     const GLenum                 block_interface_gl              = (block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
                                                                                                                          : GL_UNIFORM_BLOCK;
     GLchar*                      block_name                      = NULL;
+    system_resizable_vector      block_names                     = system_resizable_vector_create(16 /* capacity */);
     GLint                        n_active_blocks                 = 0;
     GLint                        n_active_block_max_length       = 0;
 
@@ -637,6 +645,9 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                               block_size,
                               block_type,
                               block_name_has);
+
+        system_resizable_vector_push(block_names,
+                                     block_name_has);
     }
 
     for (GLint n_active_block = 0;
@@ -645,11 +656,9 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
     {
         system_hashed_ansi_string block_name_has = NULL;
 
-        ral_program_get_block_property_by_index(program_ptr->program_ral,
-                                                block_type,
-                                                n_active_block,
-                                                RAL_PROGRAM_BLOCK_PROPERTY_NAME,
-                                               &block_name_has);
+        system_resizable_vector_get_element_at(block_names,
+                                               n_active_block,
+                                              &block_name_has);
 
         /* For UBs, also enumerate members */
         if (block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
@@ -763,6 +772,13 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
         delete [] block_name;
         block_name = NULL;
     }
+
+    if (block_names != NULL)
+    {
+        system_resizable_vector_release(block_names);
+
+        block_names = NULL;
+    }
 }
 
 /** TODO */
@@ -775,6 +791,8 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     system_time start_time = system_time_now();
 
     /* Clear metadata before proceeding .. */
+    program_ptr->link_thread_id = system_threads_get_thread_id();
+
     ral_program_clear_metadata           (program_ptr->program_ral);
     _raGL_program_clear_bindings_metadata(program_ptr,
                                           false /* should_release */);
@@ -984,11 +1002,16 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
         }
     }
 
+    /* All done */
+    program_ptr->link_thread_id = 0;
+
     system_time end_time            = system_time_now();
     uint32_t    execution_time_msec = 0;
 
     system_time_get_msec_for_time(end_time - start_time,
                                  &execution_time_msec);
+
+    ral_program_expose_metadata(program_ptr->program_ral);
 
     LOG_INFO("Linking time: %u ms",
              execution_time_msec);
@@ -1393,34 +1416,6 @@ PRIVATE void _raGL_program_save_binary_blob(ogl_context   context_ptr,
 }
 
 /** TODO */
-PRIVATE void _raGL_program_subscribe_for_shader_notifications(_raGL_program* program_ptr,
-                                                              raGL_shader    shader,
-                                                              bool           should_subscribe)
-{
-    system_callback_manager shader_callback_manager = NULL;
-
-    raGL_shader_get_property(shader,
-                             RAGL_SHADER_PROPERTY_CALLBACK_MANAGER,
-                            &shader_callback_manager);
-
-    if (should_subscribe)
-    {
-        system_callback_manager_subscribe_for_callbacks(shader_callback_manager,
-                                                        RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _raGL_program_on_shader_compile_callback,
-                                                        program_ptr);
-    }
-    else
-    {
-        system_callback_manager_unsubscribe_from_callbacks(shader_callback_manager,
-                                                           RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
-                                                           _raGL_program_on_shader_compile_callback,
-                                                           program_ptr);
-    }
-}
-
-/** TODO */
 PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
 {
     char*                     file_name    = _raGL_program_get_source_code_file_name(program_ptr);
@@ -1600,6 +1595,34 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
     return result;
 }
 
+/** TODO */
+PRIVATE void _raGL_program_subscribe_for_shader_notifications(_raGL_program* program_ptr,
+                                                              raGL_shader    shader,
+                                                              bool           should_subscribe)
+{
+    system_callback_manager shader_callback_manager = NULL;
+
+    raGL_shader_get_property(shader,
+                             RAGL_SHADER_PROPERTY_CALLBACK_MANAGER,
+                            &shader_callback_manager);
+
+    if (should_subscribe)
+    {
+        system_callback_manager_subscribe_for_callbacks(shader_callback_manager,
+                                                        RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_program_on_shader_compile_callback,
+                                                        program_ptr);
+    }
+    else
+    {
+        system_callback_manager_unsubscribe_from_callbacks(shader_callback_manager,
+                                                           RAGL_SHADER_CALLBACK_ID_SHADER_COMPILED,
+                                                           _raGL_program_on_shader_compile_callback,
+                                                           program_ptr);
+    }
+}
+
 /** Please see header for specification */
 PUBLIC raGL_program raGL_program_create(ral_context context,
                                         ral_program program_ral)
@@ -1613,7 +1636,10 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
         new_program_ptr->block_name_to_binding_map = system_hash64map_create(sizeof(_raGL_program_block_binding*) );
         new_program_ptr->context                   = context;
         new_program_ptr->id                        = 0;
+        new_program_ptr->link_cs                   = system_critical_section_create();
         new_program_ptr->link_status               = false;
+        new_program_ptr->link_thread_id            = 0;
+        new_program_ptr->queries_enabled_event     = system_event_create(true); /* manual_reset */
         new_program_ptr->n_ssb_bindings            = 0;
         new_program_ptr->n_ub_bindings             = 0;
         new_program_ptr->program_ral               = program_ral;
@@ -1721,6 +1747,13 @@ PUBLIC void raGL_program_get_block_property(raGL_program                program,
         goto end;
     }
 
+    /* HACK: Need to pass get_block_property() queries coming from ogl_context_wrappers
+     *       when linking. */
+    if (system_threads_get_thread_id() != program_ptr->link_thread_id)
+    {
+        system_event_wait_single(program_ptr->queries_enabled_event);
+    }
+
     switch (block_type)
     {
         case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER:
@@ -1797,6 +1830,8 @@ PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
 
         case RAGL_PROGRAM_PROPERTY_INFO_LOG:
         {
+            system_event_wait_single(program_ptr->queries_enabled_event);
+
             ASSERT_DEBUG_SYNC(program_ptr->link_status,
                               "You cannot retrieve program info log without linking the program beforehand.");
 
@@ -1856,6 +1891,8 @@ PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(raGL_program    
         goto end;
     }
 
+    system_event_wait_single(program_ptr->queries_enabled_event);
+
     if (!system_hash64map_get(program_ptr->block_name_to_binding_map,
                               system_hashed_ansi_string_get_hash(block_name),
                              &binding_ptr) )
@@ -1887,6 +1924,8 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program           
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
     bool           result      = false;
+
+    system_event_wait_single(program_ptr->queries_enabled_event);
 
     ASSERT_DEBUG_SYNC(program_ptr->link_status,
                       "You cannot retrieve an uniform descriptor without linking the program beforehand.");
@@ -1936,6 +1975,8 @@ PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program  
     _raGL_program* program_ptr = (_raGL_program*) program;
     bool           result      = false;
 
+    system_event_wait_single(program_ptr->queries_enabled_event);
+
     ASSERT_DEBUG_SYNC(program_ptr->link_status,
                       "You cannot retrieve an attribute descriptor without linking the program beforehand.");
 
@@ -1982,6 +2023,12 @@ PUBLIC bool raGL_program_link(raGL_program program)
     _raGL_program* program_ptr        = (_raGL_program*) program;
     unsigned int   n_attached_shaders = 0;
     bool           result             = false;
+
+    if (system_event_wait_single_peek(program_ptr->queries_enabled_event) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "raGL program queries must not be enabled at link time");
+    }
 
     ral_program_get_property(program_ptr->program_ral,
                              RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
@@ -2057,7 +2104,11 @@ PUBLIC bool raGL_program_link(raGL_program program)
         if (all_shaders_compiled)
         {
             /* Let's go. */
-            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
+            ogl_context current_context = ogl_context_get_current_context();
+            ogl_context program_context = ral_context_get_gl_context     (program_ptr->context);
+
+            ogl_context_request_callback_from_context_thread( (current_context != NULL && current_context != program_context) ? current_context
+                                                                                                                              : program_context,
                                                              _raGL_program_link_callback,
                                                              program);
 
@@ -2066,6 +2117,14 @@ PUBLIC bool raGL_program_link(raGL_program program)
     } /* if (n_attached_shaders > 0) */
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_program_lock(raGL_program program)
+{
+    _raGL_program* program_ptr = (_raGL_program*) program;
+
+    system_event_reset(program_ptr->queries_enabled_event);
 }
 
 /** Please see header for specification */
@@ -2101,12 +2160,22 @@ PUBLIC void raGL_program_release(raGL_program program)
                                                 &shader);
 
         shader_raGL = ral_context_get_shader_gl(program_ptr->context,
-                                                shader);
+                                               shader);
 
         _raGL_program_subscribe_for_shader_notifications(program_ptr,
                                                          shader_raGL,
                                                          false /* should_subscribe */);
     }
+
+    /* Release lock objects */
+    ASSERT_DEBUG_SYNC(system_event_wait_single_peek(program_ptr->queries_enabled_event),
+                      "Program locked but about to be destroyed");
+
+    system_critical_section_release(program_ptr->link_cs);
+    program_ptr->link_cs = NULL;
+
+    system_event_release(program_ptr->queries_enabled_event);
+    program_ptr->queries_enabled_event = NULL;
 
     /* Proceed with actual object destruction */
     delete (_raGL_program*) program;
@@ -2257,4 +2326,12 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_
     }
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_program_unlock(raGL_program program)
+{
+    _raGL_program* program_ptr = (_raGL_program*) program;
+
+    system_event_set(program_ptr->queries_enabled_event);
 }

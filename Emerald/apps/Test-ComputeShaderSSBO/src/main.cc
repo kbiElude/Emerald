@@ -177,7 +177,8 @@ void _rendering_handler(ogl_context context,
                                    &_program);
 
         ral_program_attach_shader(_program,
-                                  cs);
+                                  cs,
+                                  true /* async */);
 
         ral_context_delete_objects(_context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,

@@ -253,11 +253,14 @@ PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_b
 
     /* Initialize the program object */
     if (!ral_program_attach_shader(preview_ptr->preview_program,
-                                   fs) ||
+                                   fs,
+                                   true /* async */) ||
         !ral_program_attach_shader(preview_ptr->preview_program,
-                                   gs) ||
+                                   gs,
+                                   true /* async */) ||
         !ral_program_attach_shader(preview_ptr->preview_program,
-                                   vs) )
+                                   vs,
+                                   true /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");

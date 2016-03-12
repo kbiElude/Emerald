@@ -55,7 +55,10 @@ typedef enum
     /* not settable; GLuint */
     RAGL_PROGRAM_PROPERTY_ID,
 
-    /* not settable; system_hashed_ansi_string */
+    /* not settable; system_hashed_ansi_string.
+     *
+     * This query will BLOCK until the program instance enters a "linked" state.
+     **/
     RAGL_PROGRAM_PROPERTY_INFO_LOG,
 
     /* not settable; ral_program */
@@ -113,6 +116,13 @@ PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program  
  **/
 PUBLIC bool raGL_program_link(raGL_program program);
 
+/** Puts raGL_program into a locked mode, in which only link requests will be handled. All other invocations will be blocked until
+ *  the instance is unlocked with a raGL_program_unlock() call.
+ *
+ *  @param program Program to lock.
+ **/
+PUBLIC void raGL_program_lock(raGL_program program);
+
 /** TODO */
 PUBLIC void raGL_program_release(raGL_program program);
 
@@ -128,5 +138,11 @@ PUBLIC void raGL_program_set_block_property_by_name(raGL_program                
                                                     system_hashed_ansi_string   block_name,
                                                     raGL_program_block_property property,
                                                     const void*                 value_ptr);
+
+/** See documentation for raGL_program_lock() for more details.
+ *
+ *  @param program Program to unlock.
+ **/
+PUBLIC void raGL_program_unlock(raGL_program program);
 
 #endif /* OGL_PROGRAM_H */

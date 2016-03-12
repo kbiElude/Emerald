@@ -485,14 +485,44 @@ PUBLIC void stage_step_julia_init(ral_context  context,
                            &julia_vs_code_body);
 
     ral_program_attach_shader(_julia_program,
-                              result_shaders[0]);
+                              result_shaders[0],
+                              true /* async */);
     ral_program_attach_shader(_julia_program,
-                              result_shaders[1]);
+                              result_shaders[1],
+                              true /* async */);
 
     ral_context_delete_objects(context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shader_create_info_items,
                                (const void**) result_shaders);
+
+    /* Generate & set VAO up */
+    ogl_context                       context_gl      = NULL;
+    ral_buffer                        data_bo         = NULL;
+    raGL_buffer                       data_bo_raGL    = NULL;
+    GLuint                            data_bo_raGL_id = 0;
+    const ogl_context_gl_entrypoints* entrypoints     = NULL;
+
+    context_gl = ral_context_get_gl_context(context);
+
+    ogl_context_get_property(context_gl,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints);
+
+    procedural_mesh_sphere_get_property(_julia_sphere,
+                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_RAL,
+                                       &data_bo);
+
+    data_bo_raGL = ral_context_get_buffer_gl(context,
+                                             data_bo);
+
+    raGL_buffer_get_property(data_bo_raGL,
+                             RAGL_BUFFER_PROPERTY_ID,
+                            &data_bo_raGL_id);
+
+    entrypoints->pGLGenVertexArrays(1,
+                                   &_julia_vao_id);
+    entrypoints->pGLBindVertexArray(_julia_vao_id);
 
     /* Retrieve attribute/uniform locations */
     const ral_program_variable*    data_uniform_ptr                      = NULL;
@@ -577,34 +607,7 @@ PUBLIC void stage_step_julia_init(ral_context  context,
                                                         _julia_program,
                                                         system_hashed_ansi_string_create("dataUB") );
 
-    /* Generate & set VAO up */
-    ogl_context                       context_gl      = NULL;
-    ral_buffer                        data_bo         = NULL;
-    raGL_buffer                       data_bo_raGL    = NULL;
-    GLuint                            data_bo_raGL_id = 0;
-    const ogl_context_gl_entrypoints* entrypoints     = NULL;
-
-    context_gl = ral_context_get_gl_context(context);
-
-    ogl_context_get_property(context_gl,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints);
-
-    procedural_mesh_sphere_get_property(_julia_sphere,
-                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_RAL,
-                                       &data_bo);
-
-    data_bo_raGL = ral_context_get_buffer_gl(context,
-                                             data_bo);
-
-    raGL_buffer_get_property(data_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &data_bo_raGL_id);
-
-    entrypoints->pGLGenVertexArrays(1,
-                                   &_julia_vao_id);
-    entrypoints->pGLBindVertexArray(_julia_vao_id);
-
+    /* Set up the VAO bindings */
     entrypoints->pGLBindBuffer             (GL_ARRAY_BUFFER,
                                             data_bo_raGL_id);
     entrypoints->pGLVertexAttribPointer    (_julia_vertex_attribute_location,

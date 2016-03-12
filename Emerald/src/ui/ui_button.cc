@@ -165,9 +165,11 @@ PRIVATE void _ui_button_init_program(ui          ui_instance,
 
     /* Set up program object */
     if (!ral_program_attach_shader(program,
-                                   fs) ||
+                                   fs,
+                                   true /* async */) ||
         !ral_program_attach_shader(program,
-                                   vs) )
+                                   vs,
+                                   true /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not configure RAL program");

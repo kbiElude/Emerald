@@ -587,29 +587,39 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
 
     /* Set up program objects */
     if (!ral_program_attach_shader(dropdown_ptr->program,
-                                   fs) ||
+                                   fs,
+                                   true /* async */) ||
         !ral_program_attach_shader(dropdown_ptr->program,
-                                   vs) ||
+                                   vs,
+                                   true /* async */) ||
 
         !ral_program_attach_shader(dropdown_ptr->program_bg,
-                                   fs_bg) ||
+                                   fs_bg,
+                                   true /* async */) ||
         !ral_program_attach_shader(dropdown_ptr->program_bg,
-                                   vs) ||
+                                   vs,
+                                   true /* async */) ||
 
         !ral_program_attach_shader(dropdown_ptr->program_label_bg,
-                                   fs_label_bg) ||
+                                   fs_label_bg,
+                                   true /* async */) ||
         !ral_program_attach_shader(dropdown_ptr->program_label_bg,
-                                   vs) ||
+                                   vs,
+                                   true /* async */) ||
 
         !ral_program_attach_shader(dropdown_ptr->program_separator,
-                                   fs_separator) ||
+                                   fs_separator,
+                                   true /* async */) ||
         !ral_program_attach_shader(dropdown_ptr->program_separator,
-                                   vs_separator) ||
+                                   vs_separator,
+                                   true /* async */) ||
 
         !ral_program_attach_shader(dropdown_ptr->program_slider,
-                                   fs_slider) ||
+                                   fs_slider,
+                                   true /* async */) ||
         !ral_program_attach_shader(dropdown_ptr->program_slider,
-                                   vs) )
+                                   vs,
+                                   true /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");

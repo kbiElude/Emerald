@@ -264,14 +264,18 @@ void _init_gl(ogl_context context,
                            &modification_fs_body);
 
     ral_program_attach_shader(_generation_po,
-                              sos[0]);
+                              sos[0],
+                              true /* async */);
     ral_program_attach_shader(_generation_po,
-                              shaders_vertex_fullscreen_get_shader(general_vs) );
+                              shaders_vertex_fullscreen_get_shader(general_vs),
+                              true /* async */);
 
     ral_program_attach_shader(_modification_po,
-                              sos[1]);
+                              sos[1],
+                              true /* async */);
     ral_program_attach_shader(_modification_po,
-                              shaders_vertex_fullscreen_get_shader(general_vs) );
+                              shaders_vertex_fullscreen_get_shader(general_vs),
+                              true /* async */);
 
     ral_context_delete_objects(_context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,

@@ -127,9 +127,9 @@ PUBLIC void ral_scheduler_release(ral_scheduler scheduler)
 }
 
 /** Please see header for specification */
-PUBLIC void ral_scheduler_schedule_task(ral_scheduler                 scheduler,
-                                        ral_backend_type              backend_type,
-                                        const ral_scheduler_job_info& job_info)
+PUBLIC void ral_scheduler_schedule_job(ral_scheduler                 scheduler,
+                                       ral_backend_type              backend_type,
+                                       const ral_scheduler_job_info& job_info)
 {
     _ral_scheduler*         scheduler_ptr = (_ral_scheduler*) scheduler;
     _ral_scheduler_backend* backend_ptr   = scheduler_ptr->backends + backend_type;

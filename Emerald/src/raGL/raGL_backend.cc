@@ -174,6 +174,7 @@ PRIVATE void        _raGL_backend_get_object_vars                               
                                                                                   bool*                    out_is_owner_ptr);
 PRIVATE void        _raGL_backend_helper_context_renderer_callback               (ogl_context              context,
                                                                                   void*                    unused);
+PRIVATE void        _raGL_backend_link_program_handler                           (void*                    program_raGL_raw);
 PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*              callback_arg_data,
                                                                                   void*                    backend);
 PRIVATE void        _raGL_backend_on_buffer_to_buffer_copy_request               (const void*              callback_arg_data,
@@ -336,6 +337,7 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         buffers_map                    = root_backend_ptr->buffers_map;
         buffers_map_cs                 = root_backend_ptr->buffers_map_cs;
         buffers_map_owner              = false;
+        program_id_to_raGL_program_map = root_backend_ptr->program_id_to_raGL_program_map;
         programs_map                   = root_backend_ptr->programs_map;
         programs_map_cs                = root_backend_ptr->programs_map_cs;
         programs_map_owner             = false;
@@ -356,6 +358,7 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         buffers_map                    = system_hash64map_create       (sizeof(raGL_buffer) );
         buffers_map_cs                 = system_critical_section_create();
         buffers_map_owner              = true;
+        program_id_to_raGL_program_map = system_hash64map_create       (sizeof(raGL_program) );
         programs_map                   = system_hash64map_create       (sizeof(raGL_program) );
         programs_map_cs                = system_critical_section_create();
         programs_map_owner             = true;
@@ -381,7 +384,6 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
     is_helper_context                 = false;
     max_framebuffer_color_attachments = 0;
     name                              = in_name;
-    program_id_to_raGL_program_map    = system_hash64map_create       (sizeof(raGL_program) );
 }
 
 /** TODO */
@@ -697,6 +699,33 @@ PRIVATE void _raGL_backend_helper_context_renderer_callback(ogl_context context,
 
     ral_scheduler_use_backend_thread(scheduler,
                                      _global.backend_type);
+}
+
+/** TODO */
+PRIVATE void _raGL_backend_link_program_handler(void* program_raGL_raw)
+{
+    raGL_program program_raGL = (raGL_program) program_raGL_raw;
+
+    if (!raGL_program_link(program_raGL) )
+    {
+        system_hashed_ansi_string program_name;
+        ral_program               program_ral;
+
+        raGL_program_get_property(program_raGL,
+                                  RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
+                                 &program_ral);
+        ral_program_get_property (program_ral,
+                                  RAL_PROGRAM_PROPERTY_NAME,
+                                 &program_name);
+
+        LOG_ERROR("raGL_program_link() returned failure for program [%s]",
+                  system_hashed_ansi_string_get_buffer(program_name) );
+
+        ASSERT_DEBUG_SYNC(false,
+                          "RAL program linking failed.");
+    }
+
+    raGL_program_unlock(program_raGL);
 }
 
 /** TODO */
@@ -1431,22 +1460,39 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
         goto end;
     }
 
-    /* If all shader stages are assigned shaders, we need to link the program */
+    /* If all shader stages are assigned shaders, we need to link the program.
+     *
+     * This needs to:
+     *
+     * 1) either be handled asynchronously, by scheduling a job via GPU scheduler, if
+     *    this is an async request.
+     * 2) or handled in the calling thread otherwise
+     **/
     if (callback_arg_ptr->all_shader_stages_have_shaders_attached)
     {
-        if (!raGL_program_link(program_raGL) )
+        /* NOTE: unlock will be handled by link_program_handler */
+        raGL_program_lock(program_raGL);
+
+        if (callback_arg_ptr->async)
         {
-            system_hashed_ansi_string program_name;
+            ral_scheduler_job_info new_job;
+            ral_scheduler          scheduler = NULL;
 
-            ral_program_get_property(callback_arg_ptr->program,
-                                     RAL_PROGRAM_PROPERTY_NAME,
-                                    &program_name);
+            demo_app_get_property(DEMO_APP_PROPERTY_GPU_SCHEDULER,
+                                 &scheduler);
 
-            LOG_ERROR("raGL_program_link() returned failure for program [%s]",
-                      system_hashed_ansi_string_get_buffer(program_name) );
+            new_job.callback_user_arg = program_raGL;
+            new_job.pfn_callback_ptr  = _raGL_backend_link_program_handler;
 
-            ASSERT_DEBUG_SYNC(false,
-                              "RAL program linking failed.");
+            {
+                ral_scheduler_schedule_job(scheduler,
+                                           _global.backend_type,
+                                           new_job);
+            }
+        }
+        else
+        {
+            _raGL_backend_link_program_handler(program_raGL);
         }
     }
 

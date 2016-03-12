@@ -1036,7 +1036,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
 
             /* So far so good! */
             if (!ral_program_attach_shader(result_program,
-                                           temp_shader) )
+                                           temp_shader,
+                                           true /* async */) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "ogl_program_attach_shader() call failed.");

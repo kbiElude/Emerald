@@ -1215,9 +1215,11 @@ PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create(ral_context   
         if (result_ptr->program != NULL)
         {
             if (!ral_program_attach_shader(result_ptr->program,
-                                           shaders_fragment_uber_get_shader(result_ptr->shader_fragment) ) ||
+                                           shaders_fragment_uber_get_shader(result_ptr->shader_fragment),
+                                           true /* async */) ||
                 !ral_program_attach_shader(result_ptr->program,
-                                           shaders_vertex_uber_get_shader(result_ptr->shader_vertex)) )
+                                           shaders_vertex_uber_get_shader(result_ptr->shader_vertex),
+                                           true /* async */) )
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Cannot attach shader(s) to uber program");

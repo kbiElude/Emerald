@@ -434,7 +434,8 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
         }
 
         if (!ral_program_attach_shader(motion_blur_ptr->po,
-                                       cs))
+                                       cs,
+                                       true /* async */))
         {
             ASSERT_DEBUG_SYNC(false,
                               "Failed to attach & link a RAL program");

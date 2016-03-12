@@ -182,9 +182,11 @@ PRIVATE void _ui_checkbox_init_program(ui            ui_instance,
 
     /* Set up program object */
     if (!ral_program_attach_shader(checkbox_ptr->program,
-                                   fs) ||
+                                   fs,
+                                   true /* async */) ||
         !ral_program_attach_shader(checkbox_ptr->program,
-                                   vs) )
+                                   vs,
+                                   true /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "RAL program configuration failed.");

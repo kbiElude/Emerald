@@ -242,7 +242,10 @@ PUBLIC EMERALD_API void system_event_reset(system_event event)
         }
         #else
         {
-            ::ResetEvent( ((_system_event*) event)->event);
+            BOOL result = ::ResetEvent( ((_system_event*) event)->event);
+
+            ASSERT_DEBUG_SYNC(result != 0,
+                              "Failed to reset an event");
         }
         #endif
     }

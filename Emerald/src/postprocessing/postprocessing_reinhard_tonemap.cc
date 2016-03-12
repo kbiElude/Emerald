@@ -291,21 +291,15 @@ PRIVATE void _create_callback(ogl_context context,
     }
 
     if (!ral_program_attach_shader(callback_ptr->data_ptr->rgb_to_Yxy_program,
-                                   shaders_fragment_rgb_to_Yxy_get_shader(callback_ptr->data_ptr->rgb_to_Yxy_fragment_shader) ) ||
+                                   shaders_fragment_rgb_to_Yxy_get_shader(callback_ptr->data_ptr->rgb_to_Yxy_fragment_shader),
+                                   true /* async */) ||
         !ral_program_attach_shader(callback_ptr->data_ptr->rgb_to_Yxy_program,
-                                   shaders_vertex_fullscreen_get_shader  (callback_ptr->data_ptr->fullscreen_vertex_shader) ))
+                                   shaders_vertex_fullscreen_get_shader  (callback_ptr->data_ptr->fullscreen_vertex_shader),
+                                   true /* async */))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Failed to attach RAL shaders to a RAL program");
     }
-
-    const _raGL_program_variable* tex_uniform_raGL_ptr = NULL;
-
-    raGL_program_get_uniform_by_name(rgb_to_yXy_po_raGL,
-                                     system_hashed_ansi_string_create("tex"),
-                                    &tex_uniform_raGL_ptr);
-
-    callback_ptr->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_raGL_ptr->location;
 
     /* Create operator fragment shader */
     const ral_shader_create_info operator_fs_create_info =
@@ -352,13 +346,24 @@ PRIVATE void _create_callback(ogl_context context,
     }
 
     if (!ral_program_attach_shader(callback_ptr->data_ptr->operator_program,
-                                   callback_ptr->data_ptr->operator_fragment_shader) ||
+                                   callback_ptr->data_ptr->operator_fragment_shader,
+                                   true /* async */) ||
         !ral_program_attach_shader(callback_ptr->data_ptr->operator_program,
-                                   shaders_vertex_fullscreen_get_shader(callback_ptr->data_ptr->fullscreen_vertex_shader)) )
+                                   shaders_vertex_fullscreen_get_shader(callback_ptr->data_ptr->fullscreen_vertex_shader),
+                                   true /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Failed to attach a RAL shader to a RAL program");
     }
+
+    /* Retrieve uniform properties */
+    const _raGL_program_variable* tex_uniform_raGL_ptr = NULL;
+
+    raGL_program_get_uniform_by_name(rgb_to_yXy_po_raGL,
+                                     system_hashed_ansi_string_create("tex"),
+                                    &tex_uniform_raGL_ptr);
+
+    callback_ptr->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_raGL_ptr->location;
 
     /* Retrieve uniform block properties */
     ral_buffer ub_ral = NULL;

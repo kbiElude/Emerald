@@ -439,7 +439,8 @@ PRIVATE bool _procedural_uv_generator_build_generator_po(_procedural_uv_generato
                             &final_cs_body);
 
     if (!ral_program_attach_shader(generator_ptr->generator_po,
-                                   generator_ptr->generator_cs))
+                                   generator_ptr->generator_cs,
+                                   true /* async */) )
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Failed to link procedural UV generator computer shader program");

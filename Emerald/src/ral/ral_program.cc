@@ -8,6 +8,7 @@
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
 #include "system/system_callback_manager.h"
+#include "system/system_event.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
@@ -102,6 +103,7 @@ typedef struct _ral_program_metadata
     system_hash64map        blocks_by_name_hashmap;      /* does NOT own _ral_program_metadata_block instance values */
     system_hash64map        blocks_ssb_by_name_hashmap;  /* does NOT own _ral_program_metadata_block instance values */
     system_hash64map        blocks_ub_by_name_hashmap;   /* does NOT own _ral_program_metadata_block instance values */
+    system_event            metadata_ready_event;
     ral_program             owner_program;
 
     explicit _ral_program_metadata(ral_program in_owner_program)
@@ -112,6 +114,7 @@ typedef struct _ral_program_metadata
         blocks_by_name_hashmap      = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
         blocks_ssb_by_name_hashmap  = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
         blocks_ub_by_name_hashmap   = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
+        metadata_ready_event        = system_event_create           (true); /* manual_reset */
         owner_program               = in_owner_program;
     }
 
@@ -166,6 +169,13 @@ typedef struct _ral_program_metadata
 
             blocks_ub_by_name_hashmap = NULL;
         } /* if (blocks_ub_by_name_hashmap != NULL) */
+
+        if (metadata_ready_event != NULL)
+        {
+            system_event_release(metadata_ready_event);
+
+            metadata_ready_event = NULL;
+        }
     }
 } _ral_program_metadata;
 
@@ -454,7 +464,8 @@ end:
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
-                                                  ral_shader  shader)
+                                                  ral_shader  shader,
+                                                  bool        async)
 {
     bool                                                  all_shaders_attached = true;
     _ral_program_callback_shader_attach_callback_argument callback_arg;
@@ -518,7 +529,8 @@ PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
 
     callback_arg = _ral_program_callback_shader_attach_callback_argument(program,
                                                                          shader,
-                                                                         all_shaders_attached);
+                                                                         all_shaders_attached,
+                                                                         async);
 
     ral_context_retain_object(program_ptr->context,
                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
@@ -531,6 +543,61 @@ PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
     result = true;
 end:
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_program_clear_metadata(ral_program program)
+{
+    _ral_program* program_ptr = (_ral_program*) program;
+
+    /* Block any get() calls until metadata is filled by the rendering backend. */
+    system_event_reset(program_ptr->metadata.metadata_ready_event);
+
+    if (program_ptr->metadata.attributes != NULL)
+    {
+        ral_program_attribute* current_attribute_ptr = NULL;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.attributes,
+                                          &current_attribute_ptr) )
+        {
+            delete current_attribute_ptr;
+
+            current_attribute_ptr = NULL;
+        }
+    }
+
+    if (program_ptr->metadata.blocks != NULL)
+    {
+        _ral_program_metadata_block* current_block_ptr = NULL;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.blocks,
+                                          &current_block_ptr) )
+        {
+            delete current_block_ptr;
+
+            current_block_ptr = NULL;
+        }
+    } /* if (program_ptr->metadata.blocks != NULL) */
+
+    if (program_ptr->metadata.attributes_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.attributes_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.blocks_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_by_name_hashmap);
+    } /* if (program_ptr->metadata.blocks_by_name_hashmap != NULL) */
+
+    if (program_ptr->metadata.blocks_ssb_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_ssb_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.blocks_ub_by_name_hashmap != NULL)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_ub_by_name_hashmap);
+    }
 }
 
 /** Please see header for specification */
@@ -598,55 +665,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_program_clear_metadata(ral_program program)
+PUBLIC void ral_program_expose_metadata(ral_program program)
 {
     _ral_program* program_ptr = (_ral_program*) program;
 
-    if (program_ptr->metadata.attributes != NULL)
-    {
-        ral_program_attribute* current_attribute_ptr = NULL;
-
-        while (system_resizable_vector_pop(program_ptr->metadata.attributes,
-                                          &current_attribute_ptr) )
-        {
-            delete current_attribute_ptr;
-
-            current_attribute_ptr = NULL;
-        }
-    }
-
-    if (program_ptr->metadata.blocks != NULL)
-    {
-        _ral_program_metadata_block* current_block_ptr = NULL;
-
-        while (system_resizable_vector_pop(program_ptr->metadata.blocks,
-                                          &current_block_ptr) )
-        {
-            delete current_block_ptr;
-
-            current_block_ptr = NULL;
-        }
-    } /* if (program_ptr->metadata.blocks != NULL) */
-
-    if (program_ptr->metadata.attributes_by_name_hashmap != NULL)
-    {
-        system_hash64map_clear(program_ptr->metadata.attributes_by_name_hashmap);
-    }
-
-    if (program_ptr->metadata.blocks_by_name_hashmap != NULL)
-    {
-        system_hash64map_clear(program_ptr->metadata.blocks_by_name_hashmap);
-    } /* if (program_ptr->metadata.blocks_by_name_hashmap != NULL) */
-
-    if (program_ptr->metadata.blocks_ssb_by_name_hashmap != NULL)
-    {
-        system_hash64map_clear(program_ptr->metadata.blocks_ssb_by_name_hashmap);
-    }
-
-    if (program_ptr->metadata.blocks_ub_by_name_hashmap != NULL)
-    {
-        system_hash64map_clear(program_ptr->metadata.blocks_ub_by_name_hashmap);
-    }
+    system_event_set(program_ptr->metadata.metadata_ready_event);
 }
 
 /** Please see header for specification */
@@ -717,6 +740,8 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
     }
 
     /* Retrieve the block descriptor */
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
     if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
                               block_name_hash,
                              &block_ptr) )
@@ -800,6 +825,8 @@ PUBLIC EMERALD_API bool ral_program_get_block_property_by_index(ral_program     
         goto end_fail;
     }
 
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
     switch (block_type)
     {
         case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER: specialized_by_name_hashmap = program_ptr->metadata.blocks_ssb_by_name_hashmap; break;
@@ -857,6 +884,8 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_index(ral_program     
     }
 
     /* Retrieve the block descriptor */
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
     if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
                               block_name_hash,
                              &block_ptr) )
@@ -917,6 +946,8 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_offset(ral_program    
     }
 
     /* Retrieve the block descriptor */
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
     if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
                               block_name_hash,
                              &block_ptr) )
@@ -978,6 +1009,8 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program      
     }
 
     /* Retrieve the block descriptor */
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
     if (!system_hash64map_get(program_ptr->metadata.blocks_by_name_hashmap,
                               block_name_hash,
                              &block_ptr) )
@@ -1061,6 +1094,8 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
 
         case RAL_PROGRAM_PROPERTY_N_METADATA_BLOCKS:
         {
+            system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
             system_resizable_vector_get_property(program_ptr->metadata.blocks,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                  out_result_ptr);
@@ -1101,6 +1136,8 @@ PUBLIC EMERALD_API bool ral_program_is_block_defined(ral_program               p
 
         goto end;
     }
+
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
 
     result = system_hash64map_contains(program_ptr->metadata.blocks_by_name_hashmap,
                                        system_hashed_ansi_string_get_hash(block_name) );

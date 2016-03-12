@@ -136,8 +136,6 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
         system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson program ",
                                                                 system_hashed_ansi_string_get_buffer(poisson_ptr->name))
     };
-    raGL_program                  po_raGL    = NULL;
-    GLuint                        po_raGL_id = 0;
 
     ral_context_create_programs(poisson_ptr->context,
                                 1, /* n_create_info_items */
@@ -149,7 +147,7 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
                               &fragment_shader);
 
     vertex_shader = shaders_vertex_fullscreen_create(poisson_ptr->context,
-                                                     true,
+                                                     true,                  /* export_uv */
                                                      poisson_ptr->name);
 
 
@@ -158,15 +156,27 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
                            &fragment_shader_body);
 
     ral_program_attach_shader(poisson_ptr->program,
-                              fragment_shader);
+                              fragment_shader,
+                              true /* async */);
     ral_program_attach_shader(poisson_ptr->program,
-                              shaders_vertex_fullscreen_get_shader(vertex_shader) );
+                              shaders_vertex_fullscreen_get_shader(vertex_shader),
+                              true /* async */);
+
+    /* Generate FBO */
+    ral_context_create_framebuffers(poisson_ptr->context,
+                                    1, /* n_framebuffers */
+                                   &poisson_ptr->fbo);
+
+    /* Release shaders */
+    ral_context_delete_objects(poisson_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                               1, /* n_objects */
+                               (const void**) &fragment_shader);
+
+    shaders_vertex_fullscreen_release(vertex_shader);
 
     /* Retrieve attribute & uniform locations */
     const ral_program_variable* blur_strength_uniform_ral_ptr = NULL;
-
-    po_raGL = ral_context_get_program_gl(poisson_ptr->context,
-                                         poisson_ptr->program);
 
     ral_program_get_block_variable_by_name(poisson_ptr->program,
                                            system_hashed_ansi_string_create("dataFS"),
@@ -183,18 +193,6 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(ogl_context cont
                                                               poisson_ptr->program,
                                                               system_hashed_ansi_string_create("dataFS") );
 
-    /* Generate FBO */
-    ral_context_create_framebuffers(poisson_ptr->context,
-                                    1, /* n_framebuffers */
-                                   &poisson_ptr->fbo);
-
-    /* Release shaders */
-    ral_context_delete_objects(poisson_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                               1, /* n_objects */
-                               (const void**) &fragment_shader);
-
-    shaders_vertex_fullscreen_release(vertex_shader);
 }
 
 /** TODO */

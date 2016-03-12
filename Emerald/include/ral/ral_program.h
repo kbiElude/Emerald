@@ -26,22 +26,26 @@ typedef struct _ral_program_callback_link_callback_argument
 typedef struct _ral_program_callback_shader_attach_callback_argument
 {
     bool        all_shader_stages_have_shaders_attached;
+    bool        async;
     ral_program program;
     ral_shader  shader;
 
     _ral_program_callback_shader_attach_callback_argument()
     {
         all_shader_stages_have_shaders_attached = false;
+        async                                   = false;
         program                                 = NULL;
         shader                                  = NULL;
     }
 
     _ral_program_callback_shader_attach_callback_argument(ral_program in_program,
                                                           ral_shader  in_shader,
-                                                          bool        in_all_shader_stages_have_shaders_attached)
+                                                          bool        in_all_shader_stages_have_shaders_attached,
+                                                          bool        in_async)
 
     {
         all_shader_stages_have_shaders_attached = in_all_shader_stages_have_shaders_attached;
+        async                                   = in_async;
         program                                 = in_program;
         shader                                  = in_shader;
     }
@@ -89,13 +93,10 @@ PUBLIC void ral_program_add_block(ral_program               program,
                                   ral_program_block_type    block_type,
                                   system_hashed_ansi_string block_name);
 
-/** TODO.
- *
- *  NOTE: This call blocks until rendering back-end finishes attaching the shader AND
- *        linking the program object, if all shaders are attached to the PO.
- **/
+/** TODO. **/
 PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
-                                                  ral_shader  shader);
+                                                  ral_shader  shader,
+                                                  bool        async);
 
 /** TODO
  *
@@ -114,7 +115,19 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
 PUBLIC void ral_program_attach_vertex_attribute(ral_program            program,
                                                 ral_program_attribute* attribute_ptr);
 
-/** TODO */
+/** Called by rendering back-ends when linking process starts. RAL program instance can
+ *  anticipate subsequent calls, filling it with new metadata. Once all blocks & variables
+ *  are attached, ral_program_expose_metadata() invocation indicates the metadata can be
+ *  shared to other callers.
+ *
+ *  In order to support async linking, this call will reset a metadata_ready event, which in
+ *  turn will block any ral_program_get*() invocations, until ral_program_expose_metadata()
+ *  call is made, which is when the event will be set back on again.
+ *
+ *  NOTE: Internal use only.
+ *
+ *  @param program Program, whose metadata should be cleared.
+ **/
 PUBLIC void ral_program_clear_metadata(ral_program program);
 
 /** TODO
@@ -124,6 +137,14 @@ PUBLIC void ral_program_clear_metadata(ral_program program);
  **/
 PUBLIC ral_program ral_program_create(ral_context                    context,
                                       const ral_program_create_info* program_create_info_ptr);
+
+/** See ral_program_clear_metadata() documentation for more details.
+ *
+ *  NOTE: Internal use only.
+ *
+ *  @param program Program, whose metadata should be exposed to non-backend threads.
+ **/
+PUBLIC void ral_program_expose_metadata(ral_program program);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program program,

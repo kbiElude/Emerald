@@ -448,51 +448,8 @@ PRIVATE void _init_spinner()
                            &polygonizer_cs_has);
 
     ral_program_attach_shader(_spinner_polygonizer_po,
-                              polygonizer_cs);
-
-    /* Retrieve polygonizer PO properties */
-    ral_buffer         props_buffer_bo_ral         = NULL;
-    const raGL_program spinner_polygonizer_po_raGL = ral_context_get_program_gl(_context,
-                                                                                _spinner_polygonizer_po);
-
-    _spinner_polygonizer_po_propsBuffer_ub = ral_program_block_buffer_create(_context,
-                                                                             _spinner_polygonizer_po,
-                                                                             system_hashed_ansi_string_create("propsBuffer") );
-
-    ral_program_block_buffer_get_property(_spinner_polygonizer_po_propsBuffer_ub,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &props_buffer_bo_ral);
-    ral_buffer_get_property              (props_buffer_bo_ral,
-                                          RAL_BUFFER_PROPERTY_SIZE,
-                                         &_spinner_polygonizer_po_propsBuffer_ub_bo_ral_size);
-
-    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
-                                           system_hashed_ansi_string_create("propsBuffer"),
-                                           system_hashed_ansi_string_create("innerRingRadius"),
-                                          &cs_innerRingRadius_ral_ptr);
-    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
-                                           system_hashed_ansi_string_create("propsBuffer"),
-                                           system_hashed_ansi_string_create("nRingsToSkip"),
-                                          &cs_nRingsToSkip_ral_ptr);
-    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
-                                           system_hashed_ansi_string_create("propsBuffer"),
-                                           system_hashed_ansi_string_create("outerRingRadius"),
-                                          &cs_outerRingRadius_ral_ptr);
-    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
-                                           system_hashed_ansi_string_create("propsBuffer"),
-                                           system_hashed_ansi_string_create("splineOffsets[0]"),
-                                          &cs_splineOffsets_ral_ptr);
-
-    ASSERT_DEBUG_SYNC(cs_innerRingRadius_ral_ptr != NULL &&
-                      cs_nRingsToSkip_ral_ptr    != NULL &&
-                      cs_outerRingRadius_ral_ptr != NULL &&
-                      cs_splineOffsets_ral_ptr     != NULL,
-                      "Spinner props UB variables are not recognized by GL");
-
-    _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = cs_innerRingRadius_ral_ptr->block_offset;
-    _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = cs_nRingsToSkip_ral_ptr->block_offset;
-    _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = cs_outerRingRadius_ral_ptr->block_offset;
-    _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset   = cs_splineOffsets_ral_ptr->block_offset;
+                              polygonizer_cs,
+                              true /* async */);
 
     /* Prepare renderer vertex shader key+token values */
     snprintf(temp,
@@ -531,9 +488,11 @@ PRIVATE void _init_spinner()
                            &renderer_vs_has);
 
     ral_program_attach_shader(_spinner_renderer_po,
-                              renderer_sos[0]);
+                              renderer_sos[0],
+                              true /* async */);
     ral_program_attach_shader(_spinner_renderer_po,
-                              renderer_sos[1]);
+                              renderer_sos[1],
+                              true /* async */);
 
     /* Set up BO to hold polygonized spinner data */
     _spinner_bo_size = SPINNER_N_SEGMENTS_PER_SPLINE * SPINNER_N_SPLINES * 2 /* triangles */ * 3 /* vertices per triangle */ * 4 /* comp's per vertex */ * sizeof(float) * 2 /* top half, bottom half */;
@@ -718,6 +677,50 @@ PRIVATE void _init_spinner()
                                                              POSTPROCESSING_MOTION_BLUR_IMAGE_FORMAT_RG32F,
                                                              POSTPROCESSING_MOTION_BLUR_IMAGE_TYPE_2D,
                                                              system_hashed_ansi_string_create("Spinner motion blur") );
+
+    /* Retrieve polygonizer PO properties */
+    ral_buffer         props_buffer_bo_ral         = NULL;
+    const raGL_program spinner_polygonizer_po_raGL = ral_context_get_program_gl(_context,
+                                                                                _spinner_polygonizer_po);
+
+    _spinner_polygonizer_po_propsBuffer_ub = ral_program_block_buffer_create(_context,
+                                                                             _spinner_polygonizer_po,
+                                                                             system_hashed_ansi_string_create("propsBuffer") );
+
+    ral_program_block_buffer_get_property(_spinner_polygonizer_po_propsBuffer_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &props_buffer_bo_ral);
+    ral_buffer_get_property              (props_buffer_bo_ral,
+                                          RAL_BUFFER_PROPERTY_SIZE,
+                                         &_spinner_polygonizer_po_propsBuffer_ub_bo_ral_size);
+
+    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
+                                           system_hashed_ansi_string_create("propsBuffer"),
+                                           system_hashed_ansi_string_create("innerRingRadius"),
+                                          &cs_innerRingRadius_ral_ptr);
+    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
+                                           system_hashed_ansi_string_create("propsBuffer"),
+                                           system_hashed_ansi_string_create("nRingsToSkip"),
+                                          &cs_nRingsToSkip_ral_ptr);
+    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
+                                           system_hashed_ansi_string_create("propsBuffer"),
+                                           system_hashed_ansi_string_create("outerRingRadius"),
+                                          &cs_outerRingRadius_ral_ptr);
+    ral_program_get_block_variable_by_name(_spinner_polygonizer_po,
+                                           system_hashed_ansi_string_create("propsBuffer"),
+                                           system_hashed_ansi_string_create("splineOffsets[0]"),
+                                          &cs_splineOffsets_ral_ptr);
+
+    ASSERT_DEBUG_SYNC(cs_innerRingRadius_ral_ptr != NULL &&
+                      cs_nRingsToSkip_ral_ptr    != NULL &&
+                      cs_outerRingRadius_ral_ptr != NULL &&
+                      cs_splineOffsets_ral_ptr     != NULL,
+                      "Spinner props UB variables are not recognized by GL");
+
+    _spinner_polygonizer_po_propsBuffer_innerRingRadius_ub_offset = cs_innerRingRadius_ral_ptr->block_offset;
+    _spinner_polygonizer_po_propsBuffer_nRingsToSkip_ub_offset    = cs_nRingsToSkip_ral_ptr->block_offset;
+    _spinner_polygonizer_po_propsBuffer_outerRingRadius_ub_offset = cs_outerRingRadius_ral_ptr->block_offset;
+    _spinner_polygonizer_po_propsBuffer_splineOffsets_ub_offset   = cs_splineOffsets_ral_ptr->block_offset;
 
     /* All done */
 end:

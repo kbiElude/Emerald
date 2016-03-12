@@ -719,9 +719,11 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
         } /* if (no compiled VS is available) */
 
         if (!ral_program_attach_shader(instance_ptr->po,
-                                       result_shaders[0]) ||
+                                       result_shaders[0],
+                                       true /* async */) ||
             !ral_program_attach_shader(instance_ptr->po,
-                                       result_shaders[1]) )
+                                       result_shaders[1],
+                                       true /* async */) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not link postprocessing blur gaussian program object");

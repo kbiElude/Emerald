@@ -349,9 +349,11 @@ PRIVATE void _varia_primitive_renderer_init_program(_varia_primitive_renderer* r
                                &vs_body_has);
 
         if (!ral_program_attach_shader(renderer_ptr->program,
-                                       fs) ||
+                                       fs,
+                                       true /* async */) ||
             !ral_program_attach_shader(renderer_ptr->program,
-                                       vs) )
+                                       vs,
+                                       true /* async */) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "RAL program configuration failed.");
