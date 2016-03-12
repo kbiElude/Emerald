@@ -1146,6 +1146,28 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC bool ral_program_is_shader_attached(ral_program program,
+                                           ral_shader  shader)
+{
+    _ral_program* program_ptr = (_ral_program*) program;
+    bool          result      = false;
+
+    for (uint32_t n_shader_stage = 0;
+                  n_shader_stage < RAL_SHADER_TYPE_COUNT;
+                ++n_shader_stage)
+    {
+        if (program_ptr->attached_shaders[n_shader_stage].shader == shader)
+        {
+            result = true;
+
+            break;
+        }
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_program_release(ral_program& program)
 {
     _ral_program* program_ptr = (_ral_program*) program;

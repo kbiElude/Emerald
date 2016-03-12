@@ -7,7 +7,6 @@
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_read_write_mutex.h"
-#include "system/system_semaphore.h"
 #include "system/system_threads.h"
 
 #ifdef __linux
@@ -29,7 +28,7 @@ struct _system_read_write_mutex
     system_thread_id        write_owner_thread_id;
 
 #ifdef _WIN32
-    system_semaphore        semaphore;
+    SRWLOCK                 lock;
 #else
     pthread_rwlock_t        lock;
 #endif
@@ -51,7 +50,6 @@ PRIVATE void _deinit_read_write_mutex(_system_read_write_mutex* rw_mutex_ptr)
         system_critical_section_release(rw_mutex_ptr->cs_write);
 
 #ifdef _WIN32
-        system_semaphore_release(rw_mutex_ptr->semaphore);
 #else
         pthread_rwlock_destroy  (&rw_mutex_ptr->lock);
 #endif
@@ -75,8 +73,7 @@ PRIVATE void _init_read_write_mutex(_system_read_write_mutex* rw_mutex_ptr)
         rw_mutex_ptr->write_owner_thread_id = 0;
 
 #ifdef _WIN32
-        rw_mutex_ptr->semaphore = system_semaphore_create(MAX_SEMAPHORE_COUNT,  /* semaphore_capacity */
-                                                          MAX_SEMAPHORE_COUNT); /* semaphore_default_value */
+        rw_mutex_ptr->lock = SRWLOCK_INIT;
 #else
         pthread_rwlock_init(&rw_mutex_ptr->lock,
                             NULL); /* __attr */
@@ -135,8 +132,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex    
     {
         #ifdef _WIN32
         {
-            /* If read access request, take one semaphore slot and leave */
-            system_semaphore_enter(rw_mutex_ptr->semaphore);
+            AcquireSRWLockShared(&rw_mutex_ptr->lock);
         }
         #else
         {
@@ -159,8 +155,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex    
         {
             system_critical_section_enter(rw_mutex_ptr->cs_write);
             {
-                system_semaphore_enter_multiple(rw_mutex_ptr->semaphore,
-                                                MAX_SEMAPHORE_COUNT);
+                AcquireSRWLockExclusive(&rw_mutex_ptr->lock);
 
                 /* At this time only this thread is accessing the descriptor */
                 rw_mutex_ptr->write_owner_thread_id = current_thread_id;
@@ -225,7 +220,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex  
         {
             #ifdef _WIN32
             {
-                system_semaphore_leave(rw_mutex_ptr->semaphore);
+                ReleaseSRWLockShared(&rw_mutex_ptr->lock);
             }
             #else
             {
@@ -253,8 +248,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex  
 
             #ifdef _WIN32
             {
-                system_semaphore_leave_multiple(rw_mutex_ptr->semaphore,
-                                                MAX_SEMAPHORE_COUNT);
+                ReleaseSRWLockExclusive(&rw_mutex_ptr->lock);
             }
             #else
             {

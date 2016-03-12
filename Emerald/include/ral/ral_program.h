@@ -192,6 +192,10 @@ PUBLIC EMERALD_API bool ral_program_is_block_defined(ral_program               p
                                                      system_hashed_ansi_string block_name);
 
 /** TODO */
+PUBLIC bool ral_program_is_shader_attached(ral_program program,
+                                           ral_shader  shader);
+
+/** TODO */
 PUBLIC void ral_program_release(ral_program& program);
 
 #endif /* RAL_PROGRAM_H */
