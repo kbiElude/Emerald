@@ -323,6 +323,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
             } /* switch (texture_type) */
         }
     } /* for (all requested updates) */
+
+    /* Flush so that other contexts take notice */
+    entrypoints_ptr->pGLFlush();
 }
 
 /** TODO */
@@ -676,6 +679,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
                               "Unrecognized ral_texture_type value.");
         }
     } /* switch (texture_type) */
+
+    /* Flush so other contexts take notice */
+    entrypoints_ptr->pGLFlush();
 
     texture_ptr->is_renderbuffer = false;
 }

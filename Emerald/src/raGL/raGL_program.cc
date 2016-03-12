@@ -70,6 +70,7 @@ typedef struct
     PFNGLCREATEPROGRAMPROC              pGLCreateProgram;
     PFNGLDELETEPROGRAMPROC              pGLDeleteProgram;
     PFNGLDETACHSHADERPROC               pGLDetachShader;
+    PFNGLFLUSHPROC                      pGLFlush;
     PFNGLGETACTIVEATTRIBPROC            pGLGetActiveAttrib;
     PFNGLGETATTRIBLOCATIONPROC          pGLGetAttribLocation;
     PFNGLGETPROGRAMBINARYPROC           pGLGetProgramBinary;
@@ -136,6 +137,10 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
 
     callback_arg_ptr->program_ptr->pGLAttachShader(callback_arg_ptr->program_ptr->id,
                                                    shader_raGL_id);
+
+    /* Need a flush for other contexts to take notice of the new shader attachment */
+    callback_arg_ptr->program_ptr->pGLFlush();
+
 }
 
 /** TODO */
@@ -803,6 +808,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     {
         /* Okay, let's link */
         program_ptr->pGLLinkProgram(program_ptr->id);
+        program_ptr->pGLFlush      ();
     }
 
     /* Retrieve link status */
@@ -1630,6 +1636,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
             new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
             new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
+            new_program_ptr->pGLFlush                      = entry_points->pGLFlush;
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
@@ -1661,6 +1668,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
             new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
             new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
+            new_program_ptr->pGLFlush                      = entry_points->pGLFlush;
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
