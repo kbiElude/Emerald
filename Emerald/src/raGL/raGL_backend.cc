@@ -1547,8 +1547,10 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                       n_program < n_programs;
                     ++n_program)
         {
-            raGL_program program_raGL = NULL;
-            ral_program  program_ral  = NULL;
+            bool                   all_shader_stages_set = false;
+            ral_scheduler_job_info new_job;
+            raGL_program           program_raGL          = NULL;
+            ral_program            program_ral           = NULL;
 
             system_hash64map_get_element_at(backend_ptr->programs_map,
                                             n_program,
@@ -1559,19 +1561,27 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                                       RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
                                      &program_ral);
 
-            if (ral_program_is_shader_attached(program_ral,
-                                               shader_to_compile) )
+            if (!ral_program_is_shader_attached(program_ral,
+                                                shader_to_compile) )
             {
-                ral_scheduler_job_info new_job;
-
-                /* NOTE: _raGL_backend_link_program_handler will unlock the raGL program,
-                 *       once linking completes.
-                 */
-                raGL_program_lock(program_raGL);
-
-
-                _raGL_backend_link_program_handler(program_raGL);
+                continue;
             }
+
+            ral_program_get_property(program_ral,
+                                     RAL_PROGRAM_PROPERTY_ALL_SHADERS_ATTACHED,
+                                    &all_shader_stages_set);
+
+            if (!all_shader_stages_set)
+            {
+                continue;
+            }
+
+            /* NOTE: _raGL_backend_link_program_handler will unlock the raGL program,
+             *       once linking completes.
+             */
+            raGL_program_lock(program_raGL);
+
+            _raGL_backend_link_program_handler(program_raGL);
         } /* for (all programs) */
     }
 }

@@ -69,6 +69,9 @@ typedef enum
 
 typedef enum
 {
+    /* not settable; bool */
+    RAL_PROGRAM_PROPERTY_ALL_SHADERS_ATTACHED,
+
     /* not settable; system_callback_manager */
     RAL_PROGRAM_PROPERTY_CALLBACK_MANAGER,
 

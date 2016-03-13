@@ -1059,6 +1059,28 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
 
     switch (property)
     {
+        case RAL_PROGRAM_PROPERTY_ALL_SHADERS_ATTACHED:
+        {
+            bool result = true;
+
+            for (uint32_t n_shader_stage = 0;
+                          n_shader_stage < RAL_SHADER_TYPE_COUNT;
+                        ++n_shader_stage)
+            {
+                if (program_ptr->attached_shaders[n_shader_stage].active          &&
+                    program_ptr->attached_shaders[n_shader_stage].shader == NULL)
+                {
+                    result = false;
+
+                    break;
+                }
+            }
+
+            *(bool*) out_result_ptr = result;
+
+            break;
+        }
+
         case RAL_PROGRAM_PROPERTY_CALLBACK_MANAGER:
         {
             *(system_callback_manager*) out_result_ptr = program_ptr->callback_manager;
