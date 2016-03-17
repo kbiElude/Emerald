@@ -23,6 +23,7 @@
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_shader.h"
+#include "raGL/raGL_sync.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_textures.h"
 #include "system/system_callback_manager.h"
@@ -31,12 +32,11 @@
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
 #include "system/system_read_write_mutex.h"
+#include "system/system_resizable_vector.h"
 #include "system/system_window.h"
 
 #define N_HELPER_CONTEXTS         4
 #define ROOT_HELPER_CONTEXT_INDEX 0
-#define ROOT_WINDOW_ES_NAME       "Root window ES"
-#define ROOT_WINDOW_GL_NAME       "Root window GL"
 
 
 typedef struct _raGL_backend
@@ -67,6 +67,9 @@ typedef struct _raGL_backend
     system_hash64map        textures_map;                   /* maps ral_texture to raGL_texture instance; owns the mapped raGL_texture instances */
     bool                    textures_map_owner;
     system_read_write_mutex textures_map_rw_mutex;
+
+    system_resizable_vector enqueued_syncs;
+    system_read_write_mutex enqueued_syncs_rw_mutex;
 
     raGL_buffers  buffers;
     raGL_textures textures;
@@ -127,13 +130,18 @@ typedef struct _raGL_backend_global
     system_critical_section cs;
     uint32_t                n_owners;
 
+    system_resizable_vector active_backends;
+    system_read_write_mutex active_backends_rw_mutex;
+
     _raGL_backend_global_context helper_contexts[N_HELPER_CONTEXTS];
 
     _raGL_backend_global()
     {
-        backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-        cs           = system_critical_section_create();
-        n_owners     = 0;
+        active_backends          = system_resizable_vector_create(N_HELPER_CONTEXTS * 2);
+        active_backends_rw_mutex = system_read_write_mutex_create();
+        backend_type             = RAL_BACKEND_TYPE_UNKNOWN;
+        cs                       = system_critical_section_create();
+        n_owners                 = 0;
 
         memset(helper_contexts,
                0,
@@ -151,6 +159,29 @@ typedef struct _raGL_backend_global
 
         system_critical_section_release(cs);
         cs = NULL;
+
+        {
+            uint32_t n_active_contexts = 0;
+
+            system_read_write_mutex_lock(active_backends_rw_mutex,
+                                         ACCESS_WRITE);
+            {
+                system_resizable_vector_get_property(active_backends,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_active_contexts);
+
+                ASSERT_DEBUG_SYNC(n_active_contexts == 0,
+                                  ">0 contexts still active, even though _raGL_backend_global is about to be destroyed.");
+
+                system_resizable_vector_release(active_backends);
+                active_backends = NULL;
+            }
+            system_read_write_mutex_unlock(active_backends_rw_mutex,
+                                           ACCESS_WRITE);
+
+            system_read_write_mutex_release(active_backends_rw_mutex);
+            active_backends_rw_mutex = NULL;
+        }
     }
 
     void deinit();
@@ -380,6 +411,8 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
     buffers                           = NULL;
     context_gl                        = NULL;
     context_ral                       = in_owner_context;
+    enqueued_syncs                    = system_resizable_vector_create(8);
+    enqueued_syncs_rw_mutex           = system_read_write_mutex_create();
     framebuffers_map                  = system_hash64map_create       (sizeof(raGL_framebuffer) );
     framebuffers_map_rw_mutex         = system_read_write_mutex_create();
     is_helper_context                 = false;
@@ -398,6 +431,31 @@ _raGL_backend::~_raGL_backend()
         raGL_buffers_release(buffers);
 
         buffers = NULL;
+    }
+
+    if (enqueued_syncs != NULL)
+    {
+        system_read_write_mutex_lock(enqueued_syncs_rw_mutex,
+                                     ACCESS_WRITE);
+        {
+            raGL_sync sync = NULL;
+
+            while (system_resizable_vector_pop(enqueued_syncs,
+                                              &sync) )
+            {
+                raGL_sync_release(sync);
+
+                sync = NULL;
+            }
+
+            system_resizable_vector_release(enqueued_syncs);
+            enqueued_syncs = NULL;
+        }
+        system_read_write_mutex_unlock(enqueued_syncs_rw_mutex,
+                                       ACCESS_WRITE);
+
+        system_read_write_mutex_release(enqueued_syncs_rw_mutex);
+        enqueued_syncs_rw_mutex = NULL;
     }
 
     if (textures != NULL)
@@ -2066,7 +2124,106 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
                                                   true); /* should_subscribe */
     }
 
+    system_read_write_mutex_lock(_global.active_backends_rw_mutex,
+                                 ACCESS_WRITE);
+    {
+        system_resizable_vector_push(_global.active_backends,
+                                     new_backend_ptr);
+    }
+    system_read_write_mutex_unlock(_global.active_backends_rw_mutex,
+                                   ACCESS_WRITE);
+
     return (raGL_backend) new_backend_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_backend_enqueue_sync(raGL_sync new_sync)
+{
+    _raGL_backend* parent_backend_ptr = NULL;
+
+    ASSERT_DEBUG_SYNC(new_sync != NULL,
+                      "Input raGL_sync instance is NULL");
+
+    raGL_sync_get_property(new_sync,
+                           RAGL_SYNC_PROPERTY_PARENT_BACKEND,
+                          &parent_backend_ptr);
+
+    /* Iterate over all active contexts and schedule a wait op for all backends, except for
+     * the one this sync is originating from. */
+    system_read_write_mutex_lock(_global.active_backends_rw_mutex,
+                                 ACCESS_READ);
+    {
+        uint32_t n_backends = 0;
+
+        system_resizable_vector_get_property(_global.active_backends,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_backends);
+
+        for (uint32_t n_backend = 0;
+                      n_backend < n_backends;
+                    ++n_backend)
+        {
+            _raGL_backend* backend_ptr = NULL;
+
+            system_resizable_vector_get_element_at(_global.active_backends,
+                                                   n_backend,
+                                                  &backend_ptr);
+
+            if (backend_ptr == parent_backend_ptr)
+            {
+                continue;
+            }
+
+            system_read_write_mutex_lock(backend_ptr->enqueued_syncs_rw_mutex,
+                                         ACCESS_WRITE);
+            {
+                /* If there's a sync object already enqueued for parent_backend_ptr, release it before
+                 * continuing. */
+                uint32_t n_sync_objects = 0;
+
+                system_resizable_vector_get_property(backend_ptr->enqueued_syncs,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_sync_objects);
+
+                for (uint32_t n_sync_object = 0;
+                              n_sync_object < n_sync_objects;
+                            ++n_sync_object)
+                {
+                    raGL_sync      enqueued_sync             = NULL;
+                    _raGL_backend* enqueued_sync_backend_ptr = NULL;
+
+                    system_resizable_vector_get_element_at(backend_ptr->enqueued_syncs,
+                                                           n_sync_object,
+                                                          &enqueued_sync);
+
+                    raGL_sync_get_property(enqueued_sync,
+                                           RAGL_SYNC_PROPERTY_PARENT_BACKEND,
+                                          &enqueued_sync_backend_ptr);
+
+                    if (enqueued_sync_backend_ptr == parent_backend_ptr)
+                    {
+                        raGL_sync_release(enqueued_sync);
+
+                        system_resizable_vector_delete_element_at(backend_ptr->enqueued_syncs,
+                                                                  n_sync_object);
+
+                        enqueued_sync = NULL;
+                        break;
+                    }
+                }
+
+                /* Stash the new sync */
+                system_resizable_vector_push(backend_ptr->enqueued_syncs,
+                                             new_sync);
+
+                raGL_sync_retain(new_sync);
+            }
+            system_read_write_mutex_unlock(backend_ptr->enqueued_syncs_rw_mutex,
+                                           ACCESS_WRITE);
+        }
+    }
+    system_read_write_mutex_unlock(_global.active_backends_rw_mutex,
+                                   ACCESS_READ);
 }
 
 /** Please see header for specification */
@@ -2411,6 +2568,26 @@ PUBLIC void raGL_backend_release(void* backend)
 
     if (backend != NULL)
     {
+        /* Before we proceed with anything, purge the context from the list of active contexts,
+         * so that other threads do not enqueue a sync object while we wind things up */
+        system_read_write_mutex_lock(_global.active_backends_rw_mutex,
+                                     ACCESS_WRITE);
+        {
+            size_t backend_index = system_resizable_vector_find(_global.active_backends,
+                                                                backend);
+
+            ASSERT_DEBUG_SYNC(backend_index != ITEM_NOT_FOUND,
+                              "Backend not stored in the global 'active backends' vector");
+
+            if (backend_index != ITEM_NOT_FOUND)
+            {
+                system_resizable_vector_delete_element_at(_global.active_backends,
+                                                          backend_index);
+            }
+        }
+        system_read_write_mutex_unlock(_global.active_backends_rw_mutex,
+                                       ACCESS_WRITE);
+
         /* Request a rendering context call-back to release backend's assets */
         const bool is_helper_context = backend_ptr->is_helper_context;
 
@@ -2475,4 +2652,34 @@ PUBLIC void raGL_backend_set_private_property(raGL_backend                  back
                               "Unrecognized raGL_backend_private_property value.");
         }
     } /* switch (property) */
+}
+
+/** Please see header for specification */
+PUBLIC RENDERING_CONTEXT_CALL void raGL_backend_sync()
+{
+    ogl_context    current_context             = ogl_context_get_current_context();
+    _raGL_backend* current_context_backend_ptr = NULL;
+
+    ASSERT_DEBUG_SYNC(current_context != NULL,
+                      "No rendering context bound to the calling thread.");
+
+    ogl_context_get_property(current_context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &current_context_backend_ptr);
+
+    system_read_write_mutex_lock(current_context_backend_ptr->enqueued_syncs_rw_mutex,
+                                 ACCESS_WRITE);
+    {
+        raGL_sync sync = NULL;
+
+        while (system_resizable_vector_pop(current_context_backend_ptr->enqueued_syncs,
+                                          &sync) )
+        {
+            raGL_sync_wait_gpu(sync);
+
+            raGL_sync_release(sync);
+        }
+    }
+    system_read_write_mutex_unlock(current_context_backend_ptr->enqueued_syncs_rw_mutex,
+                                   ACCESS_WRITE);
 }

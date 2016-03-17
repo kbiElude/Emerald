@@ -624,7 +624,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             else
             if (event_set == 1)
             {
-                /* Call-back requested */
+                /* Call-back requested. Sync and handle the request */
+                raGL_backend_sync();
+
                 rendering_handler->pfn_callback_proc(context_gl,
                                                      rendering_handler->callback_request_user_arg);
 
@@ -714,6 +716,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                     system_critical_section_enter(rendering_handler->rendering_cs);
                     {
+                        /* Sync with other contexts.. */
+                        raGL_backend_sync();
+
                         /* Determine current frame index & time */
                         _ogl_rendering_handler_get_frame_properties(rendering_handler,
                                                                     false, /* should_update_frame_counter */

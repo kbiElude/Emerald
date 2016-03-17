@@ -808,6 +808,7 @@ typedef struct
     PFNGLDELETERENDERBUFFERSPROC                         pGLDeleteRenderbuffers;
     PFNGLDELETESAMPLERSPROC                              pGLDeleteSamplers;
     PFNGLDELETESHADERPROC                                pGLDeleteShader;
+    PFNGLDELETESYNCPROC                                  pGLDeleteSync;
     PFNGLDELETETEXTURESPROC                              pGLDeleteTextures;
     PFNGLDELETETRANSFORMFEEDBACKSPROC                    pGLDeleteTransformFeedbacks;
     PFNGLDELETEVERTEXARRAYSPROC                          pGLDeleteVertexArrays;
@@ -840,6 +841,7 @@ typedef struct
     PFNGLENDCONDITIONALRENDERPROC                        pGLEndConditionalRender;
     PFNGLENDQUERYPROC                                    pGLEndQuery;
     PFNGLENDTRANSFORMFEEDBACKPROC                        pGLEndTransformFeedback;
+    PFNGLFENCESYNCPROC                                   pGLFenceSync;
     PFNGLFINISHPROC                                      pGLFinish;
     PFNGLFLUSHPROC                                       pGLFlush;
     PFNGLFRAMEBUFFERPARAMETERIPROC                       pGLFramebufferParameteri;
@@ -1054,6 +1056,7 @@ typedef struct
     PFNGLUNMAPBUFFERPROC                                 pGLUnmapBuffer;
     PFNGLUSEPROGRAMPROC                                  pGLUseProgram;
     PFNGLUSEPROGRAMSTAGESPROC                            pGLUseProgramStages;
+    PFNGLWAITSYNCPROC                                    pGLWaitSync;
     PFNGLVALIDATEPROGRAMPROC                             pGLValidateProgram;
     PFNGLVERTEXATTRIB1DPROC                              pGLVertexAttrib1d;
     PFNGLVERTEXATTRIB1DVPROC                             pGLVertexAttrib1dv;
@@ -1118,7 +1121,7 @@ typedef struct
     PFNGLVERTEXATTRIBI4USVPROC                           pGLVertexAttribI4usv;
     PFNGLVERTEXATTRIBIPOINTERPROC                        pGLVertexAttribIPointer;
     PFNGLVERTEXATTRIBPOINTERPROC                         pGLVertexAttribPointer;
-    PFNGLVERTEXBINDINGDIVISORPROC                        pGLVertexBindingDivisor; // x
+    PFNGLVERTEXBINDINGDIVISORPROC                        pGLVertexBindingDivisor;
     PFNGLVIEWPORTPROC                                    pGLViewport;
 } ogl_context_gl_entrypoints;
 

@@ -14,15 +14,33 @@ typedef enum
 
 } raGL_backend_private_property;
 
-/** TODO */
-PUBLIC raGL_backend raGL_backend_create(ral_context               context,
-                                        system_hashed_ansi_string name,
-                                        ral_backend_type          type);
 
 /** TODO */
 PUBLIC bool raGL_backend_get_buffer(void*      backend,
                                     ral_buffer buffer_ral,
                                     void**     out_buffer_raGL_ptr);
+
+/** TODO */
+PUBLIC raGL_backend raGL_backend_create(ral_context               context,
+                                        system_hashed_ansi_string name,
+                                        ral_backend_type          type);
+
+/** Appends the specified sync for execution for all rendering contexts active at the time
+ *  of the call, apart from the context, for which the sync object has been created for.
+ *
+ *  A GPU-side wait will be issued for each rendering context either at raGL_backend_sync()
+ *  call time, or at the beginning of next frame.
+ *
+ *  The back-end takes ownership of the specified sync. The object will be released as soon as all
+ *  running rendering contexts have waited on the sync.
+ *
+ *  If sync object has been scheduled from a backend, from which a sync object is still outstanding for
+ *  some of the rendering contexts, it will be released and the newer sync object will be used instead.
+ *
+ *  @param sync        Sync object created after the invalidating command has been scheduled. Must not be NULL.
+ *
+ **/
+PUBLIC void raGL_backend_enqueue_sync(raGL_sync sync);
 
 /** TODO */
 PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 backend,
@@ -83,5 +101,8 @@ PUBLIC void raGL_backend_release(void* backend); /* raGL_backend instance */
 PUBLIC void raGL_backend_set_private_property(raGL_backend                  backend,
                                               raGL_backend_private_property property,
                                               const void*                   data_ptr);
+
+/** TODO */
+PUBLIC RENDERING_CONTEXT_CALL void raGL_backend_sync();
 
 #endif /* RAGL_BACKEND_H */

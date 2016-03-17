@@ -2207,6 +2207,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLDeleteRenderbuffers,                         "glDeleteRenderbuffers"},
         {&context_ptr->entry_points_gl.pGLDeleteSamplers,                                   "glDeleteSamplers"},
         {&context_ptr->entry_points_gl.pGLDeleteShader,                                     "glDeleteShader"},
+        {&context_ptr->entry_points_gl.pGLDeleteSync,                                       "glDeleteSync"},
+        {&context_ptr->entry_points_gl.pGLFenceSync,                                        "glFenceSync"},
         {&context_ptr->entry_points_private.pGLDeleteTextures,                              "glDeleteTextures"},
         {&context_ptr->entry_points_gl.pGLDeleteTransformFeedbacks,                         "glDeleteTransformFeedbacks"},
         {&context_ptr->entry_points_gl.pGLDeleteQueries,                                    "glDeleteQueries"},
@@ -2240,6 +2242,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLEndConditionalRender,                             "glEndConditionalRender"},
         {&context_ptr->entry_points_gl.pGLEndQuery,                                         "glEndQuery"},
         {&context_ptr->entry_points_gl.pGLEndTransformFeedback,                             "glEndTransformFeedback"},
+        {&context_ptr->entry_points_gl.pGLFenceSync,                                        "glFenceSync"},
         {&context_ptr->entry_points_gl.pGLFinish,                                           "glFinish"},
         {&context_ptr->entry_points_gl.pGLFlush,                                            "glFlush"},
         {&context_ptr->entry_points_private.pGLFramebufferParameteri,                       "glFramebufferParameteri"},
@@ -2518,7 +2521,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLVertexAttribIPointer,                        "glVertexAttribIPointer"},
         {&context_ptr->entry_points_private.pGLVertexAttribLFormat,                         "glVertexAttribLFormat"},
         {&context_ptr->entry_points_private.pGLVertexAttribPointer,                         "glVertexAttribPointer"},
-        {&context_ptr->entry_points_private.pGLViewport,                                    "glViewport"}
+        {&context_ptr->entry_points_private.pGLViewport,                                    "glViewport"},
+        {&context_ptr->entry_points_gl.pGLWaitSync,                                         "glWaitSync"}
     };
     const uint32_t n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
 

@@ -1,11 +1,13 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_to_bindings.h"
+#include "raGL/raGL_backend.h"
+#include "raGL/raGL_sync.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_texture.h"
@@ -324,8 +326,12 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
         }
     } /* for (all requested updates) */
 
-    /* Flush so that other contexts take notice */
-    entrypoints_ptr->pGLFlush();
+    /* Sync other contexts. */
+    raGL_sync new_sync = raGL_sync_create();
+
+    raGL_backend_enqueue_sync(new_sync);
+
+    raGL_sync_release(new_sync);
 }
 
 /** TODO */
@@ -376,6 +382,13 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_rendering_cal
 
     entrypoints_dsa_ptr->pGLGenerateTextureMipmapEXT(texture_ptr->id,
                                                      raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type) );
+
+    /* Sync other contexts */
+    raGL_sync new_sync = raGL_sync_create();
+
+    raGL_backend_enqueue_sync(new_sync);
+
+    raGL_sync_release(new_sync);
 }
 
 /** TODO */
@@ -680,8 +693,12 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
         }
     } /* switch (texture_type) */
 
-    /* Flush so other contexts take notice */
-    entrypoints_ptr->pGLFlush();
+    /* Sync other contexts */
+    raGL_sync new_sync = raGL_sync_create();
+
+    raGL_backend_enqueue_sync(new_sync);
+
+    raGL_sync_release(new_sync);
 
     texture_ptr->is_renderbuffer = false;
 }

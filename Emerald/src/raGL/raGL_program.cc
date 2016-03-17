@@ -6,8 +6,10 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_state_cache.h"
+#include "raGL/raGL_backend.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
+#include "raGL/raGL_sync.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
@@ -70,7 +72,6 @@ typedef struct
     PFNGLCREATEPROGRAMPROC              pGLCreateProgram;
     PFNGLDELETEPROGRAMPROC              pGLDeleteProgram;
     PFNGLDETACHSHADERPROC               pGLDetachShader;
-    PFNGLFLUSHPROC                      pGLFlush;
     PFNGLGETACTIVEATTRIBPROC            pGLGetActiveAttrib;
     PFNGLGETATTRIBLOCATIONPROC          pGLGetAttribLocation;
     PFNGLGETPROGRAMBINARYPROC           pGLGetProgramBinary;
@@ -138,9 +139,12 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
     callback_arg_ptr->program_ptr->pGLAttachShader(callback_arg_ptr->program_ptr->id,
                                                    shader_raGL_id);
 
-    /* Need a flush for other contexts to take notice of the new shader attachment */
-    callback_arg_ptr->program_ptr->pGLFlush();
+    /* Sync other contexts to take notice of the new shader attachment */
+    raGL_sync new_sync = raGL_sync_create();
 
+    raGL_backend_enqueue_sync(new_sync);
+
+    raGL_sync_release(new_sync);
 }
 
 /** TODO */
@@ -789,6 +793,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 {
     system_time    end_time            = 0;
     uint32_t       execution_time_msec = 0;
+    raGL_sync      new_sync            = NULL;
     _raGL_program* program_ptr         = (_raGL_program*) in_arg;
     bool           has_used_binary     = false;
     system_time    start_time          = system_time_now();
@@ -806,9 +811,18 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 
     if (!has_used_binary)
     {
+        /* Make sure the contexts are in sync. */
+        raGL_backend_sync();
+
         /* Okay, let's link */
         program_ptr->pGLLinkProgram(program_ptr->id);
-        program_ptr->pGLFlush      ();
+
+        /* Sync other contexts. */
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
     }
 
     /* Retrieve link status */
@@ -829,11 +843,11 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 
             /* On debug builds, also stash source code of the shaders that were used
              * to create the program */
-            #ifdef _DEBUG
-            {
-                _raGL_program_save_shader_sources(program_ptr);
-            }
-            #endif
+            //#ifdef _DEBUG
+            //{
+            //    _raGL_program_save_shader_sources(program_ptr);
+            //}
+            //#endif
         }
 
         /* Retrieve attibute & uniform data for the program */
@@ -1005,6 +1019,13 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
             program_info_log = NULL;
         }
     }
+
+    /* Make sure other contexts notice the program has been linked */
+    new_sync = raGL_sync_create();
+
+    raGL_backend_enqueue_sync(new_sync);
+
+    raGL_sync_release(new_sync);
 
     /* All done */
     program_ptr->link_thread_id = 0;
@@ -1636,7 +1657,6 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
             new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
             new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
-            new_program_ptr->pGLFlush                      = entry_points->pGLFlush;
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
@@ -1668,7 +1688,6 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
             new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
             new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
-            new_program_ptr->pGLFlush                      = entry_points->pGLFlush;
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
