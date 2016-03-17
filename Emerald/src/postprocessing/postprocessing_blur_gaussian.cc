@@ -646,7 +646,11 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
                                           &coeff_bo_update);
 
     /* Set up the PO */
-    ral_shader result_shaders[2];
+    ral_shader result_shaders[2] =
+    {
+        NULL,
+        NULL
+    };
 
     const ral_program_create_info program_create_info =
     {
@@ -792,10 +796,14 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
         misaligned_coeff_buffer_offsets = NULL;
     }
 
-    ral_context_delete_objects(instance_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                               sizeof(result_shaders) / sizeof(result_shaders[0]),
-                               (const void**) result_shaders);
+    if (result_shaders[0] != NULL &&
+        result_shaders[1] != NULL)
+    {
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   sizeof(result_shaders) / sizeof(result_shaders[0]),
+                                   (const void**) result_shaders);
+    }
 }
 
 /** TODO */
