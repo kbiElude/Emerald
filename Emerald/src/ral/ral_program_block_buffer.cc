@@ -8,6 +8,7 @@
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
+#include "system/system_log.h"
 
 #define DIRTY_OFFSET_UNUSED (-1)
 
@@ -550,10 +551,9 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
                                  RAL_PROGRAM_PROPERTY_NAME,
                                 &program_name);
 
-        ASSERT_DEBUG_SYNC(false,
-                          "Block [%s] is not defined for program [%s]",
-                          system_hashed_ansi_string_get_buffer(block_name),
-                          system_hashed_ansi_string_get_buffer(program_name) );
+        LOG_ERROR("Block [%s] is not defined for program [%s]",
+                  system_hashed_ansi_string_get_buffer(block_name),
+                  system_hashed_ansi_string_get_buffer(program_name) );
 
         goto end;
     }

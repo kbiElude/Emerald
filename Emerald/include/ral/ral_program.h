@@ -199,6 +199,12 @@ PUBLIC bool ral_program_is_shader_attached(ral_program program,
                                            ral_shader  shader);
 
 /** TODO */
+PUBLIC void ral_program_lock(ral_program program);
+
+/** TODO */
 PUBLIC void ral_program_release(ral_program& program);
+
+/** TODO */
+PUBLIC void ral_program_unlock(ral_program program);
 
 #endif /* RAL_PROGRAM_H */

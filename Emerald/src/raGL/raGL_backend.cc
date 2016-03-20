@@ -33,6 +33,7 @@
 #include "system/system_pixel_format.h"
 #include "system/system_read_write_mutex.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_semaphore.h"
 #include "system/system_window.h"
 
 #define N_HELPER_CONTEXTS         4
@@ -86,6 +87,13 @@ typedef struct _raGL_backend
                   ral_backend_type          in_backend_type);
     ~_raGL_backend();
 } _raGL_backend;
+
+typedef struct
+{
+    raGL_program     program;
+    system_semaphore objects_locked_semaphore;
+
+} _raGL_backend_link_program_job_arg;
 
 typedef struct
 {
@@ -206,7 +214,7 @@ PRIVATE void        _raGL_backend_get_object_vars                               
                                                                                   bool*                    out_is_owner_ptr);
 PRIVATE void        _raGL_backend_helper_context_renderer_callback               (ogl_context              context,
                                                                                   void*                    unused);
-PRIVATE void        _raGL_backend_link_program_handler                           (void*                    program_raGL_raw);
+PRIVATE void        _raGL_backend_link_program_handler                           (void*                    job_arg);
 PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*              callback_arg_data,
                                                                                   void*                    backend);
 PRIVATE void        _raGL_backend_on_buffer_to_buffer_copy_request               (const void*              callback_arg_data,
@@ -762,21 +770,51 @@ PRIVATE void _raGL_backend_helper_context_renderer_callback(ogl_context context,
  *
  *  NOTE: This function calls raGL_program_unlock(), once raGL_program_link() finishes.
  **/
-PRIVATE void _raGL_backend_link_program_handler(void* program_raGL_raw)
+PRIVATE void _raGL_backend_link_program_handler(void* job_arg_raw_ptr)
 {
-    raGL_program program_raGL = (raGL_program) program_raGL_raw;
+    _raGL_backend_link_program_job_arg* job_arg_ptr        = (_raGL_backend_link_program_job_arg*) job_arg_raw_ptr;
+    uint32_t                            n_shaders_attached = 0;
+    raGL_program                        program_raGL       = job_arg_ptr->program;
+    ral_program                         program_ral        = NULL;
 
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
+                             &program_ral);
+
+    raGL_program_lock(program_raGL);
+    ral_program_lock (program_ral);
+
+    ral_program_get_property(program_ral,
+                             RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                            &n_shaders_attached);
+
+    for (uint32_t n_shader = 0;
+                  n_shader < n_shaders_attached;
+                ++n_shader)
+    {
+        ral_shader shader = NULL;
+
+        ral_program_get_attached_shader_at_index(program_ral,
+                                                 n_shader,
+                                                &shader);
+
+        ral_shader_lock(shader);
+    }
+
+    if (job_arg_ptr->objects_locked_semaphore != NULL)
+    {
+        system_semaphore_leave(job_arg_ptr->objects_locked_semaphore);
+    }
+
+    /* BEWARE: In case of async requests, job_arg_ptr may become invalid at any point
+     *         from here onward! */
     if (!raGL_program_link(program_raGL) )
     {
         system_hashed_ansi_string program_name;
-        ral_program               program_ral;
 
-        raGL_program_get_property(program_raGL,
-                                  RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
-                                 &program_ral);
-        ral_program_get_property (program_ral,
-                                  RAL_PROGRAM_PROPERTY_NAME,
-                                 &program_name);
+        ral_program_get_property(program_ral,
+                                 RAL_PROGRAM_PROPERTY_NAME,
+                                &program_name);
 
         LOG_ERROR("raGL_program_link() returned failure for program [%s]",
                   system_hashed_ansi_string_get_buffer(program_name) );
@@ -785,7 +823,26 @@ PRIVATE void _raGL_backend_link_program_handler(void* program_raGL_raw)
                           "RAL program linking failed.");
     }
 
+    /* Unlock all relevant program & shader instances */
+    ral_program_get_property(program_ral,
+                             RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
+                            &n_shaders_attached);
+
+    for (uint32_t n_shader = 0;
+                  n_shader < n_shaders_attached;
+                ++n_shader)
+    {
+        ral_shader shader = NULL;
+
+        ral_program_get_attached_shader_at_index(program_ral,
+                                                 n_shader,
+                                                &shader);
+
+        ral_shader_unlock(shader);
+    }
+
     raGL_program_unlock(program_raGL);
+    ral_program_unlock (program_ral);
 }
 
 /** TODO */
@@ -1531,8 +1588,19 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
      **/
     if (callback_arg_ptr->all_shader_stages_have_shaders_attached)
     {
-        /* NOTE: unlock will be handled by link_program_handler */
-        raGL_program_lock(program_raGL);
+        _raGL_backend_link_program_job_arg* job_arg_ptr = new _raGL_backend_link_program_job_arg;
+
+        if (callback_arg_ptr->async)
+        {
+            job_arg_ptr->objects_locked_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
+                                                                            0); /* default_value      */
+        }
+        else
+        {
+            job_arg_ptr->objects_locked_semaphore = nullptr;
+        }
+
+        job_arg_ptr->program = program_raGL;
 
         if (callback_arg_ptr->async)
         {
@@ -1542,17 +1610,30 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
             demo_app_get_property(DEMO_APP_PROPERTY_GPU_SCHEDULER,
                                  &scheduler);
 
-            new_job.callback_user_arg = program_raGL;
+            new_job.callback_user_arg = job_arg_ptr;
             new_job.pfn_callback_ptr  = _raGL_backend_link_program_handler;
 
+#if 1
             ral_scheduler_schedule_job(scheduler,
                                        _global.backend_type,
                                        new_job);
+#else
+            _raGL_backend_link_program_handler(job_arg_ptr);
+#endif
+
+            /* Wait until the job locks all relevant program & shader objects before we return. */
+            system_semaphore_enter  (job_arg_ptr->objects_locked_semaphore,
+                                     SYSTEM_TIME_INFINITE);
+            system_semaphore_release(job_arg_ptr->objects_locked_semaphore);
         }
         else
         {
-            _raGL_backend_link_program_handler(program_raGL);
+            _raGL_backend_link_program_handler(job_arg_ptr);
         }
+
+        delete job_arg_ptr;
+
+        job_arg_ptr = NULL;
     }
 
 end:
@@ -1584,13 +1665,7 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                           "RAL shader compilation failed.");
     }
 
-    /* For each program which has the shader attached, we need to re-link the owning program.
-     * We cannot do this asynchronously, in order to avoid thread races, where one of the rendering
-     * threads may attempt to use a program object which is already outdated..
-     *
-     * NOTE: We could run into problems here, if other threads attempt to add or remove a program
-     *       while another one is re-linked in another thread. TODO is to fix this.
-     */
+    /* For each program which has the shader attached, we need to re-link the owning program. */
     {
         uint32_t      n_programs = 0;
         ral_scheduler scheduler  = NULL;
@@ -1605,10 +1680,11 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                       n_program < n_programs;
                     ++n_program)
         {
-            bool                   all_shader_stages_set = false;
-            ral_scheduler_job_info new_job;
-            raGL_program           program_raGL          = NULL;
-            ral_program            program_ral           = NULL;
+            bool                                all_shader_stages_set = false;
+            _raGL_backend_link_program_job_arg* job_arg_ptr;
+            ral_scheduler_job_info              job_info;
+            raGL_program                        program_raGL          = NULL;
+            ral_program                         program_ral           = NULL;
 
             system_hash64map_get_element_at(backend_ptr->programs_map,
                                             n_program,
@@ -1634,12 +1710,29 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                 continue;
             }
 
-            /* NOTE: _raGL_backend_link_program_handler will unlock the raGL program,
-             *       once linking completes.
-             */
-            raGL_program_lock(program_raGL);
+            /* Dispatch async jobs to relink the program */
+            job_arg_ptr = new _raGL_backend_link_program_job_arg;
 
-            _raGL_backend_link_program_handler(program_raGL);
+            job_arg_ptr->objects_locked_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
+                                                                            0); /* default_value      */
+            job_arg_ptr->program                  = program_raGL;
+
+            job_info.pfn_callback_ptr  = _raGL_backend_link_program_handler;
+            job_info.callback_user_arg = job_arg_ptr;
+
+#if 1
+            ral_scheduler_schedule_job(scheduler,
+                                       _global.backend_type,
+                                       job_info);
+#else
+            _raGL_backend_link_program_handler(job_arg_ptr);
+#endif
+
+            system_semaphore_enter  (job_arg_ptr->objects_locked_semaphore,
+                                     SYSTEM_TIME_INFINITE);
+            system_semaphore_release(job_arg_ptr->objects_locked_semaphore);
+
+            delete job_arg_ptr;
         } /* for (all programs) */
     }
 }

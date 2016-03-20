@@ -795,6 +795,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     system_resizable_vector_push(uber_ptr->added_items,
                                  new_item_ptr);
 
+    /* Reset the shader's body. This will prevent dependent programs from linking with outdated body. */
+    ral_shader_set_property(uber_ptr->shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                            nullptr);
+
     uber_ptr->dirty = true;
 
 end:
@@ -1285,6 +1290,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     /* Add the descriptor to added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
                                  new_item_ptr);
+
+    /* Reset the shader's body. This will prevent dependent programs from linking with outdated body. */
+    ral_shader_set_property(uber_ptr->shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                            nullptr);
 
     uber_ptr->dirty = true;
 

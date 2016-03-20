@@ -1,26 +1,32 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
 #include "ral/ral_shader.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
+#include "system/system_read_write_mutex.h"
 
 
 typedef struct _ral_shader
 {
     system_callback_manager   callback_manager;
-    system_hashed_ansi_string glsl_body;
     system_hashed_ansi_string name;
     ral_shader_source         source;
     ral_shader_type           type;
 
+    system_critical_section   cs;
+    system_hashed_ansi_string glsl_body;
+    system_read_write_mutex   glsl_body_lock;
+
     explicit _ral_shader(const ral_shader_create_info* shader_create_info_ptr)
     {
         callback_manager = system_callback_manager_create((_callback_id) RAL_SHADER_CALLBACK_ID_COUNT);
+        cs               = system_critical_section_create();
         glsl_body        = NULL;
+        glsl_body_lock   = system_read_write_mutex_create();
         name             = shader_create_info_ptr->name;
         source           = shader_create_info_ptr->source;
         type             = shader_create_info_ptr->type;
@@ -33,6 +39,20 @@ typedef struct _ral_shader
             system_callback_manager_release(callback_manager);
 
             callback_manager = NULL;
+        }
+
+        if (cs != NULL)
+        {
+            system_critical_section_release(cs);
+
+            cs = NULL;
+        }
+
+        if (glsl_body_lock != NULL)
+        {
+            system_read_write_mutex_release(glsl_body_lock);
+
+            glsl_body_lock = NULL;
         }
     }
 } _ral_shader;
@@ -124,6 +144,13 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC void ral_shader_lock(ral_shader shader)
+{
+    system_read_write_mutex_lock( ((_ral_shader*) shader)->glsl_body_lock,
+                                 ACCESS_WRITE);
+}
+
+/** Please see header for specification */
 PUBLIC void ral_shader_release(ral_shader& shader)
 {
     delete (_ral_shader*) shader;
@@ -144,30 +171,43 @@ PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
         goto end;
     }
 
-    if (data == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Output variable is NULL");
-
-        goto end;
-    }
+    system_critical_section_enter(shader_ptr->cs);
 
     switch (property)
     {
         case RAL_SHADER_PROPERTY_GLSL_BODY:
         {
-            const system_hashed_ansi_string in_body = *(const system_hashed_ansi_string*) data;
+            system_hashed_ansi_string in_body;
+
+            if (         data == NULL ||
+                *(void**)data == NULL)
+            {
+                in_body = NULL;
+            }
+            else
+            {
+                in_body = *(const system_hashed_ansi_string*) data;
+            }
 
             ASSERT_DEBUG_SYNC(shader_ptr->source == RAL_SHADER_SOURCE_GLSL,
                               "RAL_SHADER_PROPERTY_GLSL_BODY queries are only valid for GLSL-backed ral_shader instances");
 
             if (shader_ptr->glsl_body != in_body)
             {
-                shader_ptr->glsl_body = in_body;
+                system_read_write_mutex_lock( ((_ral_shader*) shader)->glsl_body_lock,
+                                             ACCESS_WRITE);
+                {
+                    shader_ptr->glsl_body = in_body;
+                }
+                system_read_write_mutex_unlock( ((_ral_shader*) shader)->glsl_body_lock,
+                                               ACCESS_WRITE);
 
-                system_callback_manager_call_back(shader_ptr->callback_manager,
-                                                  RAL_SHADER_CALLBACK_ID_GLSL_BODY_UPDATED,
-                                                  shader_ptr);
+                if (in_body != NULL)
+                {
+                    system_callback_manager_call_back(shader_ptr->callback_manager,
+                                                      RAL_SHADER_CALLBACK_ID_GLSL_BODY_UPDATED,
+                                                      shader_ptr);
+                }
             }
 
             break;
@@ -180,6 +220,14 @@ PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
         }
     } /* switch (property) */
 
+    system_critical_section_leave(shader_ptr->cs);
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_shader_unlock(ral_shader shader)
+{
+    system_read_write_mutex_unlock( ((_ral_shader*) shader)->glsl_body_lock,
+                                   ACCESS_WRITE);
 }

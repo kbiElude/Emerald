@@ -1447,12 +1447,15 @@ PUBLIC EMERALD_API void scene_renderer_uber_link(scene_renderer_uber uber)
     /* Recompile shaders if needed */
     if (uber_ptr->type == SCENE_RENDERER_UBER_TYPE_REGULAR)
     {
-        if (shaders_fragment_uber_is_dirty(uber_ptr->shader_fragment) )
+        const bool is_fs_dirty = shaders_fragment_uber_is_dirty(uber_ptr->shader_fragment);
+        const bool is_vs_dirty = shaders_vertex_uber_is_dirty  (uber_ptr->shader_vertex);
+
+        if (is_fs_dirty)
         {
             shaders_fragment_uber_recompile(uber_ptr->shader_fragment);
         }
 
-        if (shaders_vertex_uber_is_dirty(uber_ptr->shader_vertex) )
+        if (is_vs_dirty)
         {
             shaders_vertex_uber_recompile(uber_ptr->shader_vertex);
         }

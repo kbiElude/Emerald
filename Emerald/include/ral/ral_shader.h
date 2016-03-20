@@ -22,6 +22,10 @@ typedef enum
 
     /* not settable; system_hashed_ansi_string.
      *
+     * Passing a NULL property value, or setting <data> to NULL for ral_shader_set_property() call will
+     * reset the shader body. Any dependent program will not re-link until the body is set to a non-NULL
+     * body.
+     *
      * Only valid if RAL_SHADER_PROPERTY_SOURCE property value is RAL_SHADER_SOURCE_GLSL
      */
     RAL_SHADER_PROPERTY_GLSL_BODY,
@@ -56,11 +60,17 @@ PUBLIC EMERALD_API void ral_shader_get_property(ral_shader          shader,
                                                 void*               out_result_ptr);
 
 /** TODO */
+PUBLIC void ral_shader_lock(ral_shader shader);
+
+/** TODO */
 PUBLIC void ral_shader_release(ral_shader& shader);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
                                                 ral_shader_property property,
                                                 const void*         data);
+
+/** TODO */
+PUBLIC void ral_shader_unlock(ral_shader shader);
 
 #endif /* RAL_SHADER_H */

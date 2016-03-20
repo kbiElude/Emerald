@@ -8,6 +8,7 @@
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_vao.h"
+#include "raGL/raGL_backend.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 

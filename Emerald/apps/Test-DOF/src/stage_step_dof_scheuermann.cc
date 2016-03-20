@@ -592,9 +592,11 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context  context,
                             &combination_fs_body_has);
 
     ral_program_attach_shader(_dof_scheuermann_combination_po,
-                              combination_fs);
+                              combination_fs,
+                              true /* async */);
     ral_program_attach_shader(_dof_scheuermann_combination_po,
-                              shaders_vertex_fullscreen_get_shader(combination_vs));
+                              shaders_vertex_fullscreen_get_shader(combination_vs),
+                              true /* async */);
 
     /* Retrieve combination program uniform block data */
     const raGL_program dof_scheuermann_combination_po_raGL    = ral_context_get_program_gl(context,

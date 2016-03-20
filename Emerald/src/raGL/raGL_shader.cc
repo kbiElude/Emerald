@@ -1,11 +1,13 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
+#include "raGL/raGL_backend.h"
 #include "raGL/raGL_shader.h"
+#include "raGL/raGL_sync.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
 #include "ral/ral_shader.h"
@@ -93,6 +95,15 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
                       shader_ptr->shader_info_log);
         }
     }
+
+    /* Notify contexts about the update */
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
 }
 
 /** TODO */
@@ -152,9 +163,10 @@ PRIVATE void _raGL_shader_release(void* shader)
 /** Please see header for specification */
 PUBLIC bool raGL_shader_compile(raGL_shader shader)
 {
-    bool                      result      = false;
-    system_hashed_ansi_string shader_body = NULL;
-    _raGL_shader*             shader_ptr  = (_raGL_shader*) shader;
+    ogl_context               current_context = ogl_context_get_current_context();
+    bool                      result          = false;
+    system_hashed_ansi_string shader_body     = NULL;
+    _raGL_shader*             shader_ptr      = (_raGL_shader*) shader;
 
     ral_shader_get_property(shader_ptr->shader_ral,
                             RAL_SHADER_PROPERTY_GLSL_BODY,
@@ -168,13 +180,16 @@ PUBLIC bool raGL_shader_compile(raGL_shader shader)
     }
     else
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "Specified raGL shader has already been compiled.");
+        /* Specified raGL shader has already been compiled. */
+        result = true;
+
+        goto end;
     }
 
     if (!shader_ptr->has_been_compiled)
     {
-        ogl_context_request_callback_from_context_thread(shader_ptr->context,
+        ogl_context_request_callback_from_context_thread((current_context != shader_ptr->context && current_context != NULL) ? current_context
+                                                                                                                             : shader_ptr->context,
                                                          _raGL_shader_compile_callback,
                                                          shader_ptr);
 
@@ -186,6 +201,7 @@ PUBLIC bool raGL_shader_compile(raGL_shader shader)
                                           shader);
     }
 
+end:
     return result;
 }
 

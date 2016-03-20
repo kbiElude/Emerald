@@ -295,6 +295,12 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(shad
                                                     0, /* main() */
                                                     body_has);
 
+    /* Reset the shader's body so any dependent program does not try to link with an outdated
+     * version of the shader body. */
+    ral_shader_set_property(uber_ptr->vertex_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                            nullptr);
+
     /* Mark the object as dirty */
     uber_ptr->dirty = true;
 }
@@ -370,6 +376,12 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(sha
 
     new_item_ptr->light = light;
     new_item_ptr->type  = SHADERS_VERTEX_UBER_ITEM_LIGHT;
+
+    /* Reset the shader's body so any dependent program does not try to link with an outdated
+     * version of the shader body. */
+    ral_shader_set_property(uber_ptr->vertex_shader,
+                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                            nullptr);
 
     /* Store the descriptor */
     system_resizable_vector_push(uber_ptr->added_items,

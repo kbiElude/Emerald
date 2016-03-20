@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -12,6 +12,7 @@
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_read_write_mutex.h"
 
 typedef struct _ral_program_shader_stage
 {
@@ -184,6 +185,7 @@ typedef struct _ral_program
     _ral_program_shader_stage attached_shaders[RAL_SHADER_TYPE_COUNT];
     system_callback_manager   callback_manager;
     ral_context               context;
+    system_read_write_mutex   lock;
     _ral_program_metadata     metadata;
     system_hashed_ansi_string name;
 
@@ -200,6 +202,7 @@ typedef struct _ral_program
 
         callback_manager = system_callback_manager_create( (_callback_id) RAL_PROGRAM_CALLBACK_ID_COUNT);
         context          = in_context;
+        lock             = system_read_write_mutex_create();
         name             = program_create_info_ptr->name;
     }
 
@@ -217,6 +220,13 @@ typedef struct _ral_program
                 shaders_to_delete[n_shaders_to_delete++] = attached_shaders[n_shader_type].shader;
             }
         } /* for (all shader types) */
+
+        if (lock != NULL)
+        {
+            system_read_write_mutex_release(lock);
+
+            lock = NULL;
+        }
 
         if (n_shaders_to_delete > 0)
         {
@@ -541,7 +551,9 @@ PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
                                      &callback_arg);
 
     result = true;
+
 end:
+
     return result;
 }
 
@@ -801,6 +813,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
 
     /* All done */
     result = true;
+
 end:
     return result;
 }
@@ -1018,10 +1031,9 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program      
         const char* block_name_raw_ptr    = system_hashed_ansi_string_get_buffer(block_name);
         const char* program_name_raw_ptr  = system_hashed_ansi_string_get_buffer(program_ptr->name);
 
-        ASSERT_DEBUG_SYNC(false,
-                          "RAL program [%s] does not have a block [%s] assigned.",
-                          program_name_raw_ptr,
-                          block_name_raw_ptr);
+        LOG_ERROR("RAL program [%s] does not have a block [%s] assigned.",
+                  program_name_raw_ptr,
+                  block_name_raw_ptr);
 
         goto end;
     }
@@ -1067,12 +1079,28 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
                           n_shader_stage < RAL_SHADER_TYPE_COUNT;
                         ++n_shader_stage)
             {
-                if (program_ptr->attached_shaders[n_shader_stage].active          &&
-                    program_ptr->attached_shaders[n_shader_stage].shader == NULL)
+                if (program_ptr->attached_shaders[n_shader_stage].active)
                 {
-                    result = false;
+                    const ral_shader          shader      = program_ptr->attached_shaders[n_shader_stage].shader;
+                    system_hashed_ansi_string shader_body = NULL;
 
-                    break;
+                    if (shader == NULL)
+                    {
+                        result = false;
+
+                        break;
+                    }
+
+                    ral_shader_get_property(shader,
+                                            RAL_SHADER_PROPERTY_GLSL_BODY,
+                                           &shader_body);
+
+                    if (shader_body == NULL)
+                    {
+                        result = false;
+
+                        break;
+                    }
                 }
             }
 
@@ -1099,15 +1127,17 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
         {
             uint32_t result = 0;
 
-            for (uint32_t n_shader_type = 0;
-                          n_shader_type < RAL_SHADER_TYPE_COUNT;
-                        ++n_shader_type)
             {
-                if (program_ptr->attached_shaders[n_shader_type].shader != NULL)
+                for (uint32_t n_shader_type = 0;
+                              n_shader_type < RAL_SHADER_TYPE_COUNT;
+                            ++n_shader_type)
                 {
-                    ++result;
-                }
-            } /* for (all shader types) */
+                    if (program_ptr->attached_shaders[n_shader_type].shader != NULL)
+                    {
+                        ++result;
+                    }
+                } /* for (all shader types) */
+            }
 
             *(uint32_t*) out_result_ptr = result;
 
@@ -1174,19 +1204,31 @@ PUBLIC bool ral_program_is_shader_attached(ral_program program,
     _ral_program* program_ptr = (_ral_program*) program;
     bool          result      = false;
 
-    for (uint32_t n_shader_stage = 0;
-                  n_shader_stage < RAL_SHADER_TYPE_COUNT;
-                ++n_shader_stage)
+    system_read_write_mutex_lock(program_ptr->lock,
+                                 ACCESS_READ);
     {
-        if (program_ptr->attached_shaders[n_shader_stage].shader == shader)
+        for (uint32_t n_shader_stage = 0;
+                      n_shader_stage < RAL_SHADER_TYPE_COUNT;
+                    ++n_shader_stage)
         {
-            result = true;
+            if (program_ptr->attached_shaders[n_shader_stage].shader == shader)
+            {
+                result = true;
 
-            break;
+                break;
+            }
         }
     }
-
+    system_read_write_mutex_unlock(program_ptr->lock,
+                                   ACCESS_READ);
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_program_lock(ral_program program)
+{
+    system_read_write_mutex_lock( ((_ral_program*) program)->lock,
+                                 ACCESS_WRITE);
 }
 
 /** Please see header for specification */
@@ -1195,4 +1237,11 @@ PUBLIC void ral_program_release(ral_program& program)
     _ral_program* program_ptr = (_ral_program*) program;
 
     delete program_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_program_unlock(ral_program program)
+{
+    system_read_write_mutex_unlock( ((_ral_program*) program)->lock,
+                                   ACCESS_WRITE);
 }

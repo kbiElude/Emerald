@@ -656,9 +656,11 @@ PUBLIC void stage_step_julia_init(ral_context  context,
                            &julia_vs_body);
 
     ral_program_attach_shader(_julia_program,
-                              result_shaders[0]);
+                              result_shaders[0],
+                              true /* async */);
     ral_program_attach_shader(_julia_program,
-                              result_shaders[1]);
+                              result_shaders[1],
+                              true /* async */);
 
     ral_context_delete_objects(context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,

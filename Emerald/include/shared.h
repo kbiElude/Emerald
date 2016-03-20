@@ -158,10 +158,10 @@
             {                                                                           \
                 ptr->refcount_pfn_on_release(ptr);                                      \
             }                                                                           \
-            LOG_INFO("Releasing %p (type:%s)", handle, STRINGIZE(prefix) );             \
                                                                                         \
             if (ptr->path != NULL)                                                      \
             {                                                                           \
+                LOG_INFO("Releasing %p (type:%s)", handle, STRINGIZE(prefix) );         \
                 UNREGISTER_REFCOUNTED_OBJECT(ptr->path);                                \
             }                                                                           \
                                                                                         \

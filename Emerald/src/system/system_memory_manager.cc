@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -11,6 +11,7 @@
 #include "system/system_resource_pool.h"
 #include <string.h>
 
+#define MIN_PAGE_SIZE 4096
 
 /* If this is defined, alloc and free operations will be logged to a text file.
  * This is useful for hunting down bugs in the memory manager layer */
@@ -73,6 +74,8 @@ typedef struct _system_memory_manager
                                     PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC in_pfn_on_memory_block_alloced,
                                     PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  in_pfn_on_memory_block_freed)
     {
+        in_page_size = max(in_page_size, MIN_PAGE_SIZE);
+
         const unsigned int n_page_owners = in_memory_region_size / in_page_size + 1;
 
         if (in_thread_safe)

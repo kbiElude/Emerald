@@ -140,11 +140,13 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
                                                    shader_raGL_id);
 
     /* Sync other contexts to take notice of the new shader attachment */
-    raGL_sync new_sync = raGL_sync_create();
+    {
+        raGL_sync new_sync = raGL_sync_create();
 
-    raGL_backend_enqueue_sync(new_sync);
+        raGL_backend_enqueue_sync(new_sync);
 
-    raGL_sync_release(new_sync);
+        raGL_sync_release(new_sync);
+    }
 }
 
 /** TODO */
@@ -793,7 +795,6 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 {
     system_time    end_time            = 0;
     uint32_t       execution_time_msec = 0;
-    raGL_sync      new_sync            = NULL;
     _raGL_program* program_ptr         = (_raGL_program*) in_arg;
     bool           has_used_binary     = false;
     system_time    start_time          = system_time_now();
@@ -805,24 +806,17 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     _raGL_program_clear_bindings_metadata(program_ptr,
                                           false /* should_release */);
 
+    /* Make sure the contexts are in sync. */
+    raGL_backend_sync();
+
     /* If program binaries are supportd, see if we've got a blob file already stashed. If so, no need to link at this point */
     has_used_binary = _raGL_program_load_binary_blob(context,
                                                      program_ptr);
 
     if (!has_used_binary)
     {
-        /* Make sure the contexts are in sync. */
-        raGL_backend_sync();
-
         /* Okay, let's link */
         program_ptr->pGLLinkProgram(program_ptr->id);
-
-        /* Sync other contexts. */
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
     }
 
     /* Retrieve link status */
@@ -1021,11 +1015,13 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     }
 
     /* Make sure other contexts notice the program has been linked */
-    new_sync = raGL_sync_create();
+    {
+        raGL_sync new_sync = raGL_sync_create();
 
-    raGL_backend_enqueue_sync(new_sync);
+        raGL_backend_enqueue_sync(new_sync);
 
-    raGL_sync_release(new_sync);
+        raGL_sync_release(new_sync);
+    }
 
     /* All done */
     program_ptr->link_thread_id = 0;
@@ -1583,13 +1579,17 @@ PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
 PUBLIC bool raGL_program_attach_shader(raGL_program program,
                                        raGL_shader  shader)
 {
-    _raGL_program* program_ptr = (_raGL_program*) program;
-    bool           result      = false;
+    ogl_context    current_context = ogl_context_get_current_context();
+    _raGL_program* program_ptr     = (_raGL_program*) program;
+    ogl_context    program_context = NULL;
+    bool           result          = false;
 
     ASSERT_DEBUG_SYNC(program != NULL,
                       "Program is NULL - crash ahead.");
     ASSERT_DEBUG_SYNC(shader != NULL,
                       "Shader is NULL.");
+
+    program_context = ral_context_get_gl_context(program_ptr->context);
 
     if (program_ptr->id != 0)
     {
@@ -1599,7 +1599,8 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
         callback_argument.program_ptr = program_ptr;
         callback_argument.shader      = shader;
 
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
+        ogl_context_request_callback_from_context_thread((current_context != NULL && current_context != program_context) ? current_context
+                                                                                                                         : program_context,
                                                          _raGL_program_attach_shader_callback,
                                                         &callback_argument);
 

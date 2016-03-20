@@ -73,7 +73,7 @@ PRIVATE void _init_read_write_mutex(_system_read_write_mutex* rw_mutex_ptr)
         rw_mutex_ptr->write_owner_thread_id = 0;
 
 #ifdef _WIN32
-        rw_mutex_ptr->lock = SRWLOCK_INIT;
+        InitializeSRWLock(&rw_mutex_ptr->lock);
 #else
         pthread_rwlock_init(&rw_mutex_ptr->lock,
                             NULL); /* __attr */
@@ -235,8 +235,6 @@ PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex  
                           "Cannot unlock - unrecognized access type requested (%d)", access_type);
         ASSERT_DEBUG_SYNC(rw_mutex_ptr->write_owner_thread_id != 0,
                           "Error unlocking mutex - no write owner thread id registered.");
-        ASSERT_DEBUG_SYNC(rw_mutex_ptr->write_owner_thread_id == current_thread_id,
-                          "Error unlocking mutex - owner thread id is different than the current one.");
 
         if (rw_mutex_ptr->n_write_locks == 1)
         {
