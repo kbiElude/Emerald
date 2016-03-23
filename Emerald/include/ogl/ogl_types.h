@@ -782,6 +782,7 @@ typedef struct
     PFNGLCLEARCOLORPROC                                  pGLClearColor;
     PFNGLCLEARDEPTHPROC                                  pGLClearDepth;
     PFNGLCLEARSTENCILPROC                                pGLClearStencil;
+    PFNGLCLIENTWAITSYNCPROC                              pGLClientWaitSync;
     PFNGLCOLORMASKPROC                                   pGLColorMask;
     PFNGLCOLORMASKIPROC                                  pGLColorMaski;
     PFNGLCOMPILESHADERPROC                               pGLCompileShader;

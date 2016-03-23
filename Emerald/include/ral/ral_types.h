@@ -823,7 +823,7 @@ typedef struct
 } ral_texture_create_info;
 
 /** All info required to update a single texture mip-map */
-typedef struct
+typedef struct ral_texture_mipmap_client_sourced_update_info
 {
     unsigned int n_layer;
     unsigned int n_mipmap;
@@ -833,8 +833,28 @@ typedef struct
     unsigned int          data_size;
     ral_texture_data_type data_type;
 
+    void (*pfn_delete_handler_proc)(ral_texture_mipmap_client_sourced_update_info* data_ptr);
+    void*  delete_handler_proc_user_arg;
+
     unsigned int region_size        [3];
     unsigned int region_start_offset[3];
+
+    /** TODO */
+    ral_texture_mipmap_client_sourced_update_info()
+    {
+        memset(this,
+               0,
+               sizeof(*this) );
+    }
+
+    /** TODO */
+    ~ral_texture_mipmap_client_sourced_update_info()
+    {
+        if (pfn_delete_handler_proc != nullptr)
+        {
+            pfn_delete_handler_proc(this);
+        }
+    }
 } ral_texture_mipmap_client_sourced_update_info;
 
 #endif /* RAL_TYPES_H */

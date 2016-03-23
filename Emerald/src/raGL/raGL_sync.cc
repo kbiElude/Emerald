@@ -138,6 +138,6 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_sync_wait_gpu(raGL_sync sync)
                             &entrypoints_ptr);
 
     entrypoints_ptr->pGLWaitSync(sync_ptr->sync,
-                                 0, /* flags */
+                                 0,
                                  GL_TIMEOUT_IGNORED);
 }

@@ -10,7 +10,13 @@
 typedef enum
 {
     /* settable; ogl_context. */
-    RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CONTEXT
+    RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CONTEXT,
+
+    /* not settable; system_critical_section.
+     *
+     * CS to serialize GL command execution across multiple contexts. An example class of commands
+     * which need to be wrapped inside this CS are glGen*() calls. */
+    RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
 
 } raGL_backend_private_property;
 
@@ -55,6 +61,11 @@ PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
 
 /** TODO */
 PUBLIC ral_context raGL_backend_get_helper_context(ral_backend_type type);
+
+/** TODO */
+PUBLIC void raGL_backend_get_private_property(raGL_backend                  backend,
+                                              raGL_backend_private_property property,
+                                              void*                         out_result_ptr);
 
 /** TODO */
 PUBLIC void raGL_backend_get_property(void*                backend, /* raGL_backend instance */

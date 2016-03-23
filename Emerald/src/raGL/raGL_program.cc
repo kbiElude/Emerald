@@ -136,6 +136,9 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
                              RAGL_SHADER_PROPERTY_ID,
                             &shader_raGL_id);
 
+    /* Sync with other contexts before continuing */
+    raGL_backend_sync();
+
     callback_arg_ptr->program_ptr->pGLAttachShader(callback_arg_ptr->program_ptr->id,
                                                    shader_raGL_id);
 
@@ -191,6 +194,10 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
 {
     _raGL_program* program_ptr = (_raGL_program*) in_arg;
 
+    /* Sync with other contexts before continuing */
+    raGL_backend_sync();
+
+    /* Create a new program */
     program_ptr->id                     = program_ptr->pGLCreateProgram();
     program_ptr->active_attributes_raGL = system_resizable_vector_create(4 /* capacity */);
     program_ptr->active_uniforms_raGL   = system_resizable_vector_create(4 /* capacity */);
@@ -238,6 +245,15 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
 
         program_ptr->pGLAttachShader(program_ptr->id,
                                      current_shader_raGL_id);
+    }
+
+    /* Force other context synchronization */
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
     }
 }
 

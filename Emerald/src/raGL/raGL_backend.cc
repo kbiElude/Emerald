@@ -137,6 +137,7 @@ typedef struct _raGL_backend_global
     ral_backend_type        backend_type;
     system_critical_section cs;
     uint32_t                n_owners;
+    system_critical_section rendering_cs;
 
     system_resizable_vector active_backends;
     system_read_write_mutex active_backends_rw_mutex;
@@ -150,6 +151,7 @@ typedef struct _raGL_backend_global
         backend_type             = RAL_BACKEND_TYPE_UNKNOWN;
         cs                       = system_critical_section_create();
         n_owners                 = 0;
+        rendering_cs             = system_critical_section_create();
 
         memset(helper_contexts,
                0,
@@ -167,6 +169,9 @@ typedef struct _raGL_backend_global
 
         system_critical_section_release(cs);
         cs = NULL;
+
+        system_critical_section_release(rendering_cs);
+        rendering_cs = NULL;
 
         {
             uint32_t n_active_contexts = 0;
@@ -1613,13 +1618,9 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
             new_job.callback_user_arg = job_arg_ptr;
             new_job.pfn_callback_ptr  = _raGL_backend_link_program_handler;
 
-#if 1
             ral_scheduler_schedule_job(scheduler,
                                        _global.backend_type,
                                        new_job);
-#else
-            _raGL_backend_link_program_handler(job_arg_ptr);
-#endif
 
             /* Wait until the job locks all relevant program & shader objects before we return. */
             system_semaphore_enter  (job_arg_ptr->objects_locked_semaphore,
@@ -1720,13 +1721,9 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
             job_info.pfn_callback_ptr  = _raGL_backend_link_program_handler;
             job_info.callback_user_arg = job_arg_ptr;
 
-#if 1
             ral_scheduler_schedule_job(scheduler,
                                        _global.backend_type,
                                        job_info);
-#else
-            _raGL_backend_link_program_handler(job_arg_ptr);
-#endif
 
             system_semaphore_enter  (job_arg_ptr->objects_locked_semaphore,
                                      SYSTEM_TIME_INFINITE);
@@ -1767,7 +1764,6 @@ PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const
     if (texture_raGL != NULL)
     {
         raGL_texture_update_with_client_sourced_data(texture_raGL,
-                                                     callback_arg_ptr->n_updates,
                                                      callback_arg_ptr->updates);
     }
 }
@@ -2403,6 +2399,30 @@ PUBLIC ral_context raGL_backend_get_helper_context(ral_backend_type type)
     system_critical_section_leave(_global.cs);
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_backend_get_private_property(raGL_backend                  backend,
+                                              raGL_backend_private_property property,
+                                              void*                         out_result_ptr)
+{
+    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+
+    switch (property)
+    {
+        case RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS:
+        {
+            *(system_critical_section*) out_result_ptr = _global.rendering_cs;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized raGL_backend_private_property value.");
+        }
+    }
 }
 
 /** Please see header for specification */

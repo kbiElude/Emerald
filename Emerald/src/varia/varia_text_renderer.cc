@@ -454,7 +454,7 @@ PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(og
     const system_hashed_ansi_string to_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
                                                                                                      system_hashed_ansi_string_get_buffer(text_ptr->name) );
 
-    ral_texture_mipmap_client_sourced_update_info to_update;
+    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> to_update_ptr(new ral_texture_mipmap_client_sourced_update_info() );
 
     to_create_info.base_mipmap_depth      = 1;
     to_create_info.base_mipmap_height     = font_table_height;
@@ -467,18 +467,19 @@ PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(og
     to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
     to_create_info.use_full_mipmap_chain  = false;
 
-    to_update.data                   = font_table_data_ptr;
-    to_update.data_row_alignment     = 1;
-    to_update.data_size              = 3 * font_table_width * font_table_height;
-    to_update.data_type              = RAL_TEXTURE_DATA_TYPE_UBYTE;
-    to_update.n_layer                = 0;
-    to_update.n_mipmap               = 0;
-    to_update.region_size[0]         = font_table_width;
-    to_update.region_size[1]         = font_table_height;
-    to_update.region_size[2]         = 0;
-    to_update.region_start_offset[0] = 0;
-    to_update.region_start_offset[1] = 0;
-    to_update.region_start_offset[2] = 0;
+    to_update_ptr->data                    = font_table_data_ptr;
+    to_update_ptr->data_row_alignment      = 1;
+    to_update_ptr->data_size               = 3 * font_table_width * font_table_height;
+    to_update_ptr->data_type               = RAL_TEXTURE_DATA_TYPE_UBYTE;
+    to_update_ptr->pfn_delete_handler_proc = nullptr;
+    to_update_ptr->n_layer                 = 0;
+    to_update_ptr->n_mipmap                = 0;
+    to_update_ptr->region_size[0]          = font_table_width;
+    to_update_ptr->region_size[1]          = font_table_height;
+    to_update_ptr->region_size[2]          = 0;
+    to_update_ptr->region_start_offset[0]  = 0;
+    to_update_ptr->region_start_offset[1]  = 0;
+    to_update_ptr->region_start_offset[2]  = 0;
 
     ral_context_create_textures                   (text_ptr->context,
                                                    1, /* n_textures */
@@ -486,7 +487,7 @@ PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(og
                                                    &text_ptr->font_table_to);
     ral_texture_set_mipmap_data_from_client_memory(text_ptr->font_table_to,
                                                    1, /* n_updates */
-                                                   &to_update);
+                                                  &to_update_ptr);
 
     text_ptr->pGLBindTexture   (GL_TEXTURE_2D,
                                 ral_context_get_texture_gl_id(text_ptr->context,

@@ -6,12 +6,13 @@
 #include "ral/ral_context.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
+#include <memory>
+#include <vector>
 
 typedef struct
 {
-    ral_texture                                          texture;
-    uint32_t                                             n_updates;
-    const ral_texture_mipmap_client_sourced_update_info* updates;
+    ral_texture                                                                  texture;
+    std::vector<std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> > updates;
 
 } _ral_texture_client_memory_source_update_requested_callback_arg;
 
@@ -136,10 +137,15 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
  **/
 PUBLIC void ral_texture_release(ral_texture& texture);
 
-/** TODO */
-PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                          texture,
-                                                                       uint32_t                                             n_updates,
-                                                                       const ral_texture_mipmap_client_sourced_update_info* updates);
+/** TODO
+ *
+ *  NOTE: <updates> is a shared pointer to @param n_updates instances of ...info structure, because the update operation(s) will be
+ *        executed asynchronously. In order to avoid memory leaks, make sure to assign a correct destructor to each shared pointer instance
+ *        passed via the @param updates array.
+ */
+PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                                     texture,
+                                                                       uint32_t                                                        n_updates,
+                                                                       std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* updates);
 
 /** TODO */
 PUBLIC void ral_texture_set_property(ral_texture          texture,

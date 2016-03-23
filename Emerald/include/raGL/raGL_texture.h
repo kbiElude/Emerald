@@ -5,7 +5,8 @@
 #include "raGL/raGL_types.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
-
+#include <memory>
+#include <vector>
 
 typedef enum
 {
@@ -50,9 +51,8 @@ PUBLIC EMERALD_API bool raGL_texture_get_property(raGL_texture          texture,
 /** TODO */
 PUBLIC void raGL_texture_release(raGL_texture texture);
 
-/** TODO */
-PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture                                         texture,
-                                                         uint32_t                                             n_updates,
-                                                         const ral_texture_mipmap_client_sourced_update_info* updates);
+/** TODO **/
+PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture                                                                        texture,
+                                                         const std::vector<std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> >& updates);
 
 #endif /* RAGL_TEXTURE_H */

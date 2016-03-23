@@ -2182,6 +2182,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLClearColor,                                  "glClearColor"},
         {&context_ptr->entry_points_gl.pGLClearStencil,                                     "glClearStencil"},
         {&context_ptr->entry_points_private.pGLClearDepth,                                  "glClearDepth"},
+        {&context_ptr->entry_points_gl.pGLClientWaitSync,                                   "glClientWaitSync"},
         {&context_ptr->entry_points_private.pGLColorMask,                                   "glColorMask"},
         {&context_ptr->entry_points_gl.pGLColorMaski,                                       "glColorMaski"},
         {&context_ptr->entry_points_gl.pGLCompileShader,                                    "glCompileShader"},

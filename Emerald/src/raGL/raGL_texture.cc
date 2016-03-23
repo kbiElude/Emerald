@@ -4,33 +4,38 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_to_bindings.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_sync.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_scheduler.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
 #include "system/system_log.h"
+#include "system/system_read_write_mutex.h"
+#include "system/system_semaphore.h"
 #include <algorithm>
 
 
 typedef struct
 {
-    uint32_t                                             n_updates;
-    struct _raGL_texture*                                texture_ptr;
-    const ral_texture_mipmap_client_sourced_update_info* updates;
+    system_semaphore                                                             sync_semaphore;
+    struct _raGL_texture*                                                        texture_ptr;
+    std::vector<std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> > updates;
 
 } _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg;
 
 typedef struct _raGL_texture
 {
-    ogl_context context; /* NOT owned */
-    ral_texture texture; /* DO NOT release */
+    ogl_context             context; /* NOT owned */
+    system_read_write_mutex mipmap_gen_mutex;
+    ral_texture             texture; /* DO NOT release */
 
-    GLuint      id;      /* OWNED; can either be a RBO ID (if is_renderbuffer is true), or a TO ID (otherwise) */
-    bool        is_renderbuffer;
+    GLuint                  id;      /* OWNED; can either be a RBO ID (if is_renderbuffer is true), or a TO ID (otherwise) */
+    bool                    is_renderbuffer;
 
     ogl_context_gl_entrypoints* entrypoints_ptr;
 
@@ -38,10 +43,11 @@ typedef struct _raGL_texture
     _raGL_texture(ogl_context in_context,
                   ral_texture in_texture)
     {
-        context         = in_context;
-        id              = 0;
-        is_renderbuffer = false;
-        texture         = in_texture;
+        context          = in_context;
+        id               = 0;
+        is_renderbuffer  = false;
+        mipmap_gen_mutex = system_read_write_mutex_create();
+        texture          = in_texture;
 
         /* NOTE: Only GL is supported at the moment. */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -56,14 +62,20 @@ typedef struct _raGL_texture
 
     ~_raGL_texture()
     {
+        if (mipmap_gen_mutex != nullptr)
+        {
+            system_read_write_mutex_release(mipmap_gen_mutex);
+
+            mipmap_gen_mutex = nullptr;
+        }
+
         ASSERT_DEBUG_SYNC(id == 0,
                           "RBO/TO should have been deleted at _release*() call time.");
     }
 } _raGL_texture;
 
 /* Forward declarations */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_rendering_thread_callback(ogl_context    context,
-                                                                                                         void*          user_arg);
+PRIVATE                        void _raGL_texture_client_memory_sourced_update_rendering_thread_callback(void*          user_arg);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callback                     (ogl_context    context,
                                                                                                          void*          user_arg);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_rendering_callback                   (ogl_context    context,
@@ -76,10 +88,10 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
 
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_rendering_thread_callback(ogl_context context,
-                                                                                                         void*       user_arg)
+PRIVATE void _raGL_texture_client_memory_sourced_update_rendering_thread_callback(void* user_arg)
 {
     _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg* callback_arg_ptr          = (_raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg*) user_arg;
+    ogl_context                                                               context                   = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints_ext_direct_state_access*                 entrypoints_dsa_ptr       = NULL;
     const ogl_context_gl_entrypoints*                                         entrypoints_ptr           = NULL;
     ogl_texture_data_format                                                   texture_data_format_gl    = OGL_TEXTURE_DATA_FORMAT_UNDEFINED;
@@ -91,6 +103,19 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
     ASSERT_DEBUG_SYNC(!callback_arg_ptr->texture_ptr->is_renderbuffer,
                       "Client memory-based updates are forbidden for renderbuffer-backed raGL_instances.");
 
+    auto cached_callback_updates = callback_arg_ptr->updates;
+    auto cached_sync_semaphore   = callback_arg_ptr->sync_semaphore;
+    auto cached_texture_ptr      = callback_arg_ptr->texture_ptr;
+
+    system_read_write_mutex_lock(cached_texture_ptr->mipmap_gen_mutex,
+                                 ACCESS_READ);
+
+    /* Sync with other contexts before continuing .. */
+    raGL_backend_sync();
+
+    /* NOTE: After this call, callback_arg_ptr becomes null & void! */
+    system_semaphore_leave(callback_arg_ptr->sync_semaphore);
+
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
@@ -98,10 +123,10 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa_ptr);
 
-    ral_texture_get_property(callback_arg_ptr->texture_ptr->texture,
+    ral_texture_get_property(cached_texture_ptr->texture,
                              RAL_TEXTURE_PROPERTY_FORMAT,
                             &texture_format);
-    ral_texture_get_property(callback_arg_ptr->texture_ptr->texture,
+    ral_texture_get_property(cached_texture_ptr->texture,
                             RAL_TEXTURE_PROPERTY_TYPE,
                            &texture_type);
 
@@ -112,43 +137,40 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
                                           RAL_TEXTURE_FORMAT_PROPERTY_IS_COMPRESSED,
                                          &texture_format_compressed);
 
-    for (uint32_t n_update = 0;
-                  n_update < callback_arg_ptr->n_updates;
-                ++n_update)
+    for (auto update_info_ptr : cached_callback_updates)
     {
-        GLenum                                               texture_data_type_gl      = GL_NONE;
-        GLuint                                               texture_layer_gl          = -1;
-        GLenum                                               texture_target_gl         = GL_NONE;
-        const ral_texture_mipmap_client_sourced_update_info& update_info               = callback_arg_ptr->updates[n_update];
+        GLenum texture_data_type_gl      = GL_NONE;
+        GLuint texture_layer_gl          = -1;
+        GLenum texture_target_gl         = GL_NONE;
 
-        texture_data_type_gl = raGL_utils_get_ogl_data_type_for_ral_texture_data_type(update_info.data_type);
-        texture_layer_gl     = update_info.n_layer;
+        texture_data_type_gl = raGL_utils_get_ogl_data_type_for_ral_texture_data_type(update_info_ptr->data_type);
+        texture_layer_gl     = update_info_ptr->n_layer;
 
         /* Ensure the row alignment used by OpenGL matches the update request.
          *
          * TODO: We could handle any row alignment by rearranging input data. */
-        if (update_info.data_row_alignment != 1 &&
-            update_info.data_row_alignment != 2 &&
-            update_info.data_row_alignment != 4 &&
-            update_info.data_row_alignment != 8)
+        if (update_info_ptr->data_row_alignment != 1 &&
+            update_info_ptr->data_row_alignment != 2 &&
+            update_info_ptr->data_row_alignment != 4 &&
+            update_info_ptr->data_row_alignment != 8)
         {
             ASSERT_DEBUG_SYNC(false,
                               "TODO: The requested row alignment [%d] is not currently supported",
-                              update_info.data_row_alignment);
+                              update_info_ptr->data_row_alignment);
 
             continue;
         }
         else
         {
             entrypoints_ptr->pGLPixelStorei(GL_UNPACK_ALIGNMENT,
-                                            update_info.data_row_alignment);
+                                            update_info_ptr->data_row_alignment);
         }
 
         /* Determine the texture target for the update operation */
         if (texture_type == RAL_TEXTURE_TYPE_CUBE_MAP       ||
             texture_type == RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY)
         {
-            switch (update_info.n_layer % 6)
+            switch (update_info_ptr->n_layer % 6)
             {
                 case 0: texture_target_gl = GL_TEXTURE_CUBE_MAP_NEGATIVE_X; break;
                 case 1: texture_target_gl = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y; break;
@@ -172,16 +194,16 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
             {
                 case RAL_TEXTURE_TYPE_2D:
                 {
-                    entrypoints_dsa_ptr->pGLCompressedTextureSubImage2DEXT(callback_arg_ptr->texture_ptr->id,
+                    entrypoints_dsa_ptr->pGLCompressedTextureSubImage2DEXT(cached_texture_ptr->id,
                                                                            texture_target_gl,
-                                                                           update_info.n_mipmap,
-                                                                           update_info.region_start_offset[0],
-                                                                           update_info.region_start_offset[1],
-                                                                           update_info.region_size[0],
-                                                                           update_info.region_size[1],
+                                                                           update_info_ptr->n_mipmap,
+                                                                           update_info_ptr->region_start_offset[0],
+                                                                           update_info_ptr->region_start_offset[1],
+                                                                           update_info_ptr->region_size[0],
+                                                                           update_info_ptr->region_size[1],
                                                                            texture_format_gl,
-                                                                           update_info.data_size,
-                                                                           update_info.data);
+                                                                           update_info_ptr->data_size,
+                                                                           update_info_ptr->data);
 
                     break;
                 }
@@ -199,111 +221,100 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
             {
                 case RAL_TEXTURE_TYPE_1D:
                 {
-                    entrypoints_dsa_ptr->pGLTextureSubImage1DEXT(callback_arg_ptr->texture_ptr->id,
+                    entrypoints_dsa_ptr->pGLTextureSubImage1DEXT(cached_texture_ptr->id,
                                                                  texture_target_gl,
-                                                                 update_info.n_mipmap,
-                                                                 update_info.region_start_offset[0],
-                                                                 update_info.region_start_offset[1],
+                                                                 update_info_ptr->n_mipmap,
+                                                                 update_info_ptr->region_start_offset[0],
+                                                                 update_info_ptr->region_start_offset[1],
                                                                  texture_data_format_gl,
                                                                  texture_data_type_gl,
-                                                                 update_info.data);
+                                                                 update_info_ptr->data);
 
                     break;
                 }
 
                 case RAL_TEXTURE_TYPE_1D_ARRAY:
                 {
-                    entrypoints_dsa_ptr->pGLTextureSubImage2DEXT(callback_arg_ptr->texture_ptr->id,
+                    entrypoints_dsa_ptr->pGLTextureSubImage2DEXT(cached_texture_ptr->id,
                                                                  texture_target_gl,
-                                                                 update_info.n_mipmap,
-                                                                 update_info.region_start_offset[0],
-                                                                 update_info.n_layer,
-                                                                 update_info.region_size[0],
+                                                                 update_info_ptr->n_mipmap,
+                                                                 update_info_ptr->region_start_offset[0],
+                                                                 update_info_ptr->n_layer,
+                                                                 update_info_ptr->region_size[0],
                                                                  1, /* height */
                                                                  texture_data_format_gl,
                                                                  texture_data_type_gl,
-                                                                 update_info.data);
+                                                                 update_info_ptr->data);
                     break;
                 }
 
                 case RAL_TEXTURE_TYPE_2D:
                 case RAL_TEXTURE_TYPE_CUBE_MAP:
                 {
-                    entrypoints_dsa_ptr->pGLTextureSubImage2DEXT(callback_arg_ptr->texture_ptr->id,
+                    entrypoints_dsa_ptr->pGLTextureSubImage2DEXT(cached_texture_ptr->id,
                                                                  texture_target_gl,
-                                                                 update_info.n_mipmap,
-                                                                 update_info.region_start_offset[0],
-                                                                 update_info.region_start_offset[1],
-                                                                 update_info.region_size[0],
-                                                                 update_info.region_size[1],
+                                                                 update_info_ptr->n_mipmap,
+                                                                 update_info_ptr->region_start_offset[0],
+                                                                 update_info_ptr->region_start_offset[1],
+                                                                 update_info_ptr->region_size[0],
+                                                                 update_info_ptr->region_size[1],
                                                                  texture_data_format_gl,
                                                                  texture_data_type_gl,
-                                                                 update_info.data);
-
-#if 0
-                    entrypoints_dsa_ptr->pGLTextureParameteriEXT(callback_arg_ptr->texture_ptr->id,
-                                                                 texture_target_gl,
-                                                                 GL_TEXTURE_MAG_FILTER,
-                                                                 GL_NEAREST);
-                    entrypoints_dsa_ptr->pGLTextureParameteriEXT(callback_arg_ptr->texture_ptr->id,
-                                                                 texture_target_gl,
-                                                                 GL_TEXTURE_MIN_FILTER,
-                                                                 GL_NEAREST);
-#endif
+                                                                 update_info_ptr->data);
 
                     break;
                 }
 
                 case RAL_TEXTURE_TYPE_2D_ARRAY:
                 {
-                    entrypoints_dsa_ptr->pGLTextureSubImage3DEXT(callback_arg_ptr->texture_ptr->id,
+                    entrypoints_dsa_ptr->pGLTextureSubImage3DEXT(cached_texture_ptr->id,
                                                                  texture_target_gl,
-                                                                 update_info.n_mipmap,
-                                                                 update_info.region_start_offset[0],
-                                                                 update_info.region_start_offset[1],
-                                                                 update_info.n_layer,
-                                                                 update_info.region_size[0],
-                                                                 update_info.region_size[1],
+                                                                 update_info_ptr->n_mipmap,
+                                                                 update_info_ptr->region_start_offset[0],
+                                                                 update_info_ptr->region_start_offset[1],
+                                                                 update_info_ptr->n_layer,
+                                                                 update_info_ptr->region_size[0],
+                                                                 update_info_ptr->region_size[1],
                                                                  1, /* depth */
                                                                  texture_data_format_gl,
                                                                  texture_data_type_gl,
-                                                                 update_info.data);
+                                                                 update_info_ptr->data);
 
                     break;
                 }
 
                 case RAL_TEXTURE_TYPE_3D:
                 {
-                    entrypoints_dsa_ptr->pGLTextureSubImage3DEXT(callback_arg_ptr->texture_ptr->id,
+                    entrypoints_dsa_ptr->pGLTextureSubImage3DEXT(cached_texture_ptr->id,
                                                                  texture_target_gl,
-                                                                 update_info.n_mipmap,
-                                                                 update_info.region_start_offset[0],
-                                                                 update_info.region_start_offset[1],
-                                                                 update_info.region_start_offset[2],
-                                                                 update_info.region_size[0],
-                                                                 update_info.region_size[1],
-                                                                 update_info.region_size[2],
+                                                                 update_info_ptr->n_mipmap,
+                                                                 update_info_ptr->region_start_offset[0],
+                                                                 update_info_ptr->region_start_offset[1],
+                                                                 update_info_ptr->region_start_offset[2],
+                                                                 update_info_ptr->region_size[0],
+                                                                 update_info_ptr->region_size[1],
+                                                                 update_info_ptr->region_size[2],
                                                                  texture_data_format_gl,
                                                                  texture_data_type_gl,
-                                                                 update_info.data);
+                                                                 update_info_ptr->data);
 
                     break;
                 }
 
                 case RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY:
                 {
-                    entrypoints_dsa_ptr->pGLTextureSubImage3DEXT(callback_arg_ptr->texture_ptr->id,
+                    entrypoints_dsa_ptr->pGLTextureSubImage3DEXT(cached_texture_ptr->id,
                                                                  texture_target_gl,
-                                                                 update_info.n_mipmap,
-                                                                 update_info.region_start_offset[0],
-                                                                 update_info.region_start_offset[1],
-                                                                 update_info.n_layer,
-                                                                 update_info.region_size[0],
-                                                                 update_info.region_size[1],
+                                                                 update_info_ptr->n_mipmap,
+                                                                 update_info_ptr->region_start_offset[0],
+                                                                 update_info_ptr->region_start_offset[1],
+                                                                 update_info_ptr->n_layer,
+                                                                 update_info_ptr->region_size[0],
+                                                                 update_info_ptr->region_size[1],
                                                                  1, /* depth */
                                                                  texture_data_format_gl,
                                                                  texture_data_type_gl,
-                                                                 update_info.data);
+                                                                 update_info_ptr->data);
 
                     break;
                 }
@@ -327,11 +338,17 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_client_memory_sourced_update_r
     } /* for (all requested updates) */
 
     /* Sync other contexts. */
-    raGL_sync new_sync = raGL_sync_create();
+    {
+        raGL_sync new_sync = raGL_sync_create();
 
-    raGL_backend_enqueue_sync(new_sync);
+        raGL_backend_enqueue_sync(new_sync);
 
-    raGL_sync_release(new_sync);
+        raGL_sync_release(new_sync);
+    }
+
+    /* If needs be, mipmap generation can proceed from here. */
+    system_read_write_mutex_unlock(cached_texture_ptr->mipmap_gen_mutex,
+                                   ACCESS_READ);
 }
 
 /** TODO */
@@ -362,6 +379,14 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
                                           &texture_ptr->id);
     }
 
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
+
     texture_ptr->id = 0;
 }
 
@@ -380,15 +405,25 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_rendering_cal
                              RAL_TEXTURE_PROPERTY_TYPE,
                             &texture_type);
 
-    entrypoints_dsa_ptr->pGLGenerateTextureMipmapEXT(texture_ptr->id,
-                                                     raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type) );
+    system_read_write_mutex_lock(texture_ptr->mipmap_gen_mutex,
+                                 ACCESS_WRITE);
+    {
+        /* Make sure the context is sync'ed before continuing */
+        raGL_backend_sync();
 
-    /* Sync other contexts */
-    raGL_sync new_sync = raGL_sync_create();
+        /* Use the super-helpful ;) GL func to generate the mipmap data */
+        entrypoints_dsa_ptr->pGLGenerateTextureMipmapEXT(texture_ptr->id,
+                                                         raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type) );
 
-    raGL_backend_enqueue_sync(new_sync);
+        /* Sync other contexts */
+        raGL_sync new_sync = raGL_sync_create();
 
-    raGL_sync_release(new_sync);
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
+    system_read_write_mutex_unlock(texture_ptr->mipmap_gen_mutex,
+                                   ACCESS_WRITE);
 }
 
 /** TODO */
@@ -440,8 +475,10 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_rendering_callbac
 /** TODO */
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raGL_texture* texture_ptr)
 {
+    raGL_backend                                              backend             = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
+    system_critical_section                                   rendering_cs        = NULL;
     uint32_t                                                  texture_base_height = 0;
     uint32_t                                                  texture_base_width  = 0;
     ral_texture_format                                        texture_format      = RAL_TEXTURE_FORMAT_UNKNOWN;
@@ -449,11 +486,18 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
     uint32_t                                                  texture_n_samples   = 0;
 
     ogl_context_get_property(texture_ptr->context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend);
+    ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa_ptr);
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
+
+    raGL_backend_get_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
+                                     &rendering_cs);
 
     ral_texture_get_property(texture_ptr->texture,
                              RAL_TEXTURE_PROPERTY_FORMAT,
@@ -473,8 +517,15 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
                                     RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_base_width);
 
-    entrypoints_ptr->pGLGenRenderbuffers(1,
-                                        &texture_ptr->id);
+    system_critical_section_enter(rendering_cs);
+    {
+        raGL_backend_sync();
+
+        entrypoints_ptr->pGLGenRenderbuffers(1,
+                                            &texture_ptr->id);
+    }
+    system_critical_section_leave(rendering_cs);
+
 
     LOG_INFO("[GL back-end]: Allocating new renderbuffer storage for GL renderbuffer ID [%u]",
              texture_ptr->id);
@@ -497,15 +548,25 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
                                                             texture_base_height);
     }
 
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
+
     texture_ptr->is_renderbuffer = true;
 }
 
 /** TODO */
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_texture* texture_ptr)
 {
+    raGL_backend                                              backend                        = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr            = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr                = NULL;
     GLuint                                                    precall_bound_to_id            = 0;
+    system_critical_section                                   rendering_cs                   = NULL;
     uint32_t                                                  texture_base_depth             = 0;
     uint32_t                                                  texture_base_height            = 0;
     uint32_t                                                  texture_base_width             = 0;
@@ -518,6 +579,13 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
     GLenum                                                    texture_target                 = GL_NONE;
     ral_texture_type                                          texture_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
     ogl_context_to_bindings                                   to_bindings_cache              = NULL;
+
+    ogl_context_get_property         (texture_ptr->context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend);
+    raGL_backend_get_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
+                                     &rendering_cs);
 
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -565,8 +633,14 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
 
     texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
 
-    entrypoints_ptr->pGLGenTextures(1,
-                                   &texture_ptr->id);
+    system_critical_section_enter(rendering_cs);
+    {
+        raGL_backend_sync();
+
+        entrypoints_ptr->pGLGenTextures(1,
+                                       &texture_ptr->id);
+    }
+    system_critical_section_leave(rendering_cs);
 
     LOG_INFO("[GL back-end]: Allocating new texture storage for GL texture ID [%u]",
              texture_ptr->id);
@@ -694,11 +768,13 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
     } /* switch (texture_type) */
 
     /* Sync other contexts */
-    raGL_sync new_sync = raGL_sync_create();
+    {
+        raGL_sync new_sync = raGL_sync_create();
 
-    raGL_backend_enqueue_sync(new_sync);
+        raGL_backend_enqueue_sync(new_sync);
 
-    raGL_sync_release(new_sync);
+        raGL_sync_release(new_sync);
+    }
 
     texture_ptr->is_renderbuffer = false;
 }
@@ -1049,13 +1125,15 @@ PUBLIC void raGL_texture_release(raGL_texture texture)
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture                                         texture,
-                                                         uint32_t                                             n_updates,
-                                                         const ral_texture_mipmap_client_sourced_update_info* updates)
+PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture                                                                        texture,
+                                                         const std::vector<std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> >& updates)
 {
-    ogl_context    current_context = ogl_context_get_current_context();
-    bool           result          = false;
-    _raGL_texture* texture_ptr     = (_raGL_texture*) texture;
+    ral_backend_type                                                         backend_type;
+    _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg callback_arg;
+    ral_scheduler_job_info                                                   job_info;
+    bool                                                                     result      = false;
+    ral_scheduler                                                            scheduler   = NULL;
+    _raGL_texture*                                                           texture_ptr = (_raGL_texture*) texture;
 
     /* Sanity checks.. */
     if (texture == NULL)
@@ -1066,33 +1144,42 @@ PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture           
         goto end;
     }
 
-    if (n_updates == 0)
+    if (updates.size() == 0)
     {
         result = true;
 
         goto end;
     }
 
-    if (updates == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input update info array is NULL");
+    /* It is OK to have multiple ongoing write ops, but none must be in the flight at mipmap generation time.
+     * For a texture update request, we use a "read" lock, whereas for a mipmap gen process, we will open
+     * an exclusive "write" lock.
+     */
 
-        goto end;
-    }
+    /* Request a call-back from the GPU scheduler */
+    ogl_context_get_property(texture_ptr->context,
+                             OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                             &backend_type);
+    demo_app_get_property    (DEMO_APP_PROPERTY_GPU_SCHEDULER,
+                             &scheduler);
 
-    /* Request a rendering thread call-back */
-    _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg callback_arg;
+    callback_arg.sync_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
+                                                          0); /* default_value      */
+    callback_arg.texture_ptr    = texture_ptr;
+    callback_arg.updates        = updates;
 
-    callback_arg.n_updates   = n_updates;
-    callback_arg.texture_ptr = texture_ptr;
-    callback_arg.updates     = updates;
+    job_info.callback_user_arg = &callback_arg;
+    job_info.pfn_callback_ptr  = _raGL_texture_client_memory_sourced_update_rendering_thread_callback;
 
-    ogl_context_request_callback_from_context_thread((current_context != texture_ptr->context && current_context != NULL) ? current_context
-                                                                                                                          : texture_ptr->context,
-                                                     _raGL_texture_client_memory_sourced_update_rendering_thread_callback,
-                                                    &callback_arg);
+    ral_scheduler_schedule_job(scheduler,
+                               backend_type,
+                               job_info);
 
+    system_semaphore_enter(callback_arg.sync_semaphore,
+                           SYSTEM_TIME_INFINITE);
+
+    system_semaphore_release(callback_arg.sync_semaphore);
+    callback_arg.sync_semaphore = NULL;
 end:
     return result;
 }

@@ -216,6 +216,11 @@ PRIVATE void _ral_texture_init_mipmap_chain(_ral_texture* texture_ptr)
     } /* for (all texture layers to create) */
 }
 
+/** TODO */
+PRIVATE void _ral_texture_mipmap_update_release_gfx_image_handler(ral_texture_mipmap_client_sourced_update_info* info_ptr)
+{
+    gfx_image_release( (gfx_image&)info_ptr->delete_handler_proc_user_arg);
+}
 
 /** TODO */
 PRIVATE void _ral_texture_release(void* texture)
@@ -589,16 +594,16 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                                                      ral_texture_usage_bits                       usage,
                                                      PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc)
 {
-    system_hashed_ansi_string                      base_image_file_name    = NULL;
-    unsigned int                                   base_image_height       = 0;
-    unsigned int                                   base_image_width        = 0;
-    ral_texture_format                             image_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
-    bool                                           image_is_compressed     = false;
-    unsigned int                                   image_n_mipmaps         = 0;
-    ral_texture_mipmap_client_sourced_update_info* mipmap_update_info_ptrs = NULL;
-    ral_texture                                    result                  = NULL;
-    ral_texture_create_info                        result_create_info;
-    _ral_texture*                                  result_ptr              = NULL;
+    system_hashed_ansi_string                                       base_image_file_name    = NULL;
+    unsigned int                                                    base_image_height       = 0;
+    unsigned int                                                    base_image_width        = 0;
+    ral_texture_format                                              image_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
+    bool                                                            image_is_compressed     = false;
+    unsigned int                                                    image_n_mipmaps         = 0;
+    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = NULL;
+    ral_texture                                                     result                  = NULL;
+    ral_texture_create_info                                         result_create_info;
+    _ral_texture*                                                   result_ptr              = NULL;
 
     /* Sanity checks */
     if (image == NULL ||
@@ -649,7 +654,7 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
         goto end;
     }
 
-    mipmap_update_info_ptrs = new (std::nothrow) ral_texture_mipmap_client_sourced_update_info[image_n_mipmaps];
+    mipmap_update_info_ptrs = new (std::nothrow) std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>[image_n_mipmaps];
 
     if (mipmap_update_info_ptrs == NULL)
     {
@@ -725,18 +730,25 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                                       GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
                                      &mipmap_data_width);
 
-        mipmap_update_info_ptrs[n_mipmap].data                   = mipmap_data_ptr;
-        mipmap_update_info_ptrs[n_mipmap].data_row_alignment     = mipmap_data_row_alignment;
-        mipmap_update_info_ptrs[n_mipmap].data_size              = mipmap_data_size;
-        mipmap_update_info_ptrs[n_mipmap].data_type              = mipmap_data_type;
-        mipmap_update_info_ptrs[n_mipmap].n_layer                = 0;
-        mipmap_update_info_ptrs[n_mipmap].n_mipmap               = n_mipmap;
-        mipmap_update_info_ptrs[n_mipmap].region_size[0]         = mipmap_data_width;
-        mipmap_update_info_ptrs[n_mipmap].region_size[1]         = mipmap_data_height;
-        mipmap_update_info_ptrs[n_mipmap].region_size[2]         = 0;
-        mipmap_update_info_ptrs[n_mipmap].region_start_offset[0] = 0;
-        mipmap_update_info_ptrs[n_mipmap].region_start_offset[1] = 0;
-        mipmap_update_info_ptrs[n_mipmap].region_start_offset[2] = 0;
+        mipmap_update_info_ptrs[n_mipmap].reset(new ral_texture_mipmap_client_sourced_update_info() );
+
+        mipmap_update_info_ptrs[n_mipmap]->data                   = mipmap_data_ptr;
+        mipmap_update_info_ptrs[n_mipmap]->data_row_alignment     = mipmap_data_row_alignment;
+        mipmap_update_info_ptrs[n_mipmap]->data_size              = mipmap_data_size;
+        mipmap_update_info_ptrs[n_mipmap]->data_type              = mipmap_data_type;
+        mipmap_update_info_ptrs[n_mipmap]->n_layer                = 0;
+        mipmap_update_info_ptrs[n_mipmap]->n_mipmap               = n_mipmap;
+        mipmap_update_info_ptrs[n_mipmap]->region_size[0]         = mipmap_data_width;
+        mipmap_update_info_ptrs[n_mipmap]->region_size[1]         = mipmap_data_height;
+        mipmap_update_info_ptrs[n_mipmap]->region_size[2]         = 0;
+        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[0] = 0;
+        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[1] = 0;
+        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[2] = 0;
+
+        mipmap_update_info_ptrs[n_mipmap]->pfn_delete_handler_proc      = _ral_texture_mipmap_update_release_gfx_image_handler;
+        mipmap_update_info_ptrs[n_mipmap]->delete_handler_proc_user_arg = image;
+
+        gfx_image_retain(image);
     } /* for (all mipmap descriptors) */
 
     pfn_notify_backend_about_new_object_proc(context,
@@ -1028,13 +1040,14 @@ PUBLIC void ral_texture_release(ral_texture& texture)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                          texture,
-                                                                       uint32_t                                             n_updates,
-                                                                       const ral_texture_mipmap_client_sourced_update_info* updates)
+PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                                     texture,
+                                                                       uint32_t                                                        n_updates,
+                                                                       std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* updates)
 {
-    uint32_t      n_texture_layers = 0;
-    bool          result          = false;
-    _ral_texture* texture_ptr     = (_ral_texture*) texture;
+    _ral_texture_client_memory_source_update_requested_callback_arg callback_arg;
+    uint32_t                                                        n_texture_layers = 0;
+    bool                                                            result          = false;
+    _ral_texture*                                                   texture_ptr     = (_ral_texture*) texture;
 
     /* Sanity checks */
     if (texture == NULL)
@@ -1083,7 +1096,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
                           n_texture_dimension < n_texture_dimensions;
                         ++n_texture_dimension)
             {
-                if (updates[n_update].region_size[n_texture_dimension] == 0)
+                if (updates[n_update]->region_size[n_texture_dimension] == 0)
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "%d%s component of the region size is 0 which is invalid, given the target texture type.",
@@ -1099,7 +1112,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
                           n_texture_dimension < 3; /* x, y, z */
                         ++n_texture_dimension)
             {
-                if (updates[n_update].region_size[n_texture_dimension] != 0)
+                if (updates[n_update]->region_size[n_texture_dimension] != 0)
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "%d%s component of the region size is not 0 which is invalid, given the target texture type.",
@@ -1111,7 +1124,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
             } /* for (all unused texture dimensions) */
 
             /* Is the layer index correct? */
-            if (updates[n_update].n_layer >= n_texture_layers)
+            if (updates[n_update]->n_layer >= n_texture_layers)
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Update descriptor at index [%d] refers to a non-existing layer.",
@@ -1122,7 +1135,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
 
             /* Is the requested mipmap index valid? */
             if (!system_resizable_vector_get_element_at(texture_ptr->layers,
-                                                        updates[n_update].n_layer,
+                                                        updates[n_update]->n_layer,
                                                        &texture_layer_ptr) )
             {
                 ASSERT_DEBUG_SYNC(false,
@@ -1135,7 +1148,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_texture_layer_mipmaps);
 
-            if (updates[n_update].n_mipmap >= n_texture_layer_mipmaps)
+            if (updates[n_update]->n_mipmap >= n_texture_layer_mipmaps)
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Update descriptor at index [%d] refers to a non-existing mipmap.",
@@ -1148,11 +1161,14 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
     #endif /* _DEBUG */
 
     /* Fire a notification, so that the listening backend can execute the request. */
-    _ral_texture_client_memory_source_update_requested_callback_arg callback_arg;
+    callback_arg.texture = texture;
 
-    callback_arg.n_updates = n_updates;
-    callback_arg.texture   = texture;
-    callback_arg.updates   = updates;
+    for (uint32_t n_update = 0;
+                  n_update < n_updates;
+                ++n_update)
+    {
+        callback_arg.updates.push_back(updates[n_update]);
+    }
 
     system_callback_manager_call_back(texture_ptr->callback_manager,
                                       RAL_TEXTURE_CALLBACK_ID_CLIENT_MEMORY_SOURCE_UPDATE_REQUESTED,
@@ -1168,8 +1184,8 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
         _ral_texture_mipmap* texture_mipmap_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(texture_ptr->layers,
-                                                   updates[n_update].n_layer,
-                                                  &texture_layer_ptr) )
+                                                    updates[n_update]->n_layer,
+                                                   &texture_layer_ptr) )
        {
            ASSERT_DEBUG_SYNC(false,
                              "Could not retrieve texture layer descriptor.");
@@ -1178,7 +1194,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
        }
 
        if (!system_resizable_vector_get_element_at(texture_layer_ptr->mipmaps,
-                                                   updates[n_update].n_mipmap,
+                                                   updates[n_update]->n_mipmap,
                                                   &texture_mipmap_ptr) )
        {
            ASSERT_DEBUG_SYNC(false,
