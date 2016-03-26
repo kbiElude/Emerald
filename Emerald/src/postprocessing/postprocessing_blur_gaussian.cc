@@ -926,6 +926,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     GLuint                                                    vao_id                          = 0;
     GLint                                                     viewport_data[4]                = {0};
 
+    raGL_backend_sync();
+
     ASSERT_DEBUG_SYNC(n_taps >= blur_ptr->n_min_taps &&
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
@@ -1361,9 +1363,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                                 pong_fbo_raGL_id);
 
+            /* NOTE!! : The call below currently TDRs Intel driver :-( */
             entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
                                            0,  /* first - 0 will cause FS to read from layer 0 */
                                            4); /* count */
+
+            #ifdef REPRODUCE_INTEL_CRASH
+            {
+                entrypoints_ptr->pGLFinish();
+            }
+            #endif
 
             /* Vertical pass */
             entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,

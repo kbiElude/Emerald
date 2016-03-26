@@ -771,10 +771,7 @@ PRIVATE void _raGL_backend_helper_context_renderer_callback(ogl_context context,
                                      _global.backend_type);
 }
 
-/** TODO
- *
- *  NOTE: This function calls raGL_program_unlock(), once raGL_program_link() finishes.
- **/
+/** TODO */
 PRIVATE void _raGL_backend_link_program_handler(void* job_arg_raw_ptr)
 {
     _raGL_backend_link_program_job_arg* job_arg_ptr        = (_raGL_backend_link_program_job_arg*) job_arg_raw_ptr;
@@ -1593,19 +1590,10 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
      **/
     if (callback_arg_ptr->all_shader_stages_have_shaders_attached)
     {
-        _raGL_backend_link_program_job_arg* job_arg_ptr = new _raGL_backend_link_program_job_arg;
+        _raGL_backend_link_program_job_arg job_arg;
 
-        if (callback_arg_ptr->async)
-        {
-            job_arg_ptr->objects_locked_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
-                                                                            0); /* default_value      */
-        }
-        else
-        {
-            job_arg_ptr->objects_locked_semaphore = nullptr;
-        }
-
-        job_arg_ptr->program = program_raGL;
+        job_arg.objects_locked_semaphore = nullptr;
+        job_arg.program                  = program_raGL;
 
         if (callback_arg_ptr->async)
         {
@@ -1615,7 +1603,10 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
             demo_app_get_property(DEMO_APP_PROPERTY_GPU_SCHEDULER,
                                  &scheduler);
 
-            new_job.callback_user_arg = job_arg_ptr;
+            job_arg.objects_locked_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
+                                                                       0); /* default_value      */
+
+            new_job.callback_user_arg = &job_arg;
             new_job.pfn_callback_ptr  = _raGL_backend_link_program_handler;
 
             ral_scheduler_schedule_job(scheduler,
@@ -1623,18 +1614,14 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
                                        new_job);
 
             /* Wait until the job locks all relevant program & shader objects before we return. */
-            system_semaphore_enter  (job_arg_ptr->objects_locked_semaphore,
+            system_semaphore_enter  (job_arg.objects_locked_semaphore,
                                      SYSTEM_TIME_INFINITE);
-            system_semaphore_release(job_arg_ptr->objects_locked_semaphore);
+            system_semaphore_release(job_arg.objects_locked_semaphore);
         }
         else
         {
-            _raGL_backend_link_program_handler(job_arg_ptr);
+            _raGL_backend_link_program_handler(&job_arg);
         }
-
-        delete job_arg_ptr;
-
-        job_arg_ptr = NULL;
     }
 
 end:
@@ -1682,7 +1669,6 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                     ++n_program)
         {
             bool                                all_shader_stages_set = false;
-            _raGL_backend_link_program_job_arg* job_arg_ptr;
             ral_scheduler_job_info              job_info;
             raGL_program                        program_raGL          = NULL;
             ral_program                         program_ral           = NULL;
@@ -1712,24 +1698,22 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
             }
 
             /* Dispatch async jobs to relink the program */
-            job_arg_ptr = new _raGL_backend_link_program_job_arg;
+            _raGL_backend_link_program_job_arg job_arg;
 
-            job_arg_ptr->objects_locked_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
-                                                                            0); /* default_value      */
-            job_arg_ptr->program                  = program_raGL;
+            job_arg.objects_locked_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
+                                                                       0); /* default_value      */
+            job_arg.program                  = program_raGL;
 
             job_info.pfn_callback_ptr  = _raGL_backend_link_program_handler;
-            job_info.callback_user_arg = job_arg_ptr;
+            job_info.callback_user_arg = &job_arg;
 
             ral_scheduler_schedule_job(scheduler,
                                        _global.backend_type,
                                        job_info);
 
-            system_semaphore_enter  (job_arg_ptr->objects_locked_semaphore,
+            system_semaphore_enter  (job_arg.objects_locked_semaphore,
                                      SYSTEM_TIME_INFINITE);
-            system_semaphore_release(job_arg_ptr->objects_locked_semaphore);
-
-            delete job_arg_ptr;
+            system_semaphore_release(job_arg.objects_locked_semaphore);
         } /* for (all programs) */
     }
 }

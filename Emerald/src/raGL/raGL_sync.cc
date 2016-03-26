@@ -73,10 +73,10 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create()
     new_handle = entrypoints_ptr->pGLFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,
                                                0 /* flags */);
 
-    entrypoints_ptr->pGLFlush();
-
     ASSERT_DEBUG_SYNC(new_handle != NULL,
                       "GL returned a NULL GLsync object");
+
+    entrypoints_ptr->pGLFlush();
 
     new_sync_ptr = new (std::nothrow) _raGL_sync(parent_backend,
                                                  new_handle);

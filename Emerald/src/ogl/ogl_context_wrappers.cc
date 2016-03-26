@@ -20,6 +20,10 @@
 #include "system/system_log.h"
 #include <math.h>
 
+/* Injects glFinish() call after each GL call. Enable ONLY for debugging purposes */
+//#define ENABLE_DEBUG_FINISH_CALLS
+
+
 #ifdef _WIN32
     __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
 #else
@@ -224,7 +228,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glActiveTexture(GLenum texture)
 
     ogl_context_state_cache_set_property(cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
-                                        &texture_unit_index);
+                                         &texture_unit_index);
 }
 
 /** Please see header for spec */
@@ -247,6 +251,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBeginTransformFeedback(GLenum primit
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
 
     _private_entrypoints_ptr->pGLBeginTransformFeedback(primitiveMode);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -720,6 +730,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlitFramebuffer(GLint      srcX0,
                                                  dstY1,
                                                  mask,
                                                  filter);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -742,6 +758,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferData(GLenum        target,
                                             size,
                                             data,
                                             usage);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -764,6 +786,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferStorage(GLenum        target,
                                                size,
                                                data,
                                                flags);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -786,6 +814,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
                                                offset,
                                                size,
                                                data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -811,6 +845,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
                                  STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
 
     _private_entrypoints_ptr->pGLClear(mask);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -835,6 +875,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearBufferData(GLenum      target,
                                                  format,
                                                  type,
                                                  data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -863,6 +909,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearBufferSubData(GLenum      targe
                                                     format,
                                                     type,
                                                     data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -956,6 +1008,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage1D(GLenum      
                                                          format,
                                                          imageSize,
                                                          data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1000,6 +1058,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage2D(GLenum      
                                                          format,
                                                          imageSize,
                                                          data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1048,6 +1112,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage3D(GLenum      
                                                          format,
                                                          imageSize,
                                                          data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1084,6 +1154,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage1DEXT(GLuin
                                                                 format,
                                                                 imageSize,
                                                                 bits);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1124,6 +1200,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage2DEXT(GLuin
                                                                 format,
                                                                 imageSize,
                                                                 bits);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1168,6 +1250,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage3DEXT(GLuin
                                                                 format,
                                                                 imageSize,
                                                                 bits);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1193,6 +1281,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyBufferSubData(GLenum     readTar
                                                    readOffset,
                                                    writeOffset,
                                                    size);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1227,6 +1321,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage1D(GLenum  target,
                                                    x,
                                                    y,
                                                    width);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1265,6 +1365,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage2D(GLenum  target,
                                                    y,
                                                    width,
                                                    height);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1305,6 +1411,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage3D(GLenum  target,
                                                    y,
                                                    width,
                                                    height);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1332,6 +1444,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage1DEXT(GLuint  tex
                                                           x,
                                                           y,
                                                           width);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1363,6 +1481,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage2DEXT(GLuint  tex
                                                           y,
                                                           width,
                                                           height);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1396,6 +1520,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(GLuint  tex
                                                           y,
                                                           width,
                                                           height);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1430,6 +1560,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteBuffers(GLsizei       n,
     ogl_context_bo_bindings_reset_buffer_bindings(bo_bindings,
                                                   buffers,
                                                   n);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1464,6 +1600,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteRenderbuffers(GLsizei       n,
 
     _private_entrypoints_ptr->pGLDeleteRenderbuffers(n,
                                                      renderbuffers);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1483,6 +1625,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteTextures(GLsizei       n,
 
     _private_entrypoints_ptr->pGLDeleteTextures(n,
                                                 textures);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1525,6 +1673,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteVertexArrays(GLsizei       n,
         ogl_context_vaos_delete_vao(vaos,
                                     arrays[current_n]);
     } /* for (all provided VAO IDs) */
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1582,6 +1736,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDisablei(GLenum cap,
                       "TODO");
 
     ogl_context_wrappers_glDisable(cap);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1617,6 +1777,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDisableVertexAttribArray(GLuint inde
 
         _private_entrypoints_ptr->pGLDisableVertexAttribArray(index);
     }
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1657,6 +1823,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
     _private_entrypoints_ptr->pGLDispatchCompute(num_groups_x,
                                                  num_groups_y,
                                                  num_groups_z);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1693,6 +1865,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr ind
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
     _private_entrypoints_ptr->pGLDispatchComputeIndirect(indirect);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1743,6 +1921,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
     _private_entrypoints_ptr->pGLDrawArrays(mode,
                                             first,
                                             count);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1792,6 +1976,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysIndirect(GLenum      mode,
 
     _private_entrypoints_ptr->pGLDrawArraysIndirect(mode,
                                                     indirect);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1844,6 +2034,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                                                      first,
                                                      count,
                                                      primcount);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1898,6 +2094,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
                                                                  count,
                                                                  primcount,
                                                                  baseinstance);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1914,6 +2116,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffer(GLenum mode)
                                  STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
 
     _private_entrypoints_ptr->pGLDrawBuffer(mode);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -1931,6 +2139,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffers(      GLsizei n,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
 
     _private_entrypoints_ptr->pGLDrawBuffers(n, bufs);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -1979,10 +2193,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawElements(mode,
                                               count,
                                               type,
                                               indices);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2033,12 +2259,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseInstance(GL
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawElementsInstancedBaseInstance(mode,
                                                                    count,
                                                                    type,
                                                                    indices,
                                                                    instancecount,
                                                                    baseinstance);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2090,6 +2328,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseI
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawElementsInstancedBaseVertexBaseInstance(mode,
                                                                              count,
                                                                              type,
@@ -2097,6 +2341,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseI
                                                                              instancecount,
                                                                              basevertex,
                                                                              baseinstance);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2146,11 +2396,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawElementsInstanced(mode,
                                                        count,
                                                        type,
                                                        indices,
                                                        primcount);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2201,12 +2463,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawRangeElements(mode,
                                                    start,
                                                    end,
                                                    count,
                                                    type,
                                                    indices);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2253,8 +2527,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawTransformFeedback(mode,
                                                        id);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2302,9 +2588,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackInstanced(GLenu
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawTransformFeedbackInstanced(mode,
                                                                 id,
                                                                 instancecount);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2353,10 +2651,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackStreamInstanced
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLDrawTransformFeedbackStreamInstanced(mode,
                                                                       id,
                                                                       stream,
                                                                       instancecount);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2384,6 +2694,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glEnablei(GLenum cap,
                       "TODO");
 
     ogl_context_wrappers_glEnable(cap);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2419,6 +2735,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glEnableVertexAttribArray(GLuint index
 
         _private_entrypoints_ptr->pGLEnableVertexAttribArray(index);
     }
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 
@@ -2460,9 +2782,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferParameteri(GLenum target,
         }
     } /* switch (target) */
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLFramebufferParameteri(target,
                                                        pname,
                                                        param);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2471,6 +2805,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferReadBufferEXT(GLuint fram
 {
     _private_entrypoints_ptr->pGLFramebufferReadBufferEXT(framebuffer,
                                                           mode);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2511,10 +2851,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum targe
         }
     } /* switch (target) */
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLFramebufferRenderbuffer(target,
                                                          attachment,
                                                          renderbuffertarget,
                                                          renderbuffer);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2562,10 +2914,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLFramebufferTexture(target,
                                                     attachment,
                                                     texture,
                                                     level);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2614,11 +2978,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture1D(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLFramebufferTexture1D(target,
                                                       attachment,
                                                       textarget,
                                                       texture,
                                                       level);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2667,11 +3043,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture2D(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLFramebufferTexture2D(target,
                                                       attachment,
                                                       textarget,
                                                       texture,
                                                       level);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2721,12 +3109,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture3D(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLFramebufferTexture3D(target,
                                                       attachment,
                                                       textarget,
                                                       texture,
                                                       level,
                                                       layer);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2795,11 +3195,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum fb_ta
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(texture_target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLFramebufferTextureLayer(fb_target,
                                                          attachment,
                                                          texture,
                                                          level,
                                                          layer);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2839,7 +3251,19 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenerateMipmap(GLenum target)
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGenerateMipmap(target);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2867,6 +3291,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenVertexArrays(GLsizei n,
                                                 arrays[current_n])
                                 );
     } /* for (all provided VAO IDs) */
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -2879,6 +3309,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenerateTextureMipmapEXT(GLuint text
 
     _private_entrypoints_ptr->pGLGenerateTextureMipmapEXT(texture,
                                                           target);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2899,6 +3335,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenTextures(GLsizei n,
                                                 n,
                                                 textures);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2913,6 +3354,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetActiveAtomicCounterBufferiv(GLuin
                                                                 bufferIndex,
                                                                 pname,
                                                                 params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2952,6 +3399,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBooleani_v(GLenum     target,
     _private_entrypoints_ptr->pGLGetBooleani_v(target,
                                                index,
                                                data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -2986,8 +3439,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBooleanv(GLenum     pname,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetBooleanv(pname,
                                              params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3005,9 +3470,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferParameteriv(GLenum target,
     ogl_context_bo_bindings_sync(bo_bindings,
                                  ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetBufferParameteriv(target,
                                                       pname,
                                                       params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3025,9 +3502,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferParameteri64v(GLenum   targ
     ogl_context_bo_bindings_sync(bo_bindings,
                                  ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetBufferParameteri64v(target,
                                                         pname,
                                                         params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3045,9 +3534,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferPointerv(GLenum   target,
     ogl_context_bo_bindings_sync(bo_bindings,
                                  ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetBufferPointerv(target,
                                                    pname,
                                                    params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3066,10 +3567,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferSubData(GLenum     target,
     ogl_context_bo_bindings_sync(bo_bindings,
                                  ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetBufferSubData(target,
                                                   offset,
                                                   size,
                                                   data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3099,9 +3612,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTexImage(GLenum  target
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetCompressedTexImage(target,
                                                        level,
                                                        img);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3119,10 +3644,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTextureImageEXT(GLuint 
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_PIXEL_PACK_BUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetCompressedTextureImageEXT(texture,
                                                               target,
                                                               lod,
                                                               img);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3140,9 +3677,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetRenderbufferParameteriv(GLenum ta
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetRenderbufferParameteriv(target,
                                                             pname,
                                                             params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3177,8 +3726,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetDoublev(GLenum    pname,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetDoublev(pname,
                                             params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3213,8 +3774,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetFloatv(GLenum   pname,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetFloatv(pname,
                                            params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3255,9 +3828,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetFramebufferParameteriv(GLenum tar
         }
     } /* switch (target) */
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetFramebufferParameteriv(target,
                                                            pname,
                                                            params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3293,9 +3878,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetInteger64i_v(GLenum   target,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetInteger64i_v(target,
                                                  index,
                                                  data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3331,9 +3928,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegeri_v(GLenum target,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetIntegeri_v(target,
                                                index,
                                                data);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3394,8 +4003,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetIntegerv(pname,
                                              params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 
 end:
     ;
@@ -3415,9 +4036,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameterfv(GLuint   sampl
 
     ogl_context_sampler_bindings_sync(sampler_bindings);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetSamplerParameterfv(sampler,
                                                        pname,
                                                        params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3434,9 +4067,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameterIiv(GLuint sample
 
     ogl_context_sampler_bindings_sync(sampler_bindings);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetSamplerParameterIiv(sampler,
                                                         pname,
                                                         params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3453,9 +4098,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameterIuiv(GLuint  samp
 
     ogl_context_sampler_bindings_sync(sampler_bindings);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetSamplerParameterIuiv(sampler,
                                                          pname,
                                                          params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3472,9 +4129,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameteriv(GLuint sampler
 
     ogl_context_sampler_bindings_sync(sampler_bindings);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetSamplerParameteriv(sampler,
                                                        pname,
                                                        params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3506,11 +4175,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexImage(GLenum  target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTexImage(target,
                                              level,
                                              format,
                                              type,
                                              pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3535,10 +4216,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexLevelParameterfv(GLenum   targ
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTexLevelParameterfv(target,
                                                         level,
                                                         pname,
                                                         params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3563,10 +4256,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexLevelParameteriv(GLenum target
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTexLevelParameteriv(target,
                                                         level,
                                                         pname,
                                                         params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3590,9 +4295,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameterfv(GLenum   target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTexParameterfv(target,
                                                    pname,
                                                    params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3616,9 +4333,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameteriv(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTexParameteriv(target,
                                                    pname,
                                                    params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3642,9 +4371,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameterIiv(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTexParameterIiv(target,
                                                     pname,
                                                     params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3668,9 +4409,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameterIuiv(GLenum  target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTexParameterIuiv(target,
                                                      pname,
                                                      params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -3690,12 +4443,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureImageEXT(GLuint  texture,
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_PIXEL_PACK_BUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLGetTextureImageEXT(texture,
                                                     target,
                                                     level,
                                                     format,
                                                     type,
                                                     pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3713,10 +4478,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribdv(GLuint    index,
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     /* TODO: We could use VAO state cache values here */
     _private_entrypoints_ptr->pGLGetVertexAttribdv(index,
                                                    pname,
                                                    params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3734,10 +4511,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribfv(GLuint   index,
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     /* TODO: We could use VAO state cache values here */
     _private_entrypoints_ptr->pGLGetVertexAttribfv(index,
                                                    pname,
                                                    params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3755,10 +4544,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribiv(GLuint index,
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     /* TODO: We could use VAO state cache values here */
     _private_entrypoints_ptr->pGLGetVertexAttribiv(index,
                                                    pname,
                                                    params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3776,10 +4577,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribPointerv(GLuint   ind
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     /* TODO: We could use VAO state cache values here */
     _private_entrypoints_ptr->pGLGetVertexAttribPointerv(index,
                                                          pname,
                                                          pointer);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3797,10 +4610,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribIiv(GLuint index,
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     /* TODO: We could use VAO state cache values here */
     _private_entrypoints_ptr->pGLGetVertexAttribIiv(index,
                                                     pname,
                                                     params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3818,10 +4643,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribIuiv(GLuint  index,
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     /* TODO: We could use VAO state cache values here */
     _private_entrypoints_ptr->pGLGetVertexAttribIuiv(index,
                                                      pname,
                                                      params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3862,9 +4699,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateFramebuffer(GLenum        
         }
     } /* switch (target) */
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLInvalidateFramebuffer(target,
                                                        numAttachments,
                                                        attachments);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** TODO */
@@ -3909,6 +4758,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateSubFramebuffer(GLenum     
         }
     } /* switch (target) */
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLInvalidateSubFramebuffer(target,
                                                           numAttachments,
                                                           attachments,
@@ -3916,6 +4771,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateSubFramebuffer(GLenum     
                                                           y,
                                                           width,
                                                           height);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -3933,8 +4794,20 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBuffer(GLenum target,
     ogl_context_bo_bindings_sync(bo_bindings,
                                  ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     result = _private_entrypoints_ptr->pGLMapBuffer(target,
                                                     access);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 
     return result;
 }
@@ -3956,10 +4829,22 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBufferRange(GLenum     target,
     ogl_context_bo_bindings_sync(bo_bindings,
                                  ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     result = _private_entrypoints_ptr->pGLMapBufferRange(target,
                                                          offset,
                                                          length,
                                                          access);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 
     return result;
 }
@@ -4009,7 +4894,19 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers)
                                      cache_sync_bits);
     }
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLMemoryBarrier(barriers);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4058,10 +4955,22 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLMultiDrawArrays(mode,
                                                  first,
                                                  count,
                                                  primcount);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4110,10 +5019,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawArraysIndirect(GLenum      
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLMultiDrawArraysIndirect(mode,
                                                          indirect,
                                                          drawcount,
                                                          stride);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4163,11 +5084,23 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLMultiDrawElements(mode,
                                                    count,
                                                    type,
                                                    indices,
                                                    primcount);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4218,12 +5151,24 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLMultiDrawElementsBaseVertex(mode,
                                                              count,
                                                              type,
                                                              indices,
                                                              drawcount,
                                                              basevertex);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4273,11 +5218,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawElementsIndirect(GLenum    
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLMultiDrawElementsIndirect(mode,
                                                            type,
                                                            indirect,
                                                            drawcount,
                                                            stride);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4316,6 +5273,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferStorageEXT(GLuint        
                                                        size,
                                                        data,
                                                        flags);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4331,7 +5294,19 @@ PUBLIC void APIENTRY ogl_context_wrappers_glReadBuffer(GLenum mode)
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLReadBuffer(mode);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4359,6 +5334,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glReadPixels(GLint   x,
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLReadPixels(x,
                                             y,
                                             width,
@@ -4366,6 +5347,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glReadPixels(GLint   x,
                                             format,
                                             type,
                                             pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4384,10 +5371,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorage(GLenum  target,
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLRenderbufferStorage(target,
                                                      internalformat,
                                                      width,
                                                      height);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4407,11 +5406,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorageMultisample(GLenu
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_RENDERBUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLRenderbufferStorageMultisample(target,
                                                                 samples,
                                                                 internalformat,
                                                                 width,
                                                                 height);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4433,7 +5444,19 @@ PUBLIC void APIENTRY ogl_context_wrappers_glResumeTransformFeedback(void)
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLResumeTransformFeedback();
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -4507,6 +5530,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
                                            &shaderStorageBlockBinding);
         } /* if (current_indexed_ssb_bp != shaderStorageBlockBinding) */
     } /* if (program_raGL != NULL) */
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4543,9 +5572,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBuffer(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexBuffer(target,
                                            internalformat,
                                            buffer);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4584,11 +5625,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBufferRange(GLenum     target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexBufferRange(target,
                                                 internalformat,
                                                 buffer,
                                                 offset,
                                                 size);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4612,9 +5665,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterf(GLenum  target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexParameterf(target,
                                                pname,
                                                param);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4638,9 +5703,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterfv(GLenum         target
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexParameterfv(target,
                                                 pname,
                                                 params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4664,9 +5741,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameteri(GLenum target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexParameteri(target,
                                                pname,
                                                param);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4690,9 +5779,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameteriv(GLenum       target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexParameteriv(target,
                                                 pname,
                                                 params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4716,9 +5817,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterIiv(GLenum       target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexParameterIiv(target,
                                                  pname,
                                                  params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4742,9 +5855,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterIuiv(GLenum        targe
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexParameterIuiv(target,
                                                   pname,
                                                   params);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4778,6 +5903,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage1D(GLenum        target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexSubImage1D(target,
                                                level,
                                                xoffset,
@@ -4785,6 +5916,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage1D(GLenum        target,
                                                format,
                                                type,
                                                pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4820,6 +5957,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage2D(GLenum        target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexSubImage2D(target,
                                                level,
                                                xoffset,
@@ -4829,6 +5972,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage2D(GLenum        target,
                                                format,
                                                type,
                                                pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4866,6 +6015,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage3D(GLenum        target,
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTexSubImage3D(target,
                                                level,
                                                xoffset,
@@ -4877,6 +6032,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage3D(GLenum        target,
                                                format,
                                                type,
                                                pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4896,10 +6057,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferEXT(GLuint texture,
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_TEXTURE_BUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTextureBufferEXT(texture,
                                                   target,
                                                   internalformat,
                                                   buffer);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4921,12 +6094,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferRangeEXT(GLuint     tex
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_TEXTURE_BUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTextureBufferRangeEXT(texture,
                                                        target,
                                                        internalformat,
                                                        buffer,
                                                        offset,
                                                        size);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4948,6 +6133,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage1DEXT(GLuint        t
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTextureSubImage1DEXT(texture,
                                                       target,
                                                       level,
@@ -4956,6 +6147,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage1DEXT(GLuint        t
                                                       format,
                                                       type,
                                                       pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -4979,6 +6176,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage2DEXT(GLuint        t
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTextureSubImage2DEXT(texture,
                                                       target,
                                                       level,
@@ -4989,6 +6192,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage2DEXT(GLuint        t
                                                       format,
                                                       type,
                                                       pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /* Please see header for specification */
@@ -5014,6 +6223,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage3DEXT(GLuint        t
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER);
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     _private_entrypoints_ptr->pGLTextureSubImage3DEXT(texture,
                                                       target,
                                                       level,
@@ -5026,6 +6241,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage3DEXT(GLuint        t
                                                       format,
                                                       type,
                                                       pixels);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -5046,6 +6267,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                 &state_cache);
     ogl_context_state_cache_sync(state_cache,
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 
     /* Does it make sense to try to make the call? */
     raGL_backend_get_program_by_id(context_backend,
@@ -5079,6 +6306,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                            &uniformBlockBinding);
         } /* if (current_indexed_ssb_bp != uniformBlockBinding) */
     } /* if (program_raGL != NULL) */
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -5095,7 +6328,19 @@ PUBLIC GLboolean APIENTRY ogl_context_wrappers_glUnmapBuffer(GLenum target)
     ogl_context_bo_bindings_sync(bo_bindings,
                                  ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
+
     result = _private_entrypoints_ptr->pGLUnmapBuffer(target);
+
+    #ifdef ENABLE_DEBUG_FINISH_CALLS
+    {
+        _private_entrypoints_ptr->pGLFinish();
+    }
+    #endif
 
     return result;
 }
@@ -5175,6 +6420,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT(GL
         ogl_context_bo_bindings_sync(bo_bindings,
                                      BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
 
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
+
         _private_entrypoints_ptr->pGLVertexArrayVertexAttribIOffsetEXT(vaobj,
                                                                        buffer,
                                                                        index,
@@ -5182,6 +6433,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT(GL
                                                                        type,
                                                                        stride,
                                                                        offset);
+
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
 
         ogl_vao_set_vaa_property(vao,
                                  index,
@@ -5273,6 +6530,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT(GLu
         ogl_context_bo_bindings_sync(bo_bindings,
                                      BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
 
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
+
         _private_entrypoints_ptr->pGLVertexArrayVertexAttribOffsetEXT(vaobj,
                                                                       buffer,
                                                                       index,
@@ -5281,6 +6544,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT(GLu
                                                                       normalized,
                                                                       stride,
                                                                       offset);
+
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
 
         ogl_vao_set_vaa_property(vao,
                                  index,
@@ -5412,11 +6681,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIPointer(GLuint        i
         ogl_context_bo_bindings_sync(bo_bindings,
                                      BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
 
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
+
         _private_entrypoints_ptr->pGLVertexAttribIPointer(index,
                                                           size,
                                                           type,
                                                           stride,
                                                           pointer);
+
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
 
         ogl_vao_set_vaa_property(current_vao,
                                  index,
@@ -5532,12 +6813,24 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribPointer(GLuint        in
         ogl_context_bo_bindings_sync(bo_bindings,
                                      BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
 
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
+
         _private_entrypoints_ptr->pGLVertexAttribPointer(index,
                                                          size,
                                                          type,
                                                          normalized,
                                                          stride,
                                                          pointer);
+
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
 
         ogl_vao_set_vaa_property(current_vao,
                                  index,

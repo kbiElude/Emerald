@@ -47,6 +47,8 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
     _raGL_shader* shader_ptr          = (_raGL_shader*) in_arg;
     const char*   shader_body_raw_ptr = system_hashed_ansi_string_get_buffer(shader_ptr->last_compiled_body);
 
+    raGL_backend_sync();
+
     shader_ptr->pGLShaderSource (shader_ptr->id,
                                  1, /* count */
                                 &shader_body_raw_ptr,
@@ -110,9 +112,18 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
 PRIVATE void _raGL_shader_create_callback(ogl_context context,
                                           void*       in_arg)
 {
-    _raGL_shader*     shader_ptr    = (_raGL_shader*) in_arg;
-    ral_shader_source shader_source = RAL_SHADER_SOURCE_UNKNOWN;
-    ral_shader_type   shader_type   = RAL_SHADER_TYPE_UNKNOWN;
+    raGL_backend            backend       = nullptr;
+    system_critical_section rendering_cs  = nullptr;
+    _raGL_shader*           shader_ptr    = (_raGL_shader*) in_arg;
+    ral_shader_source       shader_source = RAL_SHADER_SOURCE_UNKNOWN;
+    ral_shader_type         shader_type   = RAL_SHADER_TYPE_UNKNOWN;
+
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend);
+    raGL_backend_get_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
+                                     &rendering_cs);
 
     ral_shader_get_property(shader_ptr->shader_ral,
                             RAL_SHADER_PROPERTY_SOURCE,
@@ -124,16 +135,58 @@ PRIVATE void _raGL_shader_create_callback(ogl_context context,
     ASSERT_DEBUG_SYNC(shader_source == RAL_SHADER_SOURCE_GLSL,
                       "Only GLSL-sourced shaders are supported by OpenGL backend.");
 
-    shader_ptr->id = shader_ptr->pGLCreateShader( raGL_utils_get_ogl_shader_type_for_ral_shader_type(shader_type) );
+    system_critical_section_enter(rendering_cs);
+    {
+        raGL_sync new_sync;
+
+        /* Force a sync before we create a new shader object */
+        raGL_backend_sync();
+
+        /* Acquire a new ID */
+        shader_ptr->id = shader_ptr->pGLCreateShader(raGL_utils_get_ogl_shader_type_for_ral_shader_type(shader_type));
+
+        /* Force other contexts to sync */
+        new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
+    system_critical_section_leave(rendering_cs);
 }
 
 /** TODO */
 PRIVATE void _raGL_shader_release_callback(ogl_context context,
                                            void*       in_arg)
 {
-    _raGL_shader* shader_ptr = (_raGL_shader*) in_arg;
+    raGL_backend            backend      = nullptr;
+    raGL_sync               new_sync     = nullptr;
+    system_critical_section rendering_cs = nullptr;
+    _raGL_shader*           shader_ptr   = (_raGL_shader*) in_arg;
 
-    shader_ptr->pGLDeleteShader(shader_ptr->id);
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend);
+    raGL_backend_get_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
+                                     &rendering_cs);
+
+    system_critical_section_enter(rendering_cs);
+    {
+        /* Sync with other contexts before continuing */
+        raGL_backend_sync();
+
+        /* Purge the shader object */
+        shader_ptr->pGLDeleteShader(shader_ptr->id);
+
+        /* Force other contexts to sync */
+        new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
+    system_critical_section_leave(rendering_cs);
 }
 
 /** TODO */

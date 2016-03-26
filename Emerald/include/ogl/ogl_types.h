@@ -1188,6 +1188,7 @@ typedef struct
     PFNGLENABLEPROC                                      pGLEnable;
     PFNGLENABLEIPROC                                     pGLEnablei;
     PFNGLENABLEVERTEXATTRIBARRAYPROC                     pGLEnableVertexAttribArray;
+    PFNGLFINISHPROC                                      pGLFinish;
     PFNGLFRAMEBUFFERPARAMETERIPROC                       pGLFramebufferParameteri;
     PFNGLFRAMEBUFFERRENDERBUFFERPROC                     pGLFramebufferRenderbuffer;
     PFNGLFRAMEBUFFERTEXTUREPROC                          pGLFramebufferTexture;

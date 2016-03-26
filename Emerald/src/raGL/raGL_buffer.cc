@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_buffer.h"
+#include "raGL/raGL_sync.h"
 #include "ral/ral_buffer.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
@@ -119,6 +120,8 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 
+    raGL_backend_sync();
+
     for (uint32_t n_update = 0;
                   n_update < callback_arg_ptr->n_updates;
                 ++n_update)
@@ -130,6 +133,14 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
                                                       current_update.data_size,
                                                       current_update.data);
     } /* for (all updates) */
+
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
 }
 
 /** TODO */
@@ -178,6 +189,8 @@ PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thre
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 
+    raGL_backend_sync();
+
     for (uint32_t n_copy_op = 0;
                   n_copy_op < callback_arg_ptr->n_copy_ops;
                 ++n_copy_op)
@@ -190,6 +203,14 @@ PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thre
                                                           dst_buffer_ptr->start_offset + current_copy.dst_buffer_region_start_offset, /* writeOffset */
                                                           current_copy.region_size);
     } /* for (all copy ops) */
+
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
 }
 
 /** Please see header for specification */

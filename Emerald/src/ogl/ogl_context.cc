@@ -2245,6 +2245,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLEndTransformFeedback,                             "glEndTransformFeedback"},
         {&context_ptr->entry_points_gl.pGLFenceSync,                                        "glFenceSync"},
         {&context_ptr->entry_points_gl.pGLFinish,                                           "glFinish"},
+        {&context_ptr->entry_points_private.pGLFinish,                                      "glFinish"},
         {&context_ptr->entry_points_gl.pGLFlush,                                            "glFlush"},
         {&context_ptr->entry_points_private.pGLFramebufferParameteri,                       "glFramebufferParameteri"},
         {&context_ptr->entry_points_private.pGLFramebufferRenderbuffer,                     "glFramebufferRenderbuffer"},

@@ -72,6 +72,7 @@ typedef struct
     PFNGLCREATEPROGRAMPROC              pGLCreateProgram;
     PFNGLDELETEPROGRAMPROC              pGLDeleteProgram;
     PFNGLDETACHSHADERPROC               pGLDetachShader;
+    PFNGLFINISHPROC                     pGLFinish;
     PFNGLGETACTIVEATTRIBPROC            pGLGetActiveAttrib;
     PFNGLGETATTRIBLOCATIONPROC          pGLGetAttribLocation;
     PFNGLGETPROGRAMBINARYPROC           pGLGetProgramBinary;
@@ -192,13 +193,27 @@ PRIVATE void _raGL_program_clear_bindings_metadata(_raGL_program* program_ptr,
 PRIVATE void _raGL_program_create_callback(ogl_context context,
                                            void*       in_arg)
 {
-    _raGL_program* program_ptr = (_raGL_program*) in_arg;
+    raGL_backend            backend      = NULL;
+    _raGL_program*          program_ptr  = (_raGL_program*) in_arg;
+    system_critical_section rendering_cs = NULL;
 
-    /* Sync with other contexts before continuing */
-    raGL_backend_sync();
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend);
+    raGL_backend_get_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
+                                     &rendering_cs);
 
-    /* Create a new program */
-    program_ptr->id                     = program_ptr->pGLCreateProgram();
+    system_critical_section_enter(rendering_cs);
+    {
+        /* Sync with other contexts before continuing */
+        raGL_backend_sync();
+
+        /* Create a new program */
+        program_ptr->id = program_ptr->pGLCreateProgram();
+    }
+    system_critical_section_leave(rendering_cs);
+
     program_ptr->active_attributes_raGL = system_resizable_vector_create(4 /* capacity */);
     program_ptr->active_uniforms_raGL   = system_resizable_vector_create(4 /* capacity */);
 
@@ -247,7 +262,8 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
                                      current_shader_raGL_id);
     }
 
-    /* Force other context synchronization */
+    /* Force sync of other contexts */
+    system_critical_section_enter(rendering_cs);
     {
         raGL_sync new_sync = raGL_sync_create();
 
@@ -255,6 +271,7 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
 
         raGL_sync_release(new_sync);
     }
+    system_critical_section_leave(rendering_cs);
 }
 
 /** TODO */
@@ -414,6 +431,14 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
     if (!is_temp_variable_defined)
     {
         temp_variable_name_storage = new (std::nothrow) char[name_length + 1];
+
+        ASSERT_ALWAYS_SYNC(temp_variable_name_storage != nullptr,
+                           "Out of memory");
+
+        if (temp_variable_name_storage == nullptr)
+        {
+            goto end;
+        }
     }
 
     memset(temp_variable_name_storage,
@@ -469,6 +494,9 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
 
         temp_variable_name_storage = NULL;
     }
+
+end:
+    ;
 }
 
 /** TODO */
@@ -491,9 +519,13 @@ PRIVATE char* _raGL_program_get_binary_blob_file_name(_raGL_program* program_ptr
     /* Form the result string */
     char* file_name = new (std::nothrow) char[file_name_string.length() + 1];
 
-    memcpy(file_name,
-           file_name_string.c_str(),
-           file_name_string.length() + 1);
+
+    if (file_name != NULL)
+    {
+        memcpy(file_name,
+               file_name_string.c_str(),
+               file_name_string.length() + 1);
+    }
 
     return file_name;
 }
@@ -518,10 +550,19 @@ PRIVATE char* _raGL_program_get_source_code_file_name(_raGL_program* program_ptr
     /* Form the result string */
     char* file_name = new (std::nothrow) char[file_name_string.length() + 1];
 
+    ASSERT_ALWAYS_SYNC(file_name != nullptr,
+                       "Out of memory");
+
+    if (file_name == nullptr)
+    {
+        goto end;
+    }
+
     memcpy(file_name,
            file_name_string.c_str(),
            file_name_string.length() + 1);
 
+end:
     return file_name;
 }
 
@@ -605,7 +646,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
         static const GLenum piq_property_name_length = GL_NAME_LENGTH;
 
         for (unsigned int n_ub = 0;
-                          n_ub < n_active_blocks;
+                          n_ub < static_cast<unsigned int>(n_active_blocks);
                         ++n_ub)
         {
             GLint current_block_name_length = 0;
@@ -689,7 +730,6 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
         {
                          GLint* active_variable_indices             = NULL;
             static const GLenum block_property_active_variables     = GL_ACTIVE_VARIABLES;
-            static const GLenum block_property_buffer_data_size     = GL_BUFFER_DATA_SIZE;
             static const GLenum block_property_num_active_variables = GL_NUM_ACTIVE_VARIABLES;
                          GLint  n_active_variables                  = 0;
                          GLint  n_active_uniform_blocks             = 0;
@@ -1335,9 +1375,31 @@ PRIVATE void _raGL_program_release_active_uniforms(system_resizable_vector activ
 PRIVATE void _raGL_program_release_callback(ogl_context context,
                                             void*       in_arg)
 {
-    _raGL_program* program_ptr = (_raGL_program*) in_arg;
+    raGL_backend            backend      = NULL;
+    raGL_sync               new_sync     = NULL;
+    _raGL_program*          program_ptr  = (_raGL_program*) in_arg;
+    system_critical_section rendering_cs = NULL;
 
-    program_ptr->pGLDeleteProgram(program_ptr->id);
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend);
+    raGL_backend_get_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
+                                     &rendering_cs);
+
+    system_critical_section_enter(rendering_cs);
+    {
+        program_ptr->pGLDeleteProgram(program_ptr->id);
+    }
+    system_critical_section_leave(rendering_cs);
+
+    {
+        new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
 
     program_ptr->id = 0;
 }
@@ -1674,6 +1736,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
             new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
             new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
+            new_program_ptr->pGLFinish                     = entry_points->pGLFinish;
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
@@ -1705,6 +1768,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLCreateProgram              = entry_points->pGLCreateProgram;
             new_program_ptr->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
             new_program_ptr->pGLDetachShader               = entry_points->pGLDetachShader;
+            new_program_ptr->pGLFinish                     = entry_points->pGLFinish;
             new_program_ptr->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
             new_program_ptr->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             new_program_ptr->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
@@ -2026,6 +2090,7 @@ PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program  
     return result;
 }
 
+
 /** Please see header for specification */
 PUBLIC bool raGL_program_link(raGL_program program)
 {
@@ -2307,6 +2372,14 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_
             entrypoints_ptr->pGLUniformBlockBinding(program_ptr->id,
                                                     binding_ptr->block_index,
                                                     binding_ptr->indexed_bp);
+        }
+
+        {
+            raGL_sync new_sync = raGL_sync_create();
+
+            raGL_backend_enqueue_sync(new_sync);
+
+            raGL_sync_release(new_sync);
         }
     }
 end:
