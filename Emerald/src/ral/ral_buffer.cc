@@ -59,7 +59,8 @@ typedef struct _ral_buffer
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    buffer,
                                                 uint32_t                      n_clear_ops,
-                                                ral_buffer_clear_region_info* clear_ops)
+                                                ral_buffer_clear_region_info* clear_ops,
+                                                bool                          sync_other_contexts)
 {
     _ral_buffer*                         buffer_ptr   = (_ral_buffer*) buffer;
     ral_buffer_clear_region_callback_arg callback_arg;
@@ -91,9 +92,10 @@ PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    bu
 
     /* Convert input data to a callback argument and send a notification, so that active rendering contexts
      * can handle the request. */
-    callback_arg.buffer      = buffer;
-    callback_arg.clear_ops   = clear_ops;
-    callback_arg.n_clear_ops = n_clear_ops;
+    callback_arg.buffer              = buffer;
+    callback_arg.clear_ops           = clear_ops;
+    callback_arg.n_clear_ops         = n_clear_ops;
+    callback_arg.sync_other_contexts = sync_other_contexts;
 
     for (uint32_t n_clear_op = 0;
                   n_clear_op < n_clear_ops;
@@ -117,7 +119,8 @@ end:
 PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                      src_buffer,
                                                   ral_buffer                      dst_buffer,
                                                   uint32_t                        n_copy_ops,
-                                                  ral_buffer_copy_to_buffer_info* copy_ops)
+                                                  ral_buffer_copy_to_buffer_info* copy_ops,
+                                                  bool                            sync_other_contexts)
 {
     ral_buffer_copy_to_buffer_callback_arg callback_arg;
     _ral_buffer*                           dst_buffer_ptr = (_ral_buffer*) dst_buffer;
@@ -150,10 +153,11 @@ PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                    
 
     /* Convert input data to a callback argument and send a notification, so that active rendering contexts
      * can handle the request. */
-    callback_arg.copy_ops   = copy_ops;
-    callback_arg.dst_buffer = dst_buffer;
-    callback_arg.n_copy_ops = n_copy_ops;
-    callback_arg.src_buffer = src_buffer;
+    callback_arg.copy_ops            = copy_ops;
+    callback_arg.dst_buffer          = dst_buffer;
+    callback_arg.n_copy_ops          = n_copy_ops;
+    callback_arg.src_buffer          = src_buffer;
+    callback_arg.sync_other_contexts = sync_other_contexts;
 
     for (uint32_t n_copy_op = 0;
                   n_copy_op < n_copy_ops;
@@ -351,7 +355,8 @@ PUBLIC void ral_buffer_release(ral_buffer& buffer)
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
                                                                uint32_t                               n_updates,
-                                                               ral_buffer_client_sourced_update_info* updates)
+                                                               ral_buffer_client_sourced_update_info* updates,
+                                                               bool                                   sync_other_contexts)
 {
     _ral_buffer*                                       buffer_ptr = (_ral_buffer*) buffer;
     ral_buffer_client_sourced_update_info_callback_arg callback_arg;
@@ -383,9 +388,10 @@ PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer       
 
     /* Convert input data to a callback argument and send a notification, so that active rendering contexts
      * can handle the request. */
-    callback_arg.buffer    = buffer;
-    callback_arg.n_updates = n_updates;
-    callback_arg.updates   = updates;
+    callback_arg.buffer              = buffer;
+    callback_arg.n_updates           = n_updates;
+    callback_arg.sync_other_contexts = sync_other_contexts;
+    callback_arg.updates             = updates;
 
     for (uint32_t n_update = 0;
                   n_update < n_updates;

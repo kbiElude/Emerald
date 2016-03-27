@@ -881,7 +881,8 @@ PRIVATE void _raGL_backend_on_buffer_to_buffer_copy_request(const void* callback
         raGL_buffer_copy_buffer_to_buffer(dst_buffer_raGL,
                                           src_buffer_raGL,
                                           callback_arg_ptr->n_copy_ops,
-                                          callback_arg_ptr->copy_ops);
+                                          callback_arg_ptr->copy_ops,
+                                          callback_arg_ptr->sync_other_contexts);
     }
 }
 
@@ -911,7 +912,8 @@ PRIVATE void _raGL_backend_on_buffer_clear_region_request(const void* callback_a
     {
         raGL_buffer_clear_region(buffer_raGL,
                                  callback_arg_ptr->n_clear_ops,
-                                 callback_arg_ptr->clear_ops);
+                                 callback_arg_ptr->clear_ops,
+                                 callback_arg_ptr->sync_other_contexts);
     }
 }
 
@@ -946,7 +948,8 @@ PRIVATE void _raGL_backend_on_buffer_client_memory_sourced_update_request(const 
     {
         raGL_buffer_update_regions_with_client_memory(buffer_raGL,
                                                       callback_arg_ptr->n_updates,
-                                                      callback_arg_ptr->updates);
+                                                      callback_arg_ptr->updates,
+                                                      callback_arg_ptr->sync_other_contexts);
     }
 }
 

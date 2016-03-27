@@ -482,7 +482,8 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
 
             ral_buffer_set_data_from_client_memory(mesh_box->arrays_bo,
                                                    sizeof(arrays_bo_updates) / sizeof(arrays_bo_updates[0]),
-                                                   arrays_bo_updates);
+                                                   arrays_bo_updates,
+                                                   true /* sync_other_contexts */);
 
             /* Fine to release the buffers now */
             delete [] normals;
@@ -527,7 +528,8 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
 
         ral_buffer_set_data_from_client_memory(mesh_box->elements_bo,
                                                sizeof(elements_update_info) / sizeof(elements_update_info[0]),
-                                               elements_update_info);
+                                               elements_update_info,
+                                               true /* sync_other_contexts */);
     } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
 
     /* Update "number of points" to a value that will make sense to end-user */

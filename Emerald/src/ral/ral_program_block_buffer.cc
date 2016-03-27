@@ -737,7 +737,8 @@ PUBLIC EMERALD_API void ral_program_block_buffer_sync(ral_program_block_buffer b
 
     ral_buffer_set_data_from_client_memory(block_buffer_ptr->buffer_ral,
                                            1, /* n_updates */
-                                          &bo_update_info);
+                                          &bo_update_info,
+                                           false /* sync_other_contexts */); /* NOTE: in the future, we may need to make this arg value customizable */
 
 #if 0
     if (block_ptr->is_intel_driver)

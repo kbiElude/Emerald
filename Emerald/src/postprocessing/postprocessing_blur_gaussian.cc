@@ -643,7 +643,8 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
 
     ral_buffer_set_data_from_client_memory(instance_ptr->coeff_bo,
                                            1, /* n_updates */
-                                          &coeff_bo_update);
+                                          &coeff_bo_update,
+                                           true /* sync_other_contexts */);
 
     /* Set up the PO */
     ral_shader result_shaders[2] =
@@ -834,7 +835,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_d
 
     ral_buffer_set_data_from_client_memory(gaussian_ptr->other_data_bo,
                                            1, /* n_updates */
-                                           &other_data_bo_update);
+                                          &other_data_bo_update,
+                                           false /* sync_otyher_contexts */);
 
     gaussian_ptr->other_data_bo_cached_value = new_other_data_cached_value;
 }
@@ -1293,7 +1295,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         ral_buffer_copy_to_buffer(blur_ptr->other_data_bo, /* src_buffer */
                                   blur_ptr->other_data_bo, /* dst_buffer */
                                   1,
-                                 &copy_op_per_layer);
+                                 &copy_op_per_layer,
+                                  false /* sync_other_contexts */);
 
         entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                             COEFFS_DATA_UB_BP,
@@ -1438,7 +1441,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             ral_buffer_copy_to_buffer(blur_ptr->other_data_bo, /* src_buffer */
                                       blur_ptr->other_data_bo, /* dst_buffer */
                                       1,
-                                     &copy_op_frac);
+                                     &copy_op_frac,
+                                      false /* sync_other_contexts */);
 
             /* Draw data from texture layer 1 */
             entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,

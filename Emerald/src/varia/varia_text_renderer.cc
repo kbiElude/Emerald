@@ -988,7 +988,8 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
 
     ral_buffer_set_data_from_client_memory(text_ptr->data_buffer,
                                            1, /* n_updates */
-                                          &data_update);
+                                          &data_update,
+                                           false /* sync_other_contexts */);
 }
 
 

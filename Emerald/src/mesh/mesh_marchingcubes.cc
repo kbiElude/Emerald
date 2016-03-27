@@ -1279,7 +1279,8 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 
     ral_buffer_set_data_from_client_memory(mesh_ptr->indirect_draw_call_args_bo,
                                            1,
-                                          &indirect_draw_call_args_bo_data_update);
+                                          &indirect_draw_call_args_bo_data_update,
+                                           true /* sync_other_contexts */);
 
     /* Set up a BO which is going to hold the polygonized data. At max, each cube is going to hold
      * five triangles. */
@@ -1763,7 +1764,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mes
 
         ral_buffer_clear_region(mesh_ptr->indirect_draw_call_args_bo,
                                 1, /* n_clear_ops */
-                               &clear_op);
+                               &clear_op,
+                                false /* sync_other_contexts */);
 
         /* Polygonize the scalar field */
         const raGL_program polygonizer_po_raGL    = ral_context_get_program_gl(mesh_ptr->context,

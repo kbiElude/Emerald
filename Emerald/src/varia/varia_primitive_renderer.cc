@@ -207,7 +207,8 @@ PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_contex
 
         ral_buffer_set_data_from_client_memory(renderer_ptr->bo,
                                                1, /* n_updates */
-                                              &bo_update_info);
+                                              &bo_update_info,
+                                               false /* sync_other_contexts */);
 
         system_matrix4x4_set_from_matrix4x4(renderer_ptr->bo_mvp,
                                             renderer_ptr->draw_mvp);
@@ -541,7 +542,8 @@ PRIVATE void _varia_primitive_renderer_update_bo_storage(ogl_context            
 
     ral_buffer_set_data_from_client_memory(renderer_ptr->bo,
                                            1, /* n_updates */
-                                          &bo_update_info);
+                                          &bo_update_info,
+                                           false /* sync_other_contexts */);
 
     renderer_ptr->bo_storage_size = renderer_ptr->bo_data_size;
 

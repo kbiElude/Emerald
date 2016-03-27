@@ -594,7 +594,8 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
 
     ral_buffer_set_data_from_client_memory(mesh_ptr->gl_bo,
                                            1, /* n_updates */
-                                          &bo_update_info);
+                                          &bo_update_info,
+                                           true /* sync_other_contexts */);
 
     /* Safe to release GL processed data buffer now! */
     if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )

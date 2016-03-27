@@ -190,7 +190,8 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
 
             ral_buffer_set_data_from_client_memory(mesh_sphere->arrays_bo,
                                                    1, /* n_updates */
-                                                  &arrays_update_info);
+                                                  &arrays_update_info,
+                                                   true /* sync_other_contexts */);
 
             /* Fine to release the buffers now, unless the caller has requested otherwise */
             if (!(mesh_sphere->creation_bitmask & DATA_RAW))

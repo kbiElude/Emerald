@@ -32,12 +32,14 @@ typedef struct ral_buffer_clear_region_callback_arg
     ral_buffer                          buffer;
     const ral_buffer_clear_region_info* clear_ops;
     uint32_t                            n_clear_ops;
+    bool                                sync_other_contexts;
 
     ral_buffer_clear_region_callback_arg()
     {
-        buffer      = NULL;
-        clear_ops   = NULL;
-        n_clear_ops = 0;
+        buffer              = NULL;
+        clear_ops           = NULL;
+        n_clear_ops         = 0;
+        sync_other_contexts = false;
     }
 } ral_buffer_clear_region_callback_arg;
 
@@ -45,13 +47,15 @@ typedef struct ral_buffer_client_sourced_update_info_callback_arg
 {
     ral_buffer                                   buffer;
     uint32_t                                     n_updates;
+    bool                                         sync_other_contexts;
     const ral_buffer_client_sourced_update_info* updates;
 
     ral_buffer_client_sourced_update_info_callback_arg()
     {
-        buffer    = NULL;
-        n_updates = 0;
-        updates   = NULL;
+        buffer              = NULL;
+        n_updates           = 0;
+        sync_other_contexts = false;
+        updates             = NULL;
     }
 } ral_buffer_client_sourced_update_info_callback_arg;
 
@@ -60,14 +64,16 @@ typedef struct ral_buffer_copy_to_buffer_callback_arg
     ral_buffer_copy_to_buffer_info* copy_ops;
     ral_buffer                      dst_buffer;
     uint32_t                        n_copy_ops;
+    bool                            sync_other_contexts;
     ral_buffer                      src_buffer;
 
     ral_buffer_copy_to_buffer_callback_arg()
     {
-        copy_ops   = NULL;
-        dst_buffer = NULL;
-        n_copy_ops = 0;
-        src_buffer = NULL;
+        copy_ops            = NULL;
+        dst_buffer          = NULL;
+        n_copy_ops          = 0;
+        sync_other_contexts = false;
+        src_buffer          = NULL;
     }
 } ral_buffer_copy_to_buffer_callback_arg;
 
@@ -105,13 +111,15 @@ typedef enum
 /** TODO */
 PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    buffer,
                                                 uint32_t                      n_clear_ops,
-                                                ral_buffer_clear_region_info* clear_ops);
+                                                ral_buffer_clear_region_info* clear_ops,
+                                                bool                          sync_other_contexts);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                      src_buffer,
                                                   ral_buffer                      dst_buffer,
                                                   uint32_t                        n_copy_ops,
-                                                  ral_buffer_copy_to_buffer_info* copy_ops);
+                                                  ral_buffer_copy_to_buffer_info* copy_ops,
+                                                  bool                            sync_other_contexts);
 
 /** TODO */
 PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
@@ -135,5 +143,6 @@ PUBLIC void ral_buffer_release(ral_buffer& buffer);
 /** TODO */
 PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
                                                                uint32_t                               n_updates,
-                                                               ral_buffer_client_sourced_update_info* updates);
+                                                               ral_buffer_client_sourced_update_info* updates,
+                                                               bool                                   sync_other_contexts);
 #endif /* RAL_BUFFER_H */

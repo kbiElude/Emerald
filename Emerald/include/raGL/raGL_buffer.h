@@ -23,13 +23,15 @@ typedef enum
 /** TODO */
 PUBLIC void raGL_buffer_clear_region(raGL_buffer                         buffer_raGL,
                                      uint32_t                            n_clear_ops,
-                                     const ral_buffer_clear_region_info* clear_ops);
+                                     const ral_buffer_clear_region_info* clear_ops,
+                                     bool                                sync_other_contexts);
 
 /** TODO */
 PUBLIC void raGL_buffer_copy_buffer_to_buffer(raGL_buffer                           dst_buffer_raGL,
                                               raGL_buffer                           src_buffer_raGL,
                                               uint32_t                              n_copy_ops,
-                                              const ral_buffer_copy_to_buffer_info* copy_ops);
+                                              const ral_buffer_copy_to_buffer_info* copy_ops,
+                                              bool                                  sync_other_contexts);
 
 /** TODO */
 PUBLIC raGL_buffer raGL_buffer_create(ogl_context           context,
@@ -57,6 +59,7 @@ PUBLIC void raGL_buffer_release(raGL_buffer buffer);
 /** TODO */
 PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                  buffer,
                                                           uint32_t                                     n_updates,
-                                                          const ral_buffer_client_sourced_update_info* updates);
+                                                          const ral_buffer_client_sourced_update_info* updates,
+                                                          bool                                         sync_other_contexts);
 
 #endif /* RAGL_BUFFER_H */

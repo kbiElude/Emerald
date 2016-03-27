@@ -95,7 +95,8 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
 
     ral_buffer_set_data_from_client_memory(mesh_circle_ptr->arrays_bo,
                                            1, /* n_updates */
-                                          &arrays_bo_update_info);
+                                          &arrays_bo_update_info,
+                                           true /* sync_other_contexts */);
 
     /* Safe to release the data buffer at this point */
     delete [] data_ptr;

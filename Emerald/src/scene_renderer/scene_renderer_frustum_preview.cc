@@ -797,7 +797,8 @@ PRIVATE void _scene_renderer_frustum_preview_update_data_bo_buffer(_scene_render
 
     ral_buffer_set_data_from_client_memory(preview_ptr->data_bo,
                                            1, /* n_updates */
-                                          &data_bo_update_info);
+                                          &data_bo_update_info,
+                                           false /* sync_other_contexts */);
 
     preview_ptr->data_bo_buffer_last_update_time = frame_time;
 
