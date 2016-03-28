@@ -469,11 +469,12 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
             arrays_bo_triangles_update_info.data_size    = mesh_box->arrays_bo_normals_offset;
             arrays_bo_triangles_update_info.start_offset = 0;
 
-            ral_buffer_client_sourced_update_info arrays_bo_updates[2] =
-            {
-                arrays_bo_triangles_update_info,
-                arrays_bo_normals_update_info
-            };
+            std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > arrays_bo_updates;
+
+            arrays_bo_updates.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&arrays_bo_triangles_update_info,
+                                                                                               NullDeleter<ral_buffer_client_sourced_update_info>() ));
+            arrays_bo_updates.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&arrays_bo_normals_update_info,
+                                                                                               NullDeleter<ral_buffer_client_sourced_update_info>() ));
 
             ral_context_create_buffers(mesh_box->context,
                                        1, /* n_buffers */
@@ -481,9 +482,9 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
                                       &mesh_box->arrays_bo);
 
             ral_buffer_set_data_from_client_memory(mesh_box->arrays_bo,
-                                                   sizeof(arrays_bo_updates) / sizeof(arrays_bo_updates[0]),
                                                    arrays_bo_updates,
-                                                   true /* sync_other_contexts */);
+                                                   false, /* async               */
+                                                   true   /* sync_other_contexts */);
 
             /* Fine to release the buffers now */
             delete [] normals;
@@ -496,8 +497,9 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
         uint32_t ordered_normals_size = n_ordered_indexes * 3 * sizeof(GLfloat);
 
         /* Set offsets. */
-        ral_buffer_create_info                elements_create_info;
-        ral_buffer_client_sourced_update_info elements_update_info[3];
+        ral_buffer_create_info                                                elements_create_info;
+        ral_buffer_client_sourced_update_info                                 elements_update_info[3];
+        std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info > > elements_update_info_ptrs;
 
         elements_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
         elements_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
@@ -526,10 +528,17 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context,
         elements_update_info[2].data_size    = ordered_normals_size;
         elements_update_info[2].start_offset = mesh_box->elements_bo_normals_offset;
 
+        elements_update_info_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(elements_update_info + 0,
+                                                                                                   NullDeleter<ral_buffer_client_sourced_update_info>() ));
+        elements_update_info_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(elements_update_info + 1,
+                                                                                                   NullDeleter<ral_buffer_client_sourced_update_info>() ));
+        elements_update_info_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(elements_update_info + 2,
+                                                                                                   NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
         ral_buffer_set_data_from_client_memory(mesh_box->elements_bo,
-                                               sizeof(elements_update_info) / sizeof(elements_update_info[0]),
-                                               elements_update_info,
-                                               true /* sync_other_contexts */);
+                                               elements_update_info_ptrs,
+                                               false, /* async               */
+                                               true   /* sync_other_contexts */);
     } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
 
     /* Update "number of points" to a value that will make sense to end-user */

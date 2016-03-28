@@ -22,11 +22,6 @@ typedef enum
 
 
 /** TODO */
-PUBLIC bool raGL_backend_get_buffer(void*      backend,
-                                    ral_buffer buffer_ral,
-                                    void**     out_buffer_raGL_ptr);
-
-/** TODO */
 PUBLIC raGL_backend raGL_backend_create(ral_context               context,
                                         system_hashed_ansi_string name,
                                         ral_backend_type          type);
@@ -47,6 +42,11 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context,
  *
  **/
 PUBLIC void raGL_backend_enqueue_sync(raGL_sync sync);
+
+/** TODO */
+PUBLIC bool raGL_backend_get_buffer(void*      backend,
+                                    ral_buffer buffer_ral,
+                                    void**     out_buffer_raGL_ptr);
 
 /** TODO */
 PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 backend,

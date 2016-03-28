@@ -199,16 +199,20 @@ PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_contex
     if (!system_matrix4x4_is_equal(renderer_ptr->bo_mvp,
                                    renderer_ptr->draw_mvp) )
     {
-        ral_buffer_client_sourced_update_info bo_update_info;
+        ral_buffer_client_sourced_update_info                                bo_update_info;
+        std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
 
         bo_update_info.data         = system_matrix4x4_get_row_major_data(renderer_ptr->draw_mvp);
         bo_update_info.data_size    = sizeof(float) * 16;
         bo_update_info.start_offset = renderer_ptr->bo_mvp_offset;
 
+        bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&bo_update_info,
+                                                                                        NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
         ral_buffer_set_data_from_client_memory(renderer_ptr->bo,
-                                               1, /* n_updates */
-                                              &bo_update_info,
-                                               false /* sync_other_contexts */);
+                                               bo_update_ptrs,
+                                               false, /* async               */
+                                               false  /* sync_other_contexts */);
 
         system_matrix4x4_set_from_matrix4x4(renderer_ptr->bo_mvp,
                                             renderer_ptr->draw_mvp);
@@ -540,10 +544,15 @@ PRIVATE void _varia_primitive_renderer_update_bo_storage(ogl_context            
     bo_update_info.data_size    = renderer_ptr->bo_data_size;
     bo_update_info.start_offset = 0;
 
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_updates;
+
+    bo_updates.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&bo_update_info,
+                                                                                NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
     ral_buffer_set_data_from_client_memory(renderer_ptr->bo,
-                                           1, /* n_updates */
-                                          &bo_update_info,
-                                           false /* sync_other_contexts */);
+                                           bo_updates,
+                                           false, /* async               */
+                                           false  /* sync_other_contexts */);
 
     renderer_ptr->bo_storage_size = renderer_ptr->bo_data_size;
 

@@ -1,10 +1,11 @@
 
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
@@ -12,6 +13,7 @@
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_sampler.h"
+#include "ral/ral_scheduler.h"
 #include "ral/ral_texture.h"
 #include "sh/sh_types.h"
 #include "system/system_bst.h"
@@ -234,8 +236,6 @@ PRIVATE void               _mesh_deinit_mesh_layer                       (const 
 PRIVATE void               _mesh_deinit_mesh_layer_pass                  (const _mesh*                            mesh_ptr,
                                                                                 _mesh_layer_pass*                 pass_ptr,
                                                                                 bool                              do_full_deinit);
-PRIVATE void               _mesh_fill_gl_buffers_renderer_callback       (      ogl_context                       context,
-                                                                                void*                             arg);
 PRIVATE void               _mesh_get_amount_of_stream_data_sets          (      _mesh*                            mesh_ptr,
                                                                                 mesh_layer_data_stream_type       stream_type,
                                                                                 mesh_layer_id                     layer_id,
@@ -539,78 +539,6 @@ PRIVATE void _mesh_deinit_mesh_layer_pass(const _mesh*            mesh_ptr,
 }
 
 /** TODO */
-PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
-                                                     void*        arg)
-{
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
-    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
-    const ogl_context_gl_limits*                              limits_ptr       = NULL;
-    _mesh*                                                    mesh_ptr         = (_mesh*) arg;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entry_points);
-
-    /* Retrieve BO region to hold the data */
-    if (mesh_ptr->gl_bo != NULL)
-    {
-        ral_context_delete_objects(mesh_ptr->ral_context,
-                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                   1, /* n_objects */
-                                   (const void**) &mesh_ptr->gl_bo);
-
-        mesh_ptr->gl_bo = NULL;
-    }
-
-    /* Copy the data to VRAM.
-     *
-     * NOTE: For normals preview renderer, we need to align
-     *       mesh data on SSBO boundary.
-     */
-    ral_buffer_create_info                bo_create_info;
-    ral_buffer_client_sourced_update_info bo_update_info;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
-    bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-    bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
-    bo_create_info.size             = mesh_ptr->gl_processed_data_size;
-    bo_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    bo_create_info.user_queue_bits  = 0xFFFFFFFF;
-
-    ral_context_create_buffers(mesh_ptr->ral_context,
-                               1, /* n_buffers */
-                              &bo_create_info,
-                              &mesh_ptr->gl_bo);
-
-    bo_update_info.data         = mesh_ptr->gl_processed_data;
-    bo_update_info.data_size    = mesh_ptr->gl_processed_data_size;
-    bo_update_info.start_offset = 0;
-
-    ral_buffer_set_data_from_client_memory(mesh_ptr->gl_bo,
-                                           1, /* n_updates */
-                                          &bo_update_info,
-                                           true /* sync_other_contexts */);
-
-    /* Safe to release GL processed data buffer now! */
-    if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )
-    {
-        delete [] mesh_ptr->gl_processed_data;
-
-        mesh_ptr->gl_processed_data = NULL;
-    }
-
-    /* Mark mesh as GL-initialized */
-    mesh_ptr->gl_thread_fill_gl_buffers_call_needed = false;
-    mesh_ptr->gl_storage_initialized                = true;
-}
-
-/** TODO */
 PRIVATE void _mesh_get_amount_of_stream_data_sets(_mesh*                      mesh_ptr,
                                                   mesh_layer_data_stream_type stream_type,
                                                   mesh_layer_id               layer_id,
@@ -661,6 +589,9 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(_mesh*                      me
                               layer_id);
         }
     }
+
+    /* Update modification timestamp */
+    mesh_ptr->timestamp_last_modified = system_time_now();
 }
 
 /** TODO */
@@ -815,7 +746,6 @@ PRIVATE void _mesh_get_stream_data_properties(_mesh*                            
         case MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS:
         {
             result_data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT;
-            // result_n_components           = mesh_ptr->n_sh_bands * mesh_ptr->n_sh_bands * mesh_ptr->n_sh_components;
             result_required_bit_alignment = (stream_type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS) ? 96 : 128;
 
             break;
@@ -1287,8 +1217,23 @@ PRIVATE void _mesh_material_setting_changed(const void* callback_data,
 
         /* Update GL blob */
         mesh_fill_gl_buffers( (mesh) mesh_ptr,
-                             mesh_ptr->ral_context);
+                             mesh_ptr->ral_context,
+                             false /* async */);
     } /* if (needs_normals_data_regen) */
+}
+
+/** TODO */
+PRIVATE void _mesh_on_fill_gl_op_finished(ral_buffer_client_sourced_update_info* callback_info_ptr)
+{
+    _mesh* mesh_ptr = (_mesh*) callback_info_ptr->destruction_callback_user_arg;
+
+    /* Safe to release GL processed data buffer now! */
+    if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )
+    {
+        delete [] mesh_ptr->gl_processed_data;
+
+        mesh_ptr->gl_processed_data = NULL;
+    }
 }
 
 /** TODO */
@@ -2751,10 +2696,14 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
 /* Please see header for specification */
 PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
-                                             ral_context context)
+                                             ral_context context,
+                                             bool        async)
 {
-    _mesh* mesh_ptr = (_mesh*) instance;
-    bool   result   = false;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    const ogl_context_gl_limits*                              limits_ptr       = NULL;
+    _mesh*                                                    mesh_ptr         = (_mesh*) instance;
+    bool                                                      result           = false;
 
     ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_REGULAR,
                       "Entry-point is only compatible with regular meshes only.");
@@ -2778,22 +2727,82 @@ PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
                           "Inter-context sharing of meshes is not supported");
     }
 
-    if (!ogl_context_request_callback_from_context_thread(mesh_ptr->gl_context,
-                                                          _mesh_fill_gl_buffers_renderer_callback,
-                                                          mesh_ptr,
-                                                          false,   /* swap_buffers_afterward */
-                                                          OGL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED) )
+    ogl_context_get_property(mesh_ptr->gl_context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+    ogl_context_get_property(mesh_ptr->gl_context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entry_points);
+    ogl_context_get_property(mesh_ptr->gl_context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
+
+    /* Retrieve BO region to hold the data */
+    if (mesh_ptr->gl_bo != NULL)
     {
-        /* Rendering thread unavailable - postpone the upload process until the draw call time. */
-        mesh_ptr->gl_thread_fill_gl_buffers_call_needed = true;
+        ral_context_delete_objects(mesh_ptr->ral_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   (const void**) &mesh_ptr->gl_bo);
+
+        mesh_ptr->gl_bo = NULL;
+    }
+
+    /* Copy the data to VRAM.
+     *
+     * NOTE: For normals preview renderer, we need to align
+     *       mesh data on SSBO boundary.
+     */
+    ral_buffer_create_info                                               bo_create_info;
+    ral_buffer_client_sourced_update_info                                bo_update_info;
+    ral_buffer_client_sourced_update_info*                               bo_update_info_ptr = nullptr;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_info_ptrs;
+    const bool                                                           is_async = ((mesh_ptr->creation_flags & MESH_CREATION_FLAGS_LOAD_ASYNC) != 0);
+
+    if (is_async)
+    {
+        bo_update_info_ptr = new ral_buffer_client_sourced_update_info;
+
+        bo_update_info_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(bo_update_info_ptr));
     }
     else
     {
-        result = true;
+        bo_update_info_ptr = &bo_update_info;
 
-        /* Update modification timestamp */
-        mesh_ptr->timestamp_last_modified = system_time_now();
+        bo_update_info_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(bo_update_info_ptr,
+                                                                                             NullDeleter<ral_buffer_client_sourced_update_info>() ));
     }
+
+    bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+    bo_create_info.size             = mesh_ptr->gl_processed_data_size;
+    bo_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT | RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT | RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bo_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+    ral_context_create_buffers(mesh_ptr->ral_context,
+                               1, /* n_buffers */
+                              &bo_create_info,
+                              &mesh_ptr->gl_bo);
+
+    bo_update_info_ptr->data                          = mesh_ptr->gl_processed_data;
+    bo_update_info_ptr->data_size                     = mesh_ptr->gl_processed_data_size;
+    bo_update_info_ptr->destruction_callback_user_arg = mesh_ptr;
+    bo_update_info_ptr->pfn_destruction_callback_proc = _mesh_on_fill_gl_op_finished;
+    bo_update_info_ptr->start_offset                  = 0;
+
+    ral_buffer_set_data_from_client_memory(mesh_ptr->gl_bo,
+                                           bo_update_info_ptrs,
+                                           is_async,
+                                           true /* sync_other_contexts */);
+
+    if (!is_async)
+    {
+        _mesh_on_fill_gl_op_finished(bo_update_info_ptr);
+    }
+
+    /* Mark mesh as GL-initialized */
+    mesh_ptr->gl_thread_fill_gl_buffers_call_needed = false;
+    mesh_ptr->gl_storage_initialized                = true;
 
     return result;
 }
@@ -3849,7 +3858,8 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
                 if (!mesh_ptr->gl_storage_initialized)
                 {
                     mesh_fill_gl_buffers(instance,
-                                         mesh_ptr->ral_context);
+                                         mesh_ptr->ral_context,
+                                         false /* async */);
                 }
 
                 ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized,
@@ -4533,7 +4543,8 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(ral_context            context
 
         /* Generate GL buffers off the data we loaded */
         mesh_fill_gl_buffers(result,
-                             mesh_ptr->ral_context);
+                             mesh_ptr->ral_context,
+                             (flags & MESH_CREATION_FLAGS_LOAD_ASYNC) != 0);
     } /* if (!is_mesh_instantiated) */
     else
     {

@@ -1249,8 +1249,9 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
         0, /* first                                        */
         0  /* baseInstance                                 */
     };
-    ral_buffer_create_info                indirect_draw_call_args_bo_create_info;
-    ral_buffer_client_sourced_update_info indirect_draw_call_args_bo_data_update;
+    ral_buffer_create_info                                               indirect_draw_call_args_bo_create_info;
+    ral_buffer_client_sourced_update_info                                indirect_draw_call_args_bo_data_update;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > indirect_draw_call_args_bo_data_updates;
 
     ASSERT_DEBUG_SYNC(sizeof(indirect_draw_call_args) == sizeof(unsigned int) * 4,
                       "Invalid invalid draw call arg structure instance size");
@@ -1277,10 +1278,13 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     indirect_draw_call_args_bo_data_update.data_size    = indirect_draw_call_args_bo_create_info.size;
     indirect_draw_call_args_bo_data_update.start_offset = 0;
 
+    indirect_draw_call_args_bo_data_updates.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&indirect_draw_call_args_bo_data_update,
+                                                                                                             NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
     ral_buffer_set_data_from_client_memory(mesh_ptr->indirect_draw_call_args_bo,
-                                           1,
-                                          &indirect_draw_call_args_bo_data_update,
-                                           true /* sync_other_contexts */);
+                                           indirect_draw_call_args_bo_data_updates,
+                                           false, /* async               */
+                                           true   /* sync_other_contexts */);
 
     /* Set up a BO which is going to hold the polygonized data. At max, each cube is going to hold
      * five triangles. */

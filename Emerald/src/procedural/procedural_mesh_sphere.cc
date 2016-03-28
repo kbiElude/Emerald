@@ -166,8 +166,9 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
             } /* for (uint32_t n_index = 0; n_index < n_ordered_indexes; ++n_index)*/
 
             /* Store the data. */
-            ral_buffer_create_info                arrays_create_info;
-            ral_buffer_client_sourced_update_info arrays_update_info;
+            ral_buffer_create_info                                               arrays_create_info;
+            ral_buffer_client_sourced_update_info                                arrays_update_info;
+            std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > arrays_update_info_ptrs;
 
             mesh_sphere->n_triangles  = n_triangles;
 
@@ -183,15 +184,18 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
             arrays_update_info.data_size    = arrays_create_info.size;
             arrays_update_info.start_offset = 0;
 
+            arrays_update_info_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&arrays_update_info,
+                                                                                                     NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
             ral_context_create_buffers(mesh_sphere->context,
                                        1, /* n_buffers */
                                        &arrays_create_info,
                                       &mesh_sphere->arrays_bo);
 
             ral_buffer_set_data_from_client_memory(mesh_sphere->arrays_bo,
-                                                   1, /* n_updates */
-                                                  &arrays_update_info,
-                                                   true /* sync_other_contexts */);
+                                                   arrays_update_info_ptrs,
+                                                   false, /* async               */
+                                                   true   /* sync_other_contexts */);
 
             /* Fine to release the buffers now, unless the caller has requested otherwise */
             if (!(mesh_sphere->creation_bitmask & DATA_RAW))

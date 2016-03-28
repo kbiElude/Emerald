@@ -310,8 +310,7 @@ typedef int mesh_creation_flags;
  */
 const int MESH_CREATION_FLAGS_SAVE_SUPPORT              = 0x1;
 const int MESH_CREATION_FLAGS_KDTREE_GENERATION_SUPPORT = 0x2;
-//const int MESH_CREATION_FLAGS_MERGE_SUPPORT             = 0x4; <- support for merging was removed in Nov 2014.
-
+const int MESH_CREATION_FLAGS_LOAD_ASYNC                = 0x4;
 
 typedef uint32_t mesh_layer_id;
 typedef uint32_t mesh_layer_pass_id;

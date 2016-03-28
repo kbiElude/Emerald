@@ -7,6 +7,7 @@
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_buffers.h"
+#include "raGL/raGL_sync.h"
 #include "ral/ral_buffer.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_types.h"
@@ -954,6 +955,14 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
         ASSERT_DEBUG_SYNC(result_id     != 0 &&
                           result_offset != -1,
                           "Sanity check failed");
+
+        {
+            raGL_sync new_sync = raGL_sync_create();
+
+            raGL_backend_enqueue_sync(new_sync);
+
+            raGL_sync_release(new_sync);
+        }
 
         *out_buffer_ptr = raGL_buffer_create(buffers_ptr->context,
                                              result_id,

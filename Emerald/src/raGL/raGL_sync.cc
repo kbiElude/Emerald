@@ -36,6 +36,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sync_release(void* sync)
 {
     ogl_context                       current_context = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    bool                              is_nv_driver    = false;
     _raGL_sync*                       sync_ptr        = (_raGL_sync*) sync;
 
     ASSERT_DEBUG_SYNC(current_context != NULL,
@@ -45,7 +46,25 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sync_release(void* sync)
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
-    entrypoints_ptr->pGLDeleteSync(sync_ptr->sync);
+    /* NOTE: There appears to be a bug in NV driver where issuing a wait op against a fence sync does not increase
+     *       the ref counter of the sync object, later to be decremented after the recorded commands finish executing.
+     *       This, in turn, causes:
+     *
+     *       a) Hang-ups if glWaitSync() is issued in raGL_sync_wait_gpu() :( That's why we issue glClientWaitSync()
+     *          ops there for NV platforms.
+     *       b) Visual glitches if glClientWaitSync() is used instead.
+     *
+     *       Since none of the two is acceptable, we need to leak the handle :/
+     **/
+    ogl_context_get_property(current_context,
+                             OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
+                            &is_nv_driver);
+
+    if (!is_nv_driver)
+    {
+        entrypoints_ptr->pGLDeleteSync(sync_ptr->sync);
+    }
+
     sync_ptr = nullptr;
 }
 
@@ -75,8 +94,6 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create()
 
     ASSERT_DEBUG_SYNC(new_handle != NULL,
                       "GL returned a NULL GLsync object");
-
-    entrypoints_ptr->pGLFlush();
 
     new_sync_ptr = new (std::nothrow) _raGL_sync(parent_backend,
                                                  new_handle);
@@ -128,6 +145,7 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_sync_wait_gpu(raGL_sync sync)
 {
     ogl_context                       current_context = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    bool                              is_nv_driver    = false;
     _raGL_sync*                       sync_ptr        = (_raGL_sync*) sync;
 
     ASSERT_DEBUG_SYNC(current_context != NULL,
@@ -136,8 +154,21 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_sync_wait_gpu(raGL_sync sync)
     ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
+    ogl_context_get_property(current_context,
+                             OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
+                            &is_nv_driver);
 
-    entrypoints_ptr->pGLWaitSync(sync_ptr->sync,
-                                 0,
-                                 GL_TIMEOUT_IGNORED);
+    /* NOTE: See _raGL_sync_release() for more details about the workaround below. */
+    if (is_nv_driver)
+    {
+        entrypoints_ptr->pGLClientWaitSync(sync_ptr->sync,
+                                           GL_SYNC_FLUSH_COMMANDS_BIT,
+                                          ~0);
+    }
+    else
+    {
+        entrypoints_ptr->pGLWaitSync(sync_ptr->sync,
+                                     0, /* flags */
+                                     GL_TIMEOUT_IGNORED);
+    }
 }

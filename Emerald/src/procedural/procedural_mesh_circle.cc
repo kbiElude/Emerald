@@ -75,8 +75,9 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
     mesh_circle_ptr->n_vertices = n_vertices;
 
     /* Store the data in buffer memory */
-    ral_buffer_create_info                arrays_bo_create_info;
-    ral_buffer_client_sourced_update_info arrays_bo_update_info;
+    ral_buffer_client_sourced_update_info                                arrays_bo_update_info;
+    ral_buffer_create_info                                               arrays_bo_create_info;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
 
     arrays_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
     arrays_bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
@@ -88,15 +89,18 @@ PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context contex
     arrays_bo_update_info.data_size    = data_size;
     arrays_bo_update_info.start_offset = 0;
 
+    bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&arrays_bo_update_info,
+                                                                                    NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
     ral_context_create_buffers(mesh_circle_ptr->context,
                                1, /* n_buffers */
                                &arrays_bo_create_info,
                               &mesh_circle_ptr->arrays_bo);
 
     ral_buffer_set_data_from_client_memory(mesh_circle_ptr->arrays_bo,
-                                           1, /* n_updates */
-                                          &arrays_bo_update_info,
-                                           true /* sync_other_contexts */);
+                                           bo_update_ptrs,
+                                           false, /* async */
+                                           true   /* sync_other_contexts */);
 
     /* Safe to release the data buffer at this point */
     delete [] data_ptr;

@@ -1,14 +1,16 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
 #include "gfx/gfx_image.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "raGL/raGL_texture.h"
 #include "ral/ral_context.h"
+#include "ral/ral_scheduler.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -746,7 +748,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_data(_scene_multilo
                                              &mesh_gpu_id);
 
         mesh_gpu = mesh_load_with_serializer(scene_ptr->loader_ptr->context_ral,
-                                             0, /* flags */
+                                             MESH_CREATION_FLAGS_LOAD_ASYNC,
                                              scene_ptr->serializer,
                                              material_id_to_mesh_material_map,
                                              mesh_name_to_mesh_map);
@@ -1714,7 +1716,17 @@ PUBLIC EMERALD_API void scene_multiloader_release(scene_multiloader instance)
 /** Please see header for specification */
 PUBLIC EMERALD_API void scene_multiloader_wait_until_finished(scene_multiloader loader)
 {
+    ral_backend_type    backend_type;
     _scene_multiloader* loader_ptr = (_scene_multiloader*) loader;
+    ral_scheduler       scheduler  = NULL;
+
+    demo_app_get_property   (DEMO_APP_PROPERTY_GPU_SCHEDULER,
+                            &scheduler);
+    ral_context_get_property(loader_ptr->context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
     system_barrier_wait_until_signalled(loader_ptr->barrier_all_scenes_loaded);
+    ral_scheduler_finish               (scheduler,
+                                        backend_type);
 }

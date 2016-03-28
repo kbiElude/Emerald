@@ -107,26 +107,28 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex    
     /* Whatever the requested access is, ignore multiple lock requests if the calling thread owns the mtuex for write access */
     bool can_continue = true;
 
-    if (access_type                         == ACCESS_READ        &&
-        rw_mutex_ptr->write_owner_thread_id == current_thread_id)
+    system_critical_section_enter(rw_mutex_ptr->cs_write);
     {
-        /* Ignore the request - the caller already owns a write lock. */
-        rw_mutex_ptr->n_read_locks++;
+        if (access_type                         == ACCESS_READ        &&
+            rw_mutex_ptr->write_owner_thread_id == current_thread_id)
+        {
+            /* Ignore the request - the caller already owns a write lock. */
+            rw_mutex_ptr->n_read_locks++;
 
-        return;
-    }
+            system_critical_section_leave(rw_mutex_ptr->cs_write);
+            return;
+        }
 
-    if (access_type                         == ACCESS_WRITE       &&
-        rw_mutex_ptr->write_owner_thread_id == current_thread_id)
-    {
-        system_critical_section_enter(rw_mutex_ptr->cs_write);
+        if (access_type                         == ACCESS_WRITE       &&
+            rw_mutex_ptr->write_owner_thread_id == current_thread_id)
         {
             rw_mutex_ptr->n_write_locks++;
-        }
-        system_critical_section_leave(rw_mutex_ptr->cs_write);
 
-        return;
+            system_critical_section_leave(rw_mutex_ptr->cs_write);
+            return;
+        }
     }
+    system_critical_section_leave(rw_mutex_ptr->cs_write);
 
     if (access_type == ACCESS_READ)
     {
@@ -147,16 +149,15 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex    
     }
     else
     {
-        /* Write access? Eat up all semaphore slots so that no read access request will be passed till caller is done */
         ASSERT_DEBUG_SYNC(access_type == ACCESS_WRITE,
                           "Unsupported access type requested (%d)", access_type);
 
         #ifdef _WIN32
         {
+            AcquireSRWLockExclusive(&rw_mutex_ptr->lock);
+
             system_critical_section_enter(rw_mutex_ptr->cs_write);
             {
-                AcquireSRWLockExclusive(&rw_mutex_ptr->lock);
-
                 /* At this time only this thread is accessing the descriptor */
                 rw_mutex_ptr->write_owner_thread_id = current_thread_id;
                 rw_mutex_ptr->n_write_locks         ++;

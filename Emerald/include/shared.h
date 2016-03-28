@@ -181,4 +181,13 @@
     #define MAXIMUM_WAIT_OBJECTS (64)
 #endif
 
+template<typename T>
+struct NullDeleter
+{
+    void operator()(T* ptr) const
+    {
+        /* Stub */
+    }
+};
+
 #endif /* SHARED_H */

@@ -1,12 +1,13 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
+#include "system/system_read_write_mutex.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
 #include "system/system_thread_pool.h"
@@ -41,28 +42,21 @@ typedef struct _system_callback_manager_callback_subscription
 
 typedef struct _system_callback_manager_callback
 {
-    system_critical_section callback_in_progress_cs;
     uint32_t                callback_proc_data_size;
     system_resource_pool    resource_pool; /* each block is sizeof(_system_callback_manager_callback_subscription) + sizeof(callback_proc_data_size) */
     system_resizable_vector subscriptions; /* stores _system_callback_manager_callback_subscription */
+    system_read_write_mutex subscriptions_mutex;
 
     _system_callback_manager_callback()
     {
-        callback_in_progress_cs = NULL;
         callback_proc_data_size = 0;
         resource_pool           = NULL;
         subscriptions           = NULL;
+        subscriptions_mutex     = NULL;
     }
 
     ~_system_callback_manager_callback()
     {
-        if (callback_in_progress_cs != NULL)
-        {
-            system_critical_section_release(callback_in_progress_cs);
-
-            callback_in_progress_cs = NULL;
-        }
-
         if (resource_pool != NULL)
         {
             system_resource_pool_release(resource_pool);
@@ -81,6 +75,13 @@ typedef struct _system_callback_manager_callback
 
                 subscription_ptr = NULL;
             }
+        }
+
+        if (subscriptions_mutex != NULL)
+        {
+            system_read_write_mutex_release(subscriptions_mutex);
+
+            subscriptions_mutex = NULL;
         }
     }
 } _system_callback_manager_callback;
@@ -132,13 +133,13 @@ PRIVATE void _add_callback_support(system_callback_manager callback_manager,
     ASSERT_DEBUG_SYNC(descriptor_ptr->subscriptions == NULL,
                       "Subscription handler already configured");
 
-    descriptor_ptr->callback_in_progress_cs = system_critical_section_create();
     descriptor_ptr->callback_proc_data_size = callback_proc_data_size;
     descriptor_ptr->resource_pool           = system_resource_pool_create   (sizeof(_system_callback_manager_callback_subscription) + callback_proc_data_size,
                                                                              4,     /* n_elements */
                                                                              NULL,  /* init_fn */
                                                                              NULL); /* deinit_fn */
     descriptor_ptr->subscriptions           = system_resizable_vector_create(4 /* capacity */);
+    descriptor_ptr->subscriptions_mutex     = system_read_write_mutex_create();
 
     ASSERT_ALWAYS_SYNC(descriptor_ptr->resource_pool != NULL &&
                        descriptor_ptr->subscriptions != NULL,
@@ -158,11 +159,11 @@ end:
 /** TODO */
 PRIVATE void _deinit_system_callback_manager_callback(_system_callback_manager_callback& descriptor)
 {
-    if (descriptor.callback_in_progress_cs != NULL)
+    if (descriptor.subscriptions_mutex != NULL)
     {
-        system_critical_section_release(descriptor.callback_in_progress_cs);
+        system_read_write_mutex_release(descriptor.subscriptions_mutex);
 
-        descriptor.callback_in_progress_cs = NULL;
+        descriptor.subscriptions_mutex = NULL;
     }
 
     if (descriptor.resource_pool != NULL)
@@ -214,16 +215,17 @@ PUBLIC void system_callback_manager_call_back(system_callback_manager callback_m
                       "Requested callback ID is invalid");
 
     /* Issue the call-backs */
-    _system_callback_manager_callback& callback_descriptor = callback_manager_ptr->callbacks[callback_id];
+    _system_callback_manager_callback& callback = callback_manager_ptr->callbacks[callback_id];
 
-    system_critical_section_enter(callback_descriptor.callback_in_progress_cs);
+    system_read_write_mutex_lock(callback.subscriptions_mutex,
+                                 ACCESS_READ);
     {
-        if (callback_descriptor.subscriptions != NULL)
+        if (callback.subscriptions != NULL)
         {
             _system_callback_manager_callback_subscription* subscription_ptr = NULL;
             unsigned int                                    n_subscriptions  = 0;
 
-            system_resizable_vector_get_property(callback_descriptor.subscriptions,
+            system_resizable_vector_get_property(callback.subscriptions,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_subscriptions);
 
@@ -231,7 +233,7 @@ PUBLIC void system_callback_manager_call_back(system_callback_manager callback_m
                               n_subscription < n_subscriptions;
                             ++n_subscription)
             {
-                system_resizable_vector_get_element_at(callback_descriptor.subscriptions,
+                system_resizable_vector_get_element_at(callback.subscriptions,
                                                        n_subscription,
                                                       &subscription_ptr);
 
@@ -240,7 +242,7 @@ PUBLIC void system_callback_manager_call_back(system_callback_manager callback_m
                     case CALLBACK_SYNCHRONICITY_ASYNCHRONOUS:
                     {
                         /* Copy caller's data to a memory block from callback-specific resource pool */
-                        unsigned char* callback_data = (unsigned char*) system_resource_pool_get_from_pool(callback_descriptor.resource_pool);
+                        unsigned char* callback_data = (unsigned char*) system_resource_pool_get_from_pool(callback.resource_pool);
 
                         memcpy(callback_data,
                                subscription_ptr,
@@ -250,7 +252,7 @@ PUBLIC void system_callback_manager_call_back(system_callback_manager callback_m
                         {
                             memcpy(callback_data + sizeof(*subscription_ptr),
                                    callback_proc_data,
-                                   callback_descriptor.callback_proc_data_size);
+                                   callback.callback_proc_data_size);
                         }
 
                         /* Push the task to the thread pool */
@@ -281,7 +283,8 @@ PUBLIC void system_callback_manager_call_back(system_callback_manager callback_m
             } /* for (all subscriptions) */
         } /* if (callback_descriptor.subscriptions != NULL) */
     }
-    system_critical_section_leave(callback_descriptor.callback_in_progress_cs);
+    system_read_write_mutex_unlock(callback.subscriptions_mutex,
+                                   ACCESS_READ);
 }
 
 /** Please see header for spec */
@@ -391,7 +394,8 @@ PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(system_c
 
     /* Check if the requested subscription is already stored. If so, bump up its ref counter and leave.
      * Otherwise, we'll spawn a new descriptor and insert it into the map. */
-    system_critical_section_enter(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
+    system_read_write_mutex_lock(callback_manager_ptr->callbacks[callback_id].subscriptions_mutex,
+                                 ACCESS_WRITE);
     {
         uint32_t n_subscriptions = 0;
 
@@ -447,7 +451,8 @@ PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(system_c
 end:
         ;
     }
-    system_critical_section_leave(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
+    system_read_write_mutex_unlock(callback_manager_ptr->callbacks[callback_id].subscriptions_mutex,
+                                   ACCESS_WRITE);
 }
 
 /** Please see header for spec */
@@ -458,7 +463,8 @@ PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(syste
 {
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
 
-    system_critical_section_enter(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
+    system_read_write_mutex_lock(callback_manager_ptr->callbacks[callback_id].subscriptions_mutex,
+                                 ACCESS_WRITE);
     {
         /* Find the callback descriptor */
         uint32_t n_callbacks = 0;
@@ -502,5 +508,6 @@ PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(syste
             }
         } /* for (all callback descriptors) */
     }
-    system_critical_section_leave(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
+    system_read_write_mutex_unlock(callback_manager_ptr->callbacks[callback_id].subscriptions_mutex,
+                                   ACCESS_WRITE);
 }

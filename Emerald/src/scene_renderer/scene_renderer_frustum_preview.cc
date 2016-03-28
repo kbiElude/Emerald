@@ -789,16 +789,20 @@ PRIVATE void _scene_renderer_frustum_preview_update_data_bo_buffer(_scene_render
         data_size       = preview_ptr->data_bo_buffer_size - BO_DATA_VERTEX_DATA_OFFSET;
     }
 
-    ral_buffer_client_sourced_update_info data_bo_update_info;
+    ral_buffer_client_sourced_update_info                                data_bo_update_info;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > data_bo_update_info_ptrs;
 
     data_bo_update_info.data         = preview_ptr->data_bo_buffer + data_src_offset;
     data_bo_update_info.data_size    = data_size;
     data_bo_update_info.start_offset = data_dst_offset;
 
+    data_bo_update_info_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&data_bo_update_info,
+                                                                                              NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
     ral_buffer_set_data_from_client_memory(preview_ptr->data_bo,
-                                           1, /* n_updates */
-                                          &data_bo_update_info,
-                                           false /* sync_other_contexts */);
+                                           data_bo_update_info_ptrs,
+                                           false, /* async               */
+                                           false  /* sync_other_contexts */);
 
     preview_ptr->data_bo_buffer_last_update_time = frame_time;
 

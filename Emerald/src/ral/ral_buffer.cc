@@ -151,7 +151,7 @@ PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                    
         goto end;
     }
 
-    /* Convert input data to a callback argument and send a notification, so that active rendering contexts
+    /* Convert input data to a callback argument and send a notification, so that active rendering backends
      * can handle the request. */
     callback_arg.copy_ops            = copy_ops;
     callback_arg.dst_buffer          = dst_buffer;
@@ -353,10 +353,10 @@ PUBLIC void ral_buffer_release(ral_buffer& buffer)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
-                                                               uint32_t                               n_updates,
-                                                               ral_buffer_client_sourced_update_info* updates,
-                                                               bool                                   sync_other_contexts)
+PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                                                                  buffer,
+                                                               const std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> >& updates,
+                                                               bool                                                                        async,
+                                                               bool                                                                        sync_other_contexts)
 {
     _ral_buffer*                                       buffer_ptr = (_ral_buffer*) buffer;
     ral_buffer_client_sourced_update_info_callback_arg callback_arg;
@@ -371,33 +371,23 @@ PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer       
         goto end;
     }
 
-    if (n_updates == 0)
+    if (updates.size() == 0)
     {
         result = true;
 
         goto end;
     }
 
-    if (updates == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input update info array is NULL");
-
-        goto end;
-    }
-
     /* Convert input data to a callback argument and send a notification, so that active rendering contexts
      * can handle the request. */
+    callback_arg.async               = async;
     callback_arg.buffer              = buffer;
-    callback_arg.n_updates           = n_updates;
     callback_arg.sync_other_contexts = sync_other_contexts;
     callback_arg.updates             = updates;
 
-    for (uint32_t n_update = 0;
-                  n_update < n_updates;
-                ++n_update)
+    for (auto update_ptr : updates)
     {
-        updates[n_update].start_offset += buffer_ptr->start_offset;
+        update_ptr->start_offset += buffer_ptr->start_offset;
     }
 
     system_callback_manager_call_back(buffer_ptr->callback_manager,

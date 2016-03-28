@@ -43,6 +43,10 @@ typedef struct ral_scheduler_job_info
 /** TODO */
 PUBLIC ral_scheduler ral_scheduler_create();
 
+/** Blocks the calling thread until all scheduled jobs finish executing. */
+PUBLIC void ral_scheduler_finish(ral_scheduler    scheduler,
+                                 ral_backend_type backend_type);
+
 /** TODO */
 PUBLIC void ral_scheduler_free_backend_threads(ral_scheduler    scheduler,
                                                ral_backend_type backend_type);

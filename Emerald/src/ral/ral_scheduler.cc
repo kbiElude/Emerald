@@ -99,6 +99,37 @@ PUBLIC ral_scheduler ral_scheduler_create()
 }
 
 /** Please see header for specification */
+PUBLIC void ral_scheduler_finish(ral_scheduler    scheduler,
+                                 ral_backend_type backend_type)
+{
+    bool                    jobs_pending  = true;
+    _ral_scheduler*         scheduler_ptr = (_ral_scheduler*) scheduler;
+    _ral_scheduler_backend* backend_ptr   = scheduler_ptr->backends + backend_type;
+
+    while (jobs_pending)
+    {
+        uint32_t n_jobs_scheduled = 0;
+
+        system_read_write_mutex_lock(backend_ptr->jobs_mutex,
+                                     ACCESS_READ);
+        {
+            system_resizable_vector_get_property(backend_ptr->jobs,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 &n_jobs_scheduled);
+        }
+        system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
+                                       ACCESS_READ);
+
+        jobs_pending = (n_jobs_scheduled != 0);
+
+        if (jobs_pending)
+        {
+            ::Sleep(100); /* dwMilliseconds */
+        }
+    }
+}
+
+/** Please see header for specification */
 PUBLIC void ral_scheduler_free_backend_threads(ral_scheduler    scheduler,
                                                ral_backend_type backend_type)
 {

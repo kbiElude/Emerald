@@ -947,8 +947,8 @@ PRIVATE void _raGL_backend_on_buffer_client_memory_sourced_update_request(const 
     if (buffer_raGL != NULL)
     {
         raGL_buffer_update_regions_with_client_memory(buffer_raGL,
-                                                      callback_arg_ptr->n_updates,
                                                       callback_arg_ptr->updates,
+                                                      callback_arg_ptr->async,
                                                       callback_arg_ptr->sync_other_contexts);
     }
 }
@@ -1119,8 +1119,22 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            entrypoints_ptr->pGLGenSamplers(n_objects_to_initialize,
-                                            result_object_ids_ptr);
+            system_critical_section_enter(_global.rendering_cs);
+            {
+                raGL_sync new_sync;
+
+                entrypoints_ptr->pGLGenSamplers(n_objects_to_initialize,
+                                                result_object_ids_ptr);
+
+                {
+                    new_sync = raGL_sync_create();
+
+                    raGL_backend_enqueue_sync(new_sync);
+
+                    raGL_sync_release(new_sync);
+                }
+            }
+            system_critical_section_leave(_global.rendering_cs);
 
             break;
         }
@@ -2215,14 +2229,14 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
 /** Please see header for specification */
 PUBLIC void raGL_backend_enqueue_sync(raGL_sync new_sync)
 {
-    _raGL_backend* parent_backend_ptr = NULL;
+    _raGL_backend* sync_parent_backend_ptr = NULL;
 
     ASSERT_DEBUG_SYNC(new_sync != NULL,
                       "Input raGL_sync instance is NULL");
 
     raGL_sync_get_property(new_sync,
                            RAGL_SYNC_PROPERTY_PARENT_BACKEND,
-                          &parent_backend_ptr);
+                          &sync_parent_backend_ptr);
 
     /* Iterate over all active contexts and schedule a wait op for all backends, except for
      * the one this sync is originating from. */
@@ -2245,7 +2259,7 @@ PUBLIC void raGL_backend_enqueue_sync(raGL_sync new_sync)
                                                    n_backend,
                                                   &backend_ptr);
 
-            if (backend_ptr == parent_backend_ptr)
+            if (backend_ptr == sync_parent_backend_ptr)
             {
                 continue;
             }
@@ -2276,7 +2290,7 @@ PUBLIC void raGL_backend_enqueue_sync(raGL_sync new_sync)
                                            RAGL_SYNC_PROPERTY_PARENT_BACKEND,
                                           &enqueued_sync_backend_ptr);
 
-                    if (enqueued_sync_backend_ptr == parent_backend_ptr)
+                    if (enqueued_sync_backend_ptr == sync_parent_backend_ptr)
                     {
                         raGL_sync_release(enqueued_sync);
 
@@ -2759,6 +2773,8 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_backend_sync()
 {
     ogl_context    current_context             = ogl_context_get_current_context();
     _raGL_backend* current_context_backend_ptr = NULL;
+    uint32_t       n_syncs_used                = 0;
+    raGL_sync      syncs[16];
 
     ASSERT_DEBUG_SYNC(current_context != NULL,
                       "No rendering context bound to the calling thread.");
@@ -2770,16 +2786,38 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_backend_sync()
     system_read_write_mutex_lock(current_context_backend_ptr->enqueued_syncs_rw_mutex,
                                  ACCESS_WRITE);
     {
-        raGL_sync sync = NULL;
-
         while (system_resizable_vector_pop(current_context_backend_ptr->enqueued_syncs,
-                                          &sync) )
+                                           syncs + n_syncs_used) )
         {
-            raGL_sync_wait_gpu(sync);
+            /* Each rendering context can schedule up to one sync object other rendering contexts will have
+             * to wait on whenever they need to sync. If a sync object A has already been registered, and a new
+             * one needs to be scheduled from the same context, sync A needs to be released.
+             *
+             * However, other active contexts may already be waiting on sync A. If we release it at such moment,
+             * blocked contexts may remain blocked forever. Which is quite bad.
+             *
+             * Therefore, we retain the sync object, then wait, and then release the sync object. Since we're popping
+             * the sync object from the enqueued_syncs vector, we need to pop it for the second time, so that it gets
+             * properly released when the refcount drops to zero.
+             **/
+            raGL_sync_retain(syncs[n_syncs_used]);
 
-            raGL_sync_release(sync);
+            n_syncs_used++;
+
+            ASSERT_DEBUG_SYNC(n_syncs_used < sizeof(syncs) / sizeof(syncs[0]),
+                              "Increase size of the syncs array.");
         }
     }
     system_read_write_mutex_unlock(current_context_backend_ptr->enqueued_syncs_rw_mutex,
                                    ACCESS_WRITE);
+
+    for (uint32_t n_sync = 0;
+                  n_sync < n_syncs_used;
+                ++n_sync)
+    {
+        raGL_sync_wait_gpu(syncs[n_sync]);
+
+        raGL_sync_release(syncs[n_sync]);
+        raGL_sync_release(syncs[n_sync]);
+    }
 }

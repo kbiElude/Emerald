@@ -714,7 +714,9 @@ PUBLIC EMERALD_API void ral_program_block_buffer_set_nonarrayed_variable_value(r
 /* Please see header for spec */
 PUBLIC EMERALD_API void ral_program_block_buffer_sync(ral_program_block_buffer block_buffer)
 {
-    _ral_program_block_buffer* block_buffer_ptr = (_ral_program_block_buffer*) block_buffer;
+    _ral_program_block_buffer*                                           block_buffer_ptr = (_ral_program_block_buffer*) block_buffer;
+    ral_buffer_client_sourced_update_info                                bo_update_info;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(block_buffer_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
@@ -729,16 +731,17 @@ PUBLIC EMERALD_API void ral_program_block_buffer_sync(ral_program_block_buffer b
         goto end;
     }
 
-    ral_buffer_client_sourced_update_info bo_update_info;
-
     bo_update_info.data         = block_buffer_ptr->data             + block_buffer_ptr->dirty_offset_start;
     bo_update_info.data_size    = block_buffer_ptr->dirty_offset_end - block_buffer_ptr->dirty_offset_start;
     bo_update_info.start_offset = block_buffer_ptr->dirty_offset_start;
 
+    bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&bo_update_info,
+                                                                                    NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
     ral_buffer_set_data_from_client_memory(block_buffer_ptr->buffer_ral,
-                                           1, /* n_updates */
-                                          &bo_update_info,
-                                           false /* sync_other_contexts */); /* NOTE: in the future, we may need to make this arg value customizable */
+                                           bo_update_ptrs,
+                                           false, /* async               */
+                                           false  /* sync_other_contexts */); /* NOTE: in the future, we may need to make this arg value customizable */
 
 #if 0
     if (block_ptr->is_intel_driver)

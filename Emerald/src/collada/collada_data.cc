@@ -2026,7 +2026,8 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
 
                 /* Fill mesh's GL buffer with data */
                 mesh_fill_gl_buffers(result,
-                                     context);
+                                     context,
+                                     false /* async */);
             }
         }
         else

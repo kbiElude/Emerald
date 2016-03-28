@@ -197,7 +197,8 @@ PUBLIC EMERALD_API bool mesh_delete_layer_pass_index_data(mesh                  
  *  NOTE: Can only be called against regular meshes.
  */
 PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
-                                             ral_context context_ral);
+                                             ral_context context_ral,
+                                             bool        async);
 
 /** TODO.
  *

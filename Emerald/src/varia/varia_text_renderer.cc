@@ -980,16 +980,20 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
     } /* for (size_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string) */
 
     /* Upload the data */
-    ral_buffer_client_sourced_update_info data_update;
+    ral_buffer_client_sourced_update_info                                data_update;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > data_update_ptrs;
 
     data_update.data         = text_ptr->data_buffer_contents;
     data_update.data_size    = text_ptr->data_buffer_contents_size;
     data_update.start_offset = 0;
 
+    data_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&data_update,
+                                                                                      NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
     ral_buffer_set_data_from_client_memory(text_ptr->data_buffer,
-                                           1, /* n_updates */
-                                          &data_update,
-                                           false /* sync_other_contexts */);
+                                           data_update_ptrs,
+                                           false, /* async */
+                                           false  /* sync_other_contexts */);
 }
 
 

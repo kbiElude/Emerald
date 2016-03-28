@@ -2,6 +2,8 @@
 #define RAL_BUFFER_H
 
 #include "ral/ral_types.h"
+#include <memory>
+#include <vector>
 
 typedef enum
 {
@@ -45,17 +47,16 @@ typedef struct ral_buffer_clear_region_callback_arg
 
 typedef struct ral_buffer_client_sourced_update_info_callback_arg
 {
-    ral_buffer                                   buffer;
-    uint32_t                                     n_updates;
-    bool                                         sync_other_contexts;
-    const ral_buffer_client_sourced_update_info* updates;
+    bool                                                                 async;
+    ral_buffer                                                           buffer;
+    bool                                                                 sync_other_contexts;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates;
 
     ral_buffer_client_sourced_update_info_callback_arg()
     {
+        async               = false;
         buffer              = NULL;
-        n_updates           = 0;
         sync_other_contexts = false;
-        updates             = NULL;
     }
 } ral_buffer_client_sourced_update_info_callback_arg;
 
@@ -141,8 +142,9 @@ PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
 PUBLIC void ral_buffer_release(ral_buffer& buffer);
 
 /** TODO */
-PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                             buffer,
-                                                               uint32_t                               n_updates,
-                                                               ral_buffer_client_sourced_update_info* updates,
-                                                               bool                                   sync_other_contexts);
+PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                                                                  buffer,
+                                                               const std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> >& updates,
+                                                               bool                                                                        async,
+                                                               bool                                                                        sync_other_contexts);
+
 #endif /* RAL_BUFFER_H */

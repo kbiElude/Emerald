@@ -4,10 +4,12 @@
  *
  */
 #include "shared.h"
+#include "demo/demo_app.h"
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_sync.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_scheduler.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
@@ -94,10 +96,10 @@ typedef struct
 
 typedef struct
 {
-    raGL_buffer                                  buffer;
-    uint32_t                                     n_updates;
-    bool                                         sync_other_contexts;
-    const ral_buffer_client_sourced_update_info* updates;
+    raGL_buffer                                                          buffer;
+    bool                                                                 should_delete;
+    bool                                                                 sync_other_contexts;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates;
 } _raGL_buffer_client_memory_sourced_update_request_arg;
 
 typedef struct
@@ -109,32 +111,53 @@ typedef struct
     bool                                  sync_other_contexts;
 } _raGL_buffer_copy_buffer_to_buffer_request_arg;
 
+
+/** Forward declarations */
+PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread(void*       callback_arg);
+PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread    (ogl_context context,
+                                                                                       void*       callback_arg);
+PRIVATE void _raGL_buffer_on_clear_region_request_rendering_thread                    (ogl_context context,
+                                                                                       void*       callback_arg);
+PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread    (ogl_context context,
+                                                                                       void*       callback_arg);
+
+
+/** TODO */
+PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread(void* callback_arg)
+{
+    _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr = (_raGL_buffer_client_memory_sourced_update_request_arg*) callback_arg;
+    ogl_context                                            current_context  = ogl_context_get_current_context();
+
+    _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(current_context,
+                                                                          callback_arg_ptr);
+}
+
 /** TODO */
 PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(ogl_context context,
                                                                                    void*       callback_arg)
 {
-    _raGL_buffer*                                             buffer_ptr          = NULL;
-    _raGL_buffer_client_memory_sourced_update_request_arg*    callback_arg_ptr    = (_raGL_buffer_client_memory_sourced_update_request_arg*) callback_arg;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
+    _raGL_buffer*                                          buffer_ptr          = NULL;
+    _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr    = (_raGL_buffer_client_memory_sourced_update_request_arg*) callback_arg;
+    const ogl_context_gl_entrypoints*                      entrypoints_ptr     = NULL;
 
     buffer_ptr = (_raGL_buffer*) callback_arg_ptr->buffer;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entrypoints_ptr);
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
 
     raGL_backend_sync();
 
-    for (uint32_t n_update = 0;
-                  n_update < callback_arg_ptr->n_updates;
-                ++n_update)
-    {
-        const ral_buffer_client_sourced_update_info& current_update = callback_arg_ptr->updates[n_update];
+    /* Bind the buffer object to ensure the latest BO contents is accessible to this context */
+    entrypoints_ptr->pGLBindBuffer(GL_COPY_WRITE_BUFFER,
+                                   buffer_ptr->id);
 
-        dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(buffer_ptr->id,
-                                                      buffer_ptr->start_offset + current_update.start_offset,
-                                                      current_update.data_size,
-                                                      current_update.data);
+    for (auto current_update_ptr : callback_arg_ptr->updates)
+    {
+        entrypoints_ptr->pGLBufferSubData(GL_COPY_WRITE_BUFFER,
+                                          buffer_ptr->start_offset + current_update_ptr->start_offset,
+                                          current_update_ptr->data_size,
+                                          current_update_ptr->data);
     } /* for (all updates) */
 
     if (callback_arg_ptr->sync_other_contexts)
@@ -144,6 +167,11 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
         raGL_backend_enqueue_sync(new_sync);
 
         raGL_sync_release(new_sync);
+    }
+
+    if (callback_arg_ptr->should_delete)
+    {
+        delete callback_arg_ptr;
     }
 }
 
@@ -434,22 +462,51 @@ PUBLIC void raGL_buffer_release(raGL_buffer buffer)
 }
 
 /** Please see header for specification */
-PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                  buffer,
-                                                          uint32_t                                     n_updates,
-                                                          const ral_buffer_client_sourced_update_info* updates,
-                                                          bool                                         sync_other_contexts)
+PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                                           buffer,
+                                                          std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> >& updates,
+                                                          bool                                                                  async,
+                                                          bool                                                                  sync_other_contexts)
 {
-    _raGL_buffer*                                         buffer_ptr      = (_raGL_buffer*) buffer;
-    _raGL_buffer_client_memory_sourced_update_request_arg callback_arg;
-    ogl_context                                           current_context = ogl_context_get_current_context();
+    _raGL_buffer* buffer_ptr      = (_raGL_buffer*) buffer;
+    ogl_context   current_context = ogl_context_get_current_context();
 
-    callback_arg.buffer              = buffer;
-    callback_arg.n_updates           = n_updates;
-    callback_arg.sync_other_contexts = sync_other_contexts;
-    callback_arg.updates             = updates;
+    if (async)
+    {
+        ral_backend_type                                       backend_type;
+        _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr = new _raGL_buffer_client_memory_sourced_update_request_arg;
+        ral_scheduler_job_info                                 job_info;
+        ral_scheduler                                          scheduler        = nullptr;
 
-    ogl_context_request_callback_from_context_thread( (current_context != buffer_ptr->context && current_context != NULL) ? current_context
-                                                                                                                          : buffer_ptr->context,
-                                                     _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread,
-                                                    &callback_arg);
+        demo_app_get_property   (DEMO_APP_PROPERTY_GPU_SCHEDULER,
+                                &scheduler);
+        ogl_context_get_property(buffer_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
+
+        callback_arg_ptr->buffer              = buffer;
+        callback_arg_ptr->should_delete       = true;
+        callback_arg_ptr->sync_other_contexts = sync_other_contexts;
+        callback_arg_ptr->updates             = updates;
+
+        job_info.callback_user_arg = callback_arg_ptr;
+        job_info.pfn_callback_ptr  = _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread;
+
+        ral_scheduler_schedule_job(scheduler,
+                                   backend_type,
+                                   job_info);
+    }
+    else
+    {
+        _raGL_buffer_client_memory_sourced_update_request_arg callback_arg;
+
+        callback_arg.buffer              = buffer;
+        callback_arg.should_delete       = false;
+        callback_arg.sync_other_contexts = sync_other_contexts;
+        callback_arg.updates             = updates;
+
+        ogl_context_request_callback_from_context_thread( (current_context != buffer_ptr->context && current_context != NULL) ? current_context
+                                                                                                                              : buffer_ptr->context,
+                                                         _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread,
+                                                        &callback_arg);
+    }
 }

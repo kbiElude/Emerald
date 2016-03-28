@@ -605,10 +605,11 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
      * NOTE: The other data BO must not come from sparse buffers under NV drivers. Please see GitHub#61
      *       for more details. May be worth revisiting in the future.
      */
-    ral_buffer_create_info                coeff_bo_props;
-    ral_buffer_client_sourced_update_info coeff_bo_update;
-    bool                                  is_nv_driver          = false;
-    ral_buffer_create_info                other_data_bo_props;
+    ral_buffer_create_info                                                coeff_bo_props;
+    ral_buffer_client_sourced_update_info                                 coeff_bo_update;
+    std::vector< std::shared_ptr<ral_buffer_client_sourced_update_info> > coeff_bo_update_ptrs;
+    bool                                                                  is_nv_driver          = false;
+    ral_buffer_create_info                                                other_data_bo_props;
 
     ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
                              OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
@@ -634,17 +635,20 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(ogl_co
 
     ral_context_create_buffers(instance_ptr->context,
                                1, /* n_buffers */
-                               &other_data_bo_props,
-                               &instance_ptr->other_data_bo);
+                              &other_data_bo_props,
+                              &instance_ptr->other_data_bo);
 
     coeff_bo_update.data         = final_data_bo_raw_ptr;
     coeff_bo_update.data_size    = final_data_bo_size;
     coeff_bo_update.start_offset = 0;
 
+    coeff_bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&coeff_bo_update,
+                                                                                          NullDeleter<ral_buffer_client_sourced_update_info>() ) );
+
     ral_buffer_set_data_from_client_memory(instance_ptr->coeff_bo,
-                                           1, /* n_updates */
-                                          &coeff_bo_update,
-                                           true /* sync_other_contexts */);
+                                           coeff_bo_update_ptrs,
+                                           false, /* async */
+                                           true   /* sync_other_contexts */);
 
     /* Set up the PO */
     ral_shader result_shaders[2] =
@@ -815,30 +819,6 @@ PRIVATE void _postprocessing_blur_gaussian_release(void* ptr)
     ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(data_ptr->context),
                                                      _postprocessing_blur_gaussian_deinit_rendering_thread_callback,
                                                      data_ptr);
-}
-
-/** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _postprocessing_blur_gaussian_update_other_data_bo_storage(_postprocessing_blur_gaussian* gaussian_ptr,
-                                                                                               unsigned int                   new_other_data_cached_value)
-{
-    const int data[] =
-    {
-        0,
-        new_other_data_cached_value,
-        1                            /* predefined value */
-    };
-    ral_buffer_client_sourced_update_info other_data_bo_update;
-
-    other_data_bo_update.data         = data;
-    other_data_bo_update.data_size    = sizeof(data);
-    other_data_bo_update.start_offset = 0;
-
-    ral_buffer_set_data_from_client_memory(gaussian_ptr->other_data_bo,
-                                           1, /* n_updates */
-                                          &other_data_bo_update,
-                                           false /* sync_otyher_contexts */);
-
-    gaussian_ptr->other_data_bo_cached_value = new_other_data_cached_value;
 }
 
 
@@ -1220,11 +1200,28 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
      * is requesting */
     if (blur_ptr->other_data_bo_cached_value != n_taps)
     {
-        _postprocessing_blur_gaussian_update_other_data_bo_storage(blur_ptr,
-                                                                   n_taps);
+        const int data[] =
+        {
+            0,
+            n_taps,
+            1
+        };
+        std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
+        ral_buffer_client_sourced_update_info                                other_data_bo_update;
 
-        ASSERT_DEBUG_SYNC(blur_ptr->other_data_bo_cached_value == n_taps,
-                          "Sanity check failed.");
+        other_data_bo_update.data         = data;
+        other_data_bo_update.data_size    = sizeof(data);
+        other_data_bo_update.start_offset = 0;
+
+        bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&other_data_bo_update,
+                                                                                        NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
+        ral_buffer_set_data_from_client_memory(blur_ptr->other_data_bo,
+                                               bo_update_ptrs,
+                                               false, /* async                */
+                                               false  /* sync_other_contexts */);
+
+        blur_ptr->other_data_bo_cached_value = n_taps;
     }
 
     /* Iterate over all layers we need blurred */
