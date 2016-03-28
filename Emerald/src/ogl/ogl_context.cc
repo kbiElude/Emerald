@@ -1950,7 +1950,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(_ogl_c
                                            func_ptr_table,
                                            n_func_ptr_table_entries) )
     {
-        context_ptr->gl_arb_sparse_buffer_support = true;
+        context_ptr->gl_arb_sparse_buffer_support = false; //true;
     }
 }
 

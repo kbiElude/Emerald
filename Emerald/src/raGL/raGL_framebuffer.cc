@@ -357,7 +357,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_sync_rendering_thread_calb
             } /* switch (current_attachment_ptr->texture_type_local) */
 
             /* ..and cache as a draw buffer */
-            framebuffer_raGL_ptr->draw_buffers[n_attachment] = GL_DRAW_BUFFER0 + n_attachment;
+            framebuffer_raGL_ptr->draw_buffers[n_attachment] = GL_COLOR_ATTACHMENT0 + n_attachment;
             n_max_draw_buffer_used                           = n_attachment;
 
             current_attachment_ptr->dirty = false;

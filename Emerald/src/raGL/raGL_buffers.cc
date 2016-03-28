@@ -356,7 +356,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
                                                           bo_id);
         buffers_ptr->entry_points_gl_bs->pGLBufferStorage(bo_target,
                                                           bo_size,
-                                                          NULL, /* data */
+                                                          NULL,
                                                           bo_flags);
     }
     else
@@ -439,6 +439,14 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
         new_buffer_ptr = NULL;
     }
 
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
+
     return new_buffer_ptr;
 }
 
@@ -498,6 +506,14 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_sparse_buffer(_raGL_buffer
         new_buffer_ptr = NULL;
     }
 
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
+
     return new_buffer_ptr;
 }
 
@@ -530,6 +546,14 @@ PRIVATE void _raGL_buffers_dealloc_sparse_buffer(system_resource_pool_block buff
         system_memory_manager_release(buffer_ptr->manager);
 
         buffer_ptr->manager = NULL;
+    }
+
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
     }
 }
 

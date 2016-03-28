@@ -136,28 +136,25 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_
 PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(ogl_context context,
                                                                                    void*       callback_arg)
 {
-    _raGL_buffer*                                          buffer_ptr          = NULL;
-    _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr    = (_raGL_buffer_client_memory_sourced_update_request_arg*) callback_arg;
-    const ogl_context_gl_entrypoints*                      entrypoints_ptr     = NULL;
+    _raGL_buffer*                                             buffer_ptr          = NULL;
+    _raGL_buffer_client_memory_sourced_update_request_arg*    callback_arg_ptr    = (_raGL_buffer_client_memory_sourced_update_request_arg*) callback_arg;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = NULL;
 
     buffer_ptr = (_raGL_buffer*) callback_arg_ptr->buffer;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &entrypoints_dsa_ptr);
 
-    raGL_backend_sync();
+    //raGL_backend_sync();
 
     /* Bind the buffer object to ensure the latest BO contents is accessible to this context */
-    entrypoints_ptr->pGLBindBuffer(GL_COPY_WRITE_BUFFER,
-                                   buffer_ptr->id);
-
     for (auto current_update_ptr : callback_arg_ptr->updates)
     {
-        entrypoints_ptr->pGLBufferSubData(GL_COPY_WRITE_BUFFER,
-                                          buffer_ptr->start_offset + current_update_ptr->start_offset,
-                                          current_update_ptr->data_size,
-                                          current_update_ptr->data);
+        entrypoints_dsa_ptr->pGLNamedBufferSubDataEXT(buffer_ptr->id,
+                                                      buffer_ptr->start_offset + current_update_ptr->start_offset,
+                                                      current_update_ptr->data_size,
+                                                      current_update_ptr->data);
     } /* for (all updates) */
 
     if (callback_arg_ptr->sync_other_contexts)

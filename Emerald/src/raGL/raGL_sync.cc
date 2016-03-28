@@ -55,6 +55,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sync_release(void* sync)
      *       b) Visual glitches if glClientWaitSync() is used instead.
      *
      *       Since none of the two is acceptable, we need to leak the handle :/
+     *
+     *       Does not affect the AMD driver.
      **/
     ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
@@ -94,6 +96,8 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create()
 
     ASSERT_DEBUG_SYNC(new_handle != NULL,
                       "GL returned a NULL GLsync object");
+
+    entrypoints_ptr->pGLFlush();
 
     new_sync_ptr = new (std::nothrow) _raGL_sync(parent_backend,
                                                  new_handle);

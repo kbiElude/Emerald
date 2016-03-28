@@ -797,22 +797,17 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                             &entrypoints_dsa_ptr);
 
     /* Do general properties match? */
-    GLint gl_general_fixed_sample_locations = 0;
     GLint gl_general_n_layers               = 0;
     GLint gl_general_n_mipmaps              = 0;
     GLint gl_general_n_samples              = 0;
 
-    bool                       ral_general_fixed_sample_locations = false;
-    ral_texture_format         ral_general_format                 = RAL_TEXTURE_FORMAT_UNKNOWN;
-    uint32_t                   ral_general_n_layers               = 0;
-    uint32_t                   ral_general_n_mipmaps              = 0;
-    uint32_t                   ral_general_n_samples              = 0;
-    ral_texture_type           ral_general_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
-    GLenum                     ral_general_type_gl                = GL_NONE;
+    ral_texture_format ral_general_format    = RAL_TEXTURE_FORMAT_UNKNOWN;
+    uint32_t           ral_general_n_layers  = 0;
+    uint32_t           ral_general_n_mipmaps = 0;
+    uint32_t           ral_general_n_samples = 0;
+    ral_texture_type   ral_general_type      = RAL_TEXTURE_TYPE_UNKNOWN;
+    GLenum             ral_general_type_gl   = GL_NONE;
 
-    ral_texture_get_property(texture_ptr->texture,
-                             RAL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
-                            &ral_general_fixed_sample_locations);
     ral_texture_get_property(texture_ptr->texture,
                              RAL_TEXTURE_PROPERTY_FORMAT,
                             &ral_general_format);
@@ -844,22 +839,20 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
     }
     else
     {
-        entrypoints_dsa_ptr->pGLGetTextureParameterivEXT(texture_ptr->id,
-                                                         ral_general_type_gl,
-                                                         GL_TEXTURE_FIXED_SAMPLE_LOCATIONS,
-                                                        &gl_general_fixed_sample_locations);
-        entrypoints_dsa_ptr->pGLGetTextureParameterivEXT(texture_ptr->id,
-                                                         ral_general_type_gl,
-                                                         GL_TEXTURE_DEPTH,
-                                                        &gl_general_n_layers);
-        entrypoints_dsa_ptr->pGLGetTextureParameterivEXT(texture_ptr->id,
-                                                         ral_general_type_gl,
-                                                         GL_TEXTURE_SAMPLES,
-                                                         &gl_general_n_samples);
-        entrypoints_dsa_ptr->pGLGetTextureParameterivEXT(texture_ptr->id,
-                                                         ral_general_type_gl,
-                                                         GL_TEXTURE_IMMUTABLE_LEVELS,
-                                                        (GLint*) &gl_general_n_mipmaps);
+        entrypoints_dsa_ptr->pGLGetTextureLevelParameterivEXT(texture_ptr->id,
+                                                              ral_general_type_gl,
+                                                              0, /* level */
+                                                              GL_TEXTURE_DEPTH,
+                                                             &gl_general_n_layers);
+        entrypoints_dsa_ptr->pGLGetTextureLevelParameterivEXT(texture_ptr->id,
+                                                              ral_general_type_gl,
+                                                              0, /* level */
+                                                              GL_TEXTURE_SAMPLES,
+                                                              &gl_general_n_samples);
+        entrypoints_dsa_ptr->pGLGetTextureParameterivEXT     (texture_ptr->id,
+                                                              ral_general_type_gl,
+                                                              GL_TEXTURE_IMMUTABLE_LEVELS,
+                                                             (GLint*) &gl_general_n_mipmaps);
     }
 
     if (gl_general_n_layers == 0)
@@ -870,16 +863,6 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
     if (gl_general_n_samples == 0)
     {
         gl_general_n_samples = 1;
-    }
-
-    if (!texture_ptr->is_renderbuffer                                                  &&
-        gl_general_n_samples > 1                                                       &&
-        (gl_general_fixed_sample_locations != 0) == ral_general_fixed_sample_locations)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "GL texture object's fixedsamplelocations property value does not match RAL texture's (%d vs %s)",
-                          gl_general_fixed_sample_locations,
-                          ral_general_fixed_sample_locations ? 1 : 0);
     }
 
     if (!texture_ptr->is_renderbuffer               &&

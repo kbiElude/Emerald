@@ -26,7 +26,7 @@ This hobbistic project is in incessant, over-night
 development, hence may not necessarily compile or build
 at all times. Please feel free to use it as a KB.
 
-I regularly test Emerald against the latest Intel and NVIDIA drivers.
-Always ensure your video drivers are up-to-date before running
+I regularly test Emerald against AMD, Intel and NVIDIA drivers.
+Always ensure your video driver is up-to-date before running
 any projects found in the solution.
 
