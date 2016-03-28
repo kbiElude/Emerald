@@ -85,6 +85,11 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_info* */
     OGL_CONTEXT_PROPERTY_INFO,
 
+    /* not settable, bool.
+     *
+     * True if the platform is using AMD driver, false otherwise */
+    OGL_CONTEXT_PROPERTY_IS_AMD_DRIVER,
+
     /* settable, bool. */
     OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT,
 

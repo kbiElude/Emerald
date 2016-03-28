@@ -400,7 +400,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
                                                                    NULL,          /* pfn_on_memory_block_alloced */
                                                                    NULL,          /* pfn_on_memory_block_freed */
                                                                    new_buffer_ptr,
-                                                                   false);        /* should_be_thread_safe */
+                                                                   true);         /* should_be_thread_safe */
 
         system_resizable_vector_push(new_buffer_ptr->buffers_ptr->nonsparse_heaps[heap_type],
                                      new_buffer_ptr);
@@ -486,7 +486,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_sparse_buffer(_raGL_buffer
                                                                    _raGL_buffers_on_sparse_memory_block_alloced,
                                                                    _raGL_buffers_on_sparse_memory_block_freed,
                                                                    new_buffer_ptr,
-                                                                   false); /* should_be_thread_safe */
+                                                                   true); /* should_be_thread_safe */
 
         system_resizable_vector_push(new_buffer_ptr->buffers_ptr->sparse_buffers,
                                      new_buffer_ptr);
@@ -679,6 +679,14 @@ PRIVATE void _raGL_buffers_on_sparse_memory_block_alloced(system_memory_manager 
                                                                                  offset_aligned,
                                                                                  size,
                                                                                  GL_TRUE); /* commit */
+
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
 }
 
 /** TODO */
@@ -701,6 +709,14 @@ PRIVATE void _raGL_buffers_on_sparse_memory_block_freed(system_memory_manager ma
                                                                                  offset_aligned,
                                                                                  size,
                                                                                  GL_FALSE); /* commit */
+
+    {
+        raGL_sync new_sync = raGL_sync_create();
+
+        raGL_backend_enqueue_sync(new_sync);
+
+        raGL_sync_release(new_sync);
+    }
 }
 
 /** TODO */
@@ -752,6 +768,9 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                            &buffer_usage);
 
     must_be_immutable_bo_based = (buffer_properties & RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT) == 0;
+
+    /* Sync with other contexts before continuing */
+    raGL_backend_sync();
 
     /* If this raGL_buffer instance is being created with aliasing the existing buffer memory storage in mind,
      * do not allocate any memory. */
@@ -979,14 +998,6 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
         ASSERT_DEBUG_SYNC(result_id     != 0 &&
                           result_offset != -1,
                           "Sanity check failed");
-
-        {
-            raGL_sync new_sync = raGL_sync_create();
-
-            raGL_backend_enqueue_sync(new_sync);
-
-            raGL_sync_release(new_sync);
-        }
 
         *out_buffer_ptr = raGL_buffer_create(buffers_ptr->context,
                                              result_id,

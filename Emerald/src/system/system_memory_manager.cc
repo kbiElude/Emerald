@@ -16,7 +16,7 @@
 /* If this is defined, alloc and free operations will be logged to a text file.
  * This is useful for hunting down bugs in the memory manager layer */
 #ifdef _DEBUG
-    #define LOG_ALLOC_HISTORY
+    //#define LOG_ALLOC_HISTORY
 #endif /* _DEBUG */
 
 /* If this is defined, the implementation will perform a sanity check of the
@@ -342,7 +342,7 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(system_memory_manager 
     /* All done */
     if (manager_ptr->cs != NULL)
     {
-        system_critical_section_release(manager_ptr->cs);
+        system_critical_section_leave(manager_ptr->cs);
     }
 
     return result;

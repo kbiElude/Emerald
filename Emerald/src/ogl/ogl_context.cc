@@ -73,6 +73,7 @@ typedef struct
 #endif
 
     ral_backend_type     backend_type;
+    bool                 is_amd_driver;
     bool                 is_helper_context;
     bool                 is_intel_driver;
     bool                 is_nv_driver;
@@ -951,6 +952,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->gl_arb_texture_buffer_object_rgb32_support = false;
     context_ptr->gl_ext_direct_state_access_support         = false;
     context_ptr->gl_ext_texture_filter_anisotropic_support  = false;
+    context_ptr->is_amd_driver                              = false; /* determined later */
     context_ptr->is_intel_driver                            = false; /* determined later */
     context_ptr->is_nv_driver                               = false; /* determined later */
     context_ptr->multisampling_samples                      = 0;
@@ -1112,20 +1114,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
              context_ptr->info.shading_language_version,
              context_ptr->info.vendor,
              context_ptr->info.version);
-
-    /* Is this an Intel driver? */
-    if (strstr((const char*) context_ptr->info.vendor,
-               "Intel") != NULL)
-    {
-        context_ptr->is_intel_driver = true;
-    }
-
-    /* Is this a NV driver? */
-    if (strstr((const char*) context_ptr->info.vendor,
-               "NV") != NULL)
-    {
-        context_ptr->is_nv_driver = true;
-    }
 
     /* Initialize the FBO we will use to render contents, to be later blitted into the back buffer.
      *
@@ -1950,7 +1938,10 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(_ogl_c
                                            func_ptr_table,
                                            n_func_ptr_table_entries) )
     {
-        context_ptr->gl_arb_sparse_buffer_support = false; //true;
+        /* TODO: We need to disable sparse buffers for AMD driver - glNamedBufferPageCommitmentEXT() randomly locks up
+         *       in _raGL_buffers_on_sparse_memory_block_alloced(). Will restore this when this gets fixed.
+         */
+        context_ptr->gl_arb_sparse_buffer_support = true; //!context_ptr->is_amd_driver;
     }
 }
 
@@ -2701,6 +2692,27 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
     context_ptr->info.version                  = pGLGetString(GL_VERSION);
     context_ptr->info.shading_language_version = pGLGetString(GL_SHADING_LANGUAGE_VERSION);
 
+    /* Is this an AMD driver? */
+    if (strstr((const char*) context_ptr->info.vendor,
+               "ATI") != NULL)
+    {
+        context_ptr->is_amd_driver = true;
+    }
+
+    /* Is this an Intel driver? */
+    if (strstr((const char*) context_ptr->info.vendor,
+               "Intel") != NULL)
+    {
+        context_ptr->is_intel_driver = true;
+    }
+
+    /* Is this a NV driver? */
+    if (strstr((const char*) context_ptr->info.vendor,
+               "NV") != NULL)
+    {
+        context_ptr->is_nv_driver = true;
+    }
+
     /* Retrieve extensions supported by the implementation */
     if (context_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
@@ -3393,6 +3405,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
         case OGL_CONTEXT_PROPERTY_INFO:
         {
             *((const ogl_context_gl_info**) out_result) = &context_ptr->info;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_IS_AMD_DRIVER:
+        {
+            *(bool*) out_result = context_ptr->is_amd_driver;
 
             break;
         }
