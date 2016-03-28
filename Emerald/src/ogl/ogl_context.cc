@@ -1941,7 +1941,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(_ogl_c
         /* TODO: We need to disable sparse buffers for AMD driver - glNamedBufferPageCommitmentEXT() randomly locks up
          *       in _raGL_buffers_on_sparse_memory_block_alloced(). Will restore this when this gets fixed.
          */
-        context_ptr->gl_arb_sparse_buffer_support = true; //!context_ptr->is_amd_driver;
+        context_ptr->gl_arb_sparse_buffer_support = !context_ptr->is_amd_driver;
     }
 }
 
