@@ -146,7 +146,7 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa_ptr);
 
-    //raGL_backend_sync();
+    raGL_backend_sync();
 
     /* Bind the buffer object to ensure the latest BO contents is accessible to this context */
     for (auto current_update_ptr : callback_arg_ptr->updates)
