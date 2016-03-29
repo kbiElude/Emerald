@@ -144,13 +144,7 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
                                                    shader_raGL_id);
 
     /* Sync other contexts to take notice of the new shader attachment */
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 }
 
 /** TODO */
@@ -193,26 +187,10 @@ PRIVATE void _raGL_program_clear_bindings_metadata(_raGL_program* program_ptr,
 PRIVATE void _raGL_program_create_callback(ogl_context context,
                                            void*       in_arg)
 {
-    raGL_backend            backend      = NULL;
-    _raGL_program*          program_ptr  = (_raGL_program*) in_arg;
-    system_critical_section rendering_cs = NULL;
+    _raGL_program* program_ptr  = (_raGL_program*) in_arg;
 
-    ogl_context_get_property         (context,
-                                      OGL_CONTEXT_PROPERTY_BACKEND,
-                                     &backend);
-    raGL_backend_get_private_property(backend,
-                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
-                                     &rendering_cs);
-
-    system_critical_section_enter(rendering_cs);
-    {
-        /* Sync with other contexts before continuing */
-        raGL_backend_sync();
-
-        /* Create a new program */
-        program_ptr->id = program_ptr->pGLCreateProgram();
-    }
-    system_critical_section_leave(rendering_cs);
+    /* Create a new program */
+    program_ptr->id = program_ptr->pGLCreateProgram();
 
     program_ptr->active_attributes_raGL = system_resizable_vector_create(4 /* capacity */);
     program_ptr->active_uniforms_raGL   = system_resizable_vector_create(4 /* capacity */);
@@ -263,15 +241,7 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
     }
 
     /* Force sync of other contexts */
-    system_critical_section_enter(rendering_cs);
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
-    system_critical_section_leave(rendering_cs);
+    raGL_backend_enqueue_sync();
 }
 
 /** TODO */
@@ -1071,13 +1041,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     }
 
     /* Make sure other contexts notice the program has been linked */
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 
     /* All done */
     program_ptr->link_thread_id = 0;
@@ -1375,33 +1339,13 @@ PRIVATE void _raGL_program_release_active_uniforms(system_resizable_vector activ
 PRIVATE void _raGL_program_release_callback(ogl_context context,
                                             void*       in_arg)
 {
-    raGL_backend            backend      = NULL;
-    raGL_sync               new_sync     = NULL;
-    _raGL_program*          program_ptr  = (_raGL_program*) in_arg;
-    system_critical_section rendering_cs = NULL;
+    _raGL_program* program_ptr = (_raGL_program*) in_arg;
 
-    ogl_context_get_property         (context,
-                                      OGL_CONTEXT_PROPERTY_BACKEND,
-                                     &backend);
-    raGL_backend_get_private_property(backend,
-                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
-                                     &rendering_cs);
-
-    system_critical_section_enter(rendering_cs);
-    {
-        program_ptr->pGLDeleteProgram(program_ptr->id);
-    }
-    system_critical_section_leave(rendering_cs);
-
-    {
-        new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
-
+    program_ptr->pGLDeleteProgram(program_ptr->id);
     program_ptr->id = 0;
+
+    raGL_backend_enqueue_sync();
+
 }
 
 /** TODO */
@@ -2374,13 +2318,7 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_
                                                     binding_ptr->indexed_bp);
         }
 
-        {
-            raGL_sync new_sync = raGL_sync_create();
-
-            raGL_backend_enqueue_sync(new_sync);
-
-            raGL_sync_release(new_sync);
-        }
+        raGL_backend_enqueue_sync();
     }
 end:
     ;

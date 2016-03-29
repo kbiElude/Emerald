@@ -440,11 +440,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
     }
 
     {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
+        raGL_backend_enqueue_sync();
     }
 
     return new_buffer_ptr;
@@ -506,13 +502,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_sparse_buffer(_raGL_buffer
         new_buffer_ptr = NULL;
     }
 
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 
     return new_buffer_ptr;
 }
@@ -548,13 +538,7 @@ PRIVATE void _raGL_buffers_dealloc_sparse_buffer(system_resource_pool_block buff
         buffer_ptr->manager = NULL;
     }
 
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 }
 
 /** TODO */
@@ -680,13 +664,7 @@ PRIVATE void _raGL_buffers_on_sparse_memory_block_alloced(system_memory_manager 
                                                                                  size,
                                                                                  GL_TRUE); /* commit */
 
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 }
 
 /** TODO */
@@ -710,13 +688,7 @@ PRIVATE void _raGL_buffers_on_sparse_memory_block_freed(system_memory_manager ma
                                                                                  size,
                                                                                  GL_FALSE); /* commit */
 
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 }
 
 /** TODO */

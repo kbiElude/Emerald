@@ -24,8 +24,16 @@ typedef struct _ral_scheduler_backend
     volatile unsigned int   n_threads_active;
     system_event            please_leave_event;
 
+    system_read_write_mutex active_locks_mutex;
+    system_resizable_vector active_read_locks;
+    system_resizable_vector active_write_locks;
+
     _ral_scheduler_backend()
     {
+        active_locks_mutex = system_read_write_mutex_create();
+        active_read_locks  = system_resizable_vector_create(16 /* capacity */);
+        active_write_locks = system_resizable_vector_create(16 /* capacity */);
+
         job_available_semaphore = system_semaphore_create       (N_MAX_SCHEDULABLE_JOBS, /* semaphore_capacity      */
                                                                   0);                    /* semaphore_default_value */
         job_pool                = system_resource_pool_create   (sizeof(ral_scheduler_job_info),
@@ -43,6 +51,27 @@ typedef struct _ral_scheduler_backend
         ASSERT_DEBUG_SYNC(n_threads_active == 0,
                           "RAL scheduler shutting down, even though %d backend threads are still up.",
                           n_threads_active);
+
+        if (active_locks_mutex != NULL)
+        {
+            system_read_write_mutex_release(active_locks_mutex);
+
+            active_locks_mutex = NULL;
+        }
+
+        if (active_read_locks != NULL)
+        {
+            system_resizable_vector_release(active_read_locks);
+
+            active_read_locks = NULL;
+        }
+
+        if (active_write_locks != NULL)
+        {
+            system_resizable_vector_release(active_write_locks);
+
+            active_write_locks = NULL;
+        }
 
         if (job_available_semaphore != NULL)
         {
@@ -185,9 +214,12 @@ PUBLIC void ral_scheduler_schedule_job(ral_scheduler                 scheduler,
         }
         #endif
 
+        /* Submit the new job descriptor */
         system_resizable_vector_push(backend_ptr->jobs,
                                      new_job_ptr);
-        system_semaphore_leave      (backend_ptr->job_available_semaphore);
+
+        /* Wake up one of the backend threads */
+        system_semaphore_leave(backend_ptr->job_available_semaphore);
     }
     system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
                                    ACCESS_WRITE);
@@ -202,14 +234,17 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
 
     system_atomics_increment(&backend_ptr->n_threads_active);
     {
-        ral_scheduler_job_info* job_ptr     = NULL;
-        bool                    should_live = true;
+        bool should_live = true;
 
         while (should_live)
         {
+            ral_scheduler_job_info* job_ptr = nullptr;
+
+            /* Wait until new job is available */
             system_semaphore_enter(backend_ptr->job_available_semaphore,
                                    SYSTEM_TIME_INFINITE);
 
+            /* Before we continue, make sure we have not been asked to quit. */
             if (system_event_wait_single_peek(backend_ptr->please_leave_event) )
             {
                 should_live = false;
@@ -217,18 +252,179 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                 continue;
             }
 
-            system_read_write_mutex_lock(backend_ptr->jobs_mutex,
-                                         ACCESS_WRITE);
+            while (job_ptr == nullptr)
             {
-                system_resizable_vector_pop(backend_ptr->jobs,
-                                           &job_ptr);
+                /* Scheduled jobs can define dependencies which clarify when they can actually be executed. These deps
+                 * currently take one of the following forms:
+                 *
+                 * 1) Read locks  - indicate the job will issue read ops against the specified objects. The job can only
+                 *                  be executed if other running jobs either do not access the specified object OR read it.
+                 * 2) Write locks - indicate the job will issue write ops against the specified objects. The job can only
+                 *                  be executed if no other running job is accessing the specified object.
+                 * 3) Job ID deps - indicate the job can only be executed if a job with specified ID has already finished
+                 *                  executing. THIS IS NOT IMPLEMENTED YET BUT WILL BE NEEDED SHORTLY.
+                 **/
+                system_read_write_mutex_lock(backend_ptr->jobs_mutex,
+                                             ACCESS_WRITE);
+                {
+                    /* Look for a suitable job we can use. */
+                    uint32_t job_index = -1;
+                    uint32_t n_jobs    = 0;
+
+                    system_resizable_vector_get_property(backend_ptr->jobs,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_jobs);
+
+                    for (job_index = 0;
+                         job_index < n_jobs && job_ptr == nullptr;
+                       ++job_index)
+                    {
+                        bool is_job_executable = true;
+
+                        system_resizable_vector_get_element_at(backend_ptr->jobs,
+                                                               job_index,
+                                                              &job_ptr);
+
+                        if (job_ptr->n_read_locks  > 0 ||
+                            job_ptr->n_write_locks > 0)
+                        {
+                            /* Check the write locks first. If any of the write locks are currently in use, immediately move on to the next job */
+                            system_read_write_mutex_lock(backend_ptr->active_locks_mutex,
+                                                         ACCESS_WRITE);
+
+                            for (uint32_t n_job_write_lock = 0;
+                                          n_job_write_lock < job_ptr->n_write_locks && is_job_executable;
+                                        ++n_job_write_lock)
+                            {
+                                is_job_executable = (system_resizable_vector_find(backend_ptr->active_write_locks,
+                                                                                  job_ptr->write_locks[n_job_write_lock]) == ITEM_NOT_FOUND);
+
+                                if (is_job_executable)
+                                {
+                                    is_job_executable = (system_resizable_vector_find(backend_ptr->active_read_locks,
+                                                                                      job_ptr->read_locks[n_job_write_lock]) == ITEM_NOT_FOUND);
+                                }
+
+                                if (!is_job_executable)
+                                {
+                                    break;
+                                }
+                            }
+
+                            if (!is_job_executable)
+                            {
+                                continue;
+                            }
+
+                            /* Next, read locks. These can be read while this job operates, but must not be modified. */
+                            for (uint32_t n_job_read_lock = 0;
+                                          n_job_read_lock < job_ptr->n_read_locks && is_job_executable;
+                                        ++n_job_read_lock)
+                            {
+                                is_job_executable = (system_resizable_vector_find(backend_ptr->active_write_locks,
+                                                                                  job_ptr->read_locks[n_job_read_lock]) == ITEM_NOT_FOUND);
+                            }
+
+                            if (!is_job_executable)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                job_ptr = nullptr;
+                            }
+
+                            system_read_write_mutex_unlock(backend_ptr->active_locks_mutex,
+                                                           ACCESS_WRITE);
+                        }
+                        else
+                        {
+                            /* No job deps. Safe to execute. */
+                        }
+
+                        break;
+                    }
+
+                    if (job_ptr != nullptr)
+                    {
+                        /* Job found. Good to go */
+                        system_resizable_vector_delete_element_at(backend_ptr->jobs,
+                                                                  job_index);
+
+                        for (uint32_t n_job_read_lock = 0;
+                                      n_job_read_lock < job_ptr->n_read_locks;
+                                    ++n_job_read_lock)
+                        {
+                            system_resizable_vector_push(backend_ptr->active_read_locks,
+                                                         job_ptr->read_locks[n_job_read_lock]);
+                        }
+
+                        for (uint32_t n_job_write_lock = 0;
+                                      n_job_write_lock < job_ptr->n_write_locks;
+                                    ++n_job_write_lock)
+                        {
+                            system_resizable_vector_push(backend_ptr->active_write_locks,
+                                                         job_ptr->write_locks[n_job_write_lock]);
+                        }
+                    }
+                }
+                system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
+                                               ACCESS_WRITE);
+
+                if (job_ptr == nullptr)
+                {
+                    /* No suitable job found yet. Let other threads execute and keep spinning. */
+                    #ifdef _WIN32
+                    {
+                        Sleep(0);
+                    }
+                    #else
+                    {
+                        sched_yield();
+                    }
+                    #endif
+                }
             }
-            system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
-                                           ACCESS_WRITE);
 
             /* Fire the call-back */
             job_ptr->pfn_callback_ptr(job_ptr->callback_user_arg);
 
+            /* Return the locks */
+            system_read_write_mutex_lock(backend_ptr->active_locks_mutex,
+                                         ACCESS_WRITE);
+            {
+                for (uint32_t n_job_read_lock = 0;
+                              n_job_read_lock < job_ptr->n_read_locks;
+                            ++n_job_read_lock)
+                {
+                    uint32_t lock_index = system_resizable_vector_find(backend_ptr->active_read_locks,
+                                                                       job_ptr->read_locks[n_job_read_lock]);
+
+                    ASSERT_DEBUG_SYNC(lock_index != ITEM_NOT_FOUND,
+                                      "Read lock not found in the \"active read locks \" backend array");
+
+                    system_resizable_vector_delete_element_at(backend_ptr->active_read_locks,
+                                                              lock_index);
+                }
+
+                for (uint32_t n_job_write_lock = 0;
+                              n_job_write_lock < job_ptr->n_write_locks;
+                            ++n_job_write_lock)
+                {
+                    uint32_t lock_index = system_resizable_vector_find(backend_ptr->active_write_locks,
+                                                                       job_ptr->read_locks[n_job_write_lock]);
+
+                    ASSERT_DEBUG_SYNC(lock_index != ITEM_NOT_FOUND,
+                                      "Write lock not found in the \"active write locks \" backend array");
+
+                    system_resizable_vector_delete_element_at(backend_ptr->active_write_locks,
+                                                              lock_index);
+                }
+            }
+            system_read_write_mutex_unlock(backend_ptr->active_locks_mutex,
+                                           ACCESS_WRITE);
+
+            /* Schedule for execution any "upon completion" call-backs assigned to the job */
             if (job_ptr->pfn_callback_when_done_ptr != NULL)
             {
                 system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,

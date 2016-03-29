@@ -338,13 +338,7 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_rendering_thread_callbac
     } /* for (all requested updates) */
 
     /* Sync other contexts. */
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 
     /* If needs be, mipmap generation can proceed from here. */
     system_read_write_mutex_unlock(cached_texture_ptr->mipmap_gen_mutex,
@@ -379,13 +373,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
                                           &texture_ptr->id);
     }
 
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 
     texture_ptr->id = 0;
 }
@@ -420,11 +408,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_rendering_cal
                                                          raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type) );
 
         /* Sync other contexts */
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
+        raGL_backend_enqueue_sync();
     }
     system_read_write_mutex_unlock(texture_ptr->mipmap_gen_mutex,
                                    ACCESS_WRITE);
@@ -479,10 +463,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_rendering_callbac
 /** TODO */
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raGL_texture* texture_ptr)
 {
-    raGL_backend                                              backend             = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
-    system_critical_section                                   rendering_cs        = NULL;
     uint32_t                                                  texture_base_height = 0;
     uint32_t                                                  texture_base_width  = 0;
     ral_texture_format                                        texture_format      = RAL_TEXTURE_FORMAT_UNKNOWN;
@@ -490,18 +472,11 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
     uint32_t                                                  texture_n_samples   = 0;
 
     ogl_context_get_property(texture_ptr->context,
-                             OGL_CONTEXT_PROPERTY_BACKEND,
-                            &backend);
-    ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa_ptr);
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
-
-    raGL_backend_get_private_property(backend,
-                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
-                                     &rendering_cs);
 
     ral_texture_get_property(texture_ptr->texture,
                              RAL_TEXTURE_PROPERTY_FORMAT,
@@ -521,15 +496,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
                                     RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_base_width);
 
-    system_critical_section_enter(rendering_cs);
-    {
-        raGL_backend_sync();
-
-        entrypoints_ptr->pGLGenRenderbuffers(1,
-                                            &texture_ptr->id);
-    }
-    system_critical_section_leave(rendering_cs);
-
+    entrypoints_ptr->pGLGenRenderbuffers(1,
+                                        &texture_ptr->id);
 
     LOG_INFO("[GL back-end]: Allocating new renderbuffer storage for GL renderbuffer ID [%u]",
              texture_ptr->id);
@@ -552,13 +520,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
                                                             texture_base_height);
     }
 
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 
     texture_ptr->is_renderbuffer = true;
 }
@@ -566,11 +528,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
 /** TODO */
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_texture* texture_ptr)
 {
-    raGL_backend                                              backend                        = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr            = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr                = NULL;
     GLuint                                                    precall_bound_to_id            = 0;
-    system_critical_section                                   rendering_cs                   = NULL;
     uint32_t                                                  texture_base_depth             = 0;
     uint32_t                                                  texture_base_height            = 0;
     uint32_t                                                  texture_base_width             = 0;
@@ -583,13 +543,6 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
     GLenum                                                    texture_target                 = GL_NONE;
     ral_texture_type                                          texture_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
     ogl_context_to_bindings                                   to_bindings_cache              = NULL;
-
-    ogl_context_get_property         (texture_ptr->context,
-                                      OGL_CONTEXT_PROPERTY_BACKEND,
-                                     &backend);
-    raGL_backend_get_private_property(backend,
-                                      RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
-                                     &rendering_cs);
 
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -637,14 +590,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
 
     texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
 
-    system_critical_section_enter(rendering_cs);
-    {
-        raGL_backend_sync();
-
-        entrypoints_ptr->pGLGenTextures(1,
-                                       &texture_ptr->id);
-    }
-    system_critical_section_leave(rendering_cs);
+    entrypoints_ptr->pGLGenTextures(1,
+                                   &texture_ptr->id);
 
     LOG_INFO("[GL back-end]: Allocating new texture storage for GL texture ID [%u]",
              texture_ptr->id);
@@ -772,13 +719,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
     } /* switch (texture_type) */
 
     /* Sync other contexts */
-    {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
-    }
+    raGL_backend_enqueue_sync();
 
     texture_ptr->is_renderbuffer = false;
 }

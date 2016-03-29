@@ -41,7 +41,7 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context,
  *  @param sync        Sync object created after the invalidating command has been scheduled. Must not be NULL.
  *
  **/
-PUBLIC void raGL_backend_enqueue_sync(raGL_sync sync);
+PUBLIC void raGL_backend_enqueue_sync();
 
 /** TODO */
 PUBLIC bool raGL_backend_get_buffer(void*      backend,

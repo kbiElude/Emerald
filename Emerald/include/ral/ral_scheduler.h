@@ -5,6 +5,9 @@
 #include "system/system_types.h"
 
 
+#define RAL_SCHEDULER_N_MAX_LOCKS (16)
+
+
 typedef void (*PFNRALSCHEDULERCALLBACKPROC)(void* user_arg);
 
 typedef struct ral_scheduler_job_info
@@ -21,6 +24,13 @@ typedef struct ral_scheduler_job_info
     PFNSYSTEMTHREADPOOLCALLBACKPROC pfn_callback_when_done_ptr;
     void*                           callback_when_done_user_arg;
 
+    uint32_t n_read_locks;
+    uint32_t n_write_locks;
+
+
+    void* read_locks[RAL_SCHEDULER_N_MAX_LOCKS];
+    void* write_locks[RAL_SCHEDULER_N_MAX_LOCKS];
+
     /* Event to set after pfn_callback_ptr returns.
      *
      * NULL permitted.
@@ -36,6 +46,9 @@ typedef struct ral_scheduler_job_info
         pfn_callback_when_done_ptr  = NULL;
 
         signal_event = NULL;
+
+        n_read_locks  = 0;
+        n_write_locks = 0;
     }
 } ral_scheduler_job_info;
 

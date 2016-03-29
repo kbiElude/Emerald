@@ -1119,22 +1119,8 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            system_critical_section_enter(_global.rendering_cs);
-            {
-                raGL_sync new_sync;
-
-                entrypoints_ptr->pGLGenSamplers(n_objects_to_initialize,
-                                                result_object_ids_ptr);
-
-                {
-                    new_sync = raGL_sync_create();
-
-                    raGL_backend_enqueue_sync(new_sync);
-
-                    raGL_sync_release(new_sync);
-                }
-            }
-            system_critical_section_leave(_global.rendering_cs);
+            entrypoints_ptr->pGLGenSamplers(n_objects_to_initialize,
+                                            result_object_ids_ptr);
 
             break;
         }
@@ -2227,8 +2213,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
 }
 
 /** Please see header for specification */
-PUBLIC void raGL_backend_enqueue_sync(raGL_sync new_sync)
+PUBLIC void raGL_backend_enqueue_sync()
 {
+    raGL_sync      new_sync                = raGL_sync_create();
     _raGL_backend* sync_parent_backend_ptr = NULL;
 
     ASSERT_DEBUG_SYNC(new_sync != NULL,
@@ -2314,6 +2301,8 @@ PUBLIC void raGL_backend_enqueue_sync(raGL_sync new_sync)
     }
     system_read_write_mutex_unlock(_global.active_backends_rw_mutex,
                                    ACCESS_READ);
+
+    raGL_sync_release(new_sync);
 }
 
 /** Please see header for specification */

@@ -159,11 +159,7 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
 
     if (callback_arg_ptr->sync_other_contexts)
     {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
+        raGL_backend_enqueue_sync();
     }
 
     if (callback_arg_ptr->should_delete)
@@ -209,11 +205,7 @@ PRIVATE void _raGL_buffer_on_clear_region_request_rendering_thread(ogl_context c
 
     if (callback_arg_ptr->sync_other_contexts)
     {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
+        raGL_backend_enqueue_sync();
     }
 }
 
@@ -247,11 +239,7 @@ PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thre
 
     if (callback_arg_ptr->sync_other_contexts)
     {
-        raGL_sync new_sync = raGL_sync_create();
-
-        raGL_backend_enqueue_sync(new_sync);
-
-        raGL_sync_release(new_sync);
+        raGL_backend_enqueue_sync();
     }
 }
 

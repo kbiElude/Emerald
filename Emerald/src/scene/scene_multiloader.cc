@@ -864,9 +864,6 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
      * may actually use the same texture data, we wait for all threads to create
      * a list of gfx_images which need to be loaded, then load these images using the
      * system thread pool, and then carry on.
-     *
-     * TODO: ogl_texture set-up code should also be handled via a thread pool but
-     *       this will require helper rendering contexts which are yet to be impl'ed.
      */
     bool result = true;
 

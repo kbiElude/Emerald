@@ -126,13 +126,6 @@ PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                    
 PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
                                     const ral_buffer_create_info* create_info_ptr);
 
-#if 0
-    PUBLIC ral_buffer ral_buffer_create_from_sparse(ral_buffer            parent_sparse_buffer,
-                                                    uint32_t              size,
-                                                    ral_buffer_usage_bits usage_bits,
-                                                    ral_queue_bits        user_queue_bits);
-#endif
-
 /** TODO */
 PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
                                                 ral_buffer_property property,
