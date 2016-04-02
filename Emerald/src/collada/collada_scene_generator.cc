@@ -654,7 +654,8 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                    LOG_INFO("VRAM usage warning: texture [%s] requires mip-maps - generating..",
                             system_hashed_ansi_string_get_buffer(name) );
 
-                   ral_texture_generate_mipmaps(result_ral_texture);
+                   ral_texture_generate_mipmaps(result_ral_texture,
+                                                false /* async */);
 
                    image_workload_ptr->texture_has_mipmaps = true;
                 }

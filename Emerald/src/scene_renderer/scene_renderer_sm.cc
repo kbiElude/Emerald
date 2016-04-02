@@ -3740,7 +3740,8 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_sm_toggle(scene_renderer_sm   
         /* If necessary, also generate mipmaps for the color texture */
         if (handler_ptr->current_sm_color0_texture != NULL)
         {
-            ral_texture_generate_mipmaps(handler_ptr->current_sm_color0_texture);
+            ral_texture_generate_mipmaps(handler_ptr->current_sm_color0_texture,
+                                         false /* async */);
         }
 
         /* "Unbind" the SM texture from the scene_renderer_sm instance */

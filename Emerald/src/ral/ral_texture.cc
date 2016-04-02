@@ -521,7 +521,8 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
                                                      system_hashed_ansi_string                    name,
                                                      system_hashed_ansi_string                    file_name,
                                                      ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc)
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
+                                                     bool                                         async)
 {
     gfx_image   new_gfx_image = NULL;
     ral_texture result        = NULL;
@@ -564,7 +565,8 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
                                                name,
                                                new_gfx_image,
                                                usage,
-                                               pfn_notify_backend_about_new_object_proc);
+                                               pfn_notify_backend_about_new_object_proc,
+                                               async);
 
     if (result == NULL)
     {
@@ -592,7 +594,8 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                                                      system_hashed_ansi_string                    name,
                                                      gfx_image                                    image,
                                                      ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc)
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
+                                                     bool                                         async)
 {
     system_hashed_ansi_string                                       base_image_file_name    = NULL;
     unsigned int                                                    base_image_height       = 0;
@@ -757,7 +760,8 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
 
     if (!ral_texture_set_mipmap_data_from_client_memory(result,
                                                         image_n_mipmaps,
-                                                        mipmap_update_info_ptrs) )
+                                                        mipmap_update_info_ptrs,
+                                                        async) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Failed to set mipmap data for a ral_texture instance deriving from a gfx_image instance.");
@@ -778,7 +782,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture)
+PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture,
+                                                     bool        async)
 {
     bool          result      = false;
     _ral_texture* texture_ptr = (_ral_texture*) texture;
@@ -793,9 +798,14 @@ PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture)
     }
 
     /* Fire a notification, so that the backend can handle the request */
+    _ral_texture_mipmap_generation_requested_callback_arg callback_arg;
+
+    callback_arg.async   = async;
+    callback_arg.texture = texture;
+
     system_callback_manager_call_back(texture_ptr->callback_manager,
                                       RAL_TEXTURE_CALLBACK_ID_MIPMAP_GENERATION_REQUESTED,
-                                      texture);
+                                     &callback_arg);
 
     /* All done */
     result = true;
@@ -1042,7 +1052,8 @@ PUBLIC void ral_texture_release(ral_texture& texture)
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                                     texture,
                                                                        uint32_t                                                        n_updates,
-                                                                       std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* updates)
+                                                                       std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* updates,
+                                                                       bool                                                            async)
 {
     _ral_texture_client_memory_source_update_requested_callback_arg callback_arg;
     uint32_t                                                        n_texture_layers = 0;
@@ -1161,6 +1172,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
     #endif /* _DEBUG */
 
     /* Fire a notification, so that the listening backend can execute the request. */
+    callback_arg.async   = async;
     callback_arg.texture = texture;
 
     for (uint32_t n_update = 0;

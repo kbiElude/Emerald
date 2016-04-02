@@ -483,11 +483,12 @@ PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(og
 
     ral_context_create_textures                   (text_ptr->context,
                                                    1, /* n_textures */
-                                                   &to_create_info,
-                                                   &text_ptr->font_table_to);
+                                                  &to_create_info,
+                                                  &text_ptr->font_table_to);
     ral_texture_set_mipmap_data_from_client_memory(text_ptr->font_table_to,
                                                    1, /* n_updates */
-                                                  &to_update_ptr);
+                                                  &to_update_ptr,
+                                                   true /* async */);
 
     text_ptr->pGLBindTexture   (GL_TEXTURE_2D,
                                 ral_context_get_texture_gl_id(text_ptr->context,

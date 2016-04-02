@@ -1223,9 +1223,9 @@ PRIVATE void _mesh_material_setting_changed(const void* callback_data,
 }
 
 /** TODO */
-PRIVATE void _mesh_on_fill_gl_op_finished(ral_buffer_client_sourced_update_info* callback_info_ptr)
+PRIVATE void _mesh_on_fill_gl_op_finished(void* callback_data)
 {
-    _mesh* mesh_ptr = (_mesh*) callback_info_ptr->destruction_callback_user_arg;
+    _mesh* mesh_ptr = (_mesh*) callback_data;
 
     /* Safe to release GL processed data buffer now! */
     if (!(mesh_ptr->creation_flags & MESH_CREATION_FLAGS_SAVE_SUPPORT) )
@@ -2786,19 +2786,14 @@ PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
 
     bo_update_info_ptr->data                          = mesh_ptr->gl_processed_data;
     bo_update_info_ptr->data_size                     = mesh_ptr->gl_processed_data_size;
-    bo_update_info_ptr->destruction_callback_user_arg = mesh_ptr;
-    bo_update_info_ptr->pfn_destruction_callback_proc = _mesh_on_fill_gl_op_finished;
+    bo_update_info_ptr->op_finished_callback_user_arg = mesh_ptr;
+    bo_update_info_ptr->pfn_op_finished_callback_proc = _mesh_on_fill_gl_op_finished;
     bo_update_info_ptr->start_offset                  = 0;
 
     ral_buffer_set_data_from_client_memory(mesh_ptr->gl_bo,
                                            bo_update_info_ptrs,
                                            is_async,
                                            true /* sync_other_contexts */);
-
-    if (!is_async)
-    {
-        _mesh_on_fill_gl_op_finished(bo_update_info_ptr);
-    }
 
     /* Mark mesh as GL-initialized */
     mesh_ptr->gl_thread_fill_gl_buffers_call_needed = false;

@@ -58,9 +58,9 @@ PUBLIC EMERALD_API void raGL_buffer_get_property(raGL_buffer          buffer,
 PUBLIC void raGL_buffer_release(raGL_buffer buffer);
 
 /** TODO */
-PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                                           buffer,
-                                                          std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> >& updates,
-                                                          bool                                                                  async,
-                                                          bool                                                                  sync_other_contexts);
+PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                                          buffer,
+                                                          std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates,
+                                                          bool                                                                 async,
+                                                          bool                                                                 sync_other_contexts);
 
 #endif /* RAGL_BUFFER_H */

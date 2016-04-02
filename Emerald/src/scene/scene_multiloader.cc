@@ -1014,7 +1014,8 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
 
                 if (!are_texture_mips_initialized)
                 {
-                    ral_texture_generate_mipmaps(texture);
+                    ral_texture_generate_mipmaps(texture,
+                                                 true /* async */);
                 }
             } /* if (op_ptr->uses_mipmaps) */
 

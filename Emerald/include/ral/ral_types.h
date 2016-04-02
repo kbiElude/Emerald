@@ -50,7 +50,7 @@ typedef enum
 typedef int ral_buffer_property_bits;
 
 /** All data required to perform a RAM->buffer memory transfer */
-typedef void (*PFNRALBUFFERUPDATEINFODESTRUCTIONCALLBACKPROC)(struct ral_buffer_client_sourced_update_info* callback_info_ptr);
+typedef void (*PFNRALBUFFERUPDATEINFODESTRUCTIONCALLBACKPROC)(void* user_arg);
 
 typedef struct ral_buffer_client_sourced_update_info
 {
@@ -58,24 +58,16 @@ typedef struct ral_buffer_client_sourced_update_info
     uint32_t    data_size;
     uint32_t    start_offset;
 
-    PFNRALBUFFERUPDATEINFODESTRUCTIONCALLBACKPROC pfn_destruction_callback_proc;
-    void*                                         destruction_callback_user_arg;
+    PFNRALBUFFERUPDATEINFODESTRUCTIONCALLBACKPROC pfn_op_finished_callback_proc;
+    void*                                         op_finished_callback_user_arg;
 
     ral_buffer_client_sourced_update_info()
     {
-        destruction_callback_user_arg = nullptr;
         data                          = nullptr;
         data_size                     = 0;
-        pfn_destruction_callback_proc = nullptr;
+        op_finished_callback_user_arg = nullptr;
+        pfn_op_finished_callback_proc = nullptr;
         start_offset                  = 0;
-    }
-
-    ~ral_buffer_client_sourced_update_info()
-    {
-        if (pfn_destruction_callback_proc != nullptr)
-        {
-            pfn_destruction_callback_proc(this);
-        }
     }
 } ral_buffer_client_sourced_update_info;
 

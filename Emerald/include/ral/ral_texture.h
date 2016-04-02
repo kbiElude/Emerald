@@ -11,6 +11,14 @@
 
 typedef struct
 {
+    bool        async;
+    ral_texture texture;
+
+} _ral_texture_mipmap_generation_requested_callback_arg;
+
+typedef struct
+{
+    bool                                                                         async;
     ral_texture                                                                  texture;
     std::vector<std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> > updates;
 
@@ -28,7 +36,7 @@ typedef enum
     /* Fired whenever the app requests mipmap generation for the specified ral_texture
      * instance.
      *
-     * arg: ral_texture instance.
+     * arg: _ral_texture_mipmap_Generation_requested_callback_arg.
      */
     RAL_TEXTURE_CALLBACK_ID_MIPMAP_GENERATION_REQUESTED,
 
@@ -104,7 +112,8 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
                                                      system_hashed_ansi_string                    name,
                                                      system_hashed_ansi_string                    file_name,
                                                      ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc);
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
+                                                     bool                                         async);
 
 /** TODO.
  *
@@ -114,10 +123,12 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                                                      system_hashed_ansi_string                    name,
                                                      gfx_image                                    image,
                                                      ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc);
+                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
+                                                     bool                                         async);
 
 /** TODO */
-PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture);
+PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture,
+                                                     bool        async);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_texture_get_mipmap_property(ral_texture                 texture,
@@ -145,7 +156,8 @@ PUBLIC void ral_texture_release(ral_texture& texture);
  */
 PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_texture                                                     texture,
                                                                        uint32_t                                                        n_updates,
-                                                                       std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* updates);
+                                                                       std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* updates,
+                                                                       bool                                                            async);
 
 /** TODO */
 PUBLIC void ral_texture_set_property(ral_texture          texture,

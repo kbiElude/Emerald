@@ -94,12 +94,20 @@ typedef struct
     bool                                sync_other_contexts;
 } _raGL_buffer_clear_region_request_arg;
 
-typedef struct
+typedef struct _raGL_buffer_client_memory_sourced_update_request_arg
 {
     raGL_buffer                                                          buffer;
     bool                                                                 should_delete;
     bool                                                                 sync_other_contexts;
     std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates;
+
+    ~_raGL_buffer_client_memory_sourced_update_request_arg()
+    {
+        if (should_delete)
+        {
+            LOG_FATAL("del %p", this);
+        }
+    }
 } _raGL_buffer_client_memory_sourced_update_request_arg;
 
 typedef struct
@@ -125,7 +133,7 @@ PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thre
 /** TODO */
 PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread(void* callback_arg)
 {
-    _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr = (_raGL_buffer_client_memory_sourced_update_request_arg*) callback_arg;
+    _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr = static_cast<_raGL_buffer_client_memory_sourced_update_request_arg*>(callback_arg);
     ogl_context                                            current_context  = ogl_context_get_current_context();
 
     _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(current_context,
@@ -155,6 +163,11 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
                                                       buffer_ptr->start_offset + current_update_ptr->start_offset,
                                                       current_update_ptr->data_size,
                                                       current_update_ptr->data);
+
+        if (current_update_ptr->pfn_op_finished_callback_proc != nullptr)
+        {
+            current_update_ptr->pfn_op_finished_callback_proc(current_update_ptr->op_finished_callback_user_arg);
+        }
     } /* for (all updates) */
 
     if (callback_arg_ptr->sync_other_contexts)
@@ -447,10 +460,10 @@ PUBLIC void raGL_buffer_release(raGL_buffer buffer)
 }
 
 /** Please see header for specification */
-PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                                           buffer,
-                                                          std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> >& updates,
-                                                          bool                                                                  async,
-                                                          bool                                                                  sync_other_contexts)
+PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer                                                          buffer,
+                                                          std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates,
+                                                          bool                                                                 async,
+                                                          bool                                                                 sync_other_contexts)
 {
     _raGL_buffer* buffer_ptr      = (_raGL_buffer*) buffer;
     ogl_context   current_context = ogl_context_get_current_context();
@@ -458,7 +471,7 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
     if (async)
     {
         ral_backend_type                                       backend_type;
-        _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr = new _raGL_buffer_client_memory_sourced_update_request_arg;
+        _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr = new _raGL_buffer_client_memory_sourced_update_request_arg();
         ral_scheduler_job_info                                 job_info;
         ral_scheduler                                          scheduler        = nullptr;
 

@@ -5,8 +5,8 @@
  */
 #include "shared.h"
 #include "ral/ral_scheduler.h"
+#include "system/system_critical_section.h"
 #include "system/system_event.h"
-#include "system/system_read_write_mutex.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
 #include "system/system_semaphore.h"
@@ -20,17 +20,17 @@ typedef struct _ral_scheduler_backend
     system_semaphore        job_available_semaphore;
     system_resource_pool    job_pool;
     system_resizable_vector jobs;
-    system_read_write_mutex jobs_mutex;
+    system_critical_section jobs_cs;
     volatile unsigned int   n_threads_active;
     system_event            please_leave_event;
 
-    system_read_write_mutex active_locks_mutex;
+    system_critical_section active_locks_cs;
     system_resizable_vector active_read_locks;
     system_resizable_vector active_write_locks;
 
     _ral_scheduler_backend()
     {
-        active_locks_mutex = system_read_write_mutex_create();
+        active_locks_cs    = system_critical_section_create();
         active_read_locks  = system_resizable_vector_create(16 /* capacity */);
         active_write_locks = system_resizable_vector_create(16 /* capacity */);
 
@@ -41,7 +41,7 @@ typedef struct _ral_scheduler_backend
                                                                  NULL,  /* init_fn                   */
                                                                  NULL); /* deinit_fn                 */
         jobs                    = system_resizable_vector_create(4);    /* capacity                  */
-        jobs_mutex              = system_read_write_mutex_create();
+        jobs_cs                 = system_critical_section_create();
         n_threads_active        = 0;
         please_leave_event      = system_event_create           (true); /* manual_reset              */
     }
@@ -52,11 +52,11 @@ typedef struct _ral_scheduler_backend
                           "RAL scheduler shutting down, even though %d backend threads are still up.",
                           n_threads_active);
 
-        if (active_locks_mutex != NULL)
+        if (active_locks_cs != NULL)
         {
-            system_read_write_mutex_release(active_locks_mutex);
+            system_critical_section_release(active_locks_cs);
 
-            active_locks_mutex = NULL;
+            active_locks_cs = NULL;
         }
 
         if (active_read_locks != NULL)
@@ -94,11 +94,11 @@ typedef struct _ral_scheduler_backend
             jobs = NULL;
         }
 
-        if (jobs_mutex != NULL)
+        if (jobs_cs != NULL)
         {
-            system_read_write_mutex_release(jobs_mutex);
+            system_critical_section_release(jobs_cs);
 
-            jobs_mutex = NULL;
+            jobs_cs = NULL;
         }
 
         if (please_leave_event != NULL)
@@ -139,15 +139,13 @@ PUBLIC void ral_scheduler_finish(ral_scheduler    scheduler,
     {
         uint32_t n_jobs_scheduled = 0;
 
-        system_read_write_mutex_lock(backend_ptr->jobs_mutex,
-                                     ACCESS_READ);
+        system_critical_section_enter(backend_ptr->jobs_cs);
         {
             system_resizable_vector_get_property(backend_ptr->jobs,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                  &n_jobs_scheduled);
         }
-        system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
-                                       ACCESS_READ);
+        system_critical_section_leave(backend_ptr->jobs_cs);
 
         jobs_pending = (n_jobs_scheduled != 0);
 
@@ -165,16 +163,14 @@ PUBLIC void ral_scheduler_free_backend_threads(ral_scheduler    scheduler,
     _ral_scheduler*         scheduler_ptr = (_ral_scheduler*) scheduler;
     _ral_scheduler_backend* backend_ptr   = scheduler_ptr->backends + backend_type;
 
-    system_read_write_mutex_lock(backend_ptr->jobs_mutex,
-                                 ACCESS_WRITE);
+    system_critical_section_enter(backend_ptr->jobs_cs);
     {
         system_semaphore_leave_multiple(backend_ptr->job_available_semaphore,
                                         backend_ptr->n_threads_active);
 
         system_event_set(backend_ptr->please_leave_event);
     }
-    system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
-                                   ACCESS_WRITE);
+    system_critical_section_leave(backend_ptr->jobs_cs);
 
     /* Spin until all threads sign out */
     while (backend_ptr->n_threads_active != 0);
@@ -194,13 +190,12 @@ PUBLIC void ral_scheduler_schedule_job(ral_scheduler                 scheduler,
     _ral_scheduler*         scheduler_ptr = (_ral_scheduler*) scheduler;
     _ral_scheduler_backend* backend_ptr   = scheduler_ptr->backends + backend_type;
 
-    system_read_write_mutex_lock(backend_ptr->jobs_mutex,
-                                 ACCESS_WRITE);
+    ral_scheduler_job_info* new_job_ptr = (ral_scheduler_job_info*) system_resource_pool_get_from_pool(backend_ptr->job_pool);
+
+    *new_job_ptr = job_info;
+
+    system_critical_section_enter(backend_ptr->jobs_cs);
     {
-        ral_scheduler_job_info* new_job_ptr = (ral_scheduler_job_info*) system_resource_pool_get_from_pool(backend_ptr->job_pool);
-
-        *new_job_ptr = job_info;
-
         #ifdef _DEBUG
         {
             uint32_t n_jobs_scheduled = 0;
@@ -221,8 +216,7 @@ PUBLIC void ral_scheduler_schedule_job(ral_scheduler                 scheduler,
         /* Wake up one of the backend threads */
         system_semaphore_leave(backend_ptr->job_available_semaphore);
     }
-    system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
-                                   ACCESS_WRITE);
+    system_critical_section_leave(backend_ptr->jobs_cs);
 }
 
 /** Please see header for specification */
@@ -264,8 +258,7 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                  * 3) Job ID deps - indicate the job can only be executed if a job with specified ID has already finished
                  *                  executing. THIS IS NOT IMPLEMENTED YET BUT WILL BE NEEDED SHORTLY.
                  **/
-                system_read_write_mutex_lock(backend_ptr->jobs_mutex,
-                                             ACCESS_WRITE);
+                system_critical_section_enter(backend_ptr->jobs_cs);
                 {
                     /* Look for a suitable job we can use. */
                     uint32_t job_index = -1;
@@ -289,8 +282,7 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                             job_ptr->n_write_locks > 0)
                         {
                             /* Check the write locks first. If any of the write locks are currently in use, immediately move on to the next job */
-                            system_read_write_mutex_lock(backend_ptr->active_locks_mutex,
-                                                         ACCESS_WRITE);
+                            system_critical_section_enter(backend_ptr->active_locks_cs);
 
                             for (uint32_t n_job_write_lock = 0;
                                           n_job_write_lock < job_ptr->n_write_locks && is_job_executable;
@@ -313,6 +305,9 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
 
                             if (!is_job_executable)
                             {
+                                job_ptr = nullptr;
+
+                                system_critical_section_leave(backend_ptr->active_locks_cs);
                                 continue;
                             }
 
@@ -325,24 +320,28 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                                                                                   job_ptr->read_locks[n_job_read_lock]) == ITEM_NOT_FOUND);
                             }
 
+                            system_critical_section_leave(backend_ptr->active_locks_cs);
+
                             if (!is_job_executable)
                             {
+                                job_ptr = nullptr;
+
                                 continue;
                             }
-                            else
-                            {
-                                job_ptr = nullptr;
-                            }
-
-                            system_read_write_mutex_unlock(backend_ptr->active_locks_mutex,
-                                                           ACCESS_WRITE);
                         }
                         else
                         {
                             /* No job deps. Safe to execute. */
                         }
 
-                        break;
+                        if (is_job_executable)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            job_ptr = nullptr;
+                        }
                     }
 
                     if (job_ptr != nullptr)
@@ -351,25 +350,28 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                         system_resizable_vector_delete_element_at(backend_ptr->jobs,
                                                                   job_index);
 
-                        for (uint32_t n_job_read_lock = 0;
-                                      n_job_read_lock < job_ptr->n_read_locks;
-                                    ++n_job_read_lock)
+                        system_critical_section_enter(backend_ptr->active_locks_cs);
                         {
-                            system_resizable_vector_push(backend_ptr->active_read_locks,
-                                                         job_ptr->read_locks[n_job_read_lock]);
-                        }
+                            for (uint32_t n_job_read_lock = 0;
+                                          n_job_read_lock < job_ptr->n_read_locks;
+                                        ++n_job_read_lock)
+                            {
+                                system_resizable_vector_push(backend_ptr->active_read_locks,
+                                                             job_ptr->read_locks[n_job_read_lock]);
+                            }
 
-                        for (uint32_t n_job_write_lock = 0;
-                                      n_job_write_lock < job_ptr->n_write_locks;
-                                    ++n_job_write_lock)
-                        {
-                            system_resizable_vector_push(backend_ptr->active_write_locks,
-                                                         job_ptr->write_locks[n_job_write_lock]);
+                            for (uint32_t n_job_write_lock = 0;
+                                          n_job_write_lock < job_ptr->n_write_locks;
+                                        ++n_job_write_lock)
+                            {
+                                system_resizable_vector_push(backend_ptr->active_write_locks,
+                                                             job_ptr->write_locks[n_job_write_lock]);
+                            }
                         }
+                        system_critical_section_leave(backend_ptr->active_locks_cs);
                     }
                 }
-                system_read_write_mutex_unlock(backend_ptr->jobs_mutex,
-                                               ACCESS_WRITE);
+                system_critical_section_leave(backend_ptr->jobs_cs);
 
                 if (job_ptr == nullptr)
                 {
@@ -390,8 +392,7 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
             job_ptr->pfn_callback_ptr(job_ptr->callback_user_arg);
 
             /* Return the locks */
-            system_read_write_mutex_lock(backend_ptr->active_locks_mutex,
-                                         ACCESS_WRITE);
+            system_critical_section_enter(backend_ptr->active_locks_cs);
             {
                 for (uint32_t n_job_read_lock = 0;
                               n_job_read_lock < job_ptr->n_read_locks;
@@ -412,7 +413,7 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                             ++n_job_write_lock)
                 {
                     uint32_t lock_index = system_resizable_vector_find(backend_ptr->active_write_locks,
-                                                                       job_ptr->read_locks[n_job_write_lock]);
+                                                                       job_ptr->write_locks[n_job_write_lock]);
 
                     ASSERT_DEBUG_SYNC(lock_index != ITEM_NOT_FOUND,
                                       "Write lock not found in the \"active write locks \" backend array");
@@ -421,8 +422,7 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                                                               lock_index);
                 }
             }
-            system_read_write_mutex_unlock(backend_ptr->active_locks_mutex,
-                                           ACCESS_WRITE);
+            system_critical_section_leave(backend_ptr->active_locks_cs);
 
             /* Schedule for execution any "upon completion" call-backs assigned to the job */
             if (job_ptr->pfn_callback_when_done_ptr != NULL)
@@ -440,8 +440,14 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
             }
 
             /* Return the descriptor back to the pool for recycling */
+            memset(job_ptr,
+                   0,
+                   sizeof(*job_ptr) );
+
+#if 0
             system_resource_pool_return_to_pool(backend_ptr->job_pool,
                                                 (system_resource_pool_block) job_ptr);
+#endif
         };
     }
     system_atomics_decrement(&backend_ptr->n_threads_active);

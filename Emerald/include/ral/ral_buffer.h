@@ -135,9 +135,9 @@ PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
 PUBLIC void ral_buffer_release(ral_buffer& buffer);
 
 /** TODO */
-PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                                                                  buffer,
-                                                               const std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> >& updates,
-                                                               bool                                                                        async,
-                                                               bool                                                                        sync_other_contexts);
+PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                                                           buffer,
+                                                               std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates,
+                                                               bool                                                                 async,
+                                                               bool                                                                 sync_other_contexts);
 
 #endif /* RAL_BUFFER_H */

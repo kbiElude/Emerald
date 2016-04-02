@@ -579,7 +579,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                                                                  name_has,
                                                                                  *(system_hashed_ansi_string*) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
-                                                                                 _ral_context_notify_backend_about_new_object);
+                                                                                 _ral_context_notify_backend_about_new_object,
+                                                                                 true /* async */);
 
                 break;
             }
@@ -600,7 +601,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                                                                  name_has,
                                                                                  *(gfx_image*) (object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
-                                                                                 _ral_context_notify_backend_about_new_object);
+                                                                                 _ral_context_notify_backend_about_new_object,
+                                                                                 true /* async */);
 
                 ral_texture_set_property((ral_texture) result_objects_ptr[n_object],
                                          RAL_TEXTURE_PROPERTY_FILENAME,

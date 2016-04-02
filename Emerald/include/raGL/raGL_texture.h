@@ -41,7 +41,8 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context conte
                                                                ral_texture texture);
 
 /** TODO */
-PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture);
+PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
+                                          bool         async);
 
 /** TODO */
 PUBLIC EMERALD_API bool raGL_texture_get_property(raGL_texture          texture,
@@ -53,6 +54,7 @@ PUBLIC void raGL_texture_release(raGL_texture texture);
 
 /** TODO **/
 PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture                                                                        texture,
-                                                         const std::vector<std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> >& updates);
+                                                         const std::vector<std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> >& updates,
+                                                         bool                                                                                async);
 
 #endif /* RAGL_TEXTURE_H */

@@ -900,7 +900,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                                                   config.texture_min_filter);
 
                     /* Generate mip-maps if needed */
-                    ral_texture_generate_mipmaps(texture);
+                    ral_texture_generate_mipmaps(texture,
+                                                 true /* async */);
                 }
 
                 break;

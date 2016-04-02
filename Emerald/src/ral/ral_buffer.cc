@@ -353,10 +353,10 @@ PUBLIC void ral_buffer_release(ral_buffer& buffer)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                                                                  buffer,
-                                                               const std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> >& updates,
-                                                               bool                                                                        async,
-                                                               bool                                                                        sync_other_contexts)
+PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer                                                           buffer,
+                                                               std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates,
+                                                               bool                                                                 async,
+                                                               bool                                                                 sync_other_contexts)
 {
     _ral_buffer*                                       buffer_ptr = (_ral_buffer*) buffer;
     ral_buffer_client_sourced_update_info_callback_arg callback_arg;

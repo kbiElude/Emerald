@@ -1751,7 +1751,8 @@ PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const
     if (texture_raGL != NULL)
     {
         raGL_texture_update_with_client_sourced_data(texture_raGL,
-                                                     callback_arg_ptr->updates);
+                                                     callback_arg_ptr->updates,
+                                                     callback_arg_ptr->async);
     }
 }
 
@@ -1759,9 +1760,9 @@ PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const
 PRIVATE void _raGL_backend_on_texture_mipmap_generation_request(const void* callback_arg_data,
                                                                 void*       backend)
 {
-    _raGL_backend* backend_ptr  = (_raGL_backend*) backend;
-    ral_texture    texture      = (ral_texture)    callback_arg_data;
-    raGL_texture   texture_raGL = NULL;
+    _raGL_backend*                                         backend_ptr      = (_raGL_backend*) backend;
+    _ral_texture_mipmap_generation_requested_callback_arg* callback_arg_ptr = (_ral_texture_mipmap_generation_requested_callback_arg*) callback_arg_data;
+    raGL_texture                                           texture_raGL     = NULL;
 
     /* Identify the raGL_texture instance for the source ral_texture object and forward
      * the request. */
@@ -1769,7 +1770,7 @@ PRIVATE void _raGL_backend_on_texture_mipmap_generation_request(const void* call
                                  ACCESS_READ);
     {
         if (!system_hash64map_get(backend_ptr->textures_map,
-                                  (system_hash64) texture,
+                                  (system_hash64) callback_arg_ptr->texture,
                                  &texture_raGL) )
         {
             ASSERT_DEBUG_SYNC(false,
@@ -1781,7 +1782,8 @@ PRIVATE void _raGL_backend_on_texture_mipmap_generation_request(const void* call
 
     if (texture_raGL != NULL)
     {
-        raGL_texture_generate_mipmaps(texture_raGL);
+        raGL_texture_generate_mipmaps(texture_raGL,
+                                      callback_arg_ptr->async);
     }
 }
 

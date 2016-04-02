@@ -214,7 +214,8 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                     /* Generate mipmaps if necessary */
                     if (uses_mipmaps)
                     {
-                        ral_texture_generate_mipmaps(texture);
+                        ral_texture_generate_mipmaps(texture,
+                                                     true /* async */);
                     }
 
                     /* Release gfx_image instance */
