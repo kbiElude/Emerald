@@ -100,14 +100,6 @@ typedef struct _raGL_buffer_client_memory_sourced_update_request_arg
     bool                                                                 should_delete;
     bool                                                                 sync_other_contexts;
     std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > updates;
-
-    ~_raGL_buffer_client_memory_sourced_update_request_arg()
-    {
-        if (should_delete)
-        {
-            LOG_FATAL("del %p", this);
-        }
-    }
 } _raGL_buffer_client_memory_sourced_update_request_arg;
 
 typedef struct

@@ -7,6 +7,7 @@ DECLARE_HANDLE(ral_buffer);
 DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
 DECLARE_HANDLE(ral_framebuffer);
+DECLARE_HANDLE(ral_gfx_state);
 DECLARE_HANDLE(ral_graphics_state);
 DECLARE_HANDLE(ral_program);
 DECLARE_HANDLE(ral_sampler);
@@ -87,6 +88,18 @@ typedef enum
     RAL_BUFFER_USAGE_LAST_USED_BIT = 7
 };
 typedef int ral_buffer_usage_bits;
+
+typedef enum
+{
+    RAL_COMPARE_OP_ALWAYS,
+    RAL_COMPARE_OP_EQUAL,
+    RAL_COMPARE_OP_GEQUAL,
+    RAL_COMPARE_OP_LEQUAL,
+    RAL_COMPARE_OP_LESS,
+    RAL_COMPARE_OP_NEQUAL,
+    RAL_COMPARE_OP_NEVER,
+    RAL_COMPARE_OP_GREATER,
+} ral_compare_op;
 
 /** Enumerator that describes allowed types for a program attribute */
 typedef enum
@@ -441,6 +454,79 @@ typedef enum
     RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM
 } ral_context_property;
 
+typedef enum
+{
+    RAL_CULL_MODE_BACK,
+    RAL_CULL_MODE_FRONT,
+    RAL_CULL_MODE_FRONT_AND_BACK,
+    RAL_CULL_MODE_NONE,
+} ral_cull_mode;
+
+typedef enum
+{
+    RAL_FRONT_FACE_CCW,
+    RAL_FRONT_FACE_CW
+} ral_front_face;
+
+typedef enum
+{
+    /* source & destination */
+    RAL_LOGIC_OP_AND,
+
+    /* ~source & destination */
+    RAL_LOGIC_OP_AND_INVERTED,
+
+    /* source & ~destination */
+    RAL_LOGIC_OP_AND_REVERSE,
+
+    /* 0 */
+    RAL_LOGIC_OP_CLEAR,
+
+    /* source value */
+    RAL_LOGIC_OP_COPY,
+
+    /* inverted source value */
+    RAL_LOGIC_OP_COPY_INVERTED,
+
+    /* ~(source ^ destination) */
+    RAL_LOGIC_OP_EQUIVALENT,
+
+    /* inverted destination value */
+    RAL_LOGIC_OP_INVERT,
+
+    /* ~(source & destination) */
+    RAL_LOGIC_OP_NAND,
+
+    /* destination */
+    RAL_LOGIC_OP_NOOP,
+
+    /* ~(source | destination) */
+    RAL_LOGIC_OP_NOR,
+
+    /* source | destination */
+    RAL_LOGIC_OP_OR,
+
+    /* ~source | destination */
+    RAL_LOGIC_OP_INVERTED,
+
+    /* source | ~destination */
+    RAL_LOGIC_OP_OR_REVERSE,
+
+    /* 1 */
+    RAL_LOGIC_OP_SET,
+
+    /* source ^ destination */
+    RAL_LOGIC_OP_XOR,
+
+} ral_logic_op;
+
+typedef enum
+{
+    RAL_POLYGON_MODE_FILL,
+    RAL_POLYGON_MODE_LINES,
+    RAL_POLYGON_MODE_POINTS
+} ral_polygon_mode;
+
 /* Primitive types supported by RAL */
 typedef enum
 {
@@ -481,6 +567,39 @@ typedef struct
     ral_program_shader_stage_bits active_shader_stages;
     system_hashed_ansi_string     name;
 } ral_program_create_info;
+
+typedef enum
+{
+    RAL_STENCIL_OP_DECREMENT_AND_CLAMP,
+    RAL_STENCIL_OP_DECREMENT_AND_WRAP,
+    RAL_STENCIL_OP_INCREMENT_AND_CLAMP,
+    RAL_STENCIL_OP_INCREMENT_AND_WRAP,
+    RAL_STENCIL_OP_KEEP,
+    RAL_STENCIL_OP_REPLACE,
+    RAL_STENCIL_OP_ZERO,
+} ral_stencil_op;
+
+typedef struct ral_stencil_op_state
+{
+    uint32_t       compare_mask;
+    ral_compare_op compare_op;
+    ral_stencil_op depth_fail;
+    ral_stencil_op fail;
+    uint32_t       reference_value;
+    ral_stencil_op pass;
+    uint32_t       write_mask;
+
+    ral_stencil_op_state()
+    {
+        compare_mask    = ~0;
+        compare_op      = RAL_COMPARE_OP_ALWAYS;
+        depth_fail      = RAL_STENCIL_OP_KEEP;
+        fail            = RAL_STENCIL_OP_KEEP;
+        reference_value = 0;
+        pass            = RAL_STENCIL_OP_KEEP;
+        write_mask      = ~0;
+    }
+} ral_stencil_op_state;
 
 /* RAL texture filter modes */
 typedef enum
