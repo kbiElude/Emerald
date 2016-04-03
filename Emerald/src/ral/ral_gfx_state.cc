@@ -52,13 +52,6 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
             break;
         }
 
-        case RAL_GFX_STATE_PROPERTY_BLENDING_ENABLED:
-        {
-            *(bool*) out_result_ptr = gfx_state_ptr->create_info.blending;
-
-            break;
-        }
-
         case RAL_GFX_STATE_PROPERTY_CULL_MODE:
         {
             *(ral_cull_mode*) out_result_ptr = gfx_state_ptr->create_info.cull_mode;

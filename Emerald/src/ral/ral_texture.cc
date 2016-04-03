@@ -946,6 +946,13 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
             break;
         }
 
+        case RAL_TEXTURE_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result_ptr = texture_ptr->context;
+
+            break;
+        }
+
         case RAL_TEXTURE_PROPERTY_CREATE_INFO:
         {
             ral_texture_create_info* create_info_ptr = (ral_texture_create_info*) out_result_ptr;

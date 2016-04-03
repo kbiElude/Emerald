@@ -64,6 +64,9 @@ typedef enum
     /* not settable, system_callback_manager */
     RAL_TEXTURE_PROPERTY_CALLBACK_MANAGER,
 
+    /* not settable, ral_context */
+    RAL_TEXTURE_PROPERTY_CONTEXT,
+
     /* not settable, ral_texture_create_info. */
     RAL_TEXTURE_PROPERTY_CREATE_INFO,
 

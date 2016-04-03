@@ -8,7 +8,6 @@ typedef struct ral_gfx_state_create_info
 {
     bool alpha_to_coverage;
     bool alpha_to_one;
-    bool blending;
     bool depth_bias;
     bool depth_bounds_test;
     bool depth_clamp;
@@ -56,7 +55,6 @@ typedef struct ral_gfx_state_create_info
     {
         alpha_to_coverage  = false;
         alpha_to_one       = false;
-        blending           = false;
         depth_bias         = false;
         depth_bounds_test  = false;
         depth_clamp        = false;
@@ -92,9 +90,6 @@ typedef enum
 
     /* not settable; bool */
     RAL_GFX_STATE_PROPERTY_ALPHA_TO_ONE_ENABLED,
-
-    /* not settable; bool */
-    RAL_GFX_STATE_PROPERTY_BLENDING_ENABLED,
 
     /* not settable; ral_cull_mode */
     RAL_GFX_STATE_PROPERTY_CULL_MODE,

@@ -8,13 +8,13 @@ DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
 DECLARE_HANDLE(ral_framebuffer);
 DECLARE_HANDLE(ral_gfx_state);
-DECLARE_HANDLE(ral_graphics_state);
 DECLARE_HANDLE(ral_program);
 DECLARE_HANDLE(ral_sampler);
 DECLARE_HANDLE(ral_scheduler);
 DECLARE_HANDLE(ral_shader);
 DECLARE_HANDLE(ral_texture);
 DECLARE_HANDLE(ral_texture_pool);
+DECLARE_HANDLE(ral_texture_view);
 
 
 typedef enum
@@ -25,6 +25,34 @@ typedef enum
     RAL_BACKEND_TYPE_UNKNOWN,
     RAL_BACKEND_TYPE_COUNT = RAL_BACKEND_TYPE_UNKNOWN
 } ral_backend_type;
+
+typedef enum
+{
+    RAL_BLEND_FACTOR_CONSTANT_ALPHA,
+    RAL_BLEND_FACTOR_CONSTANT_COLOR,
+    RAL_BLEND_FACTOR_DST_ALPHA,
+    RAL_BLEND_FACTOR_DST_COLOR,
+    RAL_BLEND_FACTOR_ONE,
+    RAL_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+    RAL_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+    RAL_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+    RAL_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+    RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    RAL_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+    RAL_BLEND_FACTOR_SRC_ALPHA,
+    RAL_BLEND_FACTOR_SRC_ALPHA_SATURATE,
+    RAL_BLEND_FACTOR_SRC_COLOR,
+    RAL_BLEND_FACTOR_ZERO,
+} ral_blend_factor;
+
+typedef enum
+{
+    RAL_BLEND_OP_ADD,
+    RAL_BLEND_OP_MAX,
+    RAL_BLEND_OP_MIN,
+    RAL_BLEND_OP_SUBTRACT,
+    RAL_BLEND_OP_SUBTRACT_REVERSE,
+} ral_blend_op;
 
 typedef enum
 {
@@ -570,36 +598,10 @@ typedef struct
 
 typedef enum
 {
-    RAL_STENCIL_OP_DECREMENT_AND_CLAMP,
-    RAL_STENCIL_OP_DECREMENT_AND_WRAP,
-    RAL_STENCIL_OP_INCREMENT_AND_CLAMP,
-    RAL_STENCIL_OP_INCREMENT_AND_WRAP,
-    RAL_STENCIL_OP_KEEP,
-    RAL_STENCIL_OP_REPLACE,
-    RAL_STENCIL_OP_ZERO,
-} ral_stencil_op;
-
-typedef struct ral_stencil_op_state
-{
-    uint32_t       compare_mask;
-    ral_compare_op compare_op;
-    ral_stencil_op depth_fail;
-    ral_stencil_op fail;
-    uint32_t       reference_value;
-    ral_stencil_op pass;
-    uint32_t       write_mask;
-
-    ral_stencil_op_state()
-    {
-        compare_mask    = ~0;
-        compare_op      = RAL_COMPARE_OP_ALWAYS;
-        depth_fail      = RAL_STENCIL_OP_KEEP;
-        fail            = RAL_STENCIL_OP_KEEP;
-        reference_value = 0;
-        pass            = RAL_STENCIL_OP_KEEP;
-        write_mask      = ~0;
-    }
-} ral_stencil_op_state;
+    RAL_RENDERTARGET_LOAD_TYPE_CLEAR,
+    RAL_RENDERTARGET_LOAD_TYPE_INVALIDATE,
+    RAL_RENDERTARGET_LOAD_TYPE_READ
+} ral_rendertarget_load_type;
 
 /* RAL texture filter modes */
 typedef enum
@@ -723,6 +725,39 @@ typedef struct ral_shader_create_info
         type      = in_type;
     }
 } ral_shader_create_info;
+
+typedef enum
+{
+    RAL_STENCIL_OP_DECREMENT_AND_CLAMP,
+    RAL_STENCIL_OP_DECREMENT_AND_WRAP,
+    RAL_STENCIL_OP_INCREMENT_AND_CLAMP,
+    RAL_STENCIL_OP_INCREMENT_AND_WRAP,
+    RAL_STENCIL_OP_KEEP,
+    RAL_STENCIL_OP_REPLACE,
+    RAL_STENCIL_OP_ZERO,
+} ral_stencil_op;
+
+typedef struct ral_stencil_op_state
+{
+    uint32_t       compare_mask;
+    ral_compare_op compare_op;
+    ral_stencil_op depth_fail;
+    ral_stencil_op fail;
+    uint32_t       reference_value;
+    ral_stencil_op pass;
+    uint32_t       write_mask;
+
+    ral_stencil_op_state()
+    {
+        compare_mask    = ~0;
+        compare_op      = RAL_COMPARE_OP_ALWAYS;
+        depth_fail      = RAL_STENCIL_OP_KEEP;
+        fail            = RAL_STENCIL_OP_KEEP;
+        reference_value = 0;
+        pass            = RAL_STENCIL_OP_KEEP;
+        write_mask      = ~0;
+    }
+} ral_stencil_op_state;
 
 /* RAL texture component. This is used eg. for texture swizzling. */
 typedef enum
@@ -884,6 +919,8 @@ typedef enum
     RAL_TEXTURE_FORMAT_COUNT = RAL_TEXTURE_FORMAT_UNKNOWN
 } ral_texture_format;
 
+
+
 typedef enum
 {
     /* NOTE: Make sure to update *_for_ral_texture_type() and ral_utils_get_texture_type_property() functions whenever modifying
@@ -989,5 +1026,30 @@ typedef struct ral_texture_mipmap_client_sourced_update_info
         }
     }
 } ral_texture_mipmap_client_sourced_update_info;
+
+typedef enum
+{
+
+    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_SINT,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_SNORM,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_UINT,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_UNORM,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_FLOAT_SINT,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_SINT,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_SNORM,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_UINT,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_UNORM,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_SINT,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_SNORM,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_UINT,
+    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_UNORM
+
+} ral_vertex_attribute_format;
+
+typedef enum
+{
+    RAL_VERTEX_INPUT_RATE_PER_INSTANCE,
+    RAL_VERTEX_INPUT_RATE_PER_VERTEX,
+} ral_vertex_input_rate;
 
 #endif /* RAL_TYPES_H */
