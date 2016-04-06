@@ -13,6 +13,7 @@ typedef struct _ral_sampler
     ral_color                 border_color;
     ral_compare_function      compare_function;
     bool                      compare_mode_enabled;
+    ral_context               context;
     float                     lod_bias;
     float                     lod_min;
     float                     lod_max;
@@ -25,7 +26,8 @@ typedef struct _ral_sampler
     ral_texture_wrap_mode     wrap_s;
     ral_texture_wrap_mode     wrap_t;
 
-    _ral_sampler(system_hashed_ansi_string in_name,
+    _ral_sampler(ral_context               in_context,
+                 system_hashed_ansi_string in_name,
                  ral_color                 in_border_color,
                  ral_compare_function      in_compare_function,
                  bool                      in_compare_mode_enabled,
@@ -43,6 +45,7 @@ typedef struct _ral_sampler
         border_color         = in_border_color;
         compare_function     = in_compare_function;
         compare_mode_enabled = in_compare_mode_enabled;
+        context              = in_context;
         lod_bias             = in_lod_bias;
         lod_max              = in_lod_max;
         lod_min              = in_lod_min;
@@ -71,10 +74,12 @@ PRIVATE void _ral_sampler_release(void* sampler)
 
 
 /** Please see header for specification */
-PUBLIC ral_sampler ral_sampler_create(system_hashed_ansi_string      name,
+PUBLIC ral_sampler ral_sampler_create(ral_context                    context,
+                                      system_hashed_ansi_string      name,
                                       const ral_sampler_create_info* sampler_create_info_ptr)
 {
-    _ral_sampler* sampler_ptr = new (std::nothrow) _ral_sampler(name,
+    _ral_sampler* sampler_ptr = new (std::nothrow) _ral_sampler(context,
+                                                                name,
                                                                 sampler_create_info_ptr->border_color,
                                                                 sampler_create_info_ptr->compare_function,
                                                                 sampler_create_info_ptr->compare_mode_enabled,
@@ -131,6 +136,13 @@ PUBLIC void ral_sampler_get_property(ral_sampler          sampler,
         case RAL_SAMPLER_PROPERTY_COMPARE_MODE_ENABLED:
         {
             *(bool*) out_result_ptr = sampler_ptr->compare_mode_enabled;
+
+            break;
+        }
+
+        case RAL_SAMPLER_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result_ptr = sampler_ptr->context;
 
             break;
         }

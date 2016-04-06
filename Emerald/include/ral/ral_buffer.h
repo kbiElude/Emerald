@@ -83,6 +83,9 @@ typedef enum
     /* not settable, system_callback_manager */
     RAL_BUFFER_PROPERTY_CALLBACK_MANAGER,
 
+    /* not settable, ral_context */
+    RAL_BUFFER_PROPERTY_CONTEXT,
+
     /* not settable, ral_buffer_mappability_bits */
     RAL_BUFFER_PROPERTY_MAPPABILITY_BITS,
 
@@ -123,7 +126,8 @@ PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                    
                                                   bool                            sync_other_contexts);
 
 /** TODO */
-PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
+PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
+                                    system_hashed_ansi_string     name,
                                     const ral_buffer_create_info* create_info_ptr);
 
 /** TODO */

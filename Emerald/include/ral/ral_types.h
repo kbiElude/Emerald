@@ -326,6 +326,23 @@ typedef enum
 };
 typedef int ral_queue_bits;
 
+typedef enum
+{
+    /* sampler + texture */
+    RAL_BINDING_TYPE_SAMPLED_IMAGE,
+
+    /* buffer (+ buffer_offset, if not 0) */
+    RAL_BINDING_TYPE_STORAGE_BUFFER,
+
+    /* texture */
+    RAL_BINDING_TYPE_STORAGE_IMAGE,
+
+    /* buffer (+ buffer offset, if not 0) */
+    RAL_BINDING_TYPE_UNIFORM_BUFFER,
+
+    RAL_BINDING_TYPE_UNKNOWN
+} ral_binding_type;
+
 /** All info required to perform a buffer region clear op */
 typedef struct ral_buffer_clear_region_info
 {

@@ -4,6 +4,16 @@
 #include "ral/ral_types.h"
 
 
+typedef struct ral_gfx_state_vertex_attribute
+{
+    uint32_t                    binding;
+    ral_vertex_attribute_format format;
+    ral_vertex_input_rate       input_rate;
+    uint32_t                    offset;
+    uint32_t                    stride;
+} ral_gfx_state_vertex_attribute;
+
+
 typedef struct ral_gfx_state_create_info
 {
     bool alpha_to_coverage;
@@ -51,6 +61,9 @@ typedef struct ral_gfx_state_create_info
     ral_polygon_mode   polygon_mode;
     ral_primitive_type primitive_type;
 
+    uint32_t                              n_vertex_attributes;
+    const ral_gfx_state_vertex_attribute* vertex_attribute_ptrs;
+
     ral_gfx_state_create_info()
     {
         alpha_to_coverage  = false;
@@ -76,10 +89,12 @@ typedef struct ral_gfx_state_create_info
         logic_op                          = RAL_LOGIC_OP_NOOP;
         max_depth_bounds                  = 1.0f;
         min_depth_bounds                  = 0.0f;
+        n_vertex_attributes               = 0;
         n_patch_control_points            = 0;
         polygon_mode                      = RAL_POLYGON_MODE_FILL;
         primitive_type                    = RAL_PRIMITIVE_TYPE_TRIANGLES;
         sample_shading_min_sample_shading = 1.0f;
+        vertex_attribute_ptrs             = nullptr;
     }
 } ral_gfx_state_create_info;
 
@@ -136,6 +151,9 @@ typedef enum
     /* not settable; uint32_t */
     RAL_GFX_STATE_PROPERTY_N_PATCH_CONTROL_POINTS,
 
+    /* not settable; uint32_t */
+    RAL_GFX_STATE_PROPERTY_N_VERTEX_ATTRIBUTES,
+
     /* not settable; ral_polygon_mode */
     RAL_GFX_STATE_PROPERTY_POLYGON_MODE,
 
@@ -162,6 +180,9 @@ typedef enum
 
     /* not settable; ral_stencil_op_state */
     RAL_GFX_STATE_PROPERTY_STENCIL_TEST_FRONT,
+
+    /* not settable; ral_gfx_state_vertex_attribute* (array of RAL_GFX_STATE_PROPERTY_N_VERTEX_ATTRIBUTES items) */
+    RAL_GFX_STATE_PROPERTY_VERTEX_ATTRIBUTES
 } ral_gfx_state_property;
 
 

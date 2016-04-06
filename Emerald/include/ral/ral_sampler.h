@@ -14,6 +14,9 @@ typedef enum
     /* not settable, bool */
     RAL_SAMPLER_PROPERTY_COMPARE_MODE_ENABLED,
 
+    /* not settable, ral_context */
+    RAL_SAMPLER_PROPERTY_CONTEXT,
+
     /* not settable, float */
     RAL_SAMPLER_PROPERTY_LOD_BIAS,
 
@@ -52,7 +55,8 @@ typedef enum
  *  NOTE: This function should only be used by ral_context. Use ral_context_* entry-points() to create
  *        a sampler instance instead.
  **/
-PUBLIC ral_sampler ral_sampler_create(system_hashed_ansi_string      name,
+PUBLIC ral_sampler ral_sampler_create(ral_context                    context,
+                                      system_hashed_ansi_string      name,
                                       const ral_sampler_create_info* sampler_create_info_ptr);
 
 /** TODO */

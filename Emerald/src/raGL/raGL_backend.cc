@@ -318,6 +318,7 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
         else
         {
             backend_ptr->buffers = raGL_buffers_create((raGL_backend) backend_ptr,
+                                                       backend_ptr->context_ral,
                                                        backend_ptr->context_gl);
         }
 

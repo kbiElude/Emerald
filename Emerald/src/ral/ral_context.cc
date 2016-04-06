@@ -505,7 +505,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         {
             case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
             {
-                result_objects_ptr[n_object] = ral_buffer_create(name_has,
+                result_objects_ptr[n_object] = ral_buffer_create((ral_context) context_ptr,
+                                                                 name_has,
                                                                  (const ral_buffer_create_info*) (object_create_info_ptrs + n_object) );
 
                 break;
@@ -529,7 +530,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
             case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
             {
-                result_objects_ptr[n_object] = ral_sampler_create(name_has,
+                result_objects_ptr[n_object] = ral_sampler_create((ral_context) context_ptr,
+                                                                  name_has,
                                                                   (const ral_sampler_create_info*) (object_create_info_ptrs) + n_object);
 
                 break;

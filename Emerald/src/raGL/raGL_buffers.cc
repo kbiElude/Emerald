@@ -53,6 +53,7 @@ typedef struct _raGL_buffers
     raGL_backend                                   backend;
     system_resource_pool                           buffer_descriptor_pool;
     ogl_context                                    context; /* do not retain - else face circular dependencies */
+    ral_context                                    context_ral;
     ogl_context_es_entrypoints*                    entry_points_es;
     system_hash64map                               id_to_buffer_map;         /* maps GLuint to _raGL_buffers_buffer instance; does NOT own the instance */
     system_hash64map                               ral_buffer_to_buffer_map; /* maps ral_buffer to _raGL_buffers_buffer instances; owns the instances */
@@ -73,6 +74,7 @@ typedef struct _raGL_buffers
 
 
     _raGL_buffers(raGL_backend in_backend,
+                  ral_context  in_context_ral,
                   ogl_context  in_context);
 
     ~_raGL_buffers()
@@ -174,6 +176,7 @@ PRIVATE void                  _raGL_buffers_release                            (
 
 /** TODO */
 _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
+                             ral_context  in_context_ral,
                              ogl_context  in_context)
 {
     are_sparse_buffers_in    = false;
@@ -183,6 +186,7 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
                                                            NULL,                                 /* init_fn */
                                                            _raGL_buffers_dealloc_sparse_buffer); /* deinit_fn */
     context                  = in_context;
+    context_ral              = in_context_ral;
     entry_points_es          = NULL;
     entry_points_gl          = NULL;
     entry_points_gl_bs       = NULL;
@@ -990,9 +994,13 @@ PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_b
                                                                                                   const ral_buffer_create_info* buffer_create_info_ptr,
                                                                                                   raGL_buffer*                  out_buffer_ptr)
 {
-    bool       result      = false;
-    ral_buffer temp_buffer = ral_buffer_create(system_hashed_ansi_string_create("Temporary RAL buffer"),
-                                               buffer_create_info_ptr);
+    _raGL_buffers* buffers_ptr = (_raGL_buffers*) buffers;
+    bool           result      = false;
+    ral_buffer     temp_buffer = nullptr;
+
+    temp_buffer = ral_buffer_create(buffers_ptr->context_ral,
+                                    system_hashed_ansi_string_create("Temporary RAL buffer"),
+                                    buffer_create_info_ptr);
 
     result = raGL_buffers_allocate_buffer_memory_for_ral_buffer(buffers,
                                                                 temp_buffer,
@@ -1005,9 +1013,11 @@ PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_b
 
 /** Please see header for spec */
 PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
+                                        ral_context  context_ral,
                                         ogl_context  context)
 {
     _raGL_buffers* new_buffers = new (std::nothrow) _raGL_buffers(backend,
+                                                                  context_ral,
                                                                   context);
 
     ASSERT_DEBUG_SYNC(new_buffers != NULL,

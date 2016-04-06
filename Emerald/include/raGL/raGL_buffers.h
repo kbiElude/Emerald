@@ -64,6 +64,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_b
  *  TODO
  **/
 PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
+                                        ral_context  context_ral,
                                         ogl_context  context);
 
 /** TODO

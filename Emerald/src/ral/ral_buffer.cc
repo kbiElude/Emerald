@@ -12,6 +12,7 @@
 typedef struct _ral_buffer
 {
     system_callback_manager     callback_manager;
+    ral_context                 context;
     ral_buffer_mappability_bits mappability_bits;
     system_hashed_ansi_string   name;
     ral_buffer                  parent_buffer;
@@ -22,7 +23,8 @@ typedef struct _ral_buffer
     ral_queue_bits              user_queue_bits;
 
 
-    _ral_buffer(system_hashed_ansi_string   in_name,
+    _ral_buffer(ral_context                 in_context,
+                system_hashed_ansi_string   in_name,
                 ral_buffer                  in_parent_buffer,
                 uint32_t                    in_size,
                 uint32_t                    in_start_offset,
@@ -34,6 +36,7 @@ typedef struct _ral_buffer
         ASSERT_DEBUG_SYNC(in_start_offset == 0, "!!");
 
         callback_manager = system_callback_manager_create( (_callback_id) RAL_BUFFER_CALLBACK_ID_COUNT);
+        context          = in_context;
         mappability_bits = in_mappability_bits;
         name             = in_name;
         parent_buffer    = in_parent_buffer;
@@ -179,7 +182,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
+PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
+                                    system_hashed_ansi_string     name,
                                     const ral_buffer_create_info* create_info_ptr)
 {
     _ral_buffer* new_buffer_ptr = NULL;
@@ -245,7 +249,8 @@ PUBLIC ral_buffer ral_buffer_create(system_hashed_ansi_string     name,
     }
 
     /* Create the new descriptor */
-    new_buffer_ptr = new (std::nothrow) _ral_buffer(name,
+    new_buffer_ptr = new (std::nothrow) _ral_buffer(context,
+                                                    name,
                                                     create_info_ptr->parent_buffer,
                                                     create_info_ptr->size,
                                                     create_info_ptr->start_offset,
@@ -283,6 +288,13 @@ PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
         case RAL_BUFFER_PROPERTY_CALLBACK_MANAGER:
         {
             *(system_callback_manager*) out_result_ptr = buffer_ptr->callback_manager;
+
+            break;
+        }
+
+        case RAL_BUFFER_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result_ptr = buffer_ptr->context;
 
             break;
         }
