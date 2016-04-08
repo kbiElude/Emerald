@@ -7,6 +7,8 @@
 #include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_gfx_state.h"
+#include "ral/ral_program.h"
 #include "ral/ral_sampler.h"
 #include "ral/ral_texture.h"
 #include "system/system_resizable_vector.h"
@@ -21,11 +23,21 @@ PRIVATE system_resource_pool command_pool        = nullptr; /* holds _ral_comman
 
 typedef enum
 {
+    RAL_COMMAND_BUFFER_STATUS_UNDEFINED,
+    RAL_COMMAND_BUFFER_STATUS_RECORDING,
+    RAL_COMMAND_BUFFER_STATUS_RECORDED
+} _ral_command_buffer_status;
+
+typedef enum
+{
     RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE,
     RAL_COMMAND_TYPE_DRAW_CALL_INDEXED,
     RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT,
     RAL_COMMAND_TYPE_DRAW_CALL_REGULAR,
+    RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER,
     RAL_COMMAND_TYPE_SET_BINDING,
+    RAL_COMMAND_TYPE_SET_GFX_STATE,
+    RAL_COMMAND_TYPE_SET_PROGRAM,
     RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE,
     RAL_COMMAND_TYPE_SET_SCISSOR_BOX,
     RAL_COMMAND_TYPE_SET_VERTEX_ATTRIBUTE,
@@ -34,21 +46,37 @@ typedef enum
     RAL_COMMAND_TYPE_UNKNOWN
 } _ral_command_type;
 
+typedef struct _ral_command_buffer
+{
+    system_resizable_vector    commands;
+    ral_queue_bits             compatible_queues;
+    ral_context                context;
+    bool                       is_invokable_from_other_command_buffers;
+    bool                       is_resettable;
+    bool                       is_transient;
+    _ral_command_buffer_status status;
+
+    void clear_commands();
+} _ral_command_buffer;
+
 typedef struct _ral_command
 {
     _ral_command_type type;
 
     union
     {
-        ral_command_buffer_copy_texture_to_texture_command_info copy_texture_to_texture_command;
-        ral_command_buffer_draw_call_indexed_command_info       draw_call_indexed_command;
-        ral_command_buffer_draw_call_indirect_command_info      draw_call_indirect_command;
-        ral_command_buffer_draw_call_regular_command_info       draw_call_regular_command;
-        ral_command_buffer_set_binding_command_info             set_binding_command;
-        ral_command_buffer_set_rendertarget_state_command_info  set_rendertarget_state_command;
-        ral_command_buffer_set_scissor_box_command_info         set_scissor_box_command;
-        ral_command_buffer_set_vertex_attribute_command_info    set_vertex_attribute_command;
-        ral_command_buffer_set_viewport_command_info            set_viewport_command;
+        ral_command_buffer_copy_texture_to_texture_command_info    copy_texture_to_texture_command;
+        ral_command_buffer_draw_call_indexed_command_info          draw_call_indexed_command;
+        ral_command_buffer_draw_call_indirect_regular_command_info draw_call_indirect_regular_command;
+        ral_command_buffer_draw_call_regular_command_info          draw_call_regular_command;
+        ral_command_buffer_execute_command_buffer_command_info     execute_command_buffer_command;
+        ral_command_buffer_set_binding_command_info                set_binding_command;
+        ral_command_buffer_set_gfx_state_command_info              set_gfx_state_command;
+        ral_command_buffer_set_program_command_info                set_program_command;
+        ral_command_buffer_set_rendertarget_state_command_info     set_rendertarget_state_command;
+        ral_command_buffer_set_scissor_box_command_info            set_scissor_box_command;
+        ral_command_buffer_set_vertex_attribute_command_info       set_vertex_attribute_command;
+        ral_command_buffer_set_viewport_command_info               set_viewport_command;
     };
 
     void deinit()
@@ -99,14 +127,24 @@ typedef struct _ral_command
             {
                 ral_context buffer_context = nullptr;
 
-                ral_buffer_get_property(draw_call_indirect_command.buffer,
+                ral_buffer_get_property(draw_call_indirect_regular_command.buffer,
                                         RAL_BUFFER_PROPERTY_CONTEXT,
                                        &buffer_context);
 
                 ral_context_delete_objects(buffer_context,
                                            RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                            1, /* n_objects */
-                                           (const void**) &draw_call_indirect_command.buffer);
+                                           (const void**) &draw_call_indirect_regular_command.buffer);
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
+            {
+                ral_context_delete_objects( ((_ral_command_buffer*) execute_command_buffer_command.command_buffer)->context,
+                                           RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                           1, /* n_objects */
+                                           (const void**) &execute_command_buffer_command.command_buffer);
 
                 break;
             }
@@ -172,6 +210,36 @@ typedef struct _ral_command
                 break;
             }
 
+            case RAL_COMMAND_TYPE_SET_GFX_STATE:
+            {
+                ral_context gfx_state_context = nullptr;
+
+                ral_gfx_state_get_property(set_gfx_state_command.new_state,
+                                           RAL_GFX_STATE_PROPERTY_CONTEXT,
+                                          &gfx_state_context);
+                ral_context_delete_objects(gfx_state_context,
+                                           RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                           1, /* n_objects */
+                                           (const void**) &set_gfx_state_command.new_state);
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_PROGRAM:
+            {
+                ral_context program_context = nullptr;
+
+                ral_program_get_property  (set_program_command.new_program,
+                                           RAL_PROGRAM_PROPERTY_CONTEXT,
+                                          &program_context);
+                ral_context_delete_objects(program_context,
+                                           RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                           1, /* n_objects */
+                                           (const void**) &set_program_command.new_program);
+
+                break;
+            }
+
             case RAL_COMMAND_TYPE_SET_VERTEX_ATTRIBUTE:
             {
                 ral_context buffer_context = nullptr;
@@ -205,25 +273,21 @@ typedef struct _ral_command
     }
 } _ral_command;
 
-typedef struct _ral_command_buffer
+
+/** TODO */
+void _ral_command_buffer::clear_commands()
 {
-    system_resizable_vector commands;
-    ral_context             context;
+    _ral_command* current_command_ptr = nullptr;
 
-    void clear_commands()
+    while (system_resizable_vector_pop(commands,
+                                      &current_command_ptr) )
     {
-        _ral_command* current_command_ptr = nullptr;
+        current_command_ptr->deinit();
 
-        while (system_resizable_vector_pop(commands,
-                                          &current_command_ptr) )
-        {
-            current_command_ptr->deinit();
-
-            system_resource_pool_return_to_pool(command_pool,
-                                                (system_resource_pool_block) current_command_ptr);
-        }
+        system_resource_pool_return_to_pool(command_pool,
+                                            (system_resource_pool_block) current_command_ptr);
     }
-} _ral_command_buffer;
+}
 
 
 /** TODO */
@@ -253,7 +317,11 @@ PRIVATE void _ral_command_buffer_init_command_buffer(system_resource_pool_block 
 
 
 /** Please see header for specification */
-PUBLIC ral_command_buffer ral_command_buffer_create(ral_context context)
+PUBLIC ral_command_buffer ral_command_buffer_create(ral_context    context,
+                                                    ral_queue_bits compatible_queues,
+                                                    bool           is_invokable_from_other_command_buffers,
+                                                    bool           is_resettable,
+                                                    bool           is_transient)
 {
     _ral_command_buffer* new_command_buffer_ptr = (_ral_command_buffer*) system_resource_pool_get_from_pool(command_buffer_pool);
 
@@ -264,7 +332,11 @@ PUBLIC ral_command_buffer ral_command_buffer_create(ral_context context)
     {
         new_command_buffer_ptr->clear_commands();
 
-        new_command_buffer_ptr->context = context;
+        new_command_buffer_ptr->compatible_queues                       = compatible_queues;
+        new_command_buffer_ptr->context                                 = context;
+        new_command_buffer_ptr->is_invokable_from_other_command_buffers = is_invokable_from_other_command_buffers;
+        new_command_buffer_ptr->is_resettable                           = is_resettable;
+        new_command_buffer_ptr->is_transient                            = is_transient;
     }
 
     return (ral_command_buffer) new_command_buffer_ptr;
@@ -281,6 +353,58 @@ PUBLIC void ral_command_buffer_deinit()
 }
 
 /** Please see header for specification */
+PUBLIC void ral_command_buffer_get_property(ral_command_buffer          command_buffer,
+                                            ral_command_buffer_property property,
+                                            void*                       out_result_ptr)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) command_buffer;
+
+    switch (property)
+    {
+        case RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES:
+        {
+            *(ral_queue_bits*) out_result_ptr = command_buffer_ptr->compatible_queues;
+
+            break;
+        }
+
+        case RAL_COMMAND_BUFFER_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result_ptr = command_buffer_ptr->context;
+
+            break;
+        }
+
+        case RAL_COMMAND_BUFFER_PROPERTY_IS_INVOKABLE_FROM_OTHER_COMMAND_BUFFERS:
+        {
+            *(bool*) out_result_ptr = command_buffer_ptr->is_invokable_from_other_command_buffers;
+
+            break;
+        }
+
+        case RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE:
+        {
+            *(bool*) out_result_ptr = command_buffer_ptr->is_resettable;
+
+            break;
+        }
+
+        case RAL_COMMAND_BUFFER_PROPERTY_IS_TRANSIENT:
+        {
+            *(bool*) out_result_ptr = command_buffer_ptr->is_transient;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_command_buffer_property value");
+        }
+    }
+}
+
+/** Please see header for specification */
 PUBLIC void ral_command_buffer_init()
 {
     command_buffer_pool = system_resource_pool_create(sizeof(_ral_command_buffer),
@@ -294,6 +418,491 @@ PUBLIC void ral_command_buffer_init()
 }
 
 /** Please see header for specification */
+PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer                                             recording_command_buffer,
+                                                              uint32_t                                                       n_copy_ops,
+                                                              const ral_command_buffer_copy_texture_to_texture_command_info* copy_op_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_copy_op = 0;
+                  n_copy_op < n_copy_ops;
+                ++n_copy_op)
+    {
+        const ral_command_buffer_copy_texture_to_texture_command_info& src_command = copy_op_ptrs[n_copy_op];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.dst_start_xyz) == sizeof(src_command.dst_start_xyz), "");
+        static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.size)          == sizeof(src_command.size),          "");
+        static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.src_start_xyz) == sizeof(src_command.src_start_xyz), "");
+
+        memcpy(new_command_ptr->copy_texture_to_texture_command.dst_start_xyz,
+               src_command.dst_start_xyz,
+               sizeof(src_command.dst_start_xyz) );
+        memcpy(new_command_ptr->copy_texture_to_texture_command.size,
+               src_command.size,
+               sizeof(src_command.size) );
+        memcpy(new_command_ptr->copy_texture_to_texture_command.src_start_xyz,
+               src_command.src_start_xyz,
+               sizeof(src_command.src_start_xyz) );
+
+        new_command_ptr->copy_texture_to_texture_command = src_command;
+        new_command_ptr->type                            = RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE;
+
+        ral_context_retain_object(command_buffer_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                  src_command.dst_texture);
+        ral_context_retain_object(command_buffer_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                  src_command.src_texture);
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer                                       recording_command_buffer,
+                                                        uint32_t                                                 n_draw_calls,
+                                                        const ral_command_buffer_draw_call_indexed_command_info* draw_call_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_draw_call = 0;
+                  n_draw_call < n_draw_calls;
+                ++n_draw_call)
+    {
+        const ral_command_buffer_draw_call_indexed_command_info& src_command = draw_call_ptrs[n_draw_calls];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_command_ptr->draw_call_indexed_command = src_command;
+        new_command_ptr->type                      = RAL_COMMAND_TYPE_DRAW_CALL_INDEXED;
+
+        ral_context_retain_object(command_buffer_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                  src_command.index_buffer);
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buffer                                                recording_command_buffer,
+                                                                 uint32_t                                                          n_draw_calls,
+                                                                 const ral_command_buffer_draw_call_indirect_regular_command_info* draw_call_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_draw_call = 0;
+                  n_draw_call < n_draw_calls;
+                ++n_draw_call)
+    {
+        const ral_command_buffer_draw_call_indirect_regular_command_info& src_command = draw_call_ptrs[n_draw_call];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_command_ptr->draw_call_indirect_regular_command = src_command;
+        new_command_ptr->type                               = RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT;
+
+        ral_context_retain_object(command_buffer_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                  src_command.buffer);
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer                                       recording_command_buffer,
+                                                        uint32_t                                                 n_draw_calls,
+                                                        const ral_command_buffer_draw_call_regular_command_info* draw_call_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_draw_call = 0;
+                  n_draw_call < n_draw_calls;
+                ++n_draw_call)
+    {
+        const ral_command_buffer_draw_call_regular_command_info& src_command = draw_call_ptrs[n_draw_call];
+
+        new_command_ptr                            = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr->draw_call_regular_command = src_command;
+        new_command_ptr->type                      = RAL_COMMAND_TYPE_DRAW_CALL_REGULAR;
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer                                            recording_command_buffer,
+                                                             uint32_t                                                      n_commands,
+                                                             const ral_command_buffer_execute_command_buffer_command_info* command_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_command = 0;
+                  n_command < n_commands;
+                ++n_command)
+    {
+        const ral_command_buffer_execute_command_buffer_command_info& src_command = command_ptrs[n_command];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_command_ptr->execute_command_buffer_command.command_buffer = src_command.command_buffer;
+        new_command_ptr->type                                          = RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER;
+
+        ral_context_retain_object(command_buffer_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                  (void*) src_command.command_buffer);
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer                           recording_command_buffer,
+                                                   uint32_t                                     n_bindings,
+                                                   ral_command_buffer_set_binding_command_info* binding_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_binding = 0;
+                  n_binding < n_bindings;
+                ++n_binding)
+    {
+        const ral_command_buffer_set_binding_command_info& src_command = binding_ptrs[n_binding];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_command_ptr->set_binding_command = src_command;
+        new_command_ptr->type                = RAL_COMMAND_TYPE_SET_BINDING;
+
+        if (new_command_ptr->set_binding_command.buffer != nullptr)
+        {
+            ral_context_retain_object(command_buffer_ptr->context,
+                                      RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                      new_command_ptr->set_binding_command.buffer);
+        }
+
+        if (new_command_ptr->set_binding_command.sampler != nullptr)
+        {
+            ral_context_retain_object(command_buffer_ptr->context,
+                                      RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                      new_command_ptr->set_binding_command.sampler);
+        }
+
+        if (new_command_ptr->set_binding_command.texture != nullptr)
+        {
+            ral_context_retain_object(command_buffer_ptr->context,
+                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                      new_command_ptr->set_binding_command.texture);
+        }
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_gfx_state(ral_command_buffer recording_command_buffer,
+                                                    ral_gfx_state      gfx_state)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+    new_command_ptr->set_gfx_state_command.new_state = gfx_state;
+    new_command_ptr->type                            = RAL_COMMAND_TYPE_SET_GFX_STATE;
+
+    ral_context_retain_object(command_buffer_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                              gfx_state);
+
+    system_resizable_vector_push(command_buffer_ptr->commands,
+                                 new_command_ptr);
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_command_buffer,
+                                                  ral_program        program)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+    new_command_ptr->set_program_command.new_program = program;
+    new_command_ptr->type                            = RAL_COMMAND_TYPE_SET_PROGRAM;
+
+    ral_context_retain_object(command_buffer_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                              program);
+
+    system_resizable_vector_push(command_buffer_ptr->commands,
+                                 new_command_ptr);
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_rendertargets(ral_command_buffer                                            recording_command_buffer,
+                                                        uint32_t                                                      n_rendertargets,
+                                                        const ral_command_buffer_set_rendertarget_state_command_info* rendertarget_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_rendertarget = 0;
+                  n_rendertarget < n_rendertargets;
+                ++n_rendertarget)
+    {
+        const ral_command_buffer_set_rendertarget_state_command_info& src_command = rendertarget_ptrs[n_rendertarget];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_command_ptr->set_rendertarget_state_command = src_command;
+        new_command_ptr->type                           = RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE;
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
+                                                        uint32_t                                               n_scissor_boxes,
+                                                        const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_scissor_box = 0;
+                  n_scissor_box < n_scissor_boxes;
+                ++n_scissor_box)
+    {
+        const ral_command_buffer_set_scissor_box_command_info& src_command = scissor_box_ptrs[n_scissor_box];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        static_assert(sizeof(new_command_ptr->set_scissor_box_command.size) == sizeof(src_command.size), "");
+        static_assert(sizeof(new_command_ptr->set_scissor_box_command.xy)   == sizeof(src_command.xy),   "");
+
+        memcpy(new_command_ptr->set_scissor_box_command.size,
+               src_command.size,
+               sizeof(src_command.size) );
+        memcpy(new_command_ptr->set_scissor_box_command.xy,
+               src_command.xy,
+               sizeof(src_command.xy) );
+
+        new_command_ptr->set_scissor_box_command.index = src_command.index;
+        new_command_ptr->type                          = RAL_COMMAND_TYPE_SET_SCISSOR_BOX;
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_vertex_attributes(ral_command_buffer                                          recording_command_buffer,
+                                                            uint32_t                                                    n_vertex_attributes,
+                                                            const ral_command_buffer_set_vertex_attribute_command_info* vertex_attribute_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_vertex_attribute = 0;
+                  n_vertex_attribute < n_vertex_attributes;
+                ++n_vertex_attribute)
+    {
+        const ral_command_buffer_set_vertex_attribute_command_info& src_command = vertex_attribute_ptrs[n_vertex_attribute];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_command_ptr->set_vertex_attribute_command = src_command;
+        new_command_ptr->type                         = RAL_COMMAND_TYPE_SET_VERTEX_ATTRIBUTE;
+
+        ral_context_retain_object(command_buffer_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                  src_command.buffer);
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer                                  recording_command_buffer,
+                                                    uint32_t                                            n_viewports,
+                                                    const ral_command_buffer_set_viewport_command_info* viewport_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_viewport = 0;
+                  n_viewport < n_viewports;
+                ++n_viewport)
+    {
+        const ral_command_buffer_set_viewport_command_info& src_command = viewport_ptrs[n_viewport];
+
+        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
+        memcpy(new_command_ptr->set_viewport_command.size,
+               src_command.size,
+               sizeof(src_command.size) );
+        memcpy(new_command_ptr->set_viewport_command.xy,
+               src_command.xy,
+               sizeof(src_command.xy) );
+
+        new_command_ptr->set_viewport_command.index = src_command.index;
+        new_command_ptr->type                       = RAL_COMMAND_TYPE_SET_VIEWPORT;
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer)
 {
     ASSERT_DEBUG_SYNC(command_buffer != NULL,
@@ -302,3 +911,4 @@ PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer)
     system_resource_pool_return_to_pool(command_buffer_pool,
                                         (system_resource_pool_block) command_buffer);
 }
+

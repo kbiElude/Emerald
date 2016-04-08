@@ -9,12 +9,14 @@
 
 typedef struct
 {
+    ral_context               context;
     ral_gfx_state_create_info create_info;
 } _ral_gfx_state;
 
 
 /** Please see header for specification */
-PUBLIC ral_gfx_state ral_gfx_state_create(const ral_gfx_state_create_info* create_info_ptr)
+PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      context,
+                                          const ral_gfx_state_create_info* create_info_ptr)
 {
     _ral_gfx_state* gfx_state_ptr = new _ral_gfx_state();
 
@@ -23,6 +25,7 @@ PUBLIC ral_gfx_state ral_gfx_state_create(const ral_gfx_state_create_info* creat
 
     if (gfx_state_ptr != nullptr)
     {
+        gfx_state_ptr->context     = context;
         gfx_state_ptr->create_info = *create_info_ptr;
     }
 
@@ -48,6 +51,13 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
         case RAL_GFX_STATE_PROPERTY_ALPHA_TO_ONE_ENABLED:
         {
             *(bool*) out_result_ptr = gfx_state_ptr->create_info.alpha_to_one;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result_ptr = gfx_state_ptr->context;
 
             break;
         }

@@ -6,9 +6,9 @@
 
 typedef struct ral_gfx_state_vertex_attribute
 {
-    uint32_t                    binding;
     ral_vertex_attribute_format format;
     ral_vertex_input_rate       input_rate;
+    uint32_t                    location;
     uint32_t                    offset;
     uint32_t                    stride;
 } ral_gfx_state_vertex_attribute;
@@ -106,6 +106,9 @@ typedef enum
     /* not settable; bool */
     RAL_GFX_STATE_PROPERTY_ALPHA_TO_ONE_ENABLED,
 
+    /* not settable; ral_context */
+    RAL_GFX_STATE_PROPERTY_CONTEXT,
+
     /* not settable; ral_cull_mode */
     RAL_GFX_STATE_PROPERTY_CULL_MODE,
 
@@ -187,7 +190,8 @@ typedef enum
 
 
 /** TODO */
-PUBLIC ral_gfx_state ral_gfx_state_create(const ral_gfx_state_create_info* create_info_ptr);
+PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      context,
+                                          const ral_gfx_state_create_info* create_info_ptr);
 
 /** TODO */
 PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,

@@ -75,6 +75,9 @@ typedef enum
     /* not settable; system_callback_manager */
     RAL_PROGRAM_PROPERTY_CALLBACK_MANAGER,
 
+    /* not settable; ral_context */
+    RAL_PROGRAM_PROPERTY_CONTEXT,
+
     /* not settable; uint32_t */
     RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
 

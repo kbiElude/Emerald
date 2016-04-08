@@ -1116,6 +1116,13 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
             break;
         }
 
+        case RAL_PROGRAM_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result_ptr = program_ptr->context;
+
+            break;
+        }
+
         case RAL_PROGRAM_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result_ptr = program_ptr->name;

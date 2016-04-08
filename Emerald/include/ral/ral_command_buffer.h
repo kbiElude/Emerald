@@ -31,14 +31,14 @@ typedef struct ral_command_buffer_draw_call_indexed_command_info
     uint32_t base_vertex; /* constant added to each index when choosing elements from the vertex arrays */
 } ral_command_buffer_draw_call_indexed_command_info;
 
-typedef struct ral_command_buffer_draw_call_indirect_command_info
+typedef struct ral_command_buffer_draw_call_indirect_regular_command_info
 {
     ral_buffer buffer;
     uint32_t   offset;
 
     uint32_t   n_draw_calls;
     uint32_t   stride;
-} ral_command_buffer_draw_call_indirect_command_info;
+} ral_command_buffer_draw_call_indirect_regular_command_info;
 
 typedef struct ral_command_buffer_draw_call_regular_command_info
 {
@@ -49,6 +49,30 @@ typedef struct ral_command_buffer_draw_call_regular_command_info
     uint32_t base_vertex;
 } ral_command_buffer_draw_call_regular_command_info;
 
+typedef struct ral_command_buffer_execute_command_buffer_command_info
+{
+
+    ral_command_buffer command_buffer;
+
+} ral_command_buffer_execute_command_buffer_command_info;
+
+typedef enum
+{
+    /* not settable; ral_queue_bits */
+    RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES,
+
+    /* not settable; ral_context */
+    RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
+
+    /* not settable; bool */
+    RAL_COMMAND_BUFFER_PROPERTY_IS_INVOKABLE_FROM_OTHER_COMMAND_BUFFERS,
+
+    /* not settable; bool */
+    RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE,
+
+    /* not settable; bool */
+    RAL_COMMAND_BUFFER_PROPERTY_IS_TRANSIENT,
+} ral_command_buffer_property;
 
 typedef struct ral_command_buffer_set_binding_command_info
 {
@@ -65,6 +89,20 @@ typedef struct ral_command_buffer_set_binding_command_info
     ral_sampler      sampler;
     ral_binding_type type;
 } ral_command_buffer_set_binding_command_info;
+
+typedef struct ral_command_buffer_set_gfx_state_command_info
+{
+
+    ral_gfx_state new_state;
+
+} ral_command_buffer_set_gfx_state_command_info;
+
+typedef struct ral_command_buffer_set_program_command_info
+{
+
+    ral_program new_program;
+
+} ral_command_buffer_set_program_command_info;
 
 typedef struct ral_command_buffer_set_rendertarget_state_command_info
 {
@@ -86,27 +124,29 @@ typedef struct ral_command_buffer_set_rendertarget_state_command_info
         bool channel3 : 1;
     } channel_writes;
 
-#if 0
-    ral_command_buffer_set_rendertarget_state_command_info()
+    static ral_command_buffer_set_rendertarget_state_command_info get_preinitialized_instance()
     {
-        blend_constant.f32[0]   = 0.0f;
-        blend_constant.f32[1]   = 0.0f;
-        blend_constant.f32[2]   = 0.0f;
-        blend_constant.f32[3]   = 0.0f;
-        blend_enabled           = false;
-        blend_op_alpha          = RAL_BLEND_OP_ADD;
-        blend_op_color          = RAL_BLEND_OP_ADD;
-        channel_writes.channel0 = true;
-        channel_writes.channel1 = true;
-        channel_writes.channel2 = true;
-        channel_writes.channel3 = true;
-        dst_alpha_blend_factor  = RAL_BLEND_FACTOR_ONE;
-        dst_color_blend_factor  = RAL_BLEND_FACTOR_ONE;
-        rendertarget_index      = -1;
-        src_alpha_blend_factor  = RAL_BLEND_FACTOR_ONE;
-        src_color_blend_factor  = RAL_BLEND_FACTOR_ONE;
+        ral_command_buffer_set_rendertarget_state_command_info result;
+
+        result.blend_constant.f32[0]   = 0.0f;
+        result.blend_constant.f32[1]   = 0.0f;
+        result.blend_constant.f32[2]   = 0.0f;
+        result.blend_constant.f32[3]   = 0.0f;
+        result.blend_enabled           = false;
+        result.blend_op_alpha          = RAL_BLEND_OP_ADD;
+        result.blend_op_color          = RAL_BLEND_OP_ADD;
+        result.channel_writes.channel0 = true;
+        result.channel_writes.channel1 = true;
+        result.channel_writes.channel2 = true;
+        result.channel_writes.channel3 = true;
+        result.dst_alpha_blend_factor  = RAL_BLEND_FACTOR_ONE;
+        result.dst_color_blend_factor  = RAL_BLEND_FACTOR_ONE;
+        result.rendertarget_index      = -1;
+        result.src_alpha_blend_factor  = RAL_BLEND_FACTOR_ONE;
+        result.src_color_blend_factor  = RAL_BLEND_FACTOR_ONE;
+
+        return result;
     }
-#endif
 } ral_command_buffer_set_rendertarget_state_command_info;
 
 typedef struct ral_command_buffer_set_scissor_box_command_info
@@ -120,8 +160,8 @@ typedef struct ral_command_buffer_set_scissor_box_command_info
 
 typedef struct ral_command_buffer_set_vertex_attribute_command_info
 {
-    uint32_t   binding;
     ral_buffer buffer;
+    uint32_t   location;
     uint32_t   start_offset;
 } ral_command_buffer_set_vertex_attribute_command_info;
 
@@ -135,12 +175,19 @@ typedef struct ral_command_buffer_set_viewport_command_info
 
 
 /** TODO */
-PUBLIC ral_command_buffer ral_command_buffer_create(ral_context context,
-                                                    int         usage_bits,
-                                                    bool        invokable_from_other_command_buffers);
+PUBLIC ral_command_buffer ral_command_buffer_create(ral_context    context,
+                                                    ral_queue_bits compatible_queues,
+                                                    bool           is_invokable_from_other_command_buffers,
+                                                    bool           is_resettable,
+                                                    bool           is_transient);
 
 /** TODO */
 PUBLIC void ral_command_buffer_deinit();
+
+/** TODO */
+PUBLIC void ral_command_buffer_get_property(ral_command_buffer          command_buffer,
+                                            ral_command_buffer_property property,
+                                            void*                       out_result_ptr);
 
 /** TODO */
 PUBLIC void ral_command_buffer_init();
@@ -155,9 +202,9 @@ PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer      
                                                         const ral_command_buffer_draw_call_indexed_command_info* draw_call_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_draw_call_indexed_indirect(ral_command_buffer                                        recording_command_buffer,
-                                                                 uint32_t                                                  n_draw_calls,
-                                                                 const ral_command_buffer_draw_call_indirect_command_info* draw_call_ptrs);
+PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buffer                                                recording_command_buffer,
+                                                                 uint32_t                                                          n_draw_calls,
+                                                                 const ral_command_buffer_draw_call_indirect_regular_command_info* draw_call_ptrs);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer                                       recording_command_buffer,
@@ -165,32 +212,14 @@ PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer      
                                                         const ral_command_buffer_draw_call_regular_command_info* draw_call_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_draw_call_regular_indirect(ral_command_buffer                                        recording_command_buffer,
-                                                                 uint32_t                                                  n_draw_calls,
-                                                                 const ral_command_buffer_draw_call_indirect_command_info* draw_call_ptrs);
+PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer                                            recording_command_buffer,
+                                                             uint32_t                                                      n_commands,
+                                                             const ral_command_buffer_execute_command_buffer_command_info* command_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer        recording_command_buffer,
-                                                             uint32_t                  n_command_buffers,
-                                                             const ral_command_buffer* command_buffer_to_execute);
-
-/** TODO */
-PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
-                                                        uint32_t                                               n_scissor_boxes,
-                                                        const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs);
-
-/** TODO */
-PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer                                  recording_command_buffer,
-                                                    uint32_t                                            n_viewports,
-                                                    const ral_command_buffer_set_viewport_command_info* viewport_ptrs);
-
-/** TODO */
-PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer);
-
-/** TODO */
-PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer                           command_buffer,
-                                                   uint32_t*                                    n_bindings,
-                                                   ral_command_buffer_set_binding_command_info* binding_ptr);
+PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer                           recording_command_buffer,
+                                                   uint32_t                                     n_bindings,
+                                                   ral_command_buffer_set_binding_command_info* binding_ptrs);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_set_gfx_state(ral_command_buffer recording_command_buffer,
@@ -206,9 +235,22 @@ PUBLIC void ral_command_buffer_record_set_rendertargets(ral_command_buffer      
                                                         const ral_command_buffer_set_rendertarget_state_command_info* rendertarget_ptrs);
 
 /** TODO */
+PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
+                                                        uint32_t                                               n_scissor_boxes,
+                                                        const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs);
+
+/** TODO */
 PUBLIC void ral_command_buffer_record_set_vertex_attributes(ral_command_buffer                                          recording_command_buffer,
                                                             uint32_t                                                    n_vertex_attributes,
                                                             const ral_command_buffer_set_vertex_attribute_command_info* vertex_attribute_ptrs);
+
+/** TODO */
+PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer                                  recording_command_buffer,
+                                                    uint32_t                                            n_viewports,
+                                                    const ral_command_buffer_set_viewport_command_info* viewport_ptrs);
+
+/** TODO */
+PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer);
 
 /** TODO */
 PUBLIC bool ral_command_buffer_start_recording(ral_command_buffer command_buffer);
