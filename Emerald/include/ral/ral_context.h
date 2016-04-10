@@ -30,6 +30,23 @@ enum
     RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
 
 
+    /* One or more ral_command_buffer instances were created.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_created_callback_arg
+     */
+    RAL_CONTEXT_CALLBACK_ID_COMMAND_BUFFERS_CREATED,
+
+    /* One or more existing ral_command_buffer instances were deleted.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
+     */
+    RAL_CONTEXT_CALLBACK_ID_COMMAND_BUFFERS_DELETED,
+
+
     /* One or more ral_framebuffer instances were created.
      *
      * NOTE: This callback ID only supports synchronous call-backs.
@@ -45,6 +62,23 @@ enum
      * arg: ral_context_callback_objects_deleted_callback_arg instance.
      */
     RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_DELETED,
+
+
+    /* One or more ral_gfx_state instances were created.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_created_callback_arg
+     */
+    RAL_CONTEXT_CALLBACK_ID_GFX_STATES_CREATED,
+
+    /* One or more existing ral_gfx_state instances were deleted.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
+     */
+    RAL_CONTEXT_CALLBACK_ID_GFX_STATES_DELETED,
 
 
     /* One or more ral_program instances were created.
@@ -98,6 +132,23 @@ enum
     RAL_CONTEXT_CALLBACK_ID_SHADERS_DELETED,
 
 
+    /* One or more ral_texture_view instances were created.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_created_callback_arg
+     **/
+    RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_CREATED,
+
+    /* One or more existing ral_texture_view instances were deleted.
+     *
+     * NOTE: This callback ID only supports synchronous call-backs.
+     *
+     * arg: ral_context_callback_objects_deleted_callback_arg instance.
+     */
+    RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_DELETED,
+
+
     /* One or more ral_texture instances were created.
      *
      * NOTE: This callback ID only supports synchronous call-backs.
@@ -129,6 +180,7 @@ typedef enum
     RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
     RAL_CONTEXT_OBJECT_TYPE_SHADER,
     RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
 
     RAL_CONTEXT_OBJECT_TYPE_COUNT,
 
@@ -171,9 +223,21 @@ PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                  
                                                    ral_buffer*                   out_result_buffers_ptr);
 
 /** TODO */
+PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context                           context,
+                                                           uint32_t                              n_command_buffers,
+                                                           const ral_command_buffer_create_info* command_buffer_create_info_ptr,
+                                                           ral_command_buffer*                   out_result_command_buffers_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context,
                                                         uint32_t         n_framebuffers,
                                                         ral_framebuffer* out_result_framebuffers_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_context_create_gfx_states(ral_context                      context,
+                                                      uint32_t                         n_create_info_items,
+                                                      const ral_gfx_state_create_info* create_info_ptrs,
+                                                      ral_gfx_state*                   out_result_gfx_states_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_context_create_programs(ral_context                    context,
@@ -210,6 +274,12 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
                                                                     uint32_t         n_images,
                                                                     const gfx_image* images,
                                                                     ral_texture*     out_result_textures_ptr);
+/** TODO */
+PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context                         context,
+                                                         uint32_t                            n_texture_views,
+                                                         const ral_texture_view_create_info* texture_view_create_info_ptr,
+                                                         ral_texture*                        out_result_texture_views_ptr);
+
 /** TODO */
 PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,
                                                    ral_context_object_type object_type,

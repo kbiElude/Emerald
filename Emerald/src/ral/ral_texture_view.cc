@@ -349,6 +349,13 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
 
     switch (property)
     {
+        case RAL_TEXTURE_VIEW_PROPERTY_CONTEXT:
+        {
+            *(ral_context*) out_result_ptr = texture_view_ptr->context;
+
+            break;
+        }
+
         case RAL_TEXTURE_VIEW_PROPERTY_FORMAT:
         {
             *(ral_texture_format*) out_result_ptr = texture_view_ptr->create_info.format;

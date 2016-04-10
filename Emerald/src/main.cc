@@ -8,6 +8,7 @@
 #include "main.h"
 #include "audio/audio_device.h"
 #include "ogl/ogl_context.h"
+#include "ral/ral_command_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_capabilities.h"
@@ -130,6 +131,8 @@ void main_init()
     ogl_context_init_global();
     audio_device_init();
     system_file_monitor_init();
+
+    ral_command_buffer_init();
 }
 
 /** Deinitializes all sub-modules. Called when DLL is about to be unloaded from process' space.
@@ -139,6 +142,8 @@ int main_deinit()
 {
     if (!_deinited)
     {
+        ral_command_buffer_deinit();
+
         _system_resources_deinit();
 
         _system_assertions_deinit();

@@ -8,6 +8,10 @@ DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
 DECLARE_HANDLE(ral_framebuffer);
 DECLARE_HANDLE(ral_gfx_state);
+DECLARE_HANDLE(ral_present_cpu_job);
+DECLARE_HANDLE(ral_present_gpu_job);
+DECLARE_HANDLE(ral_present_job);
+DECLARE_HANDLE(ral_present_task);
 DECLARE_HANDLE(ral_program);
 DECLARE_HANDLE(ral_sampler);
 DECLARE_HANDLE(ral_scheduler);
@@ -16,6 +20,28 @@ DECLARE_HANDLE(ral_texture);
 DECLARE_HANDLE(ral_texture_pool);
 DECLARE_HANDLE(ral_texture_view);
 
+
+typedef enum
+{
+    RAL_ACCESS_COLOR_ATTACHMENT_READ_BIT          = 1 << 0,
+    RAL_ACCESS_COLOR_ATTACHMENT_WRITE_BIT         = 1 << 1,
+    RAL_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT  = 1 << 2,
+    RAL_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT = 1 << 3,
+    RAL_ACCESS_HOST_READ_BIT                      = 1 << 4,
+    RAL_ACCESS_HOST_WRITE_BIT                     = 1 << 5,
+    RAL_ACCESS_INDEX_READ_BIT                     = 1 << 6,
+    RAL_ACCESS_INDIRECT_COMMAND_READ_BIT          = 1 << 7,
+    RAL_ACCESS_INPUT_ATTACHMENT_READ_BIT          = 1 << 8,
+    RAL_ACCESS_MEMORY_READ_BIT                    = 1 << 9,
+    RAL_ACCESS_MEMORY_WRITE_BIT                   = 1 << 10,
+    RAL_ACCESS_SHADER_READ_BIT                    = 1 << 11,
+    RAL_ACCESS_SHADER_WRITE_BIT                   = 1 << 12,
+    RAL_ACCESS_TRANSFER_READ_BIT                  = 1 << 13,
+    RAL_ACCESS_TRANSFER_WRITE_BIT                 = 1 << 14,
+    RAL_ACCESS_UNIFORM_READ_BIT                   = 1 << 15,
+    RAL_ACCESS_VERTEX_ATTRIBUTE_READ_BIT          = 1 << 16,
+} ral_access;
+typedef uint32_t ral_access_bits;
 
 typedef enum
 {
@@ -128,6 +154,28 @@ typedef enum
     RAL_COMPARE_OP_NEVER,
     RAL_COMPARE_OP_GREATER,
 } ral_compare_op;
+
+typedef enum
+{
+    RAL_PIPELINE_STAGE_ALL_COMMANDS_BIT                   = 1 << 0,
+    RAL_PIPELINE_STAGE_ALL_GRAPHICS_BIT                   = 1 << 1,
+    RAL_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT                 = 1 << 2,
+    RAL_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT        = 1 << 3,
+    RAL_PIPELINE_STAGE_COMPUTE_SHADER_BIT                 = 1 << 4,
+    RAL_PIPELINE_STAGE_DRAW_INDIRECT_BIT                  = 1 << 5,
+    RAL_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT           = 1 << 6,
+    RAL_PIPELINE_STAGE_FRAGMENT_SHADER_BIT                = 1 << 7,
+    RAL_PIPELINE_STAGE_GEOMETRY_SHADER_BIT                = 1 << 8,
+    RAL_PIPELINE_STAGE_HOST_BIT                           = 1 << 9,
+    RAL_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT            = 1 << 10,
+    RAL_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT    = 1 << 11,
+    RAL_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT = 1 << 12,
+    RAL_PIPELINE_STAGE_TOP_OF_PIPE_BIT                    = 1 << 13,
+    RAL_PIPELINE_STAGE_TRANSFER_BIT                       = 1 << 14,
+    RAL_PIPELINE_STAGE_VERTEX_INPUT_BIT                   = 1 << 15,
+    RAL_PIPELINE_STAGE_VERTEX_SHADER_BIT                  = 1 << 16,
+} ral_pipeline_stage;
+typedef int ral_pipeline_stage_bits;
 
 /** Enumerator that describes allowed types for a program attribute */
 typedef enum
@@ -408,6 +456,22 @@ typedef struct
     } data_type;
 
 } ral_color;
+
+typedef struct ral_command_buffer_create_info
+{
+    ral_queue_bits compatible_queues;
+    bool           is_invokable_from_other_command_buffers;
+    bool           is_resettable;
+    bool           is_transient;
+
+    ral_command_buffer_create_info()
+    {
+        compatible_queues                       = 0;
+        is_invokable_from_other_command_buffers = false;
+        is_resettable                           = false;
+        is_transient                            = false;
+    }
+} ral_command_buffer_create_info;
 
 /* RAL compare function */
 typedef enum
@@ -776,6 +840,14 @@ typedef struct ral_stencil_op_state
     }
 } ral_stencil_op_state;
 
+typedef enum
+{
+    RAL_TEXTURE_ASPECT_COLOR_BIT   = 1 << 0,
+    RAL_TEXTURE_ASPECT_DEPTH_BIT   = 1 << 1,
+    RAL_TEXTURE_ASPECT_STENCIL_BIT = 1 << 2
+} ral_texture_aspect;
+typedef uint32_t ral_texture_aspect_bits;
+
 /* RAL texture component. This is used eg. for texture swizzling. */
 typedef enum
 {
@@ -1068,5 +1140,157 @@ typedef enum
     RAL_VERTEX_INPUT_RATE_PER_INSTANCE,
     RAL_VERTEX_INPUT_RATE_PER_VERTEX,
 } ral_vertex_input_rate;
+
+
+typedef struct ral_gfx_state_vertex_attribute
+{
+    ral_vertex_attribute_format format;
+    ral_vertex_input_rate       input_rate;
+    uint32_t                    location;
+    uint32_t                    offset;
+    uint32_t                    stride;
+} ral_gfx_state_vertex_attribute;
+
+
+typedef struct ral_gfx_state_create_info
+{
+    bool alpha_to_coverage;
+    bool alpha_to_one;
+    bool depth_bias;
+    bool depth_bounds_test;
+    bool depth_clamp;
+    bool depth_test;
+    bool depth_writes;
+    bool logic_op_test;
+    bool primitive_restart;
+    bool rasterizer_discard;
+    bool sample_shading;
+    bool stencil_test;
+
+    /* Depth bias */
+    float depth_bias_constant_factor;
+    float depth_bias_slope_factor;
+
+    /* Depth clamp */
+    float depth_clamp_value;
+
+    /* Depth bounds test */
+    float max_depth_bounds;
+    float min_depth_bounds;
+
+    /* Depth test */
+    ral_compare_op depth_test_compare_op;
+
+    /* Logic op */
+    ral_logic_op logic_op;
+
+    /* Sample shading */
+    float sample_shading_min_sample_shading;
+
+    /* Stencil test */
+    ral_stencil_op_state stencil_test_back_face;
+    ral_stencil_op_state stencil_test_front_face;
+
+    /* Other */
+    ral_cull_mode      cull_mode;
+    ral_front_face     front_face;
+    float              line_width;
+    uint32_t           n_patch_control_points;
+    ral_polygon_mode   polygon_mode;
+    ral_primitive_type primitive_type;
+
+    uint32_t                              n_vertex_attributes;
+    const ral_gfx_state_vertex_attribute* vertex_attribute_ptrs;
+
+    ral_gfx_state_create_info()
+    {
+        alpha_to_coverage  = false;
+        alpha_to_one       = false;
+        depth_bias         = false;
+        depth_bounds_test  = false;
+        depth_clamp        = false;
+        depth_test         = false;
+        depth_writes       = false;
+        logic_op_test      = false;
+        primitive_restart  = false;
+        rasterizer_discard = false;
+        sample_shading     = false;
+        stencil_test       = false;
+
+        cull_mode                         = RAL_CULL_MODE_BACK;
+        depth_bias_constant_factor        = 0.0f;
+        depth_bias_slope_factor           = 1.0f;
+        depth_clamp_value                 = 0.0f;
+        depth_test_compare_op             = RAL_COMPARE_OP_ALWAYS;
+        front_face                        = RAL_FRONT_FACE_CCW;
+        line_width                        = 1.0f;
+        logic_op                          = RAL_LOGIC_OP_NOOP;
+        max_depth_bounds                  = 1.0f;
+        min_depth_bounds                  = 0.0f;
+        n_vertex_attributes               = 0;
+        n_patch_control_points            = 0;
+        polygon_mode                      = RAL_POLYGON_MODE_FILL;
+        primitive_type                    = RAL_PRIMITIVE_TYPE_TRIANGLES;
+        sample_shading_min_sample_shading = 1.0f;
+        vertex_attribute_ptrs             = nullptr;
+    }
+} ral_gfx_state_create_info;
+
+typedef enum
+{
+    /* Compatible with 1D and 1D Array textures */
+    RAL_TEXTURE_VIEW_TYPE_1D,
+
+    /* Compatible with 1D and 1D Array textures */
+    RAL_TEXTURE_VIEW_TYPE_1D_ARRAY,
+
+    /* Compatible with 2D and 2D Array textures */
+    RAL_TEXTURE_VIEW_TYPE_2D,
+
+    /* Compatible with 2D and 2D Array textures */
+    RAL_TEXTURE_VIEW_TYPE_2D_ARRAY,
+
+    /* Compatible with 2D Multisample & 2D Multisample Array textures */
+    RAL_TEXTURE_VIEW_TYPE_2D_MULTISAMPLE,
+
+    /* Compatible with 2D Multisample & 2D Multisample Array textures */
+    RAL_TEXTURE_VIEW_TYPE_2D_MULTISAMPLE_ARRAY,
+
+    /* Compatible with 3D textures */
+    RAL_TEXTURE_VIEW_TYPE_3D,
+
+    /* Compatible with Cube Map, 2D, 2D Array and Cube Map Array textures (pending various constraints) */
+    RAL_TEXTURE_VIEW_TYPE_CUBE_MAP,
+
+    /* Compatible with Cube Map, 2D, 2D Array and Cube Map Array textures (pending various constraints) */
+    RAL_TEXTURE_VIEW_TYPE_CUBE_MAP_ARRAY,
+
+    RAL_TEXTURE_VIEW_TYPE_UNDEFINED
+} ral_texture_view_type;
+
+
+typedef struct ral_texture_view_create_info
+{
+    ral_texture_format    format;
+    ral_texture           texture;
+    ral_texture_view_type type;
+
+    uint32_t n_base_layer;
+    uint32_t n_base_mip;
+
+    uint32_t n_layers;
+    uint32_t n_mips;
+
+    ral_texture_view_create_info()
+    {
+        format       = RAL_TEXTURE_FORMAT_UNKNOWN;
+        n_base_layer = -1;
+        n_base_mip   = -1;
+        n_layers     = 0;
+        n_mips       = 0;
+        texture      = nullptr;
+        type         = RAL_TEXTURE_VIEW_TYPE_UNDEFINED;
+    }
+} ral_texture_view_create_info;
 
 #endif /* RAL_TYPES_H */
