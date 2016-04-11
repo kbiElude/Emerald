@@ -64,6 +64,7 @@ typedef struct _raGL_backend
     system_read_write_mutex programs_map_rw_mutex;
     bool                    programs_map_owner;
 
+    /* NOTE: Textures and texture views are handled by raGL_texture */
     system_hash64map        texture_id_to_raGL_texture_map; /* maps GLid to raGL_texture instance; does NOT own the mapepd raGL_texture instances; lock textures_map_cs before usage. */
     system_hash64map        textures_map;                   /* maps ral_texture to raGL_texture instance; owns the mapped raGL_texture instances */
     bool                    textures_map_owner;
@@ -518,12 +519,12 @@ _raGL_backend::~_raGL_backend()
 
             switch (n_object_type)
             {
-                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      error_string = "GL back-end leaks [%d] buffers";      break;
-                case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: error_string = "GL back-end leaks [%d] framebuffers"; break;
-                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:     error_string = "GL back-end leaks [%d] programs";     break;
-                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     error_string = "GL back-end leaks [%d] samplers";     break;
-                case RAL_CONTEXT_OBJECT_TYPE_SHADER:      error_string = "GL back-end leaks [%d] shaders";      break;
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     error_string = "GL back-end leaks [%d] textures";     break;
+                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:      error_string = "GL back-end leaks [%d] buffers";                       break;
+                case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER: error_string = "GL back-end leaks [%d] framebuffers";                  break;
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:     error_string = "GL back-end leaks [%d] programs";                      break;
+                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:     error_string = "GL back-end leaks [%d] samplers";                      break;
+                case RAL_CONTEXT_OBJECT_TYPE_SHADER:      error_string = "GL back-end leaks [%d] shaders";                       break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:     error_string = "GL back-end leaks [%d] textures and/or texture views"; break;
 
                 default:
                 {
@@ -743,6 +744,7 @@ PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*           backend_ptr,
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
             *out_hashmap_ptr  = backend_ptr->textures_map;
             *out_rw_mutex_ptr = backend_ptr->textures_map_rw_mutex;
@@ -1030,6 +1032,7 @@ PRIVATE void _raGL_backend_on_objects_created(const void* callback_arg_data,
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
             for (uint32_t n_created_texture = 0;
                           n_created_texture < callback_arg_ptr->n_objects;
@@ -1138,6 +1141,13 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
             break;
         }
 
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
+        {
+            entrypoints_ptr->pGLGenTextures(n_objects_to_initialize,
+                                            result_object_ids_ptr);
+
+            break;
+        }
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -1222,6 +1232,18 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                 break;
             }
 
+            case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
+            {
+                GLuint           current_object_id = result_object_ids_ptr[n_object_id];
+                ral_texture_view texture_view_ral  = (ral_texture_view) callback_arg_ptr->ral_callback_arg_ptr->created_objects[n_object_id];
+
+                new_object = raGL_texture_create_view(context,
+                                                      current_object_id,
+                                                      texture_view_ral);
+
+                break;
+            }
+
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
@@ -1277,6 +1299,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                 }
 
                 case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
                 {
                     GLuint       new_texture_id   = 0;
                     raGL_texture new_texture_raGL = (raGL_texture) new_object;
@@ -1414,6 +1437,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
             for (uint32_t n_deleted_texture = 0;
                           n_deleted_texture < callback_arg_ptr->n_objects;
@@ -1487,6 +1511,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                 }
 
                 case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
                 {
                     GLuint object_id = 0;
 
@@ -1833,6 +1858,7 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
             raGL_texture_release( (raGL_texture) object_raGL);
 
@@ -1928,6 +1954,17 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
 
         /* Texture notifications */
         system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_CREATED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_objects_created,
+                                                        backend_ptr);
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _raGL_backend_on_objects_deleted,
+                                                        backend_ptr);
+
+        system_callback_manager_subscribe_for_callbacks(context_callback_manager,
                                                         RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _raGL_backend_on_objects_created,
@@ -1991,6 +2028,15 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
                                                            backend_ptr);
 
         /* Texture notifications */
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_CREATED,
+                                                           _raGL_backend_on_objects_created,
+                                                           backend_ptr);
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_DELETED,
+                                                           _raGL_backend_on_objects_deleted,
+                                                           backend_ptr);
+
         system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
                                                            RAL_CONTEXT_CALLBACK_ID_TEXTURES_CREATED,
                                                            _raGL_backend_on_objects_created,

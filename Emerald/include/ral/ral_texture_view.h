@@ -26,7 +26,7 @@ typedef enum
     /* not settable; ral_texture */
     RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
 
-    /* not settable; ral_texture_view_type */
+    /* not settable; ral_texture_type */
     RAL_TEXTURE_VIEW_PROPERTY_TYPE,
 
 } ral_texture_view_property;

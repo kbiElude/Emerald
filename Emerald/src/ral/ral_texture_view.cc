@@ -402,10 +402,10 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
             break;
         }
 
-        /* not settable; ral_texture_view_type */
+        /* not settable; ral_texture_type */
         case RAL_TEXTURE_VIEW_PROPERTY_TYPE:
         {
-            *(ral_texture_view_type*) out_result_ptr = texture_view_ptr->create_info.type;
+            *(ral_texture_type*) out_result_ptr = texture_view_ptr->create_info.type;
 
             break;
         }

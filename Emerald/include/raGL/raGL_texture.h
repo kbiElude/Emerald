@@ -41,6 +41,11 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context conte
                                                                ral_texture texture);
 
 /** TODO */
+PUBLIC raGL_texture raGL_texture_create_view(ogl_context      context,
+                                             GLuint           texture_id,
+                                             ral_texture_view texture_view);
+
+/** TODO */
 PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
                                           bool         async);
 

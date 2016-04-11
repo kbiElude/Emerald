@@ -13,6 +13,7 @@
 #include "raGL/raGL_utils.h"
 #include "ral/ral_scheduler.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "ral/ral_utils.h"
 #include "system/system_log.h"
 #include <algorithm>
@@ -28,8 +29,9 @@ typedef struct
 
 typedef struct _raGL_texture
 {
-    ogl_context context; /* NOT owned */
-    ral_texture texture; /* DO NOT release */
+    ogl_context      context;      /* NOT owned      */
+    ral_texture      texture;      /* DO NOT release */
+    ral_texture_view texture_view; /* DO NOT release */
 
     GLuint      id;      /* OWNED; can either be a RBO ID (if is_renderbuffer is true), or a TO ID (otherwise) */
     bool        is_renderbuffer;
@@ -44,6 +46,7 @@ typedef struct _raGL_texture
         id              = 0;
         is_renderbuffer = false;
         texture         = in_texture;
+        texture_view    = nullptr;
 
         /* NOTE: Only GL is supported at the moment. */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -54,6 +57,19 @@ typedef struct _raGL_texture
 
         ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "TODO");
+    }
+
+    _raGL_texture(ogl_context      in_context,
+                  GLuint           in_id,
+                  ral_texture_view in_texture_view)
+    {
+        ASSERT_DEBUG_SYNC(in_id != 0,
+                          "Zero texture ID specified for a texture view");
+
+        context      = in_context;
+        id           = in_id;
+        texture      = nullptr;
+        texture_view = in_texture_view;
     }
 
     ~_raGL_texture()
@@ -76,6 +92,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_renderer_callback
                                                                                                   void*          texture);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage                      (_raGL_texture* texture_ptr);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage                           (_raGL_texture* texture_ptr);
+PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback                    (ogl_context    context,
+                                                                                                  void*          texture);
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_texture              (_raGL_texture* texture_ptr);
 
 
@@ -718,6 +736,71 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
 }
 
 /** TODO */
+PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(ogl_context context,
+                                                                              void*       texture)
+{
+    raGL_backend                      backend                   = nullptr;
+    const ogl_context_gl_entrypoints* entrypoints_ptr           = nullptr;
+    uint32_t                          n_texture_view_base_layer = -1;
+    uint32_t                          n_texture_view_base_level = -1;
+    uint32_t                          n_texture_view_layers     = -1;
+    uint32_t                          n_texture_view_levels     = -1;
+    ral_texture                       parent_texture            = nullptr;
+    raGL_texture                      parent_texture_raGL       = nullptr;
+    GLuint                            parent_texture_raGL_id    = -1;
+    _raGL_texture*                    texture_ptr               = (_raGL_texture*) texture;
+    ral_texture_format                texture_view_format       = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_texture_type                  texture_view_type         = RAL_TEXTURE_TYPE_UNKNOWN;
+
+    /* Extract texture view properties */
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                 &texture_view_format);
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER,
+                                 &n_texture_view_base_layer);
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP,
+                                 &n_texture_view_base_level);
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
+                                 &n_texture_view_layers);
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                 &n_texture_view_levels);
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                 &parent_texture);
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                 &texture_view_type);
+
+    raGL_backend_get_texture (backend,
+                              parent_texture,
+                              (void**) &parent_texture_raGL);
+    raGL_texture_get_property(parent_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                             &parent_texture_raGL_id);
+
+    /* Assign a texture view to the ID */
+    entrypoints_ptr->pGLTextureView(texture_ptr->id,
+                                    raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_view_type),
+                                    parent_texture_raGL_id,
+                                    texture_view_format,
+                                    n_texture_view_base_level,
+                                    n_texture_view_levels,
+                                    n_texture_view_base_layer,
+                                    n_texture_view_layers);
+}
+
+/** TODO */
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* texture_ptr)
 {
     const ogl_context                                         current_context     = ogl_context_get_current_context();
@@ -950,6 +1033,52 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context conte
 
     ogl_context_request_callback_from_context_thread(context,
                                                      _raGL_texture_init_storage_renderer_callback,
+                                                     result_ptr);
+
+    /* All done */
+end:
+    return (raGL_texture) result_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC raGL_texture raGL_texture_create_view(ogl_context      context,
+                                             GLuint           texture_id,
+                                             ral_texture_view texture_view)
+{
+    _raGL_texture* result_ptr = nullptr;
+
+    /* Sanity checks */
+    if (context == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(context != nullptr,
+                          "Input ogl_context instance is NULL");
+
+        goto end;
+    }
+
+    if (texture_view == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(texture_view != nullptr,
+                          "Input RAL texture view is NULL");
+
+        goto end;
+    }
+
+    /* Spawn a new descriptor. */
+    result_ptr = new (std::nothrow) _raGL_texture(context,
+                                                  texture_id,
+                                                  texture_view);
+
+    if (result_ptr == nullptr)
+    {
+        ASSERT_ALWAYS_SYNC(result_ptr != nullptr,
+                           "Out of memory");
+
+        goto end;
+    }
+
+    ogl_context_request_callback_from_context_thread(context,
+                                                     _raGL_texture_init_view_renderer_callback,
                                                      result_ptr);
 
     /* All done */
