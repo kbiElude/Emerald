@@ -7,17 +7,69 @@
 
 typedef struct _ral_present_task
 {
-    ral_command_buffer      command_buffer;
-    ral_context             context;
-    system_resizable_vector modified_buffers;  /* holds ral_buffer instances  */
-    system_resizable_vector modified_textures; /* holds ral_texture instances */
-    system_resizable_vector read_buffers;      /* holds ral_buffer instances  */
-    system_resizable_vector read_textures;     /* holds ral_buffer instances  */
+    ral_command_buffer        command_buffer;
+    ral_context               context;
+    system_resizable_vector   modified_buffers;  /* holds ral_buffer instances  */
+    system_resizable_vector   modified_textures; /* holds ral_texture instances */
+    system_hashed_ansi_string name;
+    system_resizable_vector   read_buffers;      /* holds ral_buffer instances  */
+    system_resizable_vector   read_textures;     /* holds ral_buffer instances  */
+    ral_present_task_type     type;
 
     void update_object_vectors();
 
     /** TODO */
-    explicit _ral_present_task(ral_command_buffer in_command_buffer)
+    explicit _ral_present_task(system_hashed_ansi_string               in_name,
+                               const ral_present_task_cpu_create_info* in_create_info_ptr)
+    {
+        command_buffer    = nullptr;
+        context           = nullptr;
+        modified_buffers  = (in_create_info_ptr->n_modified_buffers  != 0) ? system_resizable_vector_create(in_create_info_ptr->n_modified_buffers)
+                                                                           : nullptr;
+        modified_textures = (in_create_info_ptr->n_modified_textures != 0) ? system_resizable_vector_create(in_create_info_ptr->n_modified_textures)
+                                                                           : nullptr;
+        read_buffers      = (in_create_info_ptr->n_read_buffers      != 0) ? system_resizable_vector_create(in_create_info_ptr->n_read_buffers)
+                                                                           : nullptr;
+        read_textures     = (in_create_info_ptr->n_read_textures     != 0) ? system_resizable_vector_create(in_create_info_ptr->n_read_textures)
+                                                                           : nullptr;
+        type              = RAL_PRESENT_TASK_TYPE_CPU_TASK;
+
+        for (uint32_t n_modified_buffer = 0;
+                      n_modified_buffer < in_create_info_ptr->n_modified_buffers;
+                    ++n_modified_buffer)
+        {
+            system_resizable_vector_push(modified_buffers,
+                                         in_create_info_ptr->modified_buffers[n_modified_buffer]);
+        }
+
+        for (uint32_t n_modified_texture = 0;
+                      n_modified_texture < in_create_info_ptr->n_modified_textures;
+                    ++n_modified_texture)
+        {
+            system_resizable_vector_push(modified_textures,
+                                         in_create_info_ptr->modified_textures[n_modified_texture]);
+        }
+
+        for (uint32_t n_read_buffer = 0;
+                      n_read_buffer < in_create_info_ptr->n_read_buffers;
+                    ++n_read_buffer)
+        {
+            system_resizable_vector_push(read_buffers,
+                                         in_create_info_ptr->read_buffers[n_read_buffer]);
+        }
+
+        for (uint32_t n_read_texture = 0;
+                      n_read_texture < in_create_info_ptr->n_read_textures;
+                    ++n_read_texture)
+        {
+            system_resizable_vector_push(read_textures,
+                                         in_create_info_ptr->read_textures[n_read_texture]);
+        }
+    }
+
+    /** TODO. GPU tasks only */
+    explicit _ral_present_task(system_hashed_ansi_string in_name,
+                               ral_command_buffer        in_command_buffer)
     {
         ral_command_buffer_get_property(in_command_buffer,
                                         RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
@@ -26,8 +78,10 @@ typedef struct _ral_present_task
         command_buffer    = in_command_buffer;
         modified_buffers  = system_resizable_vector_create(4 /* capacity */);
         modified_textures = system_resizable_vector_create(4 /* capacity */);
+        name              = in_name;
         read_buffers      = system_resizable_vector_create(4 /* capacity */);
         read_textures     = system_resizable_vector_create(4 /* capacity */);
+        type              = RAL_PRESENT_TASK_TYPE_GPU_TASK;
 
         ral_context_retain_object(context,
                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
@@ -61,6 +115,16 @@ typedef struct _ral_present_task
                 *current_vector_ptr = nullptr;
             }
         }
+
+        if (command_buffer != nullptr)
+        {
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                       1, /* n_objects */
+                                       (const void**) command_buffer);
+
+            command_buffer = nullptr;
+        }
     }
 
 private:
@@ -77,6 +141,9 @@ void _ral_present_task::update_object_vectors()
         uint32_t n_recorded_buffer_write_accesses  = 0;
         uint32_t n_recorded_texture_read_accesses  = 0;
         uint32_t n_recorded_texture_write_accesses = 0;
+
+        ASSERT_DEBUG_SYNC(type == RAL_PRESENT_TASK_TYPE_GPU_TASK,
+                          "update_object_vectors() should only be invoked for a GPU task.");
 
         system_resizable_vector_get_property(modified_buffers,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -358,8 +425,91 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
 }
 
 /** Please see header for specification */
-ral_present_task ral_present_task_create(system_hashed_ansi_string name,
-                                         ral_command_buffer        command_buffer)
+ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
+                                             const ral_present_task_cpu_create_info* create_info_ptr)
+
+{
+    _ral_present_task* result_ptr = nullptr;
+
+    /* Sanity checks */
+    if (name == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(name != nullptr,
+                          "RAL present task's name is NULL");
+
+        goto end;
+    }
+
+    if (create_info_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(create_info_ptr != nullptr,
+                          "Create info structure for RAL present task is NULL");
+
+        goto end;
+    }
+
+    if (create_info_ptr->pfn_cpu_task_callback_proc == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(create_info_ptr->pfn_cpu_task_callback_proc != nullptr,
+                          "RAL present CPU task call-back func ptr is NULL");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_modified_buffers != 0      &&
+        create_info_ptr->modified_buffers   == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_modified_buffers != 0      &&
+                            create_info_ptr->modified_buffers   == nullptr),
+                          "Null modified buffer array specified for n_modified_buffers != 0");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_modified_textures != 0      &&
+        create_info_ptr->modified_textures   == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_modified_textures != 0      &&
+                            create_info_ptr->modified_textures   == nullptr),
+                          "Null modified texture array specified for n_modified_textures != 0");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_read_buffers != 0      &&
+        create_info_ptr->read_buffers   == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_read_buffers != 0      &&
+                            create_info_ptr->read_buffers   == nullptr),
+                          "Null read buffer array specified for n_read_buffers != 0");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_read_textures != 0      &&
+        create_info_ptr->read_textures   == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_read_textures != 0      &&
+                            create_info_ptr->read_textures   == nullptr),
+                          "Null read texture array specified for n_read_textures != 0");
+
+        goto end;
+    }
+
+    /* Spawn the new descriptor */
+    result_ptr = new _ral_present_task(name,
+                                       create_info_ptr);
+
+    ASSERT_ALWAYS_SYNC(result_ptr != nullptr,
+                       "Out of memory");
+
+end:
+    return (ral_present_task) result_ptr;
+}
+
+/** Please see header for specification */
+ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string name,
+                                             ral_command_buffer        command_buffer)
 {
     ral_command_buffer_status command_buffer_status        = RAL_COMMAND_BUFFER_STATUS_UNDEFINED;
     bool                      is_command_buffer_resettable = false;
@@ -406,7 +556,8 @@ ral_present_task ral_present_task_create(system_hashed_ansi_string name,
     }
 
     /* Should be fine to create a present task from this command buffer */
-    result_ptr = new _ral_present_task(command_buffer);
+    result_ptr = new _ral_present_task(name,
+                                       command_buffer);
 
 end:
     return (ral_present_task) result_ptr;
@@ -508,6 +659,9 @@ void ral_present_task_get_property(ral_present_task          task,
     {
         case RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER:
         {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GPU_TASK,
+                              "RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER property is only available for RAL present GPU tasks");
+
             *(ral_command_buffer*) out_result_ptr = task_ptr->command_buffer;
 
             break;
@@ -545,6 +699,20 @@ void ral_present_task_get_property(ral_present_task          task,
             system_resizable_vector_get_property(task_ptr->read_textures,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                  out_result_ptr);
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result_ptr = task_ptr->name;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_TYPE:
+        {
+            *(ral_present_task_type*) out_result_ptr = task_ptr->type;
 
             break;
         }
