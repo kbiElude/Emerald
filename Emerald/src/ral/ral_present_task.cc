@@ -1,6 +1,8 @@
 #include "shared.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_present_task.h"
+#include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "system/system_resizable_vector.h"
 
@@ -13,6 +15,9 @@ typedef struct _ral_present_task
     system_hashed_ansi_string name;
     system_resizable_vector   outputs; /* holds ral_present_task_io instances  */
     ral_present_task_type     type;
+
+    volatile uint32_t ref_counter;
+
 
     void set_io       (ral_present_task_io_type   type,
                        const ral_present_task_io* src_io_ptr,
@@ -29,6 +34,7 @@ typedef struct _ral_present_task
                                                                      : nullptr;
         outputs        = (in_create_info_ptr->n_unique_outputs != 0) ? system_resizable_vector_create(in_create_info_ptr->n_unique_outputs)
                                                                      : nullptr;
+        ref_counter    = 1;
         type           = RAL_PRESENT_TASK_TYPE_CPU_TASK;
 
         for (ral_present_task_io_type io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
@@ -91,6 +97,10 @@ typedef struct _ral_present_task
             &outputs
         };
         const uint32_t n_vectors_to_release = sizeof(vectors_to_release) / sizeof(vectors_to_release[0]);
+
+        ASSERT_DEBUG_SYNC(ref_counter == 0,
+                          "Destructor called for a ral_present_task instance whose ref counter == %d",
+                          ref_counter);
 
         for (uint32_t n_vector = 0;
                       n_vector < n_vectors_to_release;
@@ -288,6 +298,25 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
                 if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
                                    command_ptr->src_texture) )
                 {
+                    #ifdef _DEBUG
+                    {
+                        ral_texture_usage_bits dst_texture_usage = 0;
+                        ral_texture_usage_bits src_texture_usage = 0;
+
+                        ral_texture_get_property(command_ptr->dst_texture,
+                                                 RAL_TEXTURE_PROPERTY_USAGE,
+                                                &dst_texture_usage);
+                        ral_texture_get_property(command_ptr->src_texture,
+                                                 RAL_TEXTURE_PROPERTY_USAGE,
+                                                &src_texture_usage);
+
+                        ASSERT_DEBUG_SYNC( (dst_texture_usage & RAL_TEXTURE_USAGE_BLIT_DST_BIT) != 0,
+                                          "Destination texture for a copy op does not have the blit_dst usage enabled.");
+                        ASSERT_DEBUG_SYNC( (src_texture_usage & RAL_TEXTURE_USAGE_BLIT_SRC_BIT) != 0,
+                                          "Source texture for a copy op does not have the blit_src usage enabled.");
+                    }
+                    #endif
+
                     add_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
                            command_ptr->src_texture);
                 }
@@ -322,8 +351,22 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
                         read_access_ptr  = command_ptr->read_deps;
                         write_access_ptr = command_ptr->write_deps;
 
+                        #ifdef _DEBUG
+                        {
+                            /* Sanity checks */
+                            ral_buffer_usage_bits index_buffer_usage = 0;
+
+                            ral_buffer_get_property(command_ptr->index_buffer,
+                                                    RAL_BUFFER_PROPERTY_USAGE_BITS,
+                                                   &index_buffer_usage);
+
+                            ASSERT_DEBUG_SYNC( (index_buffer_usage & RAL_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0,
+                                              "Index buffer has not been initialized for index_buffer usage");
+                        }
+                        #endif
+
                         if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
-                                            command_ptr->index_buffer) )
+                                           command_ptr->index_buffer) )
                         {
                             add_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
                                    command_ptr->index_buffer);
@@ -340,6 +383,20 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
                         n_write_accesses = command_ptr->n_write_deps;
                         read_access_ptr  = command_ptr->read_deps;
                         write_access_ptr = command_ptr->write_deps;
+
+                        #ifdef _DEBUG
+                        {
+                            /* Sanity checks */
+                            ral_buffer_usage_bits indirect_arg_buffer_usage = 0;
+
+                            ral_buffer_get_property(command_ptr->buffer,
+                                                    RAL_BUFFER_PROPERTY_USAGE_BITS,
+                                                   &indirect_arg_buffer_usage);
+
+                            ASSERT_DEBUG_SYNC( (indirect_arg_buffer_usage & RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT) != 0,
+                                              "Indirect draw arg buffer has not been initialized for indirect_draw_buffer usage");
+                        }
+                        #endif
 
                         if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
                                            command_ptr->buffer))
@@ -364,6 +421,8 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
                     }
                 }
 
+                /* TODO: Sanity checks here for the code below should check if the object, described in the user args', refer
+                 *       to objects used for bindings or for vertex attributes */
                 for (ral_present_task_io_type io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
                                               io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
                                     ++((int&) io_type))
@@ -439,6 +498,20 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
                 if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
                                    parent_texture) )
                 {
+                    #ifdef _DEBUG
+                    {
+                        ral_texture_usage_bits parent_texture_usage = 0;
+
+                        ral_texture_get_property(parent_texture,
+                                                 RAL_TEXTURE_PROPERTY_USAGE,
+                                                &parent_texture_usage);
+
+                        ASSERT_DEBUG_SYNC( (parent_texture_usage & RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT)         != 0 ||
+                                           (parent_texture_usage & RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0,
+                                           "Texture to be used as a render-target has not been created for C or DS usage.");
+                    }
+                    #endif
+
                     add_io(RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
                            parent_texture);
                 }
@@ -453,6 +526,19 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
                 if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
                                    command_ptr->buffer) )
                 {
+                    #ifdef _DEBUG
+                    {
+                        ral_buffer_usage_bits buffer_usage = 0;
+
+                        ral_buffer_get_property(command_ptr->buffer,
+                                                RAL_BUFFER_PROPERTY_USAGE_BITS,
+                                               &buffer_usage);
+
+                        ASSERT_DEBUG_SYNC( (buffer_usage & RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0,
+                                           "Specified buffer has not been created for vertex attribute usage.");
+                    }
+                    #endif
+
                     add_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
                            command_ptr->buffer);
                 }
@@ -770,5 +856,16 @@ end:
 /** Please see header for specification */
 PUBLIC void ral_present_task_release(ral_present_task task)
 {
-    delete (_ral_present_task*) task;
+    volatile uint32_t& ref_counter = ((_ral_present_task*)task)->ref_counter;
+
+    if (--ref_counter == 0)
+    {
+        delete (_ral_present_task*) task;
+    }
+}
+
+/** Please see header for specification */
+PUBLIC void ral_present_task_retain(ral_present_task task)
+{
+    ++(( (_ral_present_task*) task)->ref_counter);
 }

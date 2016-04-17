@@ -111,5 +111,8 @@ PUBLIC void ral_present_task_get_property(ral_present_task          task,
 /** TODO */
 PUBLIC void ral_present_task_release(ral_present_task task);
 
+/** TODO */
+PUBLIC void ral_present_task_retain(ral_present_task task);
+
 
 #endif /* RAL_PRESENT_TASK_H */

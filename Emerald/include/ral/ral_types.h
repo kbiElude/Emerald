@@ -175,6 +175,9 @@ typedef enum
 } ral_pipeline_stage;
 typedef int ral_pipeline_stage_bits;
 
+typedef uint32_t ral_present_job_connection_id;
+typedef uint32_t ral_present_task_id;
+
 /** Enumerator that describes allowed types for a program attribute */
 typedef enum
 {
