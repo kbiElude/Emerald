@@ -8,8 +8,6 @@ DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
 DECLARE_HANDLE(ral_framebuffer);
 DECLARE_HANDLE(ral_gfx_state);
-DECLARE_HANDLE(ral_present_cpu_job);
-DECLARE_HANDLE(ral_present_gpu_job);
 DECLARE_HANDLE(ral_present_job);
 DECLARE_HANDLE(ral_present_task);
 DECLARE_HANDLE(ral_program);

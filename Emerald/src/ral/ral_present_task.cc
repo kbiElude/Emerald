@@ -9,61 +9,55 @@ typedef struct _ral_present_task
 {
     ral_command_buffer        command_buffer;
     ral_context               context;
-    system_resizable_vector   modified_buffers;  /* holds ral_buffer instances  */
-    system_resizable_vector   modified_textures; /* holds ral_texture instances */
+    system_resizable_vector   inputs;  /* holds ral_present_task_io instances  */
     system_hashed_ansi_string name;
-    system_resizable_vector   read_buffers;      /* holds ral_buffer instances  */
-    system_resizable_vector   read_textures;     /* holds ral_buffer instances  */
+    system_resizable_vector   outputs; /* holds ral_present_task_io instances  */
     ral_present_task_type     type;
 
-    void update_object_vectors();
+    void set_io       (ral_present_task_io_type   type,
+                       const ral_present_task_io* src_io_ptr,
+                       ral_present_task_io*       dst_io_ptr);
+    void update_ios   ();
 
     /** TODO */
     explicit _ral_present_task(system_hashed_ansi_string               in_name,
                                const ral_present_task_cpu_create_info* in_create_info_ptr)
     {
-        command_buffer    = nullptr;
-        context           = nullptr;
-        modified_buffers  = (in_create_info_ptr->n_modified_buffers  != 0) ? system_resizable_vector_create(in_create_info_ptr->n_modified_buffers)
-                                                                           : nullptr;
-        modified_textures = (in_create_info_ptr->n_modified_textures != 0) ? system_resizable_vector_create(in_create_info_ptr->n_modified_textures)
-                                                                           : nullptr;
-        read_buffers      = (in_create_info_ptr->n_read_buffers      != 0) ? system_resizable_vector_create(in_create_info_ptr->n_read_buffers)
-                                                                           : nullptr;
-        read_textures     = (in_create_info_ptr->n_read_textures     != 0) ? system_resizable_vector_create(in_create_info_ptr->n_read_textures)
-                                                                           : nullptr;
-        type              = RAL_PRESENT_TASK_TYPE_CPU_TASK;
+        command_buffer = nullptr;
+        context        = nullptr;
+        inputs         = (in_create_info_ptr->n_unique_inputs  != 0) ? system_resizable_vector_create(in_create_info_ptr->n_unique_inputs)
+                                                                     : nullptr;
+        outputs        = (in_create_info_ptr->n_unique_outputs != 0) ? system_resizable_vector_create(in_create_info_ptr->n_unique_outputs)
+                                                                     : nullptr;
+        type           = RAL_PRESENT_TASK_TYPE_CPU_TASK;
 
-        for (uint32_t n_modified_buffer = 0;
-                      n_modified_buffer < in_create_info_ptr->n_modified_buffers;
-                    ++n_modified_buffer)
+        for (ral_present_task_io_type io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
+                                      io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
+                             ++((int&)io_type) )
         {
-            system_resizable_vector_push(modified_buffers,
-                                         in_create_info_ptr->modified_buffers[n_modified_buffer]);
-        }
+            const uint32_t             n_ios   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->n_unique_inputs
+                                                                                             : in_create_info_ptr->n_unique_outputs;
+            const ral_present_task_io* src_ios = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->unique_inputs
+                                                                                             : in_create_info_ptr->unique_outputs;
+            system_resizable_vector    dst_ios = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs
+                                                                                             : outputs;
 
-        for (uint32_t n_modified_texture = 0;
-                      n_modified_texture < in_create_info_ptr->n_modified_textures;
-                    ++n_modified_texture)
-        {
-            system_resizable_vector_push(modified_textures,
-                                         in_create_info_ptr->modified_textures[n_modified_texture]);
-        }
+            for (uint32_t n_io = 0;
+                          n_io < n_ios;
+                        ++n_io)
+            {
+                ral_present_task_io* new_io_ptr = new ral_present_task_io;
 
-        for (uint32_t n_read_buffer = 0;
-                      n_read_buffer < in_create_info_ptr->n_read_buffers;
-                    ++n_read_buffer)
-        {
-            system_resizable_vector_push(read_buffers,
-                                         in_create_info_ptr->read_buffers[n_read_buffer]);
-        }
+                ASSERT_ALWAYS_SYNC(new_io_ptr != nullptr,
+                                   "Out of memory");
 
-        for (uint32_t n_read_texture = 0;
-                      n_read_texture < in_create_info_ptr->n_read_textures;
-                    ++n_read_texture)
-        {
-            system_resizable_vector_push(read_textures,
-                                         in_create_info_ptr->read_textures[n_read_texture]);
+                set_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                       src_ios + n_io,
+                       new_io_ptr);
+
+                system_resizable_vector_push(dst_ios,
+                                             new_io_ptr);
+            }
         }
     }
 
@@ -75,19 +69,17 @@ typedef struct _ral_present_task
                                         RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
                                        &context);
 
-        command_buffer    = in_command_buffer;
-        modified_buffers  = system_resizable_vector_create(4 /* capacity */);
-        modified_textures = system_resizable_vector_create(4 /* capacity */);
-        name              = in_name;
-        read_buffers      = system_resizable_vector_create(4 /* capacity */);
-        read_textures     = system_resizable_vector_create(4 /* capacity */);
-        type              = RAL_PRESENT_TASK_TYPE_GPU_TASK;
+        command_buffer = in_command_buffer;
+        inputs         = system_resizable_vector_create(4 /* capacity */);
+        name           = in_name;
+        outputs        = system_resizable_vector_create(4 /* capacity */);
+        type           = RAL_PRESENT_TASK_TYPE_GPU_TASK;
 
         ral_context_retain_object(context,
                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                   command_buffer);
 
-        update_object_vectors();
+        update_ios();
     }
 
     /** TODO */
@@ -95,10 +87,8 @@ typedef struct _ral_present_task
     {
         system_resizable_vector* vectors_to_release[] =
         {
-            &modified_buffers,
-            &modified_textures,
-            &read_buffers,
-            &read_textures
+            &inputs,
+            &outputs
         };
         const uint32_t n_vectors_to_release = sizeof(vectors_to_release) / sizeof(vectors_to_release[0]);
 
@@ -127,48 +117,140 @@ typedef struct _ral_present_task
         }
     }
 
+    void add_io(ral_present_task_io_type io_type,
+                ral_buffer               buffer)
+    {
+        add_io<RAL_CONTEXT_OBJECT_TYPE_BUFFER>(io_type,
+                                               buffer); 
+    }
+
+    void add_io(ral_present_task_io_type io_type,
+                ral_texture              buffer)
+    {
+        add_io<RAL_CONTEXT_OBJECT_TYPE_TEXTURE>(io_type,
+                                                buffer); 
+    }
+
+    bool is_io_defined(ral_present_task_io_type io_type,
+                       ral_buffer               object)
+    {
+        return is_io_defined<RAL_CONTEXT_OBJECT_TYPE_BUFFER>(io_type,
+                                                             object);
+    }
+
+    bool is_io_defined(ral_present_task_io_type io_type,
+                       ral_texture              object)
+    {
+        return is_io_defined<RAL_CONTEXT_OBJECT_TYPE_TEXTURE>(io_type,
+                                                              object);
+    }
+
 private:
-    void update_object_vectors_internal(ral_command_buffer in_command_buffer);
+    template<ral_context_object_type object_type,
+             typename                ral_object_type>
+    void add_io(ral_present_task_io_type io_type,
+                ral_object_type          object)
+    {
+        system_resizable_vector ios         = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs
+                                                                                          : outputs;
+        ral_present_task_io*    new_io_ptr;
+
+        #ifdef _DEBUG
+        {
+            /* Sanity checks */
+            ASSERT_DEBUG_SYNC(!is_io_defined(io_type, object),
+                              "add_io() called for an IO which is already defined.");
+        }
+        #endif
+
+        new_io_ptr = new ral_present_task_io;
+
+        ASSERT_ALWAYS_SYNC(new_io_ptr != nullptr,
+                           "Out of memory");
+
+        new_io_ptr->object      = object;
+        new_io_ptr->object_type = object_type;
+    }
+
+    template<ral_context_object_type object_type,
+             typename                ral_object_type>
+
+    bool is_io_defined(ral_present_task_io_type io_type,
+                       ral_object_type          object)
+    {
+        bool                    result = false;
+        system_resizable_vector ios    = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs
+                                                                                     : outputs;
+        uint32_t                n_ios  = 0;
+
+        system_resizable_vector_get_property(ios,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_ios);
+
+        for (uint32_t n_io = 0;
+                      n_io < n_ios;
+                    ++n_io)
+        {
+            ral_present_task_io* current_io_ptr = nullptr;
+
+            system_resizable_vector_get_element_at(ios,
+                                                   n_io,
+                                                  &current_io_ptr);
+
+            if (current_io_ptr->object == object)
+            {
+                result = true;
+
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    void update_ios_internal(ral_command_buffer in_command_buffer);
 } _ral_present_task;
 
 
 /** TODO */
-void _ral_present_task::update_object_vectors()
+void _ral_present_task::set_io(ral_present_task_io_type   type,
+                               const ral_present_task_io* src_io_ptr,
+                               ral_present_task_io*       dst_io_ptr)
+{
+    dst_io_ptr->object      = src_io_ptr->object;
+    dst_io_ptr->object_type = src_io_ptr->object_type;
+
+    /* TODO: Retain/release mechanism? */
+}
+
+/** TODO */
+void _ral_present_task::update_ios()
 {
     /* Sanity checks */
     {
-        uint32_t n_recorded_buffer_read_accesses   = 0;
-        uint32_t n_recorded_buffer_write_accesses  = 0;
-        uint32_t n_recorded_texture_read_accesses  = 0;
-        uint32_t n_recorded_texture_write_accesses = 0;
+        uint32_t n_recorded_read_accesses   = 0;
+        uint32_t n_recorded_write_accesses  = 0;
 
         ASSERT_DEBUG_SYNC(type == RAL_PRESENT_TASK_TYPE_GPU_TASK,
-                          "update_object_vectors() should only be invoked for a GPU task.");
+                          "update_ios() should only be invoked for a GPU task.");
 
-        system_resizable_vector_get_property(modified_buffers,
+        system_resizable_vector_get_property(inputs,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_recorded_buffer_write_accesses);
-        system_resizable_vector_get_property(modified_textures,
+                                            &n_recorded_read_accesses);
+        system_resizable_vector_get_property(outputs,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_recorded_texture_write_accesses);
-        system_resizable_vector_get_property(read_buffers,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_recorded_buffer_read_accesses);
-        system_resizable_vector_get_property(read_textures,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_recorded_texture_read_accesses);
+                                            &n_recorded_write_accesses);
 
-        ASSERT_DEBUG_SYNC(n_recorded_buffer_read_accesses   == 0 &&
-                          n_recorded_buffer_write_accesses  == 0 &&
-                          n_recorded_texture_read_accesses  == 0 &&
-                          n_recorded_texture_write_accesses == 0,
-                          "Invalid _ral_present_task::update_object_vectors() request.");
+        ASSERT_DEBUG_SYNC(n_recorded_read_accesses  == 0 &&
+                          n_recorded_write_accesses == 0,
+                          "Invalid _ral_present_task::update_ios() request.");
     }
 
-    update_object_vectors_internal(command_buffer);
+    update_ios_internal(command_buffer);
 }
 
-void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_command_buffer)
+/** TODO */
+void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer)
 {
     /* Iterate over all commands and cache all objects which are read or modified by the
      * encapsulated command buffer. Make sure to only create unique entries. */
@@ -203,18 +285,18 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
             {
                 ral_command_buffer_copy_texture_to_texture_command_info* command_ptr = (ral_command_buffer_copy_texture_to_texture_command_info*) command_raw_ptr;
 
-                if (system_resizable_vector_find(read_textures,
-                                                 command_ptr->src_texture) == ITEM_NOT_FOUND)
+                if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                   command_ptr->src_texture) )
                 {
-                    system_resizable_vector_push(read_textures,
-                                                 command_ptr->src_texture);
+                    add_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                           command_ptr->src_texture);
                 }
 
-                if (system_resizable_vector_find(modified_textures,
-                                                 command_ptr->dst_texture) == ITEM_NOT_FOUND)
+                if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                   command_ptr->dst_texture) )
                 {
-                    system_resizable_vector_push(modified_textures,
-                                                 command_ptr->dst_texture);
+                    add_io(RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                           command_ptr->dst_texture);
                 }
 
                 break;
@@ -240,11 +322,11 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
                         read_access_ptr  = command_ptr->read_deps;
                         write_access_ptr = command_ptr->write_deps;
 
-                        if (system_resizable_vector_find(modified_buffers,
-                                                         command_ptr->index_buffer) == ITEM_NOT_FOUND)
+                        if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                            command_ptr->index_buffer) )
                         {
-                            system_resizable_vector_push(modified_buffers,
-                                                         command_ptr->index_buffer);
+                            add_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                   command_ptr->index_buffer);
                         }
 
                         break;
@@ -259,11 +341,11 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
                         read_access_ptr  = command_ptr->read_deps;
                         write_access_ptr = command_ptr->write_deps;
 
-                        if (system_resizable_vector_find(modified_buffers,
-                                                         command_ptr->buffer) == ITEM_NOT_FOUND)
+                        if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                           command_ptr->buffer))
                         {
-                            system_resizable_vector_push(modified_buffers,
-                                                         command_ptr->buffer);
+                            add_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                   command_ptr->buffer);
                         }
 
                         break;
@@ -282,78 +364,50 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
                     }
                 }
 
-                for (uint32_t n_read_dep = 0;
-                              n_read_dep < n_read_accesses;
-                            ++n_read_dep)
+                for (ral_present_task_io_type io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
+                                              io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
+                                    ++((int&) io_type))
                 {
-                    const ral_object_access& current_access = read_access_ptr[n_read_dep];
+                    const ral_object_access* accesses   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? read_access_ptr
+                                                                                                      : write_access_ptr;
+                    const uint32_t           n_accesses = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? n_read_accesses
+                                                                                                      : n_write_accesses;
 
-                    if (current_access.buffer != nullptr)
+                    for (uint32_t n_access = 0;
+                                  n_access < n_accesses;
+                                ++n_access)
                     {
-                        if (system_resizable_vector_find(read_buffers,
-                                                         current_access.buffer) == ITEM_NOT_FOUND)
+                        const ral_object_access& current_access = accesses[n_access];
+
+                        if (current_access.buffer != nullptr)
                         {
-                            system_resizable_vector_push(read_buffers,
-                                                         current_access.buffer);
+                            if (!is_io_defined(io_type,
+                                               current_access.buffer) )
+                            {
+                                add_io(io_type,
+                                       current_access.buffer);
+                            }
                         }
-                    }
-                    else
-                    {
-                        ral_texture parent_texture = nullptr;
-
-                        ASSERT_DEBUG_SYNC(current_access.texture_view != nullptr,
-                                          "Invalid RAL texture view instance.");
-
-                        ral_texture_view_get_property(current_access.texture_view,
-                                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                                     &parent_texture);
-
-                        ASSERT_DEBUG_SYNC(parent_texture != nullptr,
-                                          "Invalid RAL texture instance.");
-
-                        if (system_resizable_vector_find(read_textures,
-                                                         parent_texture) == ITEM_NOT_FOUND)
+                        else
                         {
-                            system_resizable_vector_push(read_textures,
-                                                         parent_texture);
-                        }
-                    }
-                }
+                            ral_texture parent_texture = nullptr;
 
-                for (uint32_t n_write_dep = 0;
-                              n_write_dep < n_write_accesses;
-                            ++n_write_dep)
-                {
-                    const ral_object_access& current_access = write_access_ptr[n_write_dep];
+                            ASSERT_DEBUG_SYNC(current_access.texture_view != nullptr,
+                                              "Invalid RAL texture view instance.");
 
-                    if (current_access.buffer != nullptr)
-                    {
-                        if (system_resizable_vector_find(modified_buffers,
-                                                         current_access.buffer) == ITEM_NOT_FOUND)
-                        {
-                            system_resizable_vector_push(modified_buffers,
-                                                         current_access.buffer);
-                        }
-                    }
-                    else
-                    {
-                        ral_texture parent_texture = nullptr;
+                            ral_texture_view_get_property(current_access.texture_view,
+                                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                         &parent_texture);
 
-                        ASSERT_DEBUG_SYNC(current_access.texture_view != nullptr,
-                                          "Invalid RAL texture view instance.");
+                            ASSERT_DEBUG_SYNC(parent_texture != nullptr,
+                                              "Invalid RAL texture instance.");
 
-                        ral_texture_view_get_property(current_access.texture_view,
-                                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                                     &parent_texture);
-
-                        ASSERT_DEBUG_SYNC(parent_texture != nullptr,
-                                          "Invalid RAL texture instance.");
-
-                        if (system_resizable_vector_find(modified_textures,
-                                                         parent_texture) == ITEM_NOT_FOUND)
-                        {
-                            system_resizable_vector_push(modified_textures,
-                                                         parent_texture);
+                            if (!is_io_defined(io_type,
+                                               parent_texture) )
+                            {
+                                add_io(io_type,
+                                       parent_texture);
+                            }
                         }
                     }
                 }
@@ -365,7 +419,7 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
             {
                 ral_command_buffer_execute_command_buffer_command_info* command_ptr = (ral_command_buffer_execute_command_buffer_command_info*) command_raw_ptr;
 
-                update_object_vectors_internal(command_ptr->command_buffer);
+                update_ios_internal(command_ptr->command_buffer);
 
                 break;
             }
@@ -382,11 +436,11 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
                 ASSERT_DEBUG_SYNC(parent_texture != nullptr,
                                   "Invalid RAL texture instance.");
 
-                if (system_resizable_vector_find(modified_textures,
-                                                 parent_texture) == ITEM_NOT_FOUND)
+                if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                   parent_texture) )
                 {
-                    system_resizable_vector_push(modified_textures,
-                                                 parent_texture);
+                    add_io(RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                           parent_texture);
                 }
 
                 break;
@@ -396,11 +450,11 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
             {
                 ral_command_buffer_set_vertex_attribute_command_info* command_ptr = (ral_command_buffer_set_vertex_attribute_command_info*) command_raw_ptr;
 
-                if (system_resizable_vector_find(modified_buffers,
-                                                 command_ptr->buffer) == ITEM_NOT_FOUND)
+                if (!is_io_defined(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                   command_ptr->buffer) )
                 {
-                    system_resizable_vector_push(modified_buffers,
-                                                 command_ptr->buffer);
+                    add_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                           command_ptr->buffer);
                 }
 
                 break;
@@ -425,8 +479,8 @@ void _ral_present_task::update_object_vectors_internal(ral_command_buffer in_com
 }
 
 /** Please see header for specification */
-ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
-                                             const ral_present_task_cpu_create_info* create_info_ptr)
+PUBLIC ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
+                                                    const ral_present_task_cpu_create_info* create_info_ptr)
 
 {
     _ral_present_task* result_ptr = nullptr;
@@ -456,42 +510,22 @@ ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string          
         goto end;
     }
 
-    if (create_info_ptr->n_modified_buffers != 0      &&
-        create_info_ptr->modified_buffers   == nullptr)
+    if (create_info_ptr->n_unique_inputs != 0      &&
+        create_info_ptr->unique_inputs   == nullptr)
     {
-        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_modified_buffers != 0      &&
-                            create_info_ptr->modified_buffers   == nullptr),
-                          "Null modified buffer array specified for n_modified_buffers != 0");
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_unique_inputs != 0 &&
+                            create_info_ptr->unique_inputs == nullptr),
+                          "Null unique inputs array specified for n_unique_inputs != 0");
 
         goto end;
     }
 
-    if (create_info_ptr->n_modified_textures != 0      &&
-        create_info_ptr->modified_textures   == nullptr)
+    if (create_info_ptr->n_unique_outputs != 0 &&
+        create_info_ptr->unique_outputs == nullptr)
     {
-        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_modified_textures != 0      &&
-                            create_info_ptr->modified_textures   == nullptr),
-                          "Null modified texture array specified for n_modified_textures != 0");
-
-        goto end;
-    }
-
-    if (create_info_ptr->n_read_buffers != 0      &&
-        create_info_ptr->read_buffers   == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_read_buffers != 0      &&
-                            create_info_ptr->read_buffers   == nullptr),
-                          "Null read buffer array specified for n_read_buffers != 0");
-
-        goto end;
-    }
-
-    if (create_info_ptr->n_read_textures != 0      &&
-        create_info_ptr->read_textures   == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_read_textures != 0      &&
-                            create_info_ptr->read_textures   == nullptr),
-                          "Null read texture array specified for n_read_textures != 0");
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_unique_outputs != 0 &&
+                            create_info_ptr->unique_outputs == nullptr),
+                            "Null unique outputs array specified for n_unique_outputs != 0");
 
         goto end;
     }
@@ -508,8 +542,8 @@ end:
 }
 
 /** Please see header for specification */
-ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string name,
-                                             ral_command_buffer        command_buffer)
+PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string name,
+                                                    ral_command_buffer        command_buffer)
 {
     ral_command_buffer_status command_buffer_status        = RAL_COMMAND_BUFFER_STATUS_UNDEFINED;
     bool                      is_command_buffer_resettable = false;
@@ -564,15 +598,16 @@ end:
 }
 
 /** Please see header for specification */
-bool ral_present_task_get_modified_object(ral_present_task             task,
-                                          ral_context_object_type      object_type,
-                                          ral_present_task_access_type access_type,
-                                          uint32_t                     n_object,
-                                          void**                       out_object_ptr)
+PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
+                                             ral_present_task_io_type     io_type,
+                                             uint32_t                     n_io,
+                                             ral_present_task_io_property property,
+                                             void**                       out_result_ptr)
 {
-    system_resizable_vector object_vector = nullptr;
-    bool                    result        = false;
-    _ral_present_task*      task_ptr      = (_ral_present_task*) task;
+    ral_present_task_io*    io_ptr   = nullptr;
+    system_resizable_vector ios      = nullptr;
+    bool                    result   = false;
+    _ral_present_task*      task_ptr = (_ral_present_task*) task;
 
     /* Sanity checks */
     if (task == nullptr)
@@ -583,22 +618,18 @@ bool ral_present_task_get_modified_object(ral_present_task             task,
         goto end;
     }
 
-    switch (object_type)
+    switch (io_type)
     {
-        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+        case RAL_PRESENT_TASK_IO_TYPE_INPUT:
         {
-            object_vector = (access_type == RAL_PRESENT_TASK_ACCESS_TYPE_READ)  ? task_ptr->read_buffers
-                          : (access_type == RAL_PRESENT_TASK_ACCESS_TYPE_WRITE) ? task_ptr->modified_buffers
-                                                                                : nullptr;
+            ios = task_ptr->inputs;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         {
-            object_vector = (access_type == RAL_PRESENT_TASK_ACCESS_TYPE_READ)  ? task_ptr->read_textures
-                          : (access_type == RAL_PRESENT_TASK_ACCESS_TYPE_WRITE) ? task_ptr->modified_textures
-                                                                                : nullptr;
+            ios = task_ptr->outputs;
 
             break;
         }
@@ -606,30 +637,56 @@ bool ral_present_task_get_modified_object(ral_present_task             task,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Invalid object type requested.");
+                              "Invalid IO type requested.");
 
             goto end;
         }
     }
 
 
-    if (object_vector == nullptr)
+    if (ios == nullptr)
     {
-        ASSERT_DEBUG_SYNC(object_vector != nullptr,
-                          "Retrieved object vector is null.");
+        ASSERT_DEBUG_SYNC(ios != nullptr,
+                          "Retrieved IO vector is null.");
 
         goto end;
     }
 
-    if (!system_resizable_vector_get_element_at(object_vector,
-                                                n_object,
-                                                out_object_ptr) )
+    if (!system_resizable_vector_get_element_at(ios,
+                                                n_io,
+                                                io_ptr) ||
+        io_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Could not retrieve object at index [%d]",
-                          n_object);
+                          "Could not retrieve IO at index [%d]",
+                          n_io);
 
         goto end;
+    }
+
+    switch (property)
+    {
+        case RAL_PRESENT_TASK_IO_PROPERTY_OBJECT:
+        {
+            *((void**) out_result_ptr) = io_ptr->object;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE:
+        {
+            *((ral_context_object_type*) out_result_ptr) = io_ptr->object_type;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Invalid ral_present_task_io_property value specified.");
+
+            goto end;
+        }
     }
 
     /* All done */
@@ -640,9 +697,9 @@ end:
 }
 
 /** Please see header for specification */
-void ral_present_task_get_property(ral_present_task          task,
-                                   ral_present_task_property property,
-                                   void*                     out_result_ptr)
+PUBLIC void ral_present_task_get_property(ral_present_task          task,
+                                          ral_present_task_property property,
+                                          void*                     out_result_ptr)
 {
     _ral_present_task* task_ptr = (_ral_present_task*) task;
 
@@ -667,36 +724,18 @@ void ral_present_task_get_property(ral_present_task          task,
             break;
         }
 
-        case RAL_PRESENT_TASK_PROPERTY_N_MODIFIED_BUFFERS:
+        case RAL_PRESENT_TASK_PROPERTY_N_INPUTS:
         {
-            system_resizable_vector_get_property(task_ptr->modified_buffers,
+            system_resizable_vector_get_property(task_ptr->inputs,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                  out_result_ptr);
 
             break;
         }
 
-        case RAL_PRESENT_TASK_PROPERTY_N_MODIFIED_TEXTURES:
+        case RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS:
         {
-            system_resizable_vector_get_property(task_ptr->modified_textures,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                 out_result_ptr);
-
-            break;
-        }
-
-        case RAL_PRESENT_TASK_PROPERTY_N_READ_BUFFERS:
-        {
-            system_resizable_vector_get_property(task_ptr->read_buffers,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                 out_result_ptr);
-
-            break;
-        }
-
-        case RAL_PRESENT_TASK_PROPERTY_N_READ_TEXTURES:
-        {
-            system_resizable_vector_get_property(task_ptr->read_textures,
+            system_resizable_vector_get_property(task_ptr->outputs,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                  out_result_ptr);
 
@@ -729,7 +768,7 @@ end:
 }
 
 /** Please see header for specification */
-void ral_present_task_release(ral_present_task task)
+PUBLIC void ral_present_task_release(ral_present_task task)
 {
     delete (_ral_present_task*) task;
 }
