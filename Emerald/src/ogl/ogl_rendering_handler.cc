@@ -1147,10 +1147,10 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(system_hashed_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string               name,
-                                                                                      uint32_t                                desired_fps,
-                                                                                      PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                      void*                                   user_arg)
+PUBLIC ogl_rendering_handler ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string               name,
+                                                                          uint32_t                                desired_fps,
+                                                                          PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                          void*                                   user_arg)
 {
     return ogl_rendering_handler_create_shared(name,
                                                RENDERING_HANDLER_POLICY_FPS,
@@ -1160,9 +1160,9 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_fps_p
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string               name,
-                                                                                                  PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                                  void*                                   user_arg)
+PUBLIC ogl_rendering_handler ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string               name,
+                                                                                      PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                      void*                                   user_arg)
 {
     return ogl_rendering_handler_create_shared(name,
                                                RENDERING_HANDLER_POLICY_MAX_PERFORMANCE,
@@ -1172,9 +1172,9 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_max_p
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string               name,
-                                                                                                     PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
-                                                                                                     void*                                   user_arg)
+PUBLIC ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string               name,
+                                                                                         PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                         void*                                   user_arg)
 {
     return ogl_rendering_handler_create_shared(name,
                                                RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST,
@@ -1184,9 +1184,9 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_rende
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler          rendering_handler,
-                                                           ogl_rendering_handler_property property,
-                                                           void*                          out_result)
+PUBLIC void ogl_rendering_handler_get_property(ogl_rendering_handler          rendering_handler,
+                                               ogl_rendering_handler_property property,
+                                               void*                          out_result)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
@@ -1250,7 +1250,7 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(ogl_rendering_handler
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread(ogl_rendering_handler rendering_handler)
+PUBLIC bool ogl_rendering_handler_is_current_thread_rendering_thread(ogl_rendering_handler rendering_handler)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
@@ -1258,8 +1258,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_rendering_handler_play(ogl_rendering_handler rendering_handler,
-                                                   system_time           start_time)
+PUBLIC bool ogl_rendering_handler_play(ogl_rendering_handler rendering_handler,
+                                       system_time           start_time)
 {
     unsigned int            pre_n_frames_rendered = 0;
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
@@ -1552,7 +1552,7 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_property(ogl_rendering_handler
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_rendering_handler_stop(ogl_rendering_handler rendering_handler)
+PUBLIC bool ogl_rendering_handler_stop(ogl_rendering_handler rendering_handler)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
