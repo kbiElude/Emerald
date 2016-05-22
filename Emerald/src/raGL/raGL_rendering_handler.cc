@@ -304,6 +304,7 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
                                                               ral_rendering_handler rendering_handler_ral,
                                                               void*                 rendering_handler_raGL)
 {
+    raGL_backend             backend                       = nullptr;
     system_window            context_window                = nullptr;
     unsigned char            context_window_n_depth_bits   = 0;
     unsigned char            context_window_n_stencil_bits = 0;
@@ -311,7 +312,16 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
     system_pixel_format      context_window_pf             = nullptr;
     _raGL_rendering_handler* rendering_handler_ptr         = static_cast<_raGL_rendering_handler*>(rendering_handler_raGL);
 
-    rendering_handler_ptr->context_gl  = ogl_context_get_current_context();
+    ral_context_get_property (context_ral,
+                              RAL_CONTEXT_PROPERTY_BACKEND,
+                             &backend);
+    raGL_backend_get_property(backend,
+                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                             &rendering_handler_ptr->context_gl);
+
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context_gl != nullptr,
+                      "raGL_context instance is NULL");
+
     rendering_handler_ptr->context_ral = context_ral;
 
     ASSERT_DEBUG_SYNC(rendering_handler_ptr->context_gl != nullptr,

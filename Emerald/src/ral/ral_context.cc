@@ -137,7 +137,7 @@ typedef struct _ral_context
         shaders_cs                = system_critical_section_create();
         texture_views             = system_resizable_vector_create(sizeof(ral_texture_view) );
         texture_views_cs          = system_critical_section_create();
-        texture_pool              = ral_texture_pool_create       ();
+        texture_pool              = ral_texture_pool_create       ( (ral_context) this);
         textures_by_filename_map  = system_hash64map_create       (sizeof(ral_texture) );
         textures_by_name_map      = system_hash64map_create       (sizeof(ral_texture) );
         textures_cs               = system_critical_section_create();
@@ -156,6 +156,9 @@ typedef struct _ral_context
 
     ~_ral_context()
     {
+        ASSERT_DEBUG_SYNC(texture_pool == nullptr,
+                          "Texture pool should have been destroyed by this point.");
+
         system_critical_section* cses_to_release[] =
         {
             &buffers_cs,
@@ -241,13 +244,6 @@ typedef struct _ral_context
             }
         }
 
-        if (texture_pool != nullptr)
-        {
-            ral_texture_pool_release(texture_pool);
-
-            texture_pool = nullptr;
-        }
-
         /* Callback manager needs to be deleted at the end. */
         if (callback_manager != nullptr)
         {
@@ -268,6 +264,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(ral_context,
 PRIVATE void _ral_context_notify_backend_about_new_object(ral_context             context,
                                                           void*                   result_object,
                                                           ral_context_object_type object_type);
+PRIVATE void _ral_context_subscribe_for_notifications    (_ral_context*           context_ptr,
+                                                          bool                    should_subscribe);
 
 
 /* TODO */
@@ -1219,6 +1217,9 @@ PUBLIC void _ral_context_init(_ral_context* context_ptr)
                               "Unsupported backend type.");
         }
     }
+
+    _ral_context_subscribe_for_notifications(context_ptr,
+                                             true); /* should_subscribe */
 }
 
 /** TODO */
@@ -1343,6 +1344,14 @@ PRIVATE void _ral_context_on_texture_dropped_from_texture_pool(const void* callb
 PRIVATE void _ral_context_release(void* context)
 {
     _ral_context* context_ptr = (_ral_context*) context;
+
+    system_callback_manager_call_back(context_ptr->callback_manager,
+                                      RAL_CONTEXT_CALLBACK_ID_ABOUT_TO_RELEASE,
+                                      context_ptr);
+
+    /* Unregister from notifications before continuing .. */
+    _ral_context_subscribe_for_notifications(context_ptr,
+                                             false); /* should_subscribe */
 
     /* Release the texture pool */
     if (context_ptr->texture_pool != nullptr)

@@ -88,11 +88,6 @@ void _deinit_gl(ral_context context)
         _generation_po,
         _modification_po
     };
-    const ral_texture tos[] = 
-    {
-        _to_1,
-        _to_2
-    };
 
     ral_context_delete_objects(context,
                                RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
@@ -102,10 +97,6 @@ void _deinit_gl(ral_context context)
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                sizeof(pos) / sizeof(pos[0]),
                                (const void**) &pos);
-    ral_context_delete_objects(context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                               sizeof(tos) / sizeof(tos[0]),
-                               (const void**) tos);
 
     _fbo = NULL;
 }
@@ -619,8 +610,21 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     system_event_wait_single(_window_closed_event);
 
     /* Clean up */
+    ral_texture textures_to_release[] =
+    {
+        _to_1,
+        _to_2
+    };
+    const uint32_t n_textures_to_release = sizeof(textures_to_release) / sizeof(textures_to_release[0]);
+
     demo_window_stop_rendering(_window);
-    demo_app_destroy_window   (window_name);
+
+    ral_context_delete_objects(_context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               n_textures_to_release,
+                               (const void**) textures_to_release);
+
+    demo_app_destroy_window(window_name);
 
     system_event_release(_window_closed_event);
 

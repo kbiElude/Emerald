@@ -1,6 +1,6 @@
 /**
  *
- * 4D Julia set app (kbi/elude @2012-2015)
+ * 4D Julia set app (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -11,9 +11,9 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -82,8 +82,7 @@ PRIVATE void _get_raycast_radius_multiplier_value    (void*                   us
                                                       system_variant          result);
 PRIVATE void _get_specularity_value                  (void*                   user_arg,
                                                       system_variant          result);
-PRIVATE void _init_gl                                (ral_context             context,
-                                                      void*                   not_used);
+PRIVATE void _init_gl                                ();
 PRIVATE void _init_pipeline_rendering_thread_callback(ogl_context             context,
                                                       void*                   unused);
 PRIVATE void _init_ui                                ();
@@ -261,8 +260,7 @@ PRIVATE void _get_specularity_value(void*          user_arg,
                              _specularity);
 }
 
-PRIVATE void _init_gl(ogl_context context,
-                      void*       not_used)
+PRIVATE void _init_gl()
 {
     _init_pipeline_rendering_thread_callback(context,
                                              not_used);
@@ -496,15 +494,24 @@ PRIVATE void _init_ui()
 }
 
 /** Rendering handler */
-PRIVATE void _rendering_handler(ogl_context context,
-                                uint32_t    n_frames_rendered,
+PRIVATE void _rendering_handler(ral_context context,
                                 system_time frame_time,
+                                uint32_t    n_frame,
                                 const int*  rendering_area_px_topdown,
-                                void*       renderer)
+                                void*       user_arg)
 {
+    static bool is_initialized = false;
+
+    if (!is_initialized)
+    {
+        _init_gl();
+
+        is_initialized = true;
+    }
+
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
-                            n_frames_rendered,
+                            n_frame,
                             frame_time,
                             rendering_area_px_topdown);
 }
@@ -728,8 +735,8 @@ float main_get_specularity()
     int main()
 #endif
 {
-    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc    = _rendering_handler;
-    ogl_rendering_handler                   rendering_handler    = NULL;
+    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc    = _rendering_handler;
+    ral_rendering_handler                   rendering_handler    = NULL;
     demo_window_create_info                 window_create_info;
     const system_hashed_ansi_string         window_name          = system_hashed_ansi_string_create("Julia 4D test app");
 
@@ -748,8 +755,8 @@ float main_get_specularity()
                              DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
                             &rendering_handler);
 
-    ogl_rendering_handler_set_property(rendering_handler,
-                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+    ral_rendering_handler_set_property(rendering_handler,
+                                       RAL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
                                       &pfn_callback_proc);
 
     /* Set up matrices */
@@ -774,11 +781,6 @@ float main_get_specularity()
                                   SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
                                   (void*) _window_closing_callback_handler,
                                   NULL);
-
-    /* Initialize GL objects */
-    ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
-                                                               _init_gl,
-                                                               NULL); /* user_arg */
 
     /* Carry on */
     demo_window_start_rendering(_window,

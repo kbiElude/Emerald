@@ -38,7 +38,7 @@ PUBLIC bool ral_texture_pool_add(ral_texture_pool pool,
                                  ral_texture      texture);
 
 /** TODO */
-PUBLIC ral_texture_pool ral_texture_pool_create();
+PUBLIC ral_texture_pool ral_texture_pool_create(ral_context in_context);
 
 /** TODO */
 PUBLIC bool ral_texture_pool_get(ral_texture_pool               pool,

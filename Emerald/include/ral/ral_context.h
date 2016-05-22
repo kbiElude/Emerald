@@ -13,6 +13,12 @@ REFCOUNT_INSERT_DECLARATIONS(ral_context,
 /* ral_context call-backs. These should be used by back-ends to notify about RAL object modifications. */
 enum
 {
+    /* Context is about to be released.
+     *
+     * arg: ral_context instance.
+     **/
+    RAL_CONTEXT_CALLBACK_ID_ABOUT_TO_RELEASE,
+
     /* One or more ral_buffer instances were created.
      *
      * NOTE: This callback ID only supports synchronous call-backs.

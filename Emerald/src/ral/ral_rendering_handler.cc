@@ -643,7 +643,7 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
                           window_size[1] != 0,
                           "Rendering window's width or height is 0");
 
-        ral_context_retain                (context_ral);
+        ral_context_retain(context_ral);
 
 #ifdef TODO
         /* Set up the text renderer.
@@ -678,6 +678,11 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
                                                         &text_scale);
         }
 #endif
+
+        /* Let the back-end initialize as well. */
+        rendering_handler_ptr->pfn_init_raBackend_rendering_handler_proc(rendering_handler_ptr->context,
+                                                                         (ral_rendering_handler) rendering_handler_ptr,
+                                                                         rendering_handler_ptr->rendering_handler_backend);
 
         /* On with the loop */
         unsigned int last_frame_index = 0;
@@ -800,6 +805,8 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
                     ++n_default_handler)
         {
             system_event_release(rendering_handler_ptr->wait_events[rendering_handler_ptr->n_backend_wait_events + n_default_handler]);
+
+            rendering_handler_ptr->wait_events[rendering_handler_ptr->n_backend_wait_events + n_default_handler] = nullptr;
         }
 
         delete [] rendering_handler_ptr->wait_events;
@@ -816,11 +823,16 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
 
     /* Release created events */
     system_event_release(rendering_handler_ptr->context_set_event);
-    system_event_release(rendering_handler_ptr->playback_in_progress_event);
+    rendering_handler_ptr->context_set_event = nullptr;
+
     system_event_release(rendering_handler_ptr->playback_stopped_event);
+    rendering_handler_ptr->playback_stopped_event = nullptr;
+
     system_event_release(rendering_handler_ptr->playback_waiting_event);
-    system_event_release(rendering_handler_ptr->shutdown_request_event);
+    rendering_handler_ptr->playback_waiting_event = nullptr;
+
     system_event_release(rendering_handler_ptr->shutdown_request_ack_event);
+    rendering_handler_ptr->shutdown_request_ack_event = nullptr;
 
     /* Release rendering cs */
     system_critical_section_release(rendering_handler_ptr->rendering_cs);
@@ -934,6 +946,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
         new_handler_ptr->policy                                       = policy;
         new_handler_ptr->rendering_callback_user_arg                  = user_arg;
         new_handler_ptr->rendering_cs                                 = system_critical_section_create();
+        new_handler_ptr->rendering_handler_backend                    = nullptr;
         new_handler_ptr->rewind_delta                                 = system_time_get_time_for_msec(REWIND_DELTA_TIME_MSEC);
         new_handler_ptr->rewind_step_min_delta                        = system_time_get_time_for_msec(REWIND_STEP_MIN_DELTA_TIME_MSEC);
         new_handler_ptr->right_arrow_key_press_start_time             = 0;

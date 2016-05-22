@@ -206,59 +206,59 @@ static _raGL_backend_global _global;
 
 
 /* Forward declarations */
-PRIVATE void        _raGL_backend_cache_limits                                   (_raGL_backend*           backend_ptr);
-PRIVATE demo_window _raGL_backend_create_helper_window                           (ral_backend_type         backend_type,
-                                                                                  uint32_t                 n_helper_window);
-PRIVATE bool        _raGL_backend_get_object                                     (void*                    backend,
-                                                                                  ral_context_object_type  object_type,
-                                                                                  void*                    object_ral,
-                                                                                  void**                   out_result_ptr);
-PRIVATE void        _raGL_backend_get_object_vars                                (_raGL_backend*           backend_ptr,
-                                                                                  ral_context_object_type  object_type,
-                                                                                  system_read_write_mutex* out_rw_mutex_ptr,
-                                                                                  system_hash64map*        out_hashmap_ptr,
-                                                                                  bool*                    out_is_owner_ptr);
-PRIVATE void        _raGL_backend_helper_context_renderer_callback               (ogl_context              context,
-                                                                                  void*                    unused);
-PRIVATE void        _raGL_backend_link_program_handler                           (void*                    job_arg);
-PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*              callback_arg_data,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_on_buffer_to_buffer_copy_request               (const void*              callback_arg_data,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_on_objects_created                             (const void*              callback_arg_data,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_on_objects_created_rendering_callback          (ogl_context              context,
-                                                                                  void*                    callback_arg);
-PRIVATE void        _raGL_backend_on_objects_deleted                             (const void*              callback_arg,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_on_objects_deleted_rendering_callback          (ogl_context              context,
-                                                                                  void*                    callback_arg);
-PRIVATE void        _raGL_backend_on_shader_attach_request                       (const void*              callback_arg_data,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_on_shader_body_updated_notification            (const void*              callback_arg_data,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_on_texture_client_memory_sourced_update_request(const void*              callback_arg_data,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_on_texture_mipmap_generation_request           (const void*              callback_arg_data,
-                                                                                  void*                    backend);
-PRIVATE void        _raGL_backend_release_raGL_object                            (_raGL_backend*           backend_ptr,
-                                                                                  ral_context_object_type  object_type,
-                                                                                  void*                    object_raGL,
-                                                                                  void*                    object_ral);
-PRIVATE void        _raGL_backend_subscribe_for_buffer_notifications             (_raGL_backend*           backend_ptr,
-                                                                                  ral_buffer               buffer,
-                                                                                  bool                     should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_notifications                    (_raGL_backend*           backend_ptr,
-                                                                                  bool                     should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_program_notifications            (_raGL_backend*           backend_ptr,
-                                                                                  ral_program              program,
-                                                                                  bool                     should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_shader_notifications             (_raGL_backend*           backend_ptr,
-                                                                                  ral_shader               shader,
-                                                                                  bool                     should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_texture_notifications            (_raGL_backend*           backend_ptr,
-                                                                                  ral_texture              texture,
-                                                                                  bool                     should_subscribe);
+PRIVATE void        _raGL_backend_cache_limits                                   (_raGL_backend*            backend_ptr);
+PRIVATE demo_window _raGL_backend_create_helper_window                           (ral_backend_type          backend_type,
+                                                                                  uint32_t                  n_helper_window);
+PRIVATE bool        _raGL_backend_get_object                                     (void*                     backend,
+                                                                                  ral_context_object_type   object_type,
+                                                                                  void*                     object_ral,
+                                                                                  void**                    out_result_ptr);
+PRIVATE void        _raGL_backend_get_object_vars                                (_raGL_backend*            backend_ptr,
+                                                                                  ral_context_object_type   object_type,
+                                                                                  system_read_write_mutex** out_rw_mutex_ptr_ptr,
+                                                                                  system_hash64map**        out_hashmap_ptr_ptr,
+                                                                                  bool*                     out_is_owner_ptr);
+PRIVATE void        _raGL_backend_helper_context_renderer_callback               (ogl_context               context,
+                                                                                  void*                     unused);
+PRIVATE void        _raGL_backend_link_program_handler                           (void*                     job_arg);
+PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*               callback_arg_data,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_on_buffer_to_buffer_copy_request               (const void*               callback_arg_data,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_on_objects_created                             (const void*               callback_arg_data,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_on_objects_created_rendering_callback          (ogl_context               context,
+                                                                                  void*                     callback_arg);
+PRIVATE void        _raGL_backend_on_objects_deleted                             (const void*               callback_arg,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_on_objects_deleted_rendering_callback          (ogl_context               context,
+                                                                                  void*                     callback_arg);
+PRIVATE void        _raGL_backend_on_shader_attach_request                       (const void*               callback_arg_data,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_on_shader_body_updated_notification            (const void*               callback_arg_data,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_on_texture_client_memory_sourced_update_request(const void*               callback_arg_data,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_on_texture_mipmap_generation_request           (const void*               callback_arg_data,
+                                                                                  void*                     backend);
+PRIVATE void        _raGL_backend_release_raGL_object                            (_raGL_backend*            backend_ptr,
+                                                                                  ral_context_object_type   object_type,
+                                                                                  void*                     object_raGL,
+                                                                                  void*                     object_ral);
+PRIVATE void        _raGL_backend_subscribe_for_buffer_notifications             (_raGL_backend*            backend_ptr,
+                                                                                  ral_buffer                buffer,
+                                                                                  bool                      should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_notifications                    (_raGL_backend*            backend_ptr,
+                                                                                  bool                      should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_program_notifications            (_raGL_backend*            backend_ptr,
+                                                                                  ral_program               program,
+                                                                                  bool                      should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_shader_notifications             (_raGL_backend*            backend_ptr,
+                                                                                  ral_shader                shader,
+                                                                                  bool                      should_subscribe);
+PRIVATE void        _raGL_backend_subscribe_for_texture_notifications            (_raGL_backend*            backend_ptr,
+                                                                                  ral_texture               texture,
+                                                                                  bool                      should_subscribe);
 
 
 /** TODO */
@@ -491,24 +491,23 @@ _raGL_backend::~_raGL_backend()
                   n_object_type < RAL_CONTEXT_OBJECT_TYPE_COUNT;
                 ++n_object_type)
     {
-        bool                    is_owner          = false;
-        uint32_t                n_objects_leaking = 0;
-        system_hash64map        objects_map       = nullptr;
-        system_hash64map*       objects_map_ptr   = &objects_map;
-        system_read_write_mutex rw_mutex          = nullptr;
+        bool                     is_owner          = false;
+        uint32_t                 n_objects_leaking = 0;
+        system_hash64map*        objects_map_ptr   = nullptr;
+        system_read_write_mutex* rw_mutex_ptr      = nullptr;
 
         _raGL_backend_get_object_vars(this,
                                       (ral_context_object_type) n_object_type,
-                                     &rw_mutex,
-                                     &objects_map,
+                                     &rw_mutex_ptr,
+                                     &objects_map_ptr,
                                      &is_owner);
 
-        if (!is_owner)
+        if (!is_owner || *objects_map_ptr == nullptr)
         {
             continue;
         }
 
-        system_hash64map_get_property(objects_map,
+        system_hash64map_get_property(*objects_map_ptr,
                                       SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
                                      &n_objects_leaking);
 
@@ -617,9 +616,15 @@ PRIVATE demo_window _raGL_backend_create_helper_window(ral_backend_type backend_
     window_name_has = system_hashed_ansi_string_create(window_name);
 
     /* Spawn a new helper window. */
-    window_create_info.resolution[0] = 4;
-    window_create_info.resolution[1] = 4;
-    window_create_info.visible = false;
+    window_create_info.fullscreen                    = false;
+    window_create_info.loader_callback_func_user_arg = nullptr;
+    window_create_info.pfn_loader_callback_func_ptr  = nullptr;
+    window_create_info.refresh_rate                  = 0;
+    window_create_info.resolution[0]                 = 4;
+    window_create_info.resolution[1]                 = 4;
+    window_create_info.target_rate                   = 0;
+    window_create_info.use_vsync                     = false;
+    window_create_info.visible                       = false;
 
     window = demo_window_create(window_name_has,
                                 window_create_info,
@@ -635,11 +640,11 @@ PRIVATE bool _raGL_backend_get_object(void*                   backend,
                                       void*                   object_ral,
                                       void**                  out_result_ptr)
 {
-    _raGL_backend*          backend_ptr  = (_raGL_backend*) backend;
-    bool                    is_owner     = false;
-    system_hash64map        map          = nullptr;
-    system_read_write_mutex map_rw_mutex = nullptr;
-    bool                    result       = false;
+    _raGL_backend*           backend_ptr      = (_raGL_backend*) backend;
+    bool                     is_owner         = false;
+    system_hash64map*        map_ptr          = nullptr;
+    system_read_write_mutex* map_rw_mutex_ptr = nullptr;
+    bool                     result           = false;
 
     /* Sanity checks */
     if (backend == nullptr)
@@ -662,17 +667,17 @@ PRIVATE bool _raGL_backend_get_object(void*                   backend,
     /* Identify which critical section & map we should use to handle the query */
     _raGL_backend_get_object_vars(backend_ptr,
                                   object_type,
-                                 &map_rw_mutex,
-                                 &map,
+                                 &map_rw_mutex_ptr,
+                                 &map_ptr,
                                  &is_owner);
 
     /* Try to find the object instance */
     result = true;
 
-    system_read_write_mutex_lock(map_rw_mutex,
+    system_read_write_mutex_lock(*map_rw_mutex_ptr,
                                  ACCESS_READ);
 
-    if (!system_hash64map_get(map,
+    if (!system_hash64map_get(*map_ptr,
                               (system_hash64) object_ral,
                               out_result_ptr) )
     {
@@ -682,7 +687,7 @@ PRIVATE bool _raGL_backend_get_object(void*                   backend,
         result = false;
     }
 
-    system_read_write_mutex_unlock(map_rw_mutex,
+    system_read_write_mutex_unlock(*map_rw_mutex_ptr,
                                    ACCESS_READ);
 
 end:
@@ -690,55 +695,66 @@ end:
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*           backend_ptr,
-                                           ral_context_object_type  object_type,
-                                           system_read_write_mutex* out_rw_mutex_ptr,
-                                           system_hash64map*        out_hashmap_ptr,
-                                           bool*                    out_is_owner_ptr)
+PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*            backend_ptr,
+                                           ral_context_object_type   object_type,
+                                           system_read_write_mutex** out_rw_mutex_ptr_ptr,
+                                           system_hash64map**        out_hashmap_ptr_ptr,
+                                           bool*                     out_is_owner_ptr)
 {
     switch (object_type)
     {
         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
         {
-            *out_hashmap_ptr  = backend_ptr->buffers_map;
-            *out_rw_mutex_ptr = backend_ptr->buffers_map_rw_mutex;
-            *out_is_owner_ptr = backend_ptr->buffers_map_owner;
+            *out_hashmap_ptr_ptr  = &backend_ptr->buffers_map;
+            *out_rw_mutex_ptr_ptr = &backend_ptr->buffers_map_rw_mutex;
+            *out_is_owner_ptr     = backend_ptr->buffers_map_owner;
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER:
+        case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:
+        {
+            /** TODO */
+            *out_hashmap_ptr_ptr  = nullptr;
+            *out_rw_mutex_ptr_ptr = nullptr;
+            *out_is_owner_ptr     = nullptr;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         {
-            *out_hashmap_ptr  = backend_ptr->framebuffers_map;
-            *out_rw_mutex_ptr = backend_ptr->framebuffers_map_rw_mutex;
-            *out_is_owner_ptr = true;
+            *out_hashmap_ptr_ptr  = &backend_ptr->framebuffers_map;
+            *out_rw_mutex_ptr_ptr = &backend_ptr->framebuffers_map_rw_mutex;
+            *out_is_owner_ptr     = true;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
         {
-            *out_hashmap_ptr  = backend_ptr->programs_map;
-            *out_rw_mutex_ptr = backend_ptr->programs_map_rw_mutex;
-            *out_is_owner_ptr = backend_ptr->programs_map_owner;
+            *out_hashmap_ptr_ptr  = &backend_ptr->programs_map;
+            *out_rw_mutex_ptr_ptr = &backend_ptr->programs_map_rw_mutex;
+            *out_is_owner_ptr     =  backend_ptr->programs_map_owner;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            *out_hashmap_ptr  = backend_ptr->samplers_map;
-            *out_rw_mutex_ptr = backend_ptr->samplers_map_rw_mutex;
-            *out_is_owner_ptr = backend_ptr->samplers_map_owner;
+            *out_hashmap_ptr_ptr  = &backend_ptr->samplers_map;
+            *out_rw_mutex_ptr_ptr = &backend_ptr->samplers_map_rw_mutex;
+            *out_is_owner_ptr     =  backend_ptr->samplers_map_owner;
 
             break;
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_SHADER:
         {
-            *out_hashmap_ptr  = backend_ptr->shaders_map;
-            *out_rw_mutex_ptr = backend_ptr->shaders_map_rw_mutex;
-            *out_is_owner_ptr = backend_ptr->shaders_map_owner;
+            *out_hashmap_ptr_ptr  = &backend_ptr->shaders_map;
+            *out_rw_mutex_ptr_ptr = &backend_ptr->shaders_map_rw_mutex;
+            *out_is_owner_ptr     =  backend_ptr->shaders_map_owner;
 
             break;
         }
@@ -746,9 +762,9 @@ PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*           backend_ptr,
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
-            *out_hashmap_ptr  = backend_ptr->textures_map;
-            *out_rw_mutex_ptr = backend_ptr->textures_map_rw_mutex;
-            *out_is_owner_ptr = backend_ptr->textures_map_owner;
+            *out_hashmap_ptr_ptr  = &backend_ptr->textures_map;
+            *out_rw_mutex_ptr_ptr = &backend_ptr->textures_map_rw_mutex;
+            *out_is_owner_ptr     =  backend_ptr->textures_map_owner;
 
             break;
         }
@@ -758,7 +774,7 @@ PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*           backend_ptr,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized raGL_backend_object_type value.");
         }
-    } /* switch (object_type) */
+    }
 }
 
 /** TODO */
@@ -1058,14 +1074,14 @@ PRIVATE void _raGL_backend_on_objects_created(const void* callback_arg_data,
 PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context context,
                                                                  void*       callback_arg)
 {
-    const _raGL_backend_on_objects_created_rendering_callback_arg* callback_arg_ptr        = (const _raGL_backend_on_objects_created_rendering_callback_arg*) callback_arg;
-    const ogl_context_gl_entrypoints*                              entrypoints_ptr         = nullptr;
-    bool                                                           is_object_owner         = false;
-    uint32_t                                                       n_objects_to_initialize = 0;
-    system_hash64map                                               objects_map             = nullptr;
-    system_read_write_mutex                                        objects_map_rw_mutex    = nullptr;
-    bool                                                           result                  = false;
-    GLuint*                                                        result_object_ids_ptr   = nullptr;
+    const _raGL_backend_on_objects_created_rendering_callback_arg* callback_arg_ptr         = (const _raGL_backend_on_objects_created_rendering_callback_arg*) callback_arg;
+    const ogl_context_gl_entrypoints*                              entrypoints_ptr          = nullptr;
+    bool                                                           is_object_owner          = false;
+    uint32_t                                                       n_objects_to_initialize  = 0;
+    system_hash64map*                                              objects_map_ptr          = nullptr;
+    system_read_write_mutex*                                       objects_map_rw_mutex_ptr = nullptr;
+    bool                                                           result                   = false;
+    GLuint*                                                        result_object_ids_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(callback_arg != nullptr,
                       "Callback argument is NULL");
@@ -1084,9 +1100,12 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
     _raGL_backend_get_object_vars(callback_arg_ptr->backend_ptr,
                                   callback_arg_ptr->ral_callback_arg_ptr->object_type,
-                                 &objects_map_rw_mutex,
-                                 &objects_map,
+                                 &objects_map_rw_mutex_ptr,
+                                 &objects_map_ptr,
                                  &is_object_owner);
+
+    ASSERT_DEBUG_SYNC(*objects_map_rw_mutex_ptr != nullptr,
+                      "No RW mutex instance found for the required object type");
 
     /* Generate the IDs */
     result_object_ids_ptr = new (std::nothrow) GLuint[n_objects_to_initialize];
@@ -1261,14 +1280,14 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
             goto end;
         }
 
-        system_read_write_mutex_lock(objects_map_rw_mutex,
+        system_read_write_mutex_lock(*objects_map_rw_mutex_ptr,
                                      ACCESS_WRITE);
         {
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(objects_map,
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(*objects_map_ptr,
                                                          (system_hash64) new_object),
                               "Created GL backend instance is already recognized?");
 
-            system_hash64map_insert(objects_map,
+            system_hash64map_insert(*objects_map_ptr,
                                     (system_hash64) callback_arg_ptr->ral_callback_arg_ptr->created_objects[n_object_id],
                                     new_object,
                                     nullptr,  /* on_remove_callback          */
@@ -1321,7 +1340,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
                 }
             }
         }
-        system_read_write_mutex_unlock(objects_map_rw_mutex,
+        system_read_write_mutex_unlock(*objects_map_rw_mutex_ptr,
                                        ACCESS_WRITE);
     }
 
@@ -1338,7 +1357,7 @@ end:
             {
                 void* object_instance = nullptr;
 
-                if (!system_hash64map_get(objects_map,
+                if (!system_hash64map_get(*objects_map_ptr,
                                           (system_hash64) callback_arg_ptr->ral_callback_arg_ptr->created_objects[n_object],
                                          &object_instance) )
                 {
@@ -1365,12 +1384,12 @@ end:
 PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                                               void*       backend)
 {
-    _raGL_backend*                                           backend_ptr         = (_raGL_backend*)                                           backend;
-    const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr    = (const ral_context_callback_objects_deleted_callback_arg*) callback_arg;
-    bool                                                     is_owner            = false;
-    system_hash64map                                         object_map          = nullptr;
-    system_read_write_mutex                                  object_map_rw_mutex = nullptr;
-    void*                                                    object_raGL         = nullptr;
+    _raGL_backend*                                           backend_ptr             = (_raGL_backend*)                                           backend;
+    const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr        = (const ral_context_callback_objects_deleted_callback_arg*) callback_arg;
+    bool                                                     is_owner                = false;
+    system_hash64map*                                        object_map_ptr          = nullptr;
+    system_read_write_mutex*                                 object_map_rw_mutex_ptr = nullptr;
+    void*                                                    object_raGL             = nullptr;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(backend_ptr != nullptr,
@@ -1380,9 +1399,12 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 
     _raGL_backend_get_object_vars(backend_ptr,
                                   callback_arg_ptr->object_type,
-                                 &object_map_rw_mutex,
-                                 &object_map,
+                                 &object_map_rw_mutex_ptr,
+                                 &object_map_ptr,
                                  &is_owner);
+
+    ASSERT_DEBUG_SYNC(*object_map_rw_mutex_ptr != nullptr,
+                      "No RW mutex instance found for the required object type");
 
     /* Unsubscribe from any RAL object notifications */
     switch (callback_arg_ptr->object_type)
@@ -1469,7 +1491,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                                                     &rendering_callback_arg);
 
     /* Remove the object from all hashmaps relevant to the object */
-    system_read_write_mutex_lock(object_map_rw_mutex,
+    system_read_write_mutex_lock(*object_map_rw_mutex_ptr,
                                  ACCESS_WRITE);
     {
         /* Retrieve raGL object instances for the specified RAL objects */
@@ -1477,7 +1499,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                       n_deleted_object < callback_arg_ptr->n_objects;
                     ++n_deleted_object)
         {
-            if (!system_hash64map_get(object_map,
+            if (!system_hash64map_get(*object_map_ptr,
                                       (system_hash64) callback_arg_ptr->deleted_objects[n_deleted_object],
                                      &object_raGL) )
             {
@@ -1488,7 +1510,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
             }
 
             /* Remove the object from any relevant hash-maps we maintain */
-            system_hash64map_remove(object_map,
+            system_hash64map_remove(*object_map_ptr,
                                     (system_hash64) callback_arg_ptr->deleted_objects[n_deleted_object]);
 
             switch (callback_arg_ptr->object_type)
@@ -1530,7 +1552,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
             }
         }
     }
-    system_read_write_mutex_unlock(object_map_rw_mutex,
+    system_read_write_mutex_unlock(*object_map_rw_mutex_ptr,
                                    ACCESS_WRITE);
 }
 
@@ -1538,20 +1560,20 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context context,
                                                                  void*       callback_arg)
 {
-    const _raGL_backend_on_objects_deleted_rendering_callback_arg* callback_arg_ptr    = (const _raGL_backend_on_objects_deleted_rendering_callback_arg*) callback_arg;
-    const ogl_context_gl_entrypoints*                              entrypoints_ptr     = nullptr;
-    bool                                                           is_owner            = false;
-    system_hash64map                                               object_map          = nullptr;
-    system_read_write_mutex                                        object_map_rw_mutex = nullptr;
-    void*                                                          object_raGL         = nullptr;
+    const _raGL_backend_on_objects_deleted_rendering_callback_arg* callback_arg_ptr        = (const _raGL_backend_on_objects_deleted_rendering_callback_arg*) callback_arg;
+    const ogl_context_gl_entrypoints*                              entrypoints_ptr         = nullptr;
+    bool                                                           is_owner                = false;
+    system_hash64map*                                              object_map_ptr          = nullptr;
+    system_read_write_mutex*                                       object_map_rw_mutex_ptr = nullptr;
+    void*                                                          object_raGL             = nullptr;
 
     _raGL_backend_get_object_vars(callback_arg_ptr->backend_ptr,
                                   callback_arg_ptr->ral_callback_arg_ptr->object_type,
-                                 &object_map_rw_mutex,
-                                 &object_map,
+                                 &object_map_rw_mutex_ptr,
+                                 &object_map_ptr,
                                  &is_owner);
 
-    if (object_map == nullptr)
+    if (*object_map_ptr == nullptr)
     {
         /* raGL objects have already been released, ignore the request. */
         goto end;
@@ -1562,7 +1584,7 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
                 ++n_deleted_object)
     {
         /* Retrieve raGL object instances for the specified RAL objects */
-        if (!system_hash64map_get(object_map,
+        if (!system_hash64map_get(*object_map_ptr,
                                   (system_hash64) callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object],
                                  &object_raGL) )
         {
@@ -2231,6 +2253,7 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
 
     ASSERT_ALWAYS_SYNC(new_backend_ptr != nullptr,
                        "Out of memory");
+
     if (new_backend_ptr != nullptr)
     {
         new_backend_ptr->context_ral = context_ral;
@@ -2766,7 +2789,8 @@ PUBLIC void raGL_backend_release(void* backend)
                                  n_helper_context >= 0;
                                --n_helper_context)
                     {
-                        demo_window_close(_global.helper_contexts[n_helper_context].helper_window);
+                        demo_window_close  (_global.helper_contexts[n_helper_context].helper_window);
+                        demo_window_release(_global.helper_contexts[n_helper_context].helper_window);
 
                         _global.helper_contexts[n_helper_context].helper_backend = nullptr;
                         _global.helper_contexts[n_helper_context].helper_context = nullptr;
