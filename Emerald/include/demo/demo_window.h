@@ -36,7 +36,7 @@ typedef enum
     /* not settable; ral_context */
     DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
 
-    /* not settable; ogl_rendering_handler */
+    /* not settable; ral_rendering_handler */
     DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
 
     /* not settable; uint32_t[2] */

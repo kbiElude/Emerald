@@ -34,7 +34,6 @@ static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string     
 static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
 static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = NULL;
 static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = NULL;
 static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = NULL;
@@ -53,6 +52,7 @@ static system_hashed_ansi_string _object_type_ragl_buffers_hashed_ansi_string   
 static system_hashed_ansi_string _object_type_ragl_sync_hashed_ansi_string                             = NULL;
 static system_hashed_ansi_string _object_type_ragl_textures_hashed_ansi_string                         = NULL;
 static system_hashed_ansi_string _object_type_ral_context_hashed_ansi_string                           = NULL;
+static system_hashed_ansi_string _object_type_ral_rendering_handler_hashed_ansi_string                 = NULL;
 static system_hashed_ansi_string _object_type_scalar_field_metaballs_hashed_ansi_string                = NULL;
 static system_hashed_ansi_string _object_type_scene_hashed_ansi_string                                 = NULL;
 static system_hashed_ansi_string _object_type_scene_camera_hashed_ansi_string                          = NULL;
@@ -116,7 +116,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OCL_PROGRAM:                                     return _object_type_ocl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXTURE:                                     return _object_type_ogl_textures_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLOOM:                            return _object_type_postprocessing_bloom_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON:                     return _object_type_postprocessing_blur_poisson_hashed_ansi_string;
@@ -135,6 +134,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_RAGL_SYNC:                                       return _object_type_ragl_sync_hashed_ansi_string;
         case OBJECT_TYPE_RAGL_TEXTURES:                                   return _object_type_ragl_textures_hashed_ansi_string;
         case OBJECT_TYPE_RAL_CONTEXT:                                     return _object_type_ral_context_hashed_ansi_string;
+        case OBJECT_TYPE_RAL_RENDERING_HANDLER:                           return _object_type_ral_rendering_handler_hashed_ansi_string;
         case OBJECT_TYPE_SCALAR_FIELD_METABALLS:                          return _object_type_scalar_field_metaballs_hashed_ansi_string;
         case OBJECT_TYPE_SCENE:                                           return _object_type_scene_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_CAMERA:                                    return _object_type_scene_camera_hashed_ansi_string;
@@ -370,7 +370,6 @@ PUBLIC void _object_manager_init()
     _object_type_ocl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Programs");
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
     _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
-    _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
     _object_type_ogl_textures_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Textures");
     _object_type_postprocessing_bloom_hashed_ansi_string                  = system_hashed_ansi_string_create("Post-processing Bloom");
     _object_type_postprocessing_blur_poisson_hashed_ansi_string           = system_hashed_ansi_string_create("Post-processing Blur Poisson");
@@ -389,6 +388,7 @@ PUBLIC void _object_manager_init()
     _object_type_ragl_sync_hashed_ansi_string                             = system_hashed_ansi_string_create("raGL Syncs");
     _object_type_ragl_textures_hashed_ansi_string                         = system_hashed_ansi_string_create("raGL Textures");
     _object_type_ral_context_hashed_ansi_string                           = system_hashed_ansi_string_create("RAL Contexts");
+    _object_type_ral_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("RAL Rendering Handlers");
     _object_type_scalar_field_metaballs_hashed_ansi_string                = system_hashed_ansi_string_create("Scalar Field (Metaballs)");
     _object_type_scene_hashed_ansi_string                                 = system_hashed_ansi_string_create("Scenes");
     _object_type_scene_camera_hashed_ansi_string                          = system_hashed_ansi_string_create("Scene Cameras");

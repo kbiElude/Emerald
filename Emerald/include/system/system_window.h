@@ -92,7 +92,7 @@ typedef enum
     /* settable (for internal purposes only), ral_context */
     SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
 
-    /* settable, ogl_rendering_handler
+    /* settable, ral_rendering_handler
      *
      * You can only bind one rendering handler to a window. Once you do so, it is (currently)
      * impossible to unbind it, so please use the function with proper care.
@@ -228,7 +228,7 @@ PUBLIC bool system_window_get_centered_window_position_for_primary_monitor(const
 /** TODO */
 PUBLIC EMERALD_API void system_window_get_property(system_window          window,
                                                    system_window_property property,
-                                                   void*                  out_result);
+                                                   void*                  out_result_ptr);
 
 /** TODO */
 PUBLIC bool system_window_set_cursor_visibility(system_window window,

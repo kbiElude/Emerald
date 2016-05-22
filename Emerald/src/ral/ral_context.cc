@@ -95,7 +95,7 @@ typedef struct _ral_context
     system_hash64map        object_to_refcount_map;
 
     system_hashed_ansi_string name;
-    ogl_rendering_handler     rendering_handler;
+    ral_rendering_handler     rendering_handler;
     demo_window               window_demo;
     system_window             window_system;
 
@@ -105,7 +105,7 @@ typedef struct _ral_context
     _ral_context(system_hashed_ansi_string in_name,
                  demo_window               in_window)
     {
-        backend                   = NULL;
+        backend                   = nullptr;
         backend_type              = RAL_BACKEND_TYPE_UNKNOWN;
         buffers                   = system_resizable_vector_create(sizeof(ral_buffer) );
         buffers_cs                = system_critical_section_create();
@@ -126,7 +126,7 @@ typedef struct _ral_context
         name                      = in_name;
         object_to_refcount_cs     = system_critical_section_create();
         object_to_refcount_map    = system_hash64map_create       (sizeof(uint32_t) );
-        rendering_handler         = NULL;
+        rendering_handler         = nullptr;
         programs                  = system_resizable_vector_create(sizeof(ral_program) );
         programs_by_name_map      = system_hash64map_create       (sizeof(ral_program) );
         programs_cs               = system_critical_section_create();
@@ -142,9 +142,9 @@ typedef struct _ral_context
         textures_by_name_map      = system_hash64map_create       (sizeof(ral_texture) );
         textures_cs               = system_critical_section_create();
         window_demo               = in_window;
-        window_system             = NULL;
+        window_system             = nullptr;
 
-        pfn_backend_get_property_proc = NULL;
+        pfn_backend_get_property_proc = nullptr;
 
         demo_window_get_private_property(in_window,
                                          DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW,
@@ -198,11 +198,11 @@ typedef struct _ral_context
         {
             system_critical_section* current_cs_ptr = cses_to_release[n_cs_to_release];
 
-            if (*current_cs_ptr != NULL)
+            if (*current_cs_ptr != nullptr)
             {
                 system_critical_section_release(*current_cs_ptr);
 
-                *current_cs_ptr = NULL;
+                *current_cs_ptr = nullptr;
             }
         }
 
@@ -212,11 +212,11 @@ typedef struct _ral_context
         {
             system_hash64map* current_hashmap_ptr = hashmaps_to_release[n_hashmap_to_release];
 
-            if (*current_hashmap_ptr != NULL)
+            if (*current_hashmap_ptr != nullptr)
             {
                 system_hash64map_release(*current_hashmap_ptr);
 
-                *current_hashmap_ptr = NULL;
+                *current_hashmap_ptr = nullptr;
             }
         }
 
@@ -227,7 +227,7 @@ typedef struct _ral_context
             system_resizable_vector* current_vector_ptr = vectors_to_release[n_vector_to_release];
             uint32_t                 n_objects          = 0;
 
-            if (*current_vector_ptr != NULL)
+            if (*current_vector_ptr != nullptr)
             {
                 system_resizable_vector_get_property(*current_vector_ptr,
                                                      SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -237,24 +237,24 @@ typedef struct _ral_context
                                   "Memory leak detected");
 
                 system_resizable_vector_release(*current_vector_ptr);
-                *current_vector_ptr = NULL;
+                *current_vector_ptr = nullptr;
             }
         }
 
-        if (texture_pool != NULL)
+        if (texture_pool != nullptr)
         {
             ral_texture_pool_release(texture_pool);
 
-            texture_pool = NULL;
-        } /* if (texture_pool != NULL) */
+            texture_pool = nullptr;
+        }
 
         /* Callback manager needs to be deleted at the end. */
-        if (callback_manager != NULL)
+        if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
 
-            callback_manager = NULL;
-        } /* if (callback_manager != NULL) */
+            callback_manager = nullptr;
+        }
     }
 } _ral_context;
 
@@ -281,14 +281,14 @@ PRIVATE void _ral_context_add_programs_to_program_hashmap(_ral_context* context_
                       n_program < n_programs;
                     ++n_program)
         {
-            system_hashed_ansi_string program_name      = NULL;
+            system_hashed_ansi_string program_name      = nullptr;
             system_hash64             program_name_hash = -1;
 
             ral_program_get_property(new_programs[n_program],
                                      RAL_PROGRAM_PROPERTY_NAME,
                                     &program_name);
 
-            ASSERT_DEBUG_SYNC(program_name                                       != NULL &&
+            ASSERT_DEBUG_SYNC(program_name                                       != nullptr &&
                               system_hashed_ansi_string_get_length(program_name) > 0,
                               "Invalid ral_program name property value.");
 
@@ -302,9 +302,9 @@ PRIVATE void _ral_context_add_programs_to_program_hashmap(_ral_context* context_
             system_hash64map_insert(context_ptr->programs_by_name_map,
                                     program_name_hash,
                                     new_programs[n_program],
-                                    NULL,  /* on_remove_callback          */
-                                    NULL); /* on_remove_callback_user_arg */
-        } /* for (all programs) */
+                                    nullptr,  /* on_remove_callback          */
+                                    nullptr); /* on_remove_callback_user_arg */
+        }
     }
     system_critical_section_leave(context_ptr->programs_cs);
 }
@@ -320,14 +320,14 @@ PRIVATE void _ral_context_add_shaders_to_shader_hashmap(_ral_context* context_pt
                       n_shader < n_shaders;
                     ++n_shader)
         {
-            system_hashed_ansi_string shader_name      = NULL;
+            system_hashed_ansi_string shader_name      = nullptr;
             system_hash64             shader_name_hash = -1;
 
             ral_shader_get_property(new_shaders[n_shader],
                                     RAL_SHADER_PROPERTY_NAME,
                                    &shader_name);
 
-            ASSERT_DEBUG_SYNC(shader_name                                       != NULL &&
+            ASSERT_DEBUG_SYNC(shader_name                                       != nullptr &&
                               system_hashed_ansi_string_get_length(shader_name) > 0,
                               "Invalid ral_shader name property value.");
 
@@ -341,9 +341,9 @@ PRIVATE void _ral_context_add_shaders_to_shader_hashmap(_ral_context* context_pt
             system_hash64map_insert(context_ptr->shaders_by_name_map,
                                     shader_name_hash,
                                     new_shaders[n_shader],
-                                    NULL,  /* on_remove_callback          */
-                                    NULL); /* on_remove_callback_user_arg */
-        } /* for (all shaders) */
+                                    nullptr,  /* on_remove_callback          */
+                                    nullptr); /* on_remove_callback_user_arg */
+        }
     }
     system_critical_section_leave(context_ptr->shaders_cs);
 }
@@ -359,9 +359,9 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
                       n_texture < n_textures;
                     ++n_texture)
         {
-            system_hashed_ansi_string image_filename      = NULL;
+            system_hashed_ansi_string image_filename      = nullptr;
             system_hash64             image_filename_hash = -1;
-            system_hashed_ansi_string image_name          = NULL;
+            system_hashed_ansi_string image_name          = nullptr;
             system_hash64             image_name_hash     = -1;
 
             ral_texture_get_property(new_textures[n_texture],
@@ -371,7 +371,7 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
                                      RAL_TEXTURE_PROPERTY_NAME,
                                     &image_name);
 
-            if (image_filename                                       != NULL &&
+            if (image_filename                                       != nullptr &&
                 system_hashed_ansi_string_get_length(image_filename) >  0)
             {
                 image_filename_hash = system_hashed_ansi_string_get_hash(image_filename);
@@ -384,11 +384,11 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
                 system_hash64map_insert(context_ptr->textures_by_filename_map,
                                         image_filename_hash,
                                         new_textures[n_texture],
-                                        NULL,  /* on_remove_callback */
-                                        NULL); /* on_remove_callback_user_arg */
-            } /* if (image_filename != NULL) */
+                                        nullptr,  /* on_remove_callback */
+                                        nullptr); /* on_remove_callback_user_arg */
+            }
 
-            ASSERT_DEBUG_SYNC(image_name                                       != NULL &&
+            ASSERT_DEBUG_SYNC(image_name                                       != nullptr &&
                               system_hashed_ansi_string_get_length(image_name) > 0,
                               "Invalid gfx_image name property value.");
 
@@ -402,9 +402,9 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
             system_hash64map_insert(context_ptr->textures_by_name_map,
                                     image_name_hash,
                                     new_textures[n_texture],
-                                    NULL,  /* on_remove_callback          */
-                                    NULL); /* on_remove_callback_user_arg */
-        } /* for (all textures) */
+                                    nullptr,  /* on_remove_callback          */
+                                    nullptr); /* on_remove_callback_user_arg */
+        }
     }
     system_critical_section_leave(context_ptr->textures_cs);
 }
@@ -417,12 +417,12 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                          void**                  out_result_object_ptrs)
 {
     bool                    backend_texture_callback_used = false;
-    uint32_t*               object_counter_ptr            = NULL;
-    system_critical_section object_storage_cs             = NULL;
-    system_resizable_vector object_storage_vector         = NULL;
-    const char*             object_type_name              = NULL;
+    uint32_t*               object_counter_ptr            = nullptr;
+    system_critical_section object_storage_cs             = nullptr;
+    system_resizable_vector object_storage_vector         = nullptr;
+    const char*             object_type_name              = nullptr;
     bool                    result                        = false;
-    void**                  result_objects_ptr            = NULL;
+    void**                  result_objects_ptr            = nullptr;
 
     switch (object_type)
     {
@@ -502,7 +502,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         {
             object_counter_ptr    = &context_ptr->n_textures_created;
             object_storage_cs     =  context_ptr->textures_cs;
-            object_storage_vector = NULL; /* textures are maintained by the texture pool */
+            object_storage_vector = nullptr; /* textures are maintained by the texture pool */
             object_type_name      = "RAL Texture [%d]";
 
             break;
@@ -525,7 +525,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
             goto end;
         }
-    } /* switch (object_type) */
+    }
 
     /* After framebuffer instances are created, we will need to fire a notification,
      * so that the backend can create renderer-specific objects for each RAL framebuffer.
@@ -534,7 +534,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
      * for that array. */
     result_objects_ptr = new void*[n_objects];
 
-    if (result_objects_ptr == NULL)
+    if (result_objects_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -551,7 +551,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                   n_object < n_objects;
                 ++n_object)
     {
-        system_hashed_ansi_string name_has = NULL;
+        system_hashed_ansi_string name_has = nullptr;
         char temp[128];
 
         snprintf(temp,
@@ -666,7 +666,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
-                system_hashed_ansi_string file_name_has = NULL;
+                system_hashed_ansi_string file_name_has = nullptr;
 
                 gfx_image_get_property(*(gfx_image*) (object_create_info_ptrs + n_object),
                                        GFX_IMAGE_PROPERTY_FILENAME,
@@ -703,9 +703,9 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
                 goto end;
             }
-        } /* switch (object_type) */
+        }
 
-        if (result_objects_ptr[n_object] == NULL)
+        if (result_objects_ptr[n_object] == nullptr)
         {
             ASSERT_DEBUG_SYNC(false,
                               "Failed to create a %s at index [%d]",
@@ -727,10 +727,10 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                                              object_type);
             }
         }
-    } /* for (all objects to create) */
+    }
 
     /* Store the new objects */
-    if (object_storage_vector != NULL)
+    if (object_storage_vector != nullptr)
     {
         system_critical_section_enter(object_storage_cs);
         {
@@ -740,10 +740,10 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             {
                 system_resizable_vector_push(object_storage_vector,
                                              result_objects_ptr[n_object]);
-            } /* for (all objects) */
+            }
         }
         system_critical_section_leave(object_storage_cs);
-    } /* if (object_storage_vector != NULL) */
+    }
 
     /* Store the reference counters */
     system_critical_section_enter(context_ptr->object_to_refcount_cs);
@@ -759,8 +759,8 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             system_hash64map_insert(context_ptr->object_to_refcount_map,
                                     (system_hash64) result_objects_ptr[n_object],
                                     (void*) 1,
-                                    NULL,  /* callback          */
-                                    NULL); /* callback_argument */
+                                    nullptr,  /* callback          */
+                                    nullptr); /* callback_argument */
         }
     }
     system_critical_section_leave(context_ptr->object_to_refcount_cs);
@@ -775,13 +775,13 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 end:
     if (!result)
     {
-        if (result_objects_ptr != NULL)
+        if (result_objects_ptr != nullptr)
         {
             for (uint32_t n_object = 0;
                           n_object < n_objects;
                         ++n_object)
             {
-                if (result_objects_ptr[n_object] != NULL)
+                if (result_objects_ptr[n_object] != nullptr)
                 {
                     switch (object_type)
                     {
@@ -808,19 +808,19 @@ end:
                             ASSERT_DEBUG_SYNC(false,
                                               "Unrecognized RAL context object type");
                         }
-                    } /* switch (object_type) */
+                    }
 
-                    result_objects_ptr[n_object] = NULL;
-                } /* if (result_objects_ptr[n_object] != NULL) */
-            } /* for (all potentially created RAL objects) */
-        } /* if (result_objects_ptr != NULL) */
-    } /* if (!result) */
+                    result_objects_ptr[n_object] = nullptr;
+                }
+            }
+        }
+    }
 
-    if (result_objects_ptr != NULL)
+    if (result_objects_ptr != nullptr)
     {
         delete [] result_objects_ptr;
 
-        result_objects_ptr = NULL;
+        result_objects_ptr = nullptr;
     }
 
     return result;
@@ -832,8 +832,8 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                                          uint32_t                in_n_objects,
                                          const void**            in_object_ptrs)
 {
-    system_critical_section cs            = NULL;
-    system_resizable_vector object_vector = NULL;
+    system_critical_section cs            = nullptr;
+    system_resizable_vector object_vector = nullptr;
     bool                    result        = false;
 
     switch (object_type)
@@ -915,7 +915,7 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
             goto end;
         }
-    } /* switch (object_type) */
+    }
 
     /* Notify the subscribers about the event */
     ral_context_callback_objects_deleted_callback_arg callback_arg;
@@ -1014,7 +1014,7 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
             goto end;
         }
-    } /* switch (object_type) */
+    }
 
     /* Release the objects */
     system_critical_section_enter(cs);
@@ -1026,16 +1026,16 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
             const void* object_ptr          = in_object_ptrs[n_object];
             uint32_t    object_vector_index = ITEM_NOT_FOUND;
 
-            if (in_object_ptrs[n_object] == NULL)
+            if (in_object_ptrs[n_object] == nullptr)
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Object at index [%d] is NULL",
                                   n_object);
 
                 continue;
-            } /* if (in_object_ptrs[n_object] == NULL) */
+            }
 
-            if (object_vector != NULL)
+            if (object_vector != nullptr)
             {
                 object_vector_index = system_resizable_vector_find(object_vector,
                                                                    in_object_ptrs[n_object]);
@@ -1050,7 +1050,7 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                     ASSERT_DEBUG_SYNC(false,
                                       "Released object is not tracked by RAL");
                 }
-            } /* if (object_vector != NULL) */
+            }
 
             switch (object_type)
             {
@@ -1071,8 +1071,8 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
                     goto end;
                 }
-            } /* switch (object_type) */
-        } /* for (all specified framebuffer instances) */
+            }
+        }
     }
     system_critical_section_leave(cs);
 
@@ -1093,7 +1093,7 @@ PRIVATE void _ral_context_delete_programs_from_program_hashmap(_ral_context* con
                       n_program  < n_programs;
                     ++n_program)
         {
-            system_hashed_ansi_string program_name      = NULL;
+            system_hashed_ansi_string program_name      = nullptr;
             system_hash64             program_name_hash = -1;
 
             ral_program_get_property(programs[n_program],
@@ -1109,7 +1109,7 @@ PRIVATE void _ral_context_delete_programs_from_program_hashmap(_ral_context* con
 
             system_hash64map_remove(context_ptr->programs_by_name_map,
                                     program_name_hash);
-        } /* for (all specified programs) */
+        }
     }
     system_critical_section_leave(context_ptr->programs_cs);
 }
@@ -1125,7 +1125,7 @@ PRIVATE void _ral_context_delete_shaders_from_shader_hashmap(_ral_context* conte
                       n_shader  < n_shaders;
                     ++n_shader)
         {
-            system_hashed_ansi_string shader_name      = NULL;
+            system_hashed_ansi_string shader_name      = nullptr;
             system_hash64             shader_name_hash = -1;
 
             ral_shader_get_property(shaders[n_shader],
@@ -1141,7 +1141,7 @@ PRIVATE void _ral_context_delete_shaders_from_shader_hashmap(_ral_context* conte
 
             system_hash64map_remove(context_ptr->shaders_by_name_map,
                                     shader_name_hash);
-        } /* for (all specified shaders) */
+        }
     }
     system_critical_section_leave(context_ptr->shaders_cs);
 }
@@ -1157,9 +1157,9 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
                       n_texture < n_textures;
                     ++n_texture)
         {
-            system_hashed_ansi_string texture_filename      = NULL;
+            system_hashed_ansi_string texture_filename      = nullptr;
             system_hash64             texture_filename_hash = -1;
-            system_hashed_ansi_string texture_name          = NULL;
+            system_hashed_ansi_string texture_name          = nullptr;
             system_hash64             texture_name_hash     = -1;
 
             ral_texture_get_property(textures[n_texture],
@@ -1169,7 +1169,7 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
                                      RAL_TEXTURE_PROPERTY_NAME,
                                     &texture_name);
 
-            if (texture_filename                                       != NULL &&
+            if (texture_filename                                       != nullptr &&
                 system_hashed_ansi_string_get_length(texture_filename) >  0)
             {
                 texture_filename_hash = system_hashed_ansi_string_get_hash(texture_filename);
@@ -1181,7 +1181,7 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
 
                 system_hash64map_remove(context_ptr->textures_by_filename_map,
                                         texture_filename_hash);
-            } /* if (texture_filename != NULL) */
+            }
 
             texture_name_hash = system_hashed_ansi_string_get_hash(texture_name);
 
@@ -1192,7 +1192,7 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
 
             system_hash64map_remove(context_ptr->textures_by_name_map,
                                     texture_name_hash);
-        } /* for (all specified textures) */
+        }
     }
     system_critical_section_leave(context_ptr->textures_cs);
 }
@@ -1218,7 +1218,7 @@ PUBLIC void _ral_context_init(_ral_context* context_ptr)
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported backend type.");
         }
-    } /* switch (context_ptr->backend_type) */
+    }
 }
 
 /** TODO */
@@ -1319,7 +1319,7 @@ PRIVATE void _ral_context_notify_backend_about_new_object(ral_context           
 
             break;
         }
-    } /* switch (object_type) */
+    }
 }
 
 /** TODO */
@@ -1345,20 +1345,20 @@ PRIVATE void _ral_context_release(void* context)
     _ral_context* context_ptr = (_ral_context*) context;
 
     /* Release the texture pool */
-    if (context_ptr->texture_pool != NULL)
+    if (context_ptr->texture_pool != nullptr)
     {
         ral_texture_pool_release(context_ptr->texture_pool);
 
-        context_ptr->texture_pool = NULL;
+        context_ptr->texture_pool = nullptr;
     }
 
     /* Release the back-end */
-    if (context_ptr->backend                  != NULL &&
-        context_ptr->pfn_backend_release_proc != NULL)
+    if (context_ptr->backend                  != nullptr &&
+        context_ptr->pfn_backend_release_proc != nullptr)
     {
         context_ptr->pfn_backend_release_proc(context_ptr->backend);
 
-        context_ptr->backend = NULL;
+        context_ptr->backend = nullptr;
     }
 
     /* Detect any leaking objects */
@@ -1418,7 +1418,7 @@ PRIVATE void _ral_context_release(void* context)
 PRIVATE void _ral_context_subscribe_for_notifications(_ral_context* context_ptr,
                                                       bool          should_subscribe)
 {
-    system_callback_manager texture_pool_callback_manager = NULL;
+    system_callback_manager texture_pool_callback_manager = nullptr;
 
     ral_texture_pool_get_property(context_ptr->texture_pool,
                                   RAL_TEXTURE_POOL_PROPERTY_CALLBACK_MANAGER,
@@ -1431,7 +1431,7 @@ PRIVATE void _ral_context_subscribe_for_notifications(_ral_context* context_ptr,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _ral_context_on_texture_dropped_from_texture_pool,
                                                         context_ptr);
-    } /* if (should_subscribe) */
+    }
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(texture_pool_callback_manager,
@@ -1448,9 +1448,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
     _ral_context* new_context_ptr = new (std::nothrow) _ral_context(name,
                                                                     window);
 
-    ASSERT_ALWAYS_SYNC(new_context_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_context_ptr != nullptr,
                        "Out of memory");
-    if (new_context_ptr != NULL)
+    if (new_context_ptr != nullptr)
     {
         /* Instantiate the rendering back-end */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -1480,7 +1480,7 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unsupported backend type requested.");
             }
-        } /* switch(backend_type) */
+        }
 
         /* Register in the object manager */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_context_ptr,
@@ -1491,7 +1491,7 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
 
         /* Initialize the context */
         _ral_context_init(new_context_ptr);
-    } /* if (new_context_ptr != NULL) */
+    }
 
     return (ral_context) new_context_ptr;
 }
@@ -1506,7 +1506,7 @@ PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                  
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1519,7 +1519,7 @@ PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                  
         goto end;
     }
 
-    if (buffer_create_info_ptr == NULL)
+    if (buffer_create_info_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input buffer create info array is NULL");
@@ -1527,7 +1527,7 @@ PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                  
         goto end;
     }
 
-    if (out_result_buffers_ptr == NULL)
+    if (out_result_buffers_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1554,7 +1554,7 @@ PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context          
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1567,7 +1567,7 @@ PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context          
         goto end;
     }
 
-    if (command_buffer_create_info_ptr == NULL)
+    if (command_buffer_create_info_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input command buffer create info array is NULL");
@@ -1575,7 +1575,7 @@ PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context          
         goto end;
     }
 
-    if (out_result_command_buffers_ptr == NULL)
+    if (out_result_command_buffers_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1602,7 +1602,7 @@ PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1615,7 +1615,7 @@ PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context
         goto end;
     }
 
-    if (out_result_framebuffers_ptr == NULL)
+    if (out_result_framebuffers_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1626,7 +1626,7 @@ PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
                                          n_framebuffers,
-                                         NULL, /* object_create_info_ptrs */
+                                         nullptr, /* object_create_info_ptrs */
                                          (void**) out_result_framebuffers_ptr);
 
 end:
@@ -1643,7 +1643,7 @@ PUBLIC EMERALD_API bool ral_context_create_gfx_states(ral_context               
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1656,7 +1656,7 @@ PUBLIC EMERALD_API bool ral_context_create_gfx_states(ral_context               
         goto end;
     }
 
-    if (out_result_gfx_states_ptr == NULL)
+    if (out_result_gfx_states_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1684,7 +1684,7 @@ PUBLIC EMERALD_API bool ral_context_create_programs(ral_context                 
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1697,7 +1697,7 @@ PUBLIC EMERALD_API bool ral_context_create_programs(ral_context                 
         goto end;
     }
 
-    if (out_result_program_ptrs == NULL)
+    if (out_result_program_ptrs == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1716,7 +1716,7 @@ PUBLIC EMERALD_API bool ral_context_create_programs(ral_context                 
         _ral_context_add_programs_to_program_hashmap(context_ptr,
                                                      n_create_info_items,
                                                      out_result_program_ptrs);
-    } /* if (result) */
+    }
 end:
     return result;
 }
@@ -1731,7 +1731,7 @@ PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context                 
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1744,7 +1744,7 @@ PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context                 
         goto end;
     }
 
-    if (out_result_sampler_ptrs == NULL)
+    if (out_result_sampler_ptrs == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1772,7 +1772,7 @@ PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context                  
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1785,7 +1785,7 @@ PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context                  
         goto end;
     }
 
-    if (create_info_ptrs == NULL)
+    if (create_info_ptrs == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input shader create info array is NULL");
@@ -1793,7 +1793,7 @@ PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context                  
         goto end;
     }
 
-    if (out_result_shader_ptrs == NULL)
+    if (out_result_shader_ptrs == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1812,7 +1812,7 @@ PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context                  
         _ral_context_add_shaders_to_shader_hashmap(context_ptr,
                                                    n_create_info_items,
                                                    out_result_shader_ptrs);
-    } /* if (result != NULL) */
+    }
 end:
     return result;
 }
@@ -1827,7 +1827,7 @@ PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context            
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1840,7 +1840,7 @@ PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context            
         goto end;
     }
 
-    if (create_info_ptrs == NULL)
+    if (create_info_ptrs == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input texture view create info array is NULL");
@@ -1848,7 +1848,7 @@ PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context            
         goto end;
     }
 
-    if (out_result_texture_view_ptrs == NULL)
+    if (out_result_texture_view_ptrs == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1876,7 +1876,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                 
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1889,7 +1889,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                 
         goto end;
     }
 
-    if (texture_create_info_ptr == NULL)
+    if (texture_create_info_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input texture create info array is NULL");
@@ -1897,7 +1897,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                 
         goto end;
     }
 
-    if (out_result_textures_ptr == NULL)
+    if (out_result_textures_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1916,7 +1916,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                 
         _ral_context_add_textures_to_texture_hashmaps(context_ptr,
                                                       n_textures,
                                                       out_result_textures_ptr);
-    } /* if (result != NULL) */
+    }
 end:
     return result;
 }
@@ -1931,7 +1931,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1944,7 +1944,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
         goto end;
     }
 
-    if (file_names_ptr == NULL)
+    if (file_names_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input file name array is NULL");
@@ -1952,7 +1952,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
         goto end;
     }
 
-    if (out_result_textures_ptr == NULL)
+    if (out_result_textures_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1988,14 +1988,14 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
             }
 
             ++n_current_file_name;
-        } /* while (n_current_file_name != n_file_names) */
+        }
 
         if (n_file_names_to_handle > 0)
         {
-            system_hashed_ansi_string* file_names_to_handle = NULL;
+            system_hashed_ansi_string* file_names_to_handle = nullptr;
             ral_texture*               result_textures      = new (std::nothrow) ral_texture[n_file_names_to_handle];
 
-            ASSERT_ALWAYS_SYNC(result_textures != NULL,
+            ASSERT_ALWAYS_SYNC(result_textures != nullptr,
                                "Out of memory");
 
             system_resizable_vector_get_property(file_names_to_handle_vector,
@@ -2028,7 +2028,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
                     {
                         out_result_textures_ptr[n_current_file_name] = result_textures[n_returned_textures++];
                     }
-                } /* for (all file names specified on input) */
+                }
 
                 ASSERT_DEBUG_SYNC(n_returned_textures == n_file_names_to_handle,
                                   "Internal error");
@@ -2036,11 +2036,11 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
                 _ral_context_add_textures_to_texture_hashmaps(context_ptr,
                                                               n_file_names_to_handle,
                                                               result_textures);
-            } /* if (result != NULL) */
+            }
 
             delete [] result_textures;
-            result_textures = NULL;
-        } /* if (n_file_names_to_handle > 0) */
+            result_textures = nullptr;
+        }
         else
         {
             result = true;
@@ -2064,7 +2064,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -2077,7 +2077,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
         goto end;
     }
 
-    if (images == NULL)
+    if (images == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input image array is NULL");
@@ -2085,7 +2085,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
         goto end;
     }
 
-    if (out_result_textures_ptr == NULL)
+    if (out_result_textures_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -2105,7 +2105,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
                                                       n_images,
                                                       out_result_textures_ptr);
 
-    } /* if (result != NULL) */
+    }
 end:
     return result;
 }
@@ -2121,20 +2121,20 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
     bool          result      = false;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
 
         goto end;
-    } /* if (context == NULL) */
+    }
 
     if (in_n_objects == 0)
     {
         goto end;
     }
 
-    if (in_objects == NULL)
+    if (in_objects == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input object array is NULL");
@@ -2157,7 +2157,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
         {
             uint32_t object_ref_counter = 0;
 
-            if (in_objects[n_object] == NULL)
+            if (in_objects[n_object] == nullptr)
             {
                 continue;
             }
@@ -2186,10 +2186,10 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                 system_hash64map_insert(context_ptr->object_to_refcount_map,
                                         (system_hash64) in_objects[n_object],
                                         (void*) object_ref_counter,
-                                        NULL, /* calback           */
-                                        NULL  /* callback_argument */);
+                                        nullptr, /* calback           */
+                                        nullptr  /* callback_argument */);
             }
-        } /* for (all input objects) */
+        }
     }
     system_critical_section_leave(context_ptr->object_to_refcount_cs);
 
@@ -2239,7 +2239,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
             /* Note: Instead of deleting the textures, we stash them back in the texture pool so that
              *       they can be re-used.. unless the texture pool is no longer available, in which
              *       case we actually do release them. :) */
-            if (context_ptr->texture_pool != NULL)
+            if (context_ptr->texture_pool != nullptr)
             {
                 for (uint32_t n_texture = 0;
                               n_texture < n_objects;
@@ -2269,7 +2269,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized RAL object type");
         }
-    } /* switch (object_type) */
+    }
 
     /* Release the objects */
     result = _ral_context_delete_objects(context_ptr,
@@ -2285,7 +2285,7 @@ end:
 PUBLIC EMERALD_API raGL_buffer ral_context_get_buffer_gl(ral_context context,
                                                          ral_buffer  buffer)
 {
-    raGL_buffer   buffer_raGL = NULL;
+    raGL_buffer   buffer_raGL = nullptr;
     _ral_context* context_ptr = (_ral_context*) context;
 
     raGL_backend_get_buffer(context_ptr->backend,
@@ -2300,7 +2300,7 @@ PUBLIC EMERALD_API raGL_framebuffer ral_context_get_framebuffer_gl(ral_context  
                                                                    ral_framebuffer framebuffer)
 {
     _ral_context*    context_ptr      = (_ral_context*) context;
-    raGL_framebuffer framebuffer_raGL = NULL;
+    raGL_framebuffer framebuffer_raGL = nullptr;
 
     raGL_backend_get_framebuffer(context_ptr->backend,
                                  framebuffer,
@@ -2313,7 +2313,7 @@ PUBLIC EMERALD_API raGL_framebuffer ral_context_get_framebuffer_gl(ral_context  
 PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context)
 {
     raGL_backend backend         = (raGL_backend) ((_ral_context*) context)->backend;
-    ogl_context  backend_context = NULL;
+    ogl_context  backend_context = nullptr;
 
     raGL_backend_get_property(backend,
                               RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
@@ -2327,10 +2327,10 @@ PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context      
                                                                system_hashed_ansi_string name)
 {
     _ral_context* context_ptr = (_ral_context*) context;
-    ral_program   result      = NULL;
+    ral_program   result      = nullptr;
 
     /* Sanity checks..*/
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_context instance is NULL");
@@ -2338,7 +2338,7 @@ PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context      
         goto end;
     }
 
-    if (name == NULL)
+    if (name == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input program name is NULL");
@@ -2364,7 +2364,7 @@ PUBLIC EMERALD_API raGL_program ral_context_get_program_gl(ral_context context,
                                                            ral_program program)
 {
     _ral_context* context_ptr  = (_ral_context*) context;
-    raGL_program  program_raGL = NULL;
+    raGL_program  program_raGL = nullptr;
 
     raGL_backend_get_program(context_ptr->backend,
                              program,
@@ -2382,13 +2382,13 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
     _ral_context* context_ptr = (_ral_context*) context;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
 
         goto end;
-    } /* if (context == NULL) */
+    }
 
     /* If this is a backend-specific property, forward the request to the backend instance.
      * Otherwise, try to handle it. */
@@ -2431,7 +2431,7 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
 
         case RAL_CONTEXT_PROPERTY_RENDERING_HANDLER:
         {
-            *(ogl_rendering_handler*) out_result_ptr = context_ptr->rendering_handler;
+            *(ral_rendering_handler*) out_result_ptr = context_ptr->rendering_handler;
 
             break;
         }
@@ -2455,7 +2455,7 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecpognized ral_context_property value.");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }
@@ -2464,7 +2464,7 @@ end:
 PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
                                                            ral_sampler sampler)
 {
-    raGL_sampler  sampler_raGL = NULL;
+    raGL_sampler  sampler_raGL = nullptr;
     _ral_context* context_ptr  = (_ral_context*) context;
 
     raGL_backend_get_sampler(context_ptr->backend,
@@ -2479,7 +2479,7 @@ PUBLIC EMERALD_API raGL_shader ral_context_get_shader_gl(ral_context context,
                                                          ral_shader  shader)
 {
     _ral_context* context_ptr = (_ral_context*) context;
-    raGL_shader   shader_raGL = NULL;
+    raGL_shader   shader_raGL = nullptr;
 
     raGL_backend_get_shader(context_ptr->backend,
                             shader,
@@ -2493,10 +2493,10 @@ PUBLIC EMERALD_API ral_shader ral_context_get_shader_by_name(ral_context        
                                                              system_hashed_ansi_string name)
 {
     _ral_context* context_ptr = (_ral_context*) context;
-    ral_shader    result      = NULL;
+    ral_shader    result      = nullptr;
 
     /* Sanity checks..*/
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_context instance is NULL");
@@ -2504,7 +2504,7 @@ PUBLIC EMERALD_API ral_shader ral_context_get_shader_by_name(ral_context        
         goto end;
     }
 
-    if (name == NULL)
+    if (name == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input shader name is NULL");
@@ -2530,10 +2530,10 @@ PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_file_name(ral_context 
                                                                     system_hashed_ansi_string file_name)
 {
     _ral_context* context_ptr = (_ral_context*) context;
-    ral_texture   result      = NULL;
+    ral_texture   result      = nullptr;
 
     /* Sanity checks..*/
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_context instance is NULL");
@@ -2541,7 +2541,7 @@ PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_file_name(ral_context 
         goto end;
     }
 
-    if (file_name == NULL)
+    if (file_name == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input file name is NULL");
@@ -2567,10 +2567,10 @@ PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context      
                                                                system_hashed_ansi_string name)
 {
     _ral_context* context_ptr = (_ral_context*) context;
-    ral_texture   result      = NULL;
+    ral_texture   result      = nullptr;
 
     /* Sanity checks..*/
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_context instance is NULL");
@@ -2578,7 +2578,7 @@ PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context      
         goto end;
     }
 
-    if (name == NULL)
+    if (name == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input texture name is NULL");
@@ -2604,7 +2604,7 @@ PUBLIC EMERALD_API raGL_texture ral_context_get_texture_gl(ral_context context,
                                                            ral_texture texture)
 {
     _ral_context* context_ptr  = (_ral_context*) context;
-    raGL_texture  texture_raGL = NULL;
+    raGL_texture  texture_raGL = nullptr;
 
     raGL_backend_get_texture(context_ptr->backend,
                              texture,
@@ -2618,7 +2618,7 @@ PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
 {
     _ral_context* context_ptr  = (_ral_context*) context;
     GLuint        result       = 0;
-    raGL_texture  texture_raGL = NULL;
+    raGL_texture  texture_raGL = nullptr;
 
     raGL_backend_get_texture (context_ptr->backend,
                               texture,
@@ -2637,7 +2637,7 @@ PUBLIC EMERALD_API void ral_context_retain_object(ral_context             contex
 {
     _ral_context* context_ptr = (_ral_context*) context;
 
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "NULL RAL context specified.");
@@ -2664,8 +2664,8 @@ PUBLIC EMERALD_API void ral_context_retain_object(ral_context             contex
         system_hash64map_insert(context_ptr->object_to_refcount_map,
                                 (system_hash64) object,
                                 (void*) ref_counter,
-                                NULL,  /* callback          */
-                                NULL); /* callback_argument */
+                                nullptr,  /* callback          */
+                                nullptr); /* callback_argument */
     }
     system_critical_section_leave(context_ptr->object_to_refcount_cs);
 end:
@@ -2683,7 +2683,7 @@ PUBLIC void ral_context_set_property(ral_context          context,
     {
         case RAL_CONTEXT_PROPERTY_BACKEND:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->backend == NULL,
+            ASSERT_DEBUG_SYNC(context_ptr->backend == nullptr,
                               "Backend is not NULL");
 
             context_ptr->backend = *(void**) data;
@@ -2696,5 +2696,5 @@ PUBLIC void ral_context_set_property(ral_context          context,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ral_context_property value.");
         }
-    } /* switch (property) */
+    }
 }

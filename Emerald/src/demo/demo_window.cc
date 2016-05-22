@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -9,8 +9,8 @@
 #include "demo/demo_flyby.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_window.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_event.h"
@@ -36,7 +36,7 @@ typedef struct _demo_window
     demo_timeline timeline;
 
     uint32_t              refresh_rate;
-    ogl_rendering_handler rendering_handler;
+    ral_rendering_handler rendering_handler;
     system_time           rendering_start_time;
     uint32_t              resolution[2];
     bool                  should_run_fullscreen;
@@ -54,52 +54,52 @@ typedef struct _demo_window
                           bool                      in_use_timeline)
     {
         backend_type                        = in_backend_type;
-        context                             = NULL;
-        flyby                               = NULL;
-        loader                              = NULL;
-        loader_setup_callback_proc_user_arg = NULL;
+        context                             = nullptr;
+        flyby                               = nullptr;
+        loader                              = nullptr;
+        loader_setup_callback_proc_user_arg = nullptr;
         name                                = in_name;
-        pfn_loader_setup_callback_proc      = NULL;
+        pfn_loader_setup_callback_proc      = nullptr;
         refresh_rate                        = 60;
-        rendering_handler                   = NULL;
+        rendering_handler                   = nullptr;
         rendering_start_time                = -1;
         resolution[0]                       = 1280;
         resolution[1]                       = 720;
         should_run_fullscreen               = false;
         shut_down_event                     = system_event_create(true); /* manual_reset */
         target_frame_rate                   = 60;
-        timeline                            = NULL;
+        timeline                            = nullptr;
         use_timeline                        = in_use_timeline;
         use_vsync                           = true;
         visible                             = true;
-        window                              = NULL;
+        window                              = nullptr;
         window_closed_event                 = system_event_create(true); /* manual_reset */
     }
 
     ~_demo_window()
     {
-        ASSERT_DEBUG_SYNC(window == NULL,
+        ASSERT_DEBUG_SYNC(window == nullptr,
                           "Rendering window is not NULL at demo_window teardown time");
 
-        if (flyby != NULL)
+        if (flyby != nullptr)
         {
             demo_flyby_release(flyby);
 
-            flyby = NULL;
+            flyby = nullptr;
         }
 
-        if (shut_down_event != NULL)
+        if (shut_down_event != nullptr)
         {
             system_event_release(shut_down_event);
 
-            shut_down_event = NULL;
-        } /* if (shut_down_event != NULL) */
+            shut_down_event = nullptr;
+        }
 
-        if (window_closed_event != NULL)
+        if (window_closed_event != nullptr)
         {
             system_event_release(window_closed_event);
 
-            window_closed_event = NULL;
+            window_closed_event = nullptr;
         }
     }
 } _demo_window;
@@ -118,22 +118,22 @@ PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* windo
 /** TODO */
 PRIVATE bool _demo_window_init(_demo_window* window_ptr)
 {
-    system_pixel_format pixel_format = NULL; /* ownership will be taken by the window */
+    system_pixel_format pixel_format = nullptr; /* ownership will be taken by the window */
     bool                result       = false;
     char                rendering_handler_name[256];
 
     /* Sanity checks */
-    if (window_ptr == NULL)
+    if (window_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(window_ptr != NULL,
+        ASSERT_DEBUG_SYNC(window_ptr != nullptr,
                           "Input demo_window instance is NULL");
 
         goto end;
     }
 
-    if (window_ptr->window != NULL)
+    if (window_ptr->window != nullptr)
     {
-        ASSERT_DEBUG_SYNC(window_ptr->window == NULL,
+        ASSERT_DEBUG_SYNC(window_ptr->window == nullptr,
                           "The specified window is already shown.");
 
         goto end;
@@ -158,7 +158,7 @@ PRIVATE bool _demo_window_init(_demo_window* window_ptr)
 
     if (window_ptr->should_run_fullscreen)
     {
-        system_screen_mode screen_mode = NULL;
+        system_screen_mode screen_mode = nullptr;
 
         if (!system_screen_mode_get_for_resolution(window_ptr->resolution[0],
                                                    window_ptr->resolution[1],
@@ -198,7 +198,7 @@ PRIVATE bool _demo_window_init(_demo_window* window_ptr)
                                                                  pixel_format);
     }
 
-    if (window_ptr->window == NULL)
+    if (window_ptr->window == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not create a rendering window");
@@ -223,7 +223,7 @@ PRIVATE bool _demo_window_init(_demo_window* window_ptr)
      * 3) Provides additional functionality needed for correct timeline & vsync support. Feel free to have a lurk
      *    if curious.
      */
-    ASSERT_DEBUG_SYNC(window_ptr->rendering_handler == NULL,
+    ASSERT_DEBUG_SYNC(window_ptr->rendering_handler == nullptr,
                       "An ogl_rendering_handler instance is already present.");
 
     snprintf(rendering_handler_name,
@@ -234,23 +234,26 @@ PRIVATE bool _demo_window_init(_demo_window* window_ptr)
 
     if (window_ptr->target_frame_rate == 0)
     {
-        window_ptr->rendering_handler = ogl_rendering_handler_create_with_render_per_request_policy(system_hashed_ansi_string_create(rendering_handler_name),
-                                                                                                    NULL,  /* pfn_rendering_callback */
-                                                                                                    NULL); /* user_arg               */
+        window_ptr->rendering_handler = ral_rendering_handler_create_with_render_per_request_policy(window_ptr->backend_type,
+                                                                                                    system_hashed_ansi_string_create(rendering_handler_name),
+                                                                                                    nullptr,  /* pfn_rendering_callback */
+                                                                                                    nullptr); /* user_arg               */
     }
     else
     if (window_ptr->target_frame_rate == ~0)
     {
-        window_ptr->rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create(rendering_handler_name),
-                                                                                                 NULL,  /* pfn_rendering_callback */
-                                                                                                 NULL); /* user_arg               */
+        window_ptr->rendering_handler = ral_rendering_handler_create_with_max_performance_policy(window_ptr->backend_type,
+                                                                                                 system_hashed_ansi_string_create(rendering_handler_name),
+                                                                                                 nullptr,  /* pfn_rendering_callback */
+                                                                                                 nullptr); /* user_arg               */
     }
     else
     {
-        window_ptr->rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create(rendering_handler_name),
+        window_ptr->rendering_handler = ral_rendering_handler_create_with_fps_policy(window_ptr->backend_type,
+                                                                                     system_hashed_ansi_string_create(rendering_handler_name),
                                                                                      window_ptr->target_frame_rate,
-                                                                                     NULL,  /* pfn_rendering_callback */
-                                                                                     NULL); /* user_arg               */
+                                                                                     nullptr,  /* pfn_rendering_callback */
+                                                                                     nullptr); /* user_arg               */
     }
 
     /* Bind the rendering handler to the renderer window. Note that this also implicitly
@@ -264,13 +267,13 @@ PRIVATE bool _demo_window_init(_demo_window* window_ptr)
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                               &window_ptr->context);
 
-    ASSERT_DEBUG_SYNC(window_ptr->context != NULL,
+    ASSERT_DEBUG_SYNC(window_ptr->context != nullptr,
                       "Rendering context is NULL");
 
     /* Create a flyby instance */
     window_ptr->flyby = demo_flyby_create(window_ptr->context);
 
-    ASSERT_DEBUG_SYNC(window_ptr->flyby != NULL,
+    ASSERT_DEBUG_SYNC(window_ptr->flyby != nullptr,
                       "Could not create a flyby instance");
 
     /* Set up a timeline object instance */
@@ -280,9 +283,9 @@ PRIVATE bool _demo_window_init(_demo_window* window_ptr)
                                                     window_ptr->context,
                                                     window_ptr->window);
 
-        if (window_ptr->timeline == NULL)
+        if (window_ptr->timeline == nullptr)
         {
-            ASSERT_DEBUG_SYNC(window_ptr->timeline != NULL,
+            ASSERT_DEBUG_SYNC(window_ptr->timeline != nullptr,
                               "Could not create a demo_timeline instance");
 
             goto end;
@@ -333,11 +336,11 @@ PRIVATE void _demo_window_window_closing_callback_handler(void* unused,
 {
     _demo_window* window_ptr = (_demo_window*) window;
 
-    if (window_ptr->loader != NULL)
+    if (window_ptr->loader != nullptr)
     {
         demo_loader_release(window_ptr->loader);
 
-        window_ptr->loader = NULL;
+        window_ptr->loader = nullptr;
     }
 
     /* All done */
@@ -360,7 +363,7 @@ PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* windo
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
                                         (void*) _demo_window_window_closing_callback_handler,
                                         window_ptr);
-    } /* if (should_subscribe) */
+    }
     else
     {
         system_window_delete_callback_func(window_ptr->window,
@@ -386,25 +389,25 @@ PUBLIC EMERALD_API bool demo_window_add_callback_func(demo_window               
     _demo_window* window_ptr = (_demo_window*) window;
 
     /* Sanity checks */
-    if (window_ptr == NULL)
+    if (window_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(window_ptr != NULL,
+        ASSERT_DEBUG_SYNC(window_ptr != nullptr,
                           "Input demo_window instance is NULL");
 
         goto end;
     }
 
-    if (window_ptr->window == NULL)
+    if (window_ptr->window == nullptr)
     {
-        ASSERT_DEBUG_SYNC(window_ptr->window != NULL,
+        ASSERT_DEBUG_SYNC(window_ptr->window != nullptr,
                           "No system_window instance associated with the specified demo_window object.");
 
         goto end;
     }
 
-    if (pfn_callback_func == NULL)
+    if (pfn_callback_func == nullptr)
     {
-        ASSERT_DEBUG_SYNC(pfn_callback_func != NULL,
+        ASSERT_DEBUG_SYNC(pfn_callback_func != nullptr,
                           "Input call-back function pointer is NULL");
 
         goto end;
@@ -432,33 +435,36 @@ PUBLIC bool demo_window_close(demo_window window)
     bool          result     = false;
     _demo_window* window_ptr = (_demo_window*) window;
 
-    if (window == NULL)
+    if (window == nullptr)
     {
         goto end;
     }
 
-    if (window_ptr->rendering_handler != NULL)
+    if (window_ptr->rendering_handler != nullptr)
     {
-        ogl_rendering_handler_stop(window_ptr->rendering_handler);
+        ral_rendering_handler_stop(window_ptr->rendering_handler);
     }
 
-    if (window_ptr->rendering_handler != NULL)
+    if (window_ptr->rendering_handler != nullptr)
     {
-        ogl_rendering_handler_release(window_ptr->rendering_handler);
+        ral_rendering_handler_release(window_ptr->rendering_handler);
 
-        window_ptr->rendering_handler = NULL;
+        window_ptr->rendering_handler = nullptr;
     }
 
-    if (window_ptr->window != NULL)
+    if (window_ptr->window != nullptr)
     {
         system_window_close(window_ptr->window);
 
-        window_ptr->window = NULL;
+        window_ptr->window = nullptr;
     }
 
     result = true;
 end:
-    system_event_set(window_ptr->window_closed_event);
+    if (window_ptr != nullptr)
+    {
+        system_event_set(window_ptr->window_closed_event);
+    }
 
     return result;
 }
@@ -473,10 +479,15 @@ PUBLIC demo_window demo_window_create(system_hashed_ansi_string      name,
                                                                backend_type,
                                                                use_timeline);
 
-    ASSERT_ALWAYS_SYNC(window_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(window_ptr != nullptr,
                        "Out of memory");
 
-    window_ptr->should_run_fullscreen = create_info.fullscreen;
+    if (window_ptr == nullptr)
+    {
+        goto end;
+    }
+
+    window_ptr->should_run_fullscreen               = create_info.fullscreen;
     window_ptr->loader_setup_callback_proc_user_arg = create_info.loader_callback_func_user_arg;
     window_ptr->pfn_loader_setup_callback_proc      = create_info.pfn_loader_callback_func_ptr;
     window_ptr->refresh_rate                        = create_info.refresh_rate;
@@ -488,6 +499,7 @@ PUBLIC demo_window demo_window_create(system_hashed_ansi_string      name,
 
     _demo_window_init(window_ptr);
 
+end:
     return (demo_window) window_ptr;
 }
 
@@ -512,7 +524,7 @@ PUBLIC void demo_window_get_private_property(const demo_window            window
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized demo_window_private_property value.");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
@@ -574,7 +586,7 @@ PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
 
         case DEMO_WINDOW_PROPERTY_RENDERING_HANDLER:
         {
-            *(ogl_rendering_handler*) out_result_ptr = window_ptr->rendering_handler;
+            *(ral_rendering_handler*) out_result_ptr = window_ptr->rendering_handler;
 
             break;
         }
@@ -621,26 +633,26 @@ PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized demo_app_property value used for a demo_app_get_property() call.");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool demo_window_stop_rendering(demo_window window)
 {
-    ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+    ral_rendering_handler_playback_status playback_status = RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
     bool                                  result          = false;
     _demo_window*                         window_ptr      = (_demo_window*) window;
 
     /* Sanity checks */
-    if (window == NULL)
+    if (window == nullptr)
     {
-        ASSERT_DEBUG_SYNC(window != NULL,
+        ASSERT_DEBUG_SYNC(window != nullptr,
                           "Input window instance is NULL");
 
         goto end;
     }
 
-    if (window_ptr->window == NULL)
+    if (window_ptr->window == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Specified window is not shown.");
@@ -648,11 +660,11 @@ PUBLIC EMERALD_API bool demo_window_stop_rendering(demo_window window)
         goto end;
     }
 
-    ogl_rendering_handler_get_property(window_ptr->rendering_handler,
-                                       OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+    ral_rendering_handler_get_property(window_ptr->rendering_handler,
+                                       RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
                                       &playback_status);
 
-    if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
+    if (playback_status != RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
     {
         LOG_ERROR("No rendering active for the specified window.");
 
@@ -660,7 +672,7 @@ PUBLIC EMERALD_API bool demo_window_stop_rendering(demo_window window)
     }
 
     /* Pause the rendering */
-    result = ogl_rendering_handler_stop(window_ptr->rendering_handler);
+    result = ral_rendering_handler_stop(window_ptr->rendering_handler);
 
 end:
     return result;
@@ -671,29 +683,29 @@ PUBLIC void demo_window_release(demo_window window)
 {
     _demo_window* window_ptr = (_demo_window*) window;
 
-    ASSERT_DEBUG_SYNC(window != NULL,
+    ASSERT_DEBUG_SYNC(window != nullptr,
                       "Input demo_window instance is NULL");
 
-    if (window_ptr->loader != NULL)
+    if (window_ptr->loader != nullptr)
     {
         demo_loader_release(window_ptr->loader);
 
-        window_ptr->loader = NULL;
-    } /* if (window_ptr->loader != NULL) */
+        window_ptr->loader = nullptr;
+    }
 
-    if (window_ptr->timeline != NULL)
+    if (window_ptr->timeline != nullptr)
     {
         demo_timeline_release(window_ptr->timeline);
 
-        window_ptr->timeline = NULL;
-    } /* if (window_ptr->timeline != NULL) */
+        window_ptr->timeline = nullptr;
+    }
 
-    if (window_ptr->rendering_handler != NULL)
+    if (window_ptr->rendering_handler != nullptr)
     {
-        ogl_rendering_handler_release(window_ptr->rendering_handler);
+        ral_rendering_handler_release(window_ptr->rendering_handler);
 
-        window_ptr->rendering_handler = NULL;
-    } /* if (window_ptr->rendering_handler != NULL) */
+        window_ptr->rendering_handler = nullptr;
+    }
 
     /* Close the window */
     demo_window_close(window);
@@ -714,7 +726,7 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
     _demo_window* window_ptr = (_demo_window*) window;
 
     /* Sanity cvhecks */
-    if (window == NULL)
+    if (window == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input demo_window instance is NULL");
@@ -722,7 +734,7 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
         goto end;
     }
 
-    if (window_ptr->window == NULL)
+    if (window_ptr->window == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Specified window first needs to be shown, before rendering can commence");
@@ -733,11 +745,11 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
     /* If the user submitted a call-back to configure the loader, spawn one,
      * call the user's entry-point to set it up, and then load the enqueued
      * stuff */
-    if (window_ptr->pfn_loader_setup_callback_proc != NULL)
+    if (window_ptr->pfn_loader_setup_callback_proc != nullptr)
     {
         window_ptr->loader = demo_loader_create(window_ptr->context);
 
-        if (window_ptr->loader == NULL)
+        if (window_ptr->loader == nullptr)
         {
             ASSERT_DEBUG_SYNC(false,
                               "demo_loader_create() returned NULL");
@@ -765,8 +777,8 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
         else
         if (n_loaded_audio_streams == 1)
         {
-            audio_stream            loaded_audio_stream    = NULL;
-            system_callback_manager loaded_audio_stream_cm = NULL;
+            audio_stream            loaded_audio_stream    = nullptr;
+            system_callback_manager loaded_audio_stream_cm = nullptr;
 
             demo_loader_get_object_by_index(window_ptr->loader,
                                             DEMO_LOADER_OBJECT_TYPE_AUDIO_STREAM,
@@ -791,20 +803,20 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
             demo_loader_release_object_by_index(window_ptr->loader,
                                                 DEMO_LOADER_OBJECT_TYPE_AUDIO_STREAM,
                                                 0); /* index */
-        } /* if (n_loaded_audio_streams == 1) */
-    } /* if (window_ptr->pfn_loader_setup_callback_proc != NULL) */
+        }
+    }
 
     if (window_ptr->use_timeline)
     {
-        ogl_rendering_handler_set_property(window_ptr->rendering_handler,
-                                           OGL_RENDERING_HANDLER_PROPERTY_TIMELINE,
+        ral_rendering_handler_set_property(window_ptr->rendering_handler,
+                                           RAL_RENDERING_HANDLER_PROPERTY_TIMELINE,
                                           &window_ptr->timeline);
     }
 
     /* Launch the demo playback. If the call should be non-blocking, we need to move to a new thread. */
     window_ptr->rendering_start_time = rendering_start_time;
 
-    ogl_rendering_handler_play(window_ptr->rendering_handler,
+    ral_rendering_handler_play(window_ptr->rendering_handler,
                                window_ptr->rendering_start_time);
 
     result = true;
@@ -826,9 +838,9 @@ PUBLIC EMERALD_API bool demo_window_wait_until_closed(demo_window window)
     _demo_window* window_ptr = (_demo_window*) window;
 
     /* Sanity checks */
-    if (window == NULL)
+    if (window == nullptr)
     {
-        ASSERT_DEBUG_SYNC(window != NULL,
+        ASSERT_DEBUG_SYNC(window != nullptr,
                           "Input window is NULL");
 
         goto end;

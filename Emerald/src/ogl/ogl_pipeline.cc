@@ -10,8 +10,8 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_query.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -109,14 +109,14 @@ PRIVATE void _ogl_pipeline_release                                     (void*   
 /** TODO */
 PRIVATE void _ogl_pipeline_deinit_pipeline(_ogl_pipeline* pipeline_ptr)
 {
-    if (pipeline_ptr->context != NULL)
+    if (pipeline_ptr->context != nullptr)
     {
         ral_context_release(pipeline_ptr->context);
-    } /* if (pipeline_ptr->context != NULL) */
+    }
 
     while (true)
     {
-        _ogl_pipeline_stage* stage_ptr = NULL;
+        _ogl_pipeline_stage* stage_ptr = nullptr;
 
         if (system_resizable_vector_pop(pipeline_ptr->stages,
                                        &stage_ptr) )
@@ -124,20 +124,20 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(_ogl_pipeline* pipeline_ptr)
             _ogl_pipeline_deinit_pipeline_stage(stage_ptr);
 
             delete stage_ptr;
-            stage_ptr = NULL;
-        } /* if (system_resizable_vector_pop(pipeline_ptr->stages, &stage_ptr) ) */
+            stage_ptr = nullptr;
+        }
         else
         {
             break;
         }
-    } /* while (true) */
+    }
 
-    if (pipeline_ptr->ui_instance != NULL)
+    if (pipeline_ptr->ui_instance != nullptr)
     {
         ui_release(pipeline_ptr->ui_instance);
     }
 
-    if (pipeline_ptr->text_renderer != NULL)
+    if (pipeline_ptr->text_renderer != nullptr)
     {
         varia_text_renderer_release(pipeline_ptr->text_renderer);
     }
@@ -146,7 +146,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(_ogl_pipeline* pipeline_ptr)
 /** TODO */
 PRIVATE void _ogl_pipeline_deinit_pipeline_stage(_ogl_pipeline_stage* stage_ptr)
 {
-    _ogl_pipeline_stage_step* step_ptr = NULL;
+    _ogl_pipeline_stage_step* step_ptr = nullptr;
 
     while (system_resizable_vector_pop(stage_ptr->steps,
                                       &step_ptr) )
@@ -154,8 +154,8 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage(_ogl_pipeline_stage* stage_ptr)
         _ogl_pipeline_deinit_pipeline_stage_step(step_ptr);
 
         delete step_ptr;
-        step_ptr = NULL;
-    } /* while (system_resizable_vector_pop(stage_ptr, &step_ptr) ) */
+        step_ptr = nullptr;
+    }
 }
 
 /** TODO */
@@ -165,10 +165,10 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step(_ogl_pipeline_stage_step* 
                                                      _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback,
                                                      step_ptr);
 
-    if (step_ptr->context != NULL)
+    if (step_ptr->context != nullptr)
     {
         ral_context_release(step_ptr->context);
-    } /* if (step_ptr->context != NULL) */
+    }
 }
 
 /** TODO */
@@ -177,18 +177,18 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(ogl_cont
 {
     _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
 
-    if (step_ptr->primitives_generated_qo != NULL)
+    if (step_ptr->primitives_generated_qo != nullptr)
     {
         ogl_query_release(step_ptr->primitives_generated_qo);
 
-        step_ptr->primitives_generated_qo = NULL;
+        step_ptr->primitives_generated_qo = nullptr;
     }
 
-    if (step_ptr->timestamp_qo != NULL)
+    if (step_ptr->timestamp_qo != nullptr)
     {
         ogl_query_release(step_ptr->timestamp_qo);
 
-        step_ptr->timestamp_qo = NULL;
+        step_ptr->timestamp_qo = nullptr;
     }
 }
 
@@ -199,9 +199,9 @@ PRIVATE void _ogl_pipeline_init_pipeline(_ogl_pipeline*            pipeline_ptr,
                                          system_hashed_ansi_string name)
 {
     /* Retrieve output dimensions before continuing */
-    system_window         context_window        = NULL;
-    gfx_bfg_font_table    font_table            = system_resources_get_meiryo_font_table();
-    ogl_rendering_handler rendering_handler     = NULL;
+    system_window         context_window    = nullptr;
+    gfx_bfg_font_table    font_table        = system_resources_get_meiryo_font_table();
+    ral_rendering_handler rendering_handler = nullptr;
 
     ral_context_get_property(context,
                              RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -271,8 +271,8 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step(_ogl_pipeline_stage_step*  s
     step_ptr->n_primitives_generated        = 0;
     step_ptr->n_samples_gathered            = 0;
     step_ptr->pfn_step_callback             = pfn_step_callback;
-    step_ptr->primitives_generated_qo       = NULL;
-    step_ptr->timestamp_qo                  = NULL;
+    step_ptr->primitives_generated_qo       = nullptr;
+    step_ptr->timestamp_qo                  = nullptr;
     step_ptr->step_callback_user_arg        = step_callback_user_arg;
 
     /* Zero out gathered execution times */
@@ -312,16 +312,16 @@ PRIVATE void _ogl_pipeline_release(void* pipeline)
 PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
 {
     _ogl_pipeline*       pipeline_ptr       = (_ogl_pipeline*) instance;
-    _ogl_pipeline_stage* pipeline_stage_ptr = NULL;
+    _ogl_pipeline_stage* pipeline_stage_ptr = nullptr;
     uint32_t             result_stage_id    = -1;
 
     /* Instantiate new stage descriptor */
     pipeline_stage_ptr = new (std::nothrow) _ogl_pipeline_stage;
 
-    ASSERT_DEBUG_SYNC(pipeline_stage_ptr != NULL,
+    ASSERT_DEBUG_SYNC(pipeline_stage_ptr != nullptr,
                       "Out of memory");
 
-    if (pipeline_stage_ptr != NULL)
+    if (pipeline_stage_ptr != nullptr)
     {
         /* Initialize */
         _ogl_pipeline_init_pipeline_stage(pipeline_stage_ptr);
@@ -341,7 +341,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
         system_resizable_vector_insert_element_at(pipeline_ptr->stages,
                                                   result_stage_id,
                                                   pipeline_stage_ptr);
-    } /* if (pipeline_stage_ptr != NULL) */
+    }
 
     return result_stage_id;
 }
@@ -351,9 +351,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                                                         uint32_t                                   n_stage,
                                                         const ogl_pipeline_stage_step_declaration* step_ptr)
 {
-    _ogl_pipeline_stage_step* new_step_ptr       = NULL;
+    _ogl_pipeline_stage_step* new_step_ptr       = nullptr;
     _ogl_pipeline*            pipeline_ptr       = (_ogl_pipeline*) instance;
-    _ogl_pipeline_stage*      pipeline_stage_ptr = NULL;
+    _ogl_pipeline_stage*      pipeline_stage_ptr = nullptr;
     uint32_t                  result             = -1;
 
     /* Retrieve stage descriptor */
@@ -364,10 +364,10 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
         /* Instantiate new step descriptor */
         new_step_ptr = new (std::nothrow) _ogl_pipeline_stage_step;
 
-        ASSERT_DEBUG_SYNC(new_step_ptr != NULL,
+        ASSERT_DEBUG_SYNC(new_step_ptr != nullptr,
                           "Out of memory");
 
-        if (new_step_ptr != NULL)
+        if (new_step_ptr != nullptr)
         {
             /* Initialize new step */
             _ogl_pipeline_init_pipeline_stage_step(new_step_ptr,
@@ -456,13 +456,13 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                               n < n_pipeline_stages + 1;
                             ++n)
                 {
-                    _ogl_pipeline_stage_step* pipeline_stage_step_ptr = NULL;
+                    _ogl_pipeline_stage_step* pipeline_stage_step_ptr = nullptr;
 
                     system_resizable_vector_get_element_at(pipeline_stage_ptr->steps,
                                                            n,
                                                           &pipeline_stage_step_ptr);
 
-                    if (pipeline_stage_step_ptr != NULL)
+                    if (pipeline_stage_step_ptr != nullptr)
                     {
                         int text_y           = START_Y + n * pipeline_ptr->text_y_delta;
                         int time_position[2] = {text_width_px, text_y};
@@ -471,11 +471,11 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                                                                      pipeline_stage_step_ptr->text_time_index,
                                                                      VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
                                                                      time_position);
-                    } /* if (pipeline_stage_step_ptr != NULL) */
+                    }
                 }
             }
         }
-    } /* if (system_resizable_vector_get_element_at(pipeline_ptr->stages, n_stage, &pipeline_stage_ptr) ) */
+    }
     else
     {
         ASSERT_DEBUG_SYNC(false, "Could not retrieve stage descriptor");
@@ -492,7 +492,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline      
     uint32_t result_stage_id = -1;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(pipeline != NULL,
+    ASSERT_DEBUG_SYNC(pipeline != nullptr,
                       "Input rendering pipeline is NULL");
     ASSERT_DEBUG_SYNC(n_steps > 0,
                       "No steps to add");
@@ -509,7 +509,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline      
         ogl_pipeline_add_stage_step(pipeline,
                                     result_stage_id,
                                     steps + n_step);
-    } /* for (all rendering passes) */
+    }
 
     return result_stage_id;
 }
@@ -521,10 +521,10 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ral_c
 {
     _ogl_pipeline* pipeline_ptr = new (std::nothrow) _ogl_pipeline;
 
-    ASSERT_DEBUG_SYNC(pipeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(pipeline_ptr != nullptr,
                       "Out of memory");
 
-    if (pipeline_ptr != NULL)
+    if (pipeline_ptr != nullptr)
     {
         _ogl_pipeline_init_pipeline(pipeline_ptr,
                                     context,
@@ -536,7 +536,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ral_c
                                                        OBJECT_TYPE_OGL_PIPELINE,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Pipelines\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
-    } /* if (pipeline_ptr != NULL) */
+    }
 
     return (ogl_pipeline) pipeline_ptr;
 }
@@ -548,15 +548,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                                        system_time  time,
                                                                        const int*   rendering_area_px_topdown)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points   = NULL;
-    const ogl_context_gl_entrypoints*                         entry_points       = NULL;
-    demo_flyby                                                flyby              = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points   = nullptr;
+    const ogl_context_gl_entrypoints*                         entry_points       = nullptr;
+    demo_flyby                                                flyby              = nullptr;
     bool                                                      is_stage_dirty     = false;
     uint32_t                                                  n_stages           = 0;
     _ogl_pipeline*                                            pipeline_ptr       = (_ogl_pipeline*) instance;
-    _ogl_pipeline_stage*                                      pipeline_stage_ptr = NULL;
+    _ogl_pipeline_stage*                                      pipeline_stage_ptr = nullptr;
     bool                                                      result             = false;
-    demo_window                                               window             = NULL;
+    demo_window                                               window             = nullptr;
 
     ral_context_get_property(pipeline_ptr->context,
                              RAL_CONTEXT_PROPERTY_WINDOW_DEMO,
@@ -582,7 +582,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                       n_current_stage < n_stages;
                     ++n_current_stage)
         {
-            _ogl_pipeline_stage* current_stage_ptr     = NULL;
+            _ogl_pipeline_stage* current_stage_ptr     = nullptr;
             uint32_t             n_current_stage_steps = 0;
             bool                 should_be_visible     = (n_current_stage == n_stage);
 
@@ -590,7 +590,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                    n_current_stage,
                                                   &current_stage_ptr);
 
-            ASSERT_DEBUG_SYNC(current_stage_ptr != NULL,
+            ASSERT_DEBUG_SYNC(current_stage_ptr != nullptr,
                               "Could not retrieve pipeline stage descriptor at index [%d]",
                               n_current_stage);
 
@@ -602,13 +602,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                           n_current_stage_step < n_current_stage_steps;
                         ++n_current_stage_step)
             {
-                _ogl_pipeline_stage_step* current_stage_step_ptr = NULL;
+                _ogl_pipeline_stage_step* current_stage_step_ptr = nullptr;
 
                 system_resizable_vector_get_element_at(current_stage_ptr->steps,
                                                        n_current_stage_step,
                                                       &current_stage_step_ptr);
 
-                ASSERT_DEBUG_SYNC(current_stage_step_ptr != NULL,
+                ASSERT_DEBUG_SYNC(current_stage_step_ptr != nullptr,
                                   "Could not retrieve pipeline stage step descriptor at index [%d] for stage [%d]",
                                   n_current_stage_step,
                                   n_current_stage);
@@ -621,9 +621,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                              current_stage_step_ptr->text_string_index,
                                                              VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
                                                             &should_be_visible);
-            } /* for (all stage steps for the current pipeline stage) */
-        } /* for (all pipeline stages) */
-    } /* if (pipeline_ptr->should_overlay_performance_info) */
+            }
+        }
+    }
 
     /* Let's render the pipeline stage. Retrieve the stage descriptor first */
     if (system_resizable_vector_get_element_at(pipeline_ptr->stages,
@@ -646,7 +646,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
         if (is_flyby_active)
         {
             demo_flyby_update(flyby);
-        } /* if (demo_flyby_is_active(pipeline_ptr->context) ) */
+        }
 
         /* Execute one step at a time. Launch a query for every step, so that we can gather execution times
          * after all steps finish running and show the times */
@@ -678,13 +678,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                     ogl_query_end(step_ptr->timestamp_qo);
                     ogl_query_end(step_ptr->primitives_generated_qo);
                 }
-            } /* if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps, n_step, &step_ptr) ) */
+            }
             else
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve step descriptor");
             }
-        } /* for (uint32_t n_step = 0; n_step < n_steps; ++n_step) */
+        }
 
         /* If any UI controls are around, draw them now */
         ui_draw(pipeline_ptr->ui_instance);
@@ -729,7 +729,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                         ++n_sample)
                             {
                                 summed_sample_time += step_ptr->execution_times[n_sample];
-                            } /* for (uint32_t n_sample = 0; n_sample < N_SAMPLES_PER_UPDATE; ++n_sample) */
+                            }
 
                             step_ptr->average_sample_time = summed_sample_time / N_SAMPLES_PER_UPDATE;
                             step_ptr->n_samples_gathered  = 0;
@@ -740,15 +740,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
 
                             /* Average step time was updated - mark the stage as dirty */
                             is_stage_dirty = true;
-                        } /* if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE) */
-                    } /* if (primitives generated QO data available) */
-                } /* if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps, n_step, &step_ptr) )*/
+                        }
+                    }
+                }
                 else
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "Could not retrieve step descriptor");
                 }
-            } /* for (size_t n_step = 0; n_step < n_steps; ++n_step) */
+            }
 
             /* Update stage strings if marked as dirty */
             if (is_stage_dirty)
@@ -789,12 +789,12 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
                                                 buffer);
                     }
                 }
-            } /* if (is_stage_dirty) */
+            }
 
             /* Render the results as a final pass */
             varia_text_renderer_draw(pipeline_ptr->context,
                                      pipeline_ptr->text_renderer);
-        } /* if (pipeline_ptr->should_overlay_performance_info) */
+        }
 
         result = true;
     }

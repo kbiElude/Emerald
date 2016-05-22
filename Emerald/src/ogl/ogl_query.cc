@@ -1,12 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_query.h"
-#include "ogl/ogl_rendering_handler.h"
+#include "raGL/raGL_rendering_handler.h"
 #include "ral/ral_context.h"
 #include "system/system_log.h"
 
@@ -95,7 +95,7 @@ _ogl_query::_ogl_query(ral_context  in_context,
     ring_buffer_size = in_ring_buffer_size;
     target_gl        = in_target_gl;
 
-    ASSERT_DEBUG_SYNC(qo_items != NULL,
+    ASSERT_DEBUG_SYNC(qo_items != nullptr,
                       "Out of memory");
 
     ral_context_get_property(context,
@@ -109,36 +109,36 @@ _ogl_query::_ogl_query(ral_context  in_context,
 
     if (backend_type == RAL_BACKEND_TYPE_GL)
     {
-        const ogl_context_gl_entrypoints* entry_points = NULL;
+        const ogl_context_gl_entrypoints* entry_points_ptr = nullptr;
 
         ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                &entry_points);
+                                &entry_points_ptr);
 
-        pGLBeginQuery          = entry_points->pGLBeginQuery;
-        pGLDeleteQueries       = entry_points->pGLDeleteQueries;
-        pGLEndQuery            = entry_points->pGLEndQuery;
-        pGLGenQueries          = entry_points->pGLGenQueries;
-        pGLGetQueryObjectuiv   = NULL; /* not needed, we're using the 64-bit version instead */
-        pGLGetQueryObjectui64v = entry_points->pGLGetQueryObjectui64v;
-    } /* if (context_type == OGL_CONTEXT_TYPE_GL) */
+        pGLBeginQuery          = entry_points_ptr->pGLBeginQuery;
+        pGLDeleteQueries       = entry_points_ptr->pGLDeleteQueries;
+        pGLEndQuery            = entry_points_ptr->pGLEndQuery;
+        pGLGenQueries          = entry_points_ptr->pGLGenQueries;
+        pGLGetQueryObjectuiv   = nullptr; /* not needed, we're using the 64-bit version instead */
+        pGLGetQueryObjectui64v = entry_points_ptr->pGLGetQueryObjectui64v;
+    }
     else
     {
         ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES,
                           "Unrecognized rendering backend type");
 
-        const ogl_context_es_entrypoints* entry_points = NULL;
+        const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
 
         ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                &entry_points);
+                                &entry_points_ptr);
 
-        pGLBeginQuery          = entry_points->pGLBeginQuery;
-        pGLDeleteQueries       = entry_points->pGLDeleteQueries;
-        pGLEndQuery            = entry_points->pGLEndQuery;
-        pGLGenQueries          = entry_points->pGLGenQueries;
-        pGLGetQueryObjectuiv   = entry_points->pGLGetQueryObjectuiv;
-        pGLGetQueryObjectui64v = NULL;
+        pGLBeginQuery          = entry_points_ptr->pGLBeginQuery;
+        pGLDeleteQueries       = entry_points_ptr->pGLDeleteQueries;
+        pGLEndQuery            = entry_points_ptr->pGLEndQuery;
+        pGLGenQueries          = entry_points_ptr->pGLGenQueries;
+        pGLGetQueryObjectuiv   = entry_points_ptr->pGLGetQueryObjectuiv;
+        pGLGetQueryObjectui64v = nullptr;
     }
 
     /* Initialize the object */
@@ -155,12 +155,12 @@ _ogl_query::~_ogl_query()
                                                      _ogl_query_deinit_renderer_callback,
                                                      this);
 
-    if (qo_items != NULL)
+    if (qo_items != nullptr)
     {
         delete [] qo_items;
 
-        qo_items = NULL;
-    } /* if (qo_ids != NULL) */
+        qo_items = nullptr;
+    }
 }
 
 
@@ -178,7 +178,7 @@ PRIVATE void _ogl_query_deinit_renderer_callback(ogl_context context,
                                    &query_ptr->qo_items[n_item].gl_id);
 
         query_ptr->qo_items[n_item].gl_id = 0;
-    } /* for (all items) */
+    }
 }
 
 /** TODO */
@@ -193,7 +193,7 @@ PRIVATE void _ogl_query_init_renderer_callback(ogl_context context,
     {
         query_ptr->pGLGenQueries(1, /* n */
                                 &query_ptr->qo_items[n_item].gl_id);
-    } /* for (all items) */
+    }
 }
 
 
@@ -227,14 +227,14 @@ PUBLIC ogl_query ogl_query_create(ral_context  context,
                                   unsigned int ring_buffer_size,
                                   GLenum       gl_query_target)
 {
-    _ogl_query* new_instance = new (std::nothrow) _ogl_query(context,
-                                                             ring_buffer_size,
-                                                             gl_query_target);
+    _ogl_query* new_instance_ptr = new (std::nothrow) _ogl_query(context,
+                                                                 ring_buffer_size,
+                                                                 gl_query_target);
 
-    ASSERT_ALWAYS_SYNC(new_instance != NULL,
+    ASSERT_ALWAYS_SYNC(new_instance_ptr != nullptr,
                        "Out of memory");
 
-    return (ogl_query) new_instance;
+    return (ogl_query) new_instance_ptr;
 }
 
 /** Please see header for spec */
@@ -269,7 +269,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(ogl_query query,
     bool should_force = ( (query_ptr->index_current + 1) % query_ptr->ring_buffer_size == query_ptr->index_peek);
 
     /* ES offers glGetQueryObjectuiv(), whereas under OpenGL we have glGetQueryObjectui64v() */
-    if (query_ptr->pGLGetQueryObjectui64v != NULL)
+    if (query_ptr->pGLGetQueryObjectui64v != nullptr)
     {
         /* GL code-path */
         GLuint64 temp = -1;
@@ -306,7 +306,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(ogl_query query,
             /* Update the index */
             query_ptr->index_peek = index_peek;
         }
-    } /* if (query_ptr->pGLGetQueryObjectui64v != NULL) */
+    }
     else
     {
         /* ES code-path */
@@ -330,7 +330,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(ogl_query query,
 
             /* Update the index */
             query_ptr->index_peek = index_peek;
-        } /* if (is_result_available || should_force) */
+        }
     }
 
     return result;

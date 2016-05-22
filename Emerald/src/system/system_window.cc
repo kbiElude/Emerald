@@ -8,9 +8,9 @@
 #include "audio/audio_stream.h"
 #include "demo/demo_app.h"
 #include "demo/demo_window.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_types.h"
 #include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_constants.h"
 #include "system/system_critical_section.h"
@@ -87,7 +87,7 @@ typedef struct
 
     system_pixel_format   pf;
     ral_context           rendering_context;
-    ogl_rendering_handler rendering_handler;
+    ral_rendering_handler rendering_handler;
 
     system_event         window_initialized_event;
     system_event         window_safe_to_release_event;
@@ -134,13 +134,13 @@ typedef struct
  *
  * When accessing, make sure you lock spawned_windows_cs critical section.
  */
-system_resizable_vector spawned_windows = NULL;
+system_resizable_vector spawned_windows = nullptr;
 /* Critical section for read/write access to spawned_windows. */
-system_critical_section spawned_windows_cs = NULL;
+system_critical_section spawned_windows_cs = nullptr;
 
 /** TODO. Only use when n_total_windows_spawned_cs is locked */
 unsigned int            n_total_windows_spawned    = 0;
-system_critical_section n_total_windows_spawned_cs = NULL;
+system_critical_section n_total_windows_spawned_cs = nullptr;
 
 
 /* Forward declarations */
@@ -165,39 +165,39 @@ PRIVATE void          _system_window_window_closing_rendering_thread_entrypoint(
 /** TODO */
 PRIVATE void _deinit_system_window(_system_window* window_ptr)
 {
-    if (window_ptr->callbacks_cs != NULL)
+    if (window_ptr->callbacks_cs != nullptr)
     {
         system_critical_section_release(window_ptr->callbacks_cs);
 
-        window_ptr->callbacks_cs = NULL;
+        window_ptr->callbacks_cs = nullptr;
     }
 
-    if (window_ptr->pf != NULL)
+    if (window_ptr->pf != nullptr)
     {
         system_pixel_format_release(window_ptr->pf);
 
-        window_ptr->pf = NULL;
+        window_ptr->pf = nullptr;
     }
 
-    if (window_ptr->window_safe_to_release_event != NULL)
+    if (window_ptr->window_safe_to_release_event != nullptr)
     {
         system_event_release(window_ptr->window_safe_to_release_event);
 
-        window_ptr->window_safe_to_release_event = NULL;
+        window_ptr->window_safe_to_release_event = nullptr;
     }
 
-    if (window_ptr->window_initialized_event != NULL)
+    if (window_ptr->window_initialized_event != nullptr)
     {
         system_event_release(window_ptr->window_initialized_event);
 
-        window_ptr->window_initialized_event = NULL;
+        window_ptr->window_initialized_event = nullptr;
     }
 
-    if (window_ptr->window_thread_event != NULL)
+    if (window_ptr->window_thread_event != nullptr)
     {
         system_event_release(window_ptr->window_thread_event);
 
-        window_ptr->window_thread_event = NULL;
+        window_ptr->window_thread_event = nullptr;
     }
 
     /* Release callback descriptors */
@@ -234,7 +234,7 @@ PRIVATE void _deinit_system_window(_system_window* window_ptr)
 
         while (n_callbacks > 0)
         {
-            _callback_descriptor* descriptor_ptr = NULL;
+            _callback_descriptor* descriptor_ptr = nullptr;
 
             if (system_resizable_vector_get_element_at(callback_vectors[n],
                                                        0,
@@ -254,46 +254,46 @@ PRIVATE void _deinit_system_window(_system_window* window_ptr)
         system_resizable_vector_release(callback_vectors[n]);
     }
 
-    if (window_ptr->pf != NULL)
+    if (window_ptr->pf != nullptr)
     {
         system_pixel_format_release(window_ptr->pf);
 
-        window_ptr->pf = NULL;
+        window_ptr->pf = nullptr;
     }
 
-    if (window_ptr->rendering_handler != NULL)
+    if (window_ptr->rendering_handler != nullptr)
     {
-        ogl_rendering_handler_release(window_ptr->rendering_handler);
+        ral_rendering_handler_release(window_ptr->rendering_handler);
 
-        window_ptr->rendering_handler = NULL;
+        window_ptr->rendering_handler = nullptr;
     }
 
     /* At this point it should be safe to release the audio stream */
-    if (window_ptr->audio_strm != NULL)
+    if (window_ptr->audio_strm != nullptr)
     {
         audio_stream_release(window_ptr->audio_strm);
 
-        window_ptr->audio_strm = NULL;
+        window_ptr->audio_strm = nullptr;
     }
 }
 
 /** TODO */
 PRIVATE void _init_system_window(_system_window* window_ptr)
 {
-    window_ptr->audio_strm                   = NULL;
+    window_ptr->audio_strm                   = nullptr;
     window_ptr->is_cursor_visible            = false;
     window_ptr->is_fullscreen                = false;
     window_ptr->is_scalable                  = false;
-    window_ptr->pf                           = NULL;
+    window_ptr->pf                           = nullptr;
     window_ptr->title                        = system_hashed_ansi_string_get_default_empty_string();
     window_ptr->window_mouse_cursor          = SYSTEM_WINDOW_MOUSE_CURSOR_ARROW;
     window_ptr->x1y1x2y2[0]                  = 0;
     window_ptr->x1y1x2y2[1]                  = 0;
     window_ptr->x1y1x2y2[2]                  = 0;
     window_ptr->x1y1x2y2[3]                  = 0;
-    window_ptr->parent_window_handle         = (system_window_handle) NULL;
-    window_ptr->rendering_context            = NULL;
-    window_ptr->rendering_handler            = NULL;
+    window_ptr->parent_window_handle         = (system_window_handle) nullptr;
+    window_ptr->rendering_context            = nullptr;
+    window_ptr->rendering_handler            = nullptr;
     window_ptr->window_safe_to_release_event = system_event_create(true); /* manual_reset */
     window_ptr->window_initialized_event     = system_event_create(true); /* manual_reset */
 
@@ -317,7 +317,7 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
     window_ptr->window_closing_callbacks             = system_resizable_vector_create(1);
 
     #ifdef INCLUDE_WEBCAM_MANAGER
-        window_ptr->webcam_device_notification_handle = NULL;
+        window_ptr->webcam_device_notification_handle = nullptr;
     #endif
 
     #ifdef _WIN32
@@ -340,9 +340,9 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
         window_ptr->window_platform = system_window_linux_init( (system_window) window_ptr);
     #endif
 
-    ASSERT_ALWAYS_SYNC(window_ptr->window_safe_to_release_event != NULL,
+    ASSERT_ALWAYS_SYNC(window_ptr->window_safe_to_release_event != nullptr,
                        "Could not create safe-to-release event.");
-    ASSERT_ALWAYS_SYNC(window_ptr->window_initialized_event != NULL,
+    ASSERT_ALWAYS_SYNC(window_ptr->window_initialized_event != nullptr,
                        "Could not create window initialized event.");
 }
 
@@ -355,9 +355,9 @@ PRIVATE void _system_window_thread_entrypoint(void* in_arg)
     /* Open the window */
     static bool is_first_window = true;
 
-    ASSERT_DEBUG_SYNC(window_ptr->pf != NULL,
+    ASSERT_DEBUG_SYNC(window_ptr->pf != nullptr,
                       "Pixel format is not set for the window instance");
-    ASSERT_DEBUG_SYNC(window_ptr->window_platform != NULL,
+    ASSERT_DEBUG_SYNC(window_ptr->window_platform != nullptr,
                       "Platform-specific window instance is NULL");
 
     window_ptr->pfn_window_open_window(window_ptr->window_platform,
@@ -376,25 +376,25 @@ PRIVATE void _system_window_thread_entrypoint(void* in_arg)
      * by itself */
     window_ptr->pfn_window_handle_window(window_ptr->window_platform);
 
-    if (window_ptr->rendering_context != NULL)
+    if (window_ptr->rendering_context != nullptr)
     {
         ral_context_release(window_ptr->rendering_context);
 
-        window_ptr->rendering_context = NULL;
+        window_ptr->rendering_context = nullptr;
     }
 
-    if (window_ptr->rendering_handler != NULL)
+    if (window_ptr->rendering_handler != nullptr)
     {
-        ogl_rendering_handler_release(window_ptr->rendering_handler);
+        ral_rendering_handler_release(window_ptr->rendering_handler);
 
-        window_ptr->rendering_handler = NULL;
+        window_ptr->rendering_handler = nullptr;
     }
 
-    if (window_ptr->window_platform != NULL)
+    if (window_ptr->window_platform != nullptr)
     {
         window_ptr->pfn_window_deinit_window(window_ptr->window_platform);
 
-        window_ptr->window_platform = NULL;
+        window_ptr->window_platform = nullptr;
     }
 
     system_event_set(window_ptr->window_safe_to_release_event);
@@ -413,7 +413,7 @@ PUBLIC bool system_window_add_callback_func(system_window                       
     bool                  result             = false;
     _system_window*       window_ptr         = (_system_window*) window;
 
-    if (new_descriptor_ptr != NULL)
+    if (new_descriptor_ptr != nullptr)
     {
         new_descriptor_ptr->pfn_callback = pfn_callback_func;
         new_descriptor_ptr->priority     = priority;
@@ -422,7 +422,7 @@ PUBLIC bool system_window_add_callback_func(system_window                       
         system_critical_section_enter(window_ptr->callbacks_cs);
         {
             /* NOTE: Modifying this? Update system_window_delete_callback_func() as well */
-            system_resizable_vector callback_container = NULL;
+            system_resizable_vector callback_container = nullptr;
 
             switch (callback_func)
             {
@@ -572,7 +572,7 @@ PUBLIC bool system_window_add_callback_func(system_window                       
                     result = false;
                     break;
                 }
-            } /* switch (callback_func) */
+            }
 
             if (result)
             {
@@ -588,7 +588,7 @@ PUBLIC bool system_window_add_callback_func(system_window                       
                               n_element < n_elements;
                             ++n_element)
                 {
-                    _callback_descriptor* existing_descriptor_ptr = NULL;
+                    _callback_descriptor* existing_descriptor_ptr = nullptr;
 
                     if (system_resizable_vector_get_element_at(callback_container,
                                                                n_element,
@@ -600,15 +600,15 @@ PUBLIC bool system_window_add_callback_func(system_window                       
 
                             break;
                         }
-                    } /* if (system_resizable_vector_get_element_at(callback_container, n_element, &existing_descriptor_ptr) ) */
-                } /* for (uint32_t n_element = 0; n_element < n_elements; ++n_element) */
+                    }
+                }
 
                 /* Insert */
                 if ( should_use_priority && insertion_index == -1)
                 {
                     system_resizable_vector_push(callback_container,
                                                  new_descriptor_ptr);
-                } /* if (should_use_priority && insertion_index == -1) */
+                }
                 else
                 if (!should_use_priority)
                 {
@@ -622,7 +622,7 @@ PUBLIC bool system_window_add_callback_func(system_window                       
                                                               insertion_index,
                                                               new_descriptor_ptr);
                 }
-            } /* if (result) */
+            }
         }
         system_critical_section_leave(window_ptr->callbacks_cs);
     }
@@ -636,27 +636,27 @@ PUBLIC bool system_window_close(system_window window)
     _system_window* window_ptr = (_system_window*) window;
 
     /* If there is a rendering handler and it is active, stop it before we continue */
-    if (window_ptr->rendering_handler != NULL)
+    if (window_ptr->rendering_handler != nullptr)
     {
-        ogl_rendering_handler_playback_status playback_status;
+        ral_rendering_handler_playback_status playback_status;
 
-        ogl_rendering_handler_get_property(window_ptr->rendering_handler,
-                                           OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+        ral_rendering_handler_get_property(window_ptr->rendering_handler,
+                                           RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
                                           &playback_status);
 
-        if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+        if (playback_status != RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
         {
-            ogl_rendering_handler_stop(window_ptr->rendering_handler);
+            ral_rendering_handler_stop(window_ptr->rendering_handler);
         }
     }
 
     #ifdef INCLUDE_WEBCAM_MANAGER
         /* If there is a notification handler installed, deinstall it now */
-        if (window_ptr->webcam_device_notification_handle != NULL)
+        if (window_ptr->webcam_device_notification_handle != nullptr)
         {
             ::UnregisterDeviceNotification(window_ptr->webcam_device_notification_handle);
 
-            window_ptr->webcam_device_notification_handle = NULL;
+            window_ptr->webcam_device_notification_handle = nullptr;
         }
     #endif /* INCLUDE_WEBCAM_MANAGER */
 
@@ -707,50 +707,50 @@ PRIVATE system_window _system_window_create_shared(demo_window               own
                                                    bool                      visible,
                                                    system_pixel_format       pf)
 {
-    _system_window* new_window = new (std::nothrow) _system_window;
+    _system_window* new_window_ptr = new (std::nothrow) _system_window;
 
-    ASSERT_ALWAYS_SYNC(new_window != NULL,
+    ASSERT_ALWAYS_SYNC(new_window_ptr != nullptr,
                        "Out of memory while creating system window instance");
 
-    if (new_window != NULL)
+    if (new_window_ptr != nullptr)
     {
-        _init_system_window(new_window);
+        _init_system_window(new_window_ptr);
 
         /* Fill the descriptor with input values */
-        new_window->backend_type         = backend_type;
-        new_window->is_closing           = false;
-        new_window->is_cursor_visible    = false;
-        new_window->is_fullscreen        = is_fullscreen;
-        new_window->is_scalable          = is_scalable;
-        new_window->owner_window         = owner_window;
-        new_window->parent_window_handle = parent_window_handle;
-        new_window->pf                   = pf;
-        new_window->screen_mode          = screen_mode;
-        new_window->title                = title;
-        new_window->visible              = visible;
-        new_window->vsync_enabled        = vsync_enabled;
+        new_window_ptr->backend_type         = backend_type;
+        new_window_ptr->is_closing           = false;
+        new_window_ptr->is_cursor_visible    = false;
+        new_window_ptr->is_fullscreen        = is_fullscreen;
+        new_window_ptr->is_scalable          = is_scalable;
+        new_window_ptr->owner_window         = owner_window;
+        new_window_ptr->parent_window_handle = parent_window_handle;
+        new_window_ptr->pf                   = pf;
+        new_window_ptr->screen_mode          = screen_mode;
+        new_window_ptr->title                = title;
+        new_window_ptr->visible              = visible;
+        new_window_ptr->vsync_enabled        = vsync_enabled;
 
-        if (x1y1x2y2 != NULL)
+        if (x1y1x2y2 != nullptr)
         {
-            new_window->x1y1x2y2[0] = x1y1x2y2[0];
-            new_window->x1y1x2y2[1] = x1y1x2y2[1];
-            new_window->x1y1x2y2[2] = x1y1x2y2[2];
-            new_window->x1y1x2y2[3] = x1y1x2y2[3];
+            new_window_ptr->x1y1x2y2[0] = x1y1x2y2[0];
+            new_window_ptr->x1y1x2y2[1] = x1y1x2y2[1];
+            new_window_ptr->x1y1x2y2[2] = x1y1x2y2[2];
+            new_window_ptr->x1y1x2y2[3] = x1y1x2y2[3];
         }
         else
         {
-            ASSERT_DEBUG_SYNC(screen_mode != NULL,
+            ASSERT_DEBUG_SYNC(screen_mode != nullptr,
                               "Both x1y1x2y2 and screen_mode arguments are NULL (screen mode requested by app is unsupported?)");
 
-            new_window->x1y1x2y2[0] = 0;
-            new_window->x1y1x2y2[1] = 0;
+            new_window_ptr->x1y1x2y2[0] = 0;
+            new_window_ptr->x1y1x2y2[1] = 0;
 
             system_screen_mode_get_property(screen_mode,
                                             SYSTEM_SCREEN_MODE_PROPERTY_WIDTH,
-                                            new_window->x1y1x2y2 + 2);
+                                            new_window_ptr->x1y1x2y2 + 2);
             system_screen_mode_get_property(screen_mode,
                                             SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT,
-                                            new_window->x1y1x2y2 + 3);
+                                            new_window_ptr->x1y1x2y2 + 3);
         }
 
         /* Activate the requested screen mode, if we're dealing with a full-screen window. */
@@ -773,14 +773,14 @@ PRIVATE system_window _system_window_create_shared(demo_window               own
                               "Only one full-screen window can be created during application's life-time");
             ASSERT_DEBUG_SYNC(n_total_windows_spawned == 0,
                               "No other windows can be created alongside a full-screen window");
-            ASSERT_DEBUG_SYNC(screen_mode != NULL,
+            ASSERT_DEBUG_SYNC(screen_mode != nullptr,
                               "NULL screen_mode instance for a full-screen window");
 
             /* Close all rendering windows before we continue */
-            demo_window               current_window      = NULL;
-            system_hashed_ansi_string current_window_name = NULL;
+            demo_window               current_window      = nullptr;
+            system_hashed_ansi_string current_window_name = nullptr;
 
-            while ((current_window = demo_app_get_window_by_index(0)) != NULL)
+            while ((current_window = demo_app_get_window_by_index(0)) != nullptr)
             {
                 demo_window_get_property(current_window,
                                          DEMO_WINDOW_PROPERTY_NAME,
@@ -794,8 +794,8 @@ PRIVATE system_window _system_window_create_shared(demo_window               own
             n_fullscreen_windows_spawned++;
         }
 
-        if (new_window->window_safe_to_release_event != NULL &&
-            new_window->window_initialized_event     != NULL)
+        if (new_window_ptr->window_safe_to_release_event != nullptr &&
+            new_window_ptr->window_initialized_event     != nullptr)
         {
             /* Spawn root window, if there's none around. */
             int  current_n_total_windows_spawned;
@@ -816,18 +816,18 @@ PRIVATE system_window _system_window_create_shared(demo_window               own
                      system_hashed_ansi_string_get_buffer(title) );
 
             system_threads_spawn(_system_window_thread_entrypoint,
-                                 new_window,
-                                &new_window->window_thread_event,
+                                 new_window_ptr,
+                                &new_window_ptr->window_thread_event,
                                  system_hashed_ansi_string_create(temp_buffer) );
 
             /* Wait until window finishes initialization */
-            system_event_wait_single(new_window->window_initialized_event);
+            system_event_wait_single(new_window_ptr->window_initialized_event);
 
             /* Insert the window handle into the 'spawned windows' vector */
             system_critical_section_enter(spawned_windows_cs);
             {
                 system_resizable_vector_push(spawned_windows,
-                                             new_window);
+                                             new_window_ptr);
             }
             system_critical_section_leave(spawned_windows_cs);
 
@@ -837,13 +837,13 @@ PRIVATE system_window _system_window_create_shared(demo_window               own
         }
         else
         {
-            delete new_window;
-            new_window = NULL;
+            delete new_window_ptr;
+            new_window_ptr = nullptr;
         }
     }
 
 
-    return (system_window) new_window;
+    return (system_window) new_window_ptr;
 }
 
 
@@ -855,7 +855,7 @@ PUBLIC system_window system_window_create_by_replacing_window(demo_window       
                                                               system_window_handle      parent_window_handle,
                                                               system_pixel_format       pf)
 {
-    system_window result = NULL;
+    system_window result = nullptr;
 
     #ifdef _WIN32
     {
@@ -884,7 +884,7 @@ PUBLIC system_window system_window_create_by_replacing_window(demo_window       
                                                   backend_type,
                                                   false,  /* not fullscreen */
                                                   x1y1x2y2,
-                                                  NULL,  /* screen_mode */
+                                                  nullptr,  /* screen_mode */
                                                   name,
                                                   false, /* not scalable */
                                                   vsync_enabled,
@@ -917,11 +917,11 @@ PUBLIC system_window system_window_create_not_fullscreen(demo_window            
                                         backend_type,
                                         false,
                                         x1y1x2y2,
-                                        NULL, /* screen_mode */
+                                        nullptr, /* screen_mode */
                                         title,
                                         scalable,
                                         vsync_enabled,
-                                        (system_window_handle) NULL, /* parent_window_handle */
+                                        (system_window_handle) nullptr, /* parent_window_handle */
                                         visible,
                                         pf);
 }
@@ -938,12 +938,12 @@ PUBLIC system_window system_window_create_fullscreen(demo_window         owner_w
     return _system_window_create_shared(owner_window,
                                         backend_type,
                                         true,
-                                        NULL, /* x1y1x2y2 */
+                                        nullptr, /* x1y1x2y2 */
                                         mode,
                                         system_hashed_ansi_string_get_default_empty_string(),
                                         false, /* scalable */
                                         vsync_enabled,
-                                        (system_window_handle) NULL,  /* parent_window_handle */
+                                        (system_window_handle) nullptr,  /* parent_window_handle */
                                         true,  /* visible */
                                         pf);
 }
@@ -957,9 +957,9 @@ PUBLIC bool system_window_delete_callback_func(system_window               windo
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window_instance;
 
-    if (window_ptr != NULL)
+    if (window_ptr != nullptr)
     {
-        system_resizable_vector callbacks_container = NULL;
+        system_resizable_vector callbacks_container = nullptr;
 
         system_critical_section_enter(window_ptr->callbacks_cs);
         {
@@ -1082,9 +1082,9 @@ PUBLIC bool system_window_delete_callback_func(system_window               windo
 
                     break;
                 }
-            } /* switch (callback_func) */
+            }
 
-            if (callbacks_container != NULL)
+            if (callbacks_container != nullptr)
             {
                 size_t n_callbacks = 0;
 
@@ -1096,7 +1096,7 @@ PUBLIC bool system_window_delete_callback_func(system_window               windo
                             n_callback < n_callbacks;
                           ++n_callback)
                 {
-                    _callback_descriptor* callback_ptr = NULL;
+                    _callback_descriptor* callback_ptr = nullptr;
 
                     if (system_resizable_vector_get_element_at(callbacks_container,
                                                                n_callback,
@@ -1109,19 +1109,19 @@ PUBLIC bool system_window_delete_callback_func(system_window               windo
                                                                       n_callback);
 
                             delete callback_ptr;
-                            callback_ptr = NULL;
+                            callback_ptr = nullptr;
 
                             result = true;
                             break;
-                        } /* if (callback_ptr->pfn_callback == pfn_callback_func && callback_ptr->user_arg == user_arg) */
-                    } /* if (system_resizable_vector_get_element_at(callbacks_container, n_callback, &callback_ptr) ) */
-                } /* for (size_t n_callback = 0; n_callback < n_callbacks; ++n_callback) */
+                        }
+                    }
+                }
 
                 if (!result)
                 {
                     LOG_ERROR("Could not delete callback function - corresponding descriptor was not found.");
-                } /* if (!result) */
-            } /* if (callbacks_container != NULL) */
+                }
+            }
         }
         system_critical_section_leave(window_ptr->callbacks_cs);
     }
@@ -1135,7 +1135,7 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
                                                  void*                       arg1,
                                                  void*                       arg2)
 {
-    system_resizable_vector callback_vector  = NULL;
+    system_resizable_vector callback_vector  = nullptr;
     unsigned int            n_callback_funcs = 0;
     bool                    needs_cursor_pos = false;
     _system_window*         window_ptr       = (_system_window*) window;
@@ -1279,9 +1279,9 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized call-back function type");
         }
-    } /* switch (func) */
+    }
 
-    if (callback_vector != NULL)
+    if (callback_vector != nullptr)
     {
         int cursor_position[2];
 
@@ -1304,7 +1304,7 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
                           n_callback_func < n_callback_funcs;
                         ++n_callback_func)
             {
-                _callback_descriptor* callback_ptr = NULL;
+                _callback_descriptor* callback_ptr = nullptr;
 
                 if (system_resizable_vector_get_element_at(callback_vector,
                                                            n_callback_func,
@@ -1493,17 +1493,17 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
                             ASSERT_DEBUG_SYNC(false,
                                               "Unrecognized call-back function type");
                         }
-                    } /* switch (func) */
+                    }
 
                     if (!result)
                     {
                         break;
                     }
-                } /* if (callback descriptor was retrieved) */
-            } /* for (all call-back functions) */
+                }
+            }
         }
         system_critical_section_leave(window_ptr->callbacks_cs);
-    } /* if (callback_vector != NULL) */
+    }
 }
 
 /** Please see header for specification */
@@ -1547,141 +1547,141 @@ PUBLIC bool system_window_get_centered_window_position_for_primary_monitor(const
 /* Please see header for spec */
 PUBLIC EMERALD_API void system_window_get_property(system_window          window,
                                                    system_window_property property,
-                                                   void*                  out_result)
+                                                   void*                  out_result_ptr)
 {
     _system_window* window_ptr = (_system_window*) window;
 
-    if (window_ptr->window_platform != NULL)
+    if (window_ptr->window_platform != nullptr)
     {
         bool result = window_ptr->pfn_window_get_property(window_ptr->window_platform,
                                                           property,
-                                                          out_result);
+                                                          out_result_ptr);
 
         if (result)
         {
             /* Result value returned. */
             goto end;
         }
-    } /* if (window_ptr->window_platform != NULL) */
+    }
 
     switch (property)
     {
         case SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM:
         {
-            *(audio_stream*) out_result = window_ptr->audio_strm;
+            *(audio_stream*) out_result_ptr = window_ptr->audio_strm;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_BACKEND_TYPE:
         {
-            *(ral_backend_type*) out_result = window_ptr->backend_type;
+            *(ral_backend_type*) out_result_ptr = window_ptr->backend_type;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_DIMENSIONS:
         {
-            ((int*) out_result)[0] = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
-            ((int*) out_result)[1] = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
+            ((int*) out_result_ptr)[0] = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
+            ((int*) out_result_ptr)[1] = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_CLOSED:
         {
-            *(bool*) out_result = system_event_wait_single_peek(window_ptr->window_safe_to_release_event);
+            *(bool*) out_result_ptr = system_event_wait_single_peek(window_ptr->window_safe_to_release_event);
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_CLOSING:
         {
-            *(bool*) out_result = window_ptr->is_closing;
+            *(bool*) out_result_ptr = window_ptr->is_closing;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN:
         {
-            *(bool*) out_result = window_ptr->is_fullscreen;
+            *(bool*) out_result_ptr = window_ptr->is_fullscreen;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_SCALABLE:
         {
-            *(bool*) out_result = window_ptr->is_scalable;
+            *(bool*) out_result_ptr = window_ptr->is_scalable;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_VISIBLE:
         {
-            *(bool*) out_result = window_ptr->visible;
+            *(bool*) out_result_ptr = window_ptr->visible;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED:
         {
-            *(bool*) out_result = window_ptr->vsync_enabled;
+            *(bool*) out_result_ptr = window_ptr->vsync_enabled;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = window_ptr->title;
+            *(system_hashed_ansi_string*) out_result_ptr = window_ptr->title;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE:
         {
-            *(system_window_handle*) out_result = window_ptr->parent_window_handle;
+            *(system_window_handle*) out_result_ptr = window_ptr->parent_window_handle;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT:
         {
-            *(system_pixel_format*) out_result = window_ptr->pf;
+            *(system_pixel_format*) out_result_ptr = window_ptr->pf;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL:
         {
-            *(ral_context*) out_result = window_ptr->rendering_context;
+            *(ral_context*) out_result_ptr = window_ptr->rendering_context;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
         {
-            *(ogl_rendering_handler*) out_result = window_ptr->rendering_handler;
+            *(ral_rendering_handler*) out_result_ptr = window_ptr->rendering_handler;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_SCREEN_MODE:
         {
-            *(system_screen_mode*) out_result = window_ptr->screen_mode;
+            *(system_screen_mode*) out_result_ptr = window_ptr->screen_mode;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_TITLE:
         {
-            *(system_hashed_ansi_string*) out_result = window_ptr->title;
+            *(system_hashed_ansi_string*) out_result_ptr = window_ptr->title;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    window_ptr->x1y1x2y2,
                    sizeof(window_ptr->x1y1x2y2) );
 
@@ -1693,7 +1693,7 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized system_window_property value.");
         }
-    } /* switch (property) */
+    }
 
 end:
     ;
@@ -1737,29 +1737,29 @@ PUBLIC bool system_window_set_property(system_window          window,
         {
             case SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM:
             {
-                ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+                ral_rendering_handler_playback_status playback_status = RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
 
-                if (window_ptr->rendering_handler != NULL)
+                if (window_ptr->rendering_handler != nullptr)
                 {
-                    ogl_rendering_handler_get_property(window_ptr->rendering_handler,
-                                                       OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                    ral_rendering_handler_get_property(window_ptr->rendering_handler,
+                                                       RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
                                                       &playback_status);
-                } /* if (window_ptr->rendering_handler != NULL) */
+                }
 
-                ASSERT_DEBUG_SYNC(playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED,
+                ASSERT_DEBUG_SYNC(playback_status == RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED,
                                   "Cannot assign an audio device to a rendering window while the rendering playback is in progress.");
 
-                if (playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+                if (playback_status == RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
                 {
-                    audio_device stream_audio_device           = NULL;
+                    audio_device stream_audio_device           = nullptr;
                     bool         stream_audio_device_activated = false;
 
-                    ASSERT_DEBUG_SYNC(window_ptr->audio_strm == NULL,
+                    ASSERT_DEBUG_SYNC(window_ptr->audio_strm == nullptr,
                                       "TODO: Support for switching audio streams in system_window.");
 
                     window_ptr->audio_strm = *(audio_stream*) data;
 
-                    ASSERT_DEBUG_SYNC(window_ptr->audio_strm != NULL,
+                    ASSERT_DEBUG_SYNC(window_ptr->audio_strm != nullptr,
                                       "A NULL audio stream was assigned to a window instance");
 
                     /* Retain the stream. We don't want the instance to die in the middle of playback */
@@ -1772,7 +1772,7 @@ PUBLIC bool system_window_set_property(system_window          window,
                                               AUDIO_STREAM_PROPERTY_AUDIO_DEVICE,
                                              &stream_audio_device);
 
-                    ASSERT_DEBUG_SYNC(stream_audio_device != NULL,
+                    ASSERT_DEBUG_SYNC(stream_audio_device != nullptr,
                                       "No audio device associated with the audio_stream instance?!");
 
                     audio_device_get_property(stream_audio_device,
@@ -1787,8 +1787,8 @@ PUBLIC bool system_window_set_property(system_window          window,
                             ASSERT_ALWAYS_SYNC(false,
                                                "Could not activate the audio device associated with the audio_stream instance");
                         }
-                    } /* if (!stream_audio_device_initialize) */
-                } /* if (playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+                    }
+                }
 
                 break;
             }
@@ -1823,49 +1823,49 @@ PUBLIC bool system_window_set_property(system_window          window,
 
             case SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL:
             {
-                if (window_ptr->rendering_context != NULL)
+                if (window_ptr->rendering_context != nullptr)
                 {
                     ral_context_release(window_ptr->rendering_context);
                 }
 
                 window_ptr->rendering_context = *(ral_context*) data;
 
-                ASSERT_DEBUG_SYNC(window_ptr->rendering_context == NULL,
+                ASSERT_DEBUG_SYNC(window_ptr->rendering_context == nullptr,
                                   "SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL property should only be used for internal purposes");
                 break;
             }
 
             case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
             {
-                ogl_rendering_handler new_rendering_handler = *(ogl_rendering_handler*) data;
+                ral_rendering_handler new_rendering_handler = *(ral_rendering_handler*) data;
 
-                ASSERT_DEBUG_SYNC(new_rendering_handler != NULL,
+                ASSERT_DEBUG_SYNC(new_rendering_handler != nullptr,
                                   "Cannot set a null rendering buffer!");
 
-                if (window_ptr->rendering_handler == NULL &&
-                    new_rendering_handler         != NULL)
+                if (window_ptr->rendering_handler == nullptr &&
+                    new_rendering_handler         != nullptr)
                 {
                     window_ptr->rendering_handler = new_rendering_handler;
                     result                        = true;
 
-                    ogl_rendering_handler_retain(new_rendering_handler);
+                    ral_rendering_handler_retain(new_rendering_handler);
 
                     /* With a rendering handle in place, we can now create a rendering context for the window */
-                    ASSERT_DEBUG_SYNC(window_ptr->rendering_context == NULL,
+                    ASSERT_DEBUG_SYNC(window_ptr->rendering_context == nullptr,
                                       "Rendering context already assigned to the window");
 
                     window_ptr->rendering_context = ral_context_create(window_ptr->title,
                                                                        window_ptr->owner_window);
 
-                    if (window_ptr->rendering_context == NULL)
+                    if (window_ptr->rendering_context == nullptr)
                     {
                         LOG_FATAL("Could not create OGL context for window [%s]",
                                   system_hashed_ansi_string_get_buffer(window_ptr->title) );
                     }
 
                     /* Resume the rendering thread - everything is now set up. */
-                    _ogl_rendering_handler_on_bound_to_context(window_ptr->rendering_handler,
-                                                               ((_system_window*)window)->rendering_context);
+                    ral_rendering_handler_bind_to_context(window_ptr->rendering_handler,
+                                                          ((_system_window*)window)->rendering_context);
                 }
 
                 break;
@@ -1892,7 +1892,7 @@ PUBLIC bool system_window_set_property(system_window          window,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized system_window_property value");
             }
-        } /* switch (property) */
+        }
     }
 
     return result;

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  * Shader storage buffer data layout is as follows
  *
@@ -18,7 +18,6 @@
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
@@ -26,6 +25,7 @@
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
@@ -226,11 +226,11 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage                   (og
 PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_context context,
                                                                       void*       text)
 {
-    raGL_program          draw_text_program_raGL    = NULL;
+    raGL_program          draw_text_program_raGL    = nullptr;
     GLuint                draw_text_program_raGL_id = -1;
     _varia_text_renderer* text_ptr                  = (_varia_text_renderer*) text;
 
-    if (context == NULL)
+    if (context == nullptr)
     {
         context = ral_context_get_gl_context(text_ptr->context);
     }
@@ -251,7 +251,7 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
         draw_text_vs_create_info
     };
     const uint32_t n_shader_create_info_items                 = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
-    ral_shader     result_shaders[n_shader_create_info_items] = { NULL };
+    ral_shader     result_shaders[n_shader_create_info_items] = { nullptr };
 
     const ral_program_create_info draw_text_program_create_info =
     {
@@ -334,10 +334,10 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
     }
 
     /* Retrieve uniform locations */
-    const ral_program_variable*   fragment_shader_color_ral_ptr            = NULL;
-    const _raGL_program_variable* fragment_shader_font_table_raGL_ptr      = NULL;
-    const ral_program_variable*   vertex_shader_n_origin_character_ral_ptr = NULL;
-    const ral_program_variable*   vertex_shader_scale_ral_ptr              = NULL;
+    const ral_program_variable*   fragment_shader_color_ral_ptr            = nullptr;
+    const _raGL_program_variable* fragment_shader_font_table_raGL_ptr      = nullptr;
+    const ral_program_variable*   vertex_shader_n_origin_character_ral_ptr = nullptr;
+    const ral_program_variable*   vertex_shader_scale_ral_ptr              = nullptr;
 
     draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
                                                         text_ptr->draw_text_program);
@@ -524,28 +524,28 @@ PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context
     _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
     /* First, free all objects that are not global */
-    if (text_ptr->data_buffer != NULL)
+    if (text_ptr->data_buffer != nullptr)
     {
         ral_context_delete_objects(text_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
                                    (const void**) &text_ptr->data_buffer);
 
-        text_ptr->data_buffer = NULL;
+        text_ptr->data_buffer = nullptr;
     }
 
-    if (text_ptr->fsdata_ub != NULL)
+    if (text_ptr->fsdata_ub != nullptr)
     {
         ral_program_block_buffer_release(text_ptr->fsdata_ub);
 
-        text_ptr->fsdata_ub = NULL;
+        text_ptr->fsdata_ub = nullptr;
     }
 
-    if (text_ptr->vsdata_ub != NULL)
+    if (text_ptr->vsdata_ub != nullptr)
     {
         ral_program_block_buffer_release(text_ptr->vsdata_ub);
 
-        text_ptr->vsdata_ub = NULL;
+        text_ptr->vsdata_ub = nullptr;
     }
 
     /* Get rid of all the shaders and programs */
@@ -559,14 +559,14 @@ PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context
                                1, /* n_textures */
                                (const void**) &text_ptr->font_table_to);
 
-    if (text_ptr->draw_text_program_data_ssb != NULL)
+    if (text_ptr->draw_text_program_data_ssb != nullptr)
     {
         ral_program_block_buffer_release(text_ptr->draw_text_program_data_ssb);
 
-        text_ptr->draw_text_program_data_ssb = NULL;
+        text_ptr->draw_text_program_data_ssb = nullptr;
     }
 
-    text_ptr->draw_text_program                                    = NULL;
+    text_ptr->draw_text_program                                    = nullptr;
     text_ptr->draw_text_fragment_shader_color_ub_offset            = -1;
     text_ptr->draw_text_fragment_shader_font_table_location        = -1;
     text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset = -1;
@@ -636,7 +636,7 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
 
             /* Bind data BO to the 0-th SSBO BP */
             GLuint      data_buffer_id                = 0;
-            raGL_buffer data_buffer_raGL              = NULL;
+            raGL_buffer data_buffer_raGL              = nullptr;
             uint32_t    data_buffer_raGL_start_offset = -1;
             uint32_t    data_buffer_ral_start_offset  = -1;
 
@@ -669,15 +669,15 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
 
             /* Draw! */
             GLuint      ub_fsdata_bo_id                =  0;
-            raGL_buffer ub_fsdata_bo_raGL              = NULL;
+            raGL_buffer ub_fsdata_bo_raGL              = nullptr;
             uint32_t    ub_fsdata_bo_raGL_start_offset = -1;
-            ral_buffer  ub_fsdata_bo_ral               = NULL;
+            ral_buffer  ub_fsdata_bo_ral               = nullptr;
             uint32_t    ub_fsdata_bo_ral_start_offset  = -1;
             uint32_t    ub_fsdata_bo_size              =  0;
             GLuint      ub_vsdata_bo_id                =  0;
-            raGL_buffer ub_vsdata_bo_raGL              = NULL;
+            raGL_buffer ub_vsdata_bo_raGL              = nullptr;
             uint32_t    ub_vsdata_bo_raGL_start_offset = -1;
-            ral_buffer  ub_vsdata_bo_ral               = NULL;
+            ral_buffer  ub_vsdata_bo_ral               = nullptr;
             uint32_t    ub_vsdata_bo_ral_start_offset  = -1;
             uint32_t    ub_vsdata_bo_size              =  0;
 
@@ -744,7 +744,7 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
                               n_string < n_strings;
                             ++n_string)
                 {
-                    _varia_text_renderer_text_string* string_ptr = NULL;
+                    _varia_text_renderer_text_string* string_ptr = nullptr;
 
                     system_resizable_vector_get_element_at(text_ptr->strings,
                                                            n_string,
@@ -794,7 +794,7 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
                     }
 
                     n_characters_drawn_so_far += string_ptr->string_length;
-                } /* for (uint32_t n_string = 0; n_string < n_strings; ++n_string) */
+                }
 
                 if (has_enabled_scissor_test)
                 {
@@ -805,7 +805,7 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
 
             /* Clean up */
             text_ptr->pGLUseProgram (0);
-        } /* if (n_strings > 0) */
+        }
     }
     system_critical_section_leave(text_ptr->draw_cs);
 }
@@ -821,25 +821,25 @@ PRIVATE void _varia_text_renderer_release(void* text)
                                                      text);
 
     /* Release other stuff */
-    if (text_ptr->data_buffer_contents != NULL)
+    if (text_ptr->data_buffer_contents != nullptr)
     {
         delete [] text_ptr->data_buffer_contents;
 
-        text_ptr->data_buffer_contents = NULL;
+        text_ptr->data_buffer_contents = nullptr;
     }
 
-    if (text_ptr->draw_cs != NULL)
+    if (text_ptr->draw_cs != nullptr)
     {
         system_critical_section_release(text_ptr->draw_cs);
 
-        text_ptr->draw_cs = NULL;
+        text_ptr->draw_cs = nullptr;
     }
 
-    if (text_ptr->strings != NULL)
+    if (text_ptr->strings != nullptr)
     {
         system_resizable_vector_release(text_ptr->strings);
 
-        text_ptr->strings = NULL;
+        text_ptr->strings = nullptr;
     }
 }
 
@@ -866,7 +866,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
                 n_text_string < n_text_strings;
               ++n_text_string)
     {
-        _varia_text_renderer_text_string* string_ptr = NULL;
+        _varia_text_renderer_text_string* string_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                    n_text_string,
@@ -874,7 +874,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
         {
             summed_text_length += string_ptr->string_length;
         }
-    } /* for (uint32_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string) */
+    }
 
     if (text_ptr->data_buffer_contents_length < summed_text_length)
     {
@@ -882,27 +882,27 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
         ral_buffer_create_info alloc_info;
 
         /* Need to reallocate */
-        if (text_ptr->data_buffer_contents != NULL)
+        if (text_ptr->data_buffer_contents != nullptr)
         {
             delete [] text_ptr->data_buffer_contents;
 
-            text_ptr->data_buffer_contents = NULL;
-        } /* if (text_ptr->data_buffer_contents != NULL)*/
+            text_ptr->data_buffer_contents = nullptr;
+        }
 
         text_ptr->data_buffer_contents_length = summed_text_length;
         text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
         text_ptr->data_buffer_contents        = (char*) new (std::nothrow) char[text_ptr->data_buffer_contents_size];
 
-        ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != NULL,
+        ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != nullptr,
                            "Out of memory");
 
-        if (text_ptr->data_buffer_contents == NULL)
+        if (text_ptr->data_buffer_contents == nullptr)
         {
             return;
         }
 
         /* This implies we also need to resize the buffer object */
-        if (text_ptr->data_buffer != NULL)
+        if (text_ptr->data_buffer != nullptr)
         {
             /* Free the region first */
             ral_context_delete_objects(text_ptr->context,
@@ -910,11 +910,11 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
                                        1, /* n_buffers */
                                        (const void**) &text_ptr->data_buffer);
 
-            text_ptr->data_buffer = NULL;
+            text_ptr->data_buffer = nullptr;
         }
 
         alloc_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-        alloc_info.parent_buffer    = NULL;
+        alloc_info.parent_buffer    = nullptr;
         alloc_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
         alloc_info.size             = text_ptr->data_buffer_contents_size;
         alloc_info.start_offset     = 0;
@@ -928,7 +928,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
 
         ASSERT_DEBUG_SYNC(alloc_result,
                           "Text data buffer allocation failed.");
-    } /* if (text_ptr->data_buffer_contents_length < summed_text_length) */
+    }
 
     /* Iterate through each character and prepare the data for uploading */
     float*   character_data_traveller_ptr = (float*) text_ptr->data_buffer_contents;
@@ -939,7 +939,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
                 n_text_string < n_text_strings;
               ++n_text_string)
     {
-        _varia_text_renderer_text_string* string_ptr = NULL;
+        _varia_text_renderer_text_string* string_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                    n_text_string,
@@ -976,9 +976,9 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
 
                 summed_x_delta               += x_delta;
                 character_data_traveller_ptr += 8;
-            } /* for (uint32_t n_character = 0; n_character < string_ptr->string_length; ++n_character) */
-        } /* if (system_resizable_vector_get_element_at(text_ptr->strings, n_text_string, &string_ptr) ) */
-    } /* for (size_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string) */
+            }
+        }
+    }
 
     /* Upload the data */
     ral_buffer_client_sourced_update_info                                data_update;
@@ -1003,14 +1003,14 @@ PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_st
 {
     varia_text_renderer_text_string_id result          = 0;
     _varia_text_renderer*              text_ptr        = (_varia_text_renderer*) text;
-    _varia_text_renderer_text_string*  text_string_ptr = NULL;
+    _varia_text_renderer_text_string*  text_string_ptr = nullptr;
 
     text_string_ptr = new (std::nothrow) _varia_text_renderer_text_string;
 
-    ASSERT_DEBUG_SYNC(text_string_ptr != NULL,
+    ASSERT_DEBUG_SYNC(text_string_ptr != nullptr,
                       "Out of memory");
 
-    if (text_string_ptr != NULL)
+    if (text_string_ptr != nullptr)
     {
         memcpy(text_string_ptr->color,
                text_ptr->default_color,
@@ -1024,7 +1024,7 @@ PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_st
         text_string_ptr->scissor_box[1]       = -1;
         text_string_ptr->scissor_box[2]       = -1;
         text_string_ptr->scissor_box[3]       = -1;
-        text_string_ptr->string               = NULL;
+        text_string_ptr->string               = nullptr;
         text_string_ptr->string_buffer_length = 0;
         text_string_ptr->string_length        = 0;
         text_string_ptr->width_px             = 0;
@@ -1041,7 +1041,7 @@ PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_st
                                          text_string_ptr);
         }
         system_critical_section_leave(text_ptr->draw_cs);
-    } /* if (text_string_ptr != NULL) */
+    }
 
     return result;
 }
@@ -1054,13 +1054,13 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
                                                                   uint32_t                  screen_width,
                                                                   uint32_t                  screen_height)
 {
-    _varia_text_renderer* result_ptr = NULL;
+    _varia_text_renderer* result_ptr = nullptr;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(context != NULL,
+    ASSERT_DEBUG_SYNC(context != nullptr,
                       "Input context is null!");
 
-    if (context == NULL)
+    if (context == nullptr)
     {
         LOG_ERROR("Input context is null - cannot create text instance.");
 
@@ -1070,10 +1070,10 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
     /* Instantiate the new object */
     result_ptr = new (std::nothrow) _varia_text_renderer;
 
-    ASSERT_ALWAYS_SYNC(result_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(result_ptr != nullptr,
                        "Could not allocate memory for text instance.");
 
-    if (result_ptr == NULL)
+    if (result_ptr == nullptr)
     {
         LOG_FATAL("Could not allocate memory for text instance.");
 
@@ -1097,17 +1097,17 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
         result_ptr->draw_cs          = system_critical_section_create();
         result_ptr->font_table       = font_table;
         result_ptr->fsdata_index     = -1;
-        result_ptr->fsdata_ub        = NULL;
+        result_ptr->fsdata_ub        = nullptr;
         result_ptr->name             = name;
         result_ptr->owner_context    = context;
         result_ptr->screen_width     = screen_width;
         result_ptr->screen_height    = screen_height;
         result_ptr->strings          = system_resizable_vector_create(4 /* default capacity */);
         result_ptr->vsdata_index     = -1;
-        result_ptr->vsdata_ub        = NULL;
+        result_ptr->vsdata_ub        = nullptr;
 
         /* Retrieve TBO alignment requirement */
-        const ogl_context_gl_limits* limits_ptr = NULL;
+        const ogl_context_gl_limits* limits_ptr = nullptr;
 
         ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
@@ -1124,74 +1124,74 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints*                    entry_points    = NULL;
-            const ogl_context_es_entrypoints_ext_texture_buffer* ts_entry_points = NULL;
+            const ogl_context_es_entrypoints*                    entry_points_ptr    = nullptr;
+            const ogl_context_es_entrypoints_ext_texture_buffer* ts_entry_points_ptr = nullptr;
 
             ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entry_points);
+                                    &entry_points_ptr);
             ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER,
-                                    &ts_entry_points);
+                                    &ts_entry_points_ptr);
 
-            result_ptr->pGLActiveTexture      = entry_points->pGLActiveTexture;
-            result_ptr->pGLBindBuffer         = entry_points->pGLBindBuffer;
-            result_ptr->pGLBindBufferRange    = entry_points->pGLBindBufferRange;
-            result_ptr->pGLBindSampler        = entry_points->pGLBindSampler;
-            result_ptr->pGLBindTexture        = entry_points->pGLBindTexture;
-            result_ptr->pGLBindVertexArray    = entry_points->pGLBindVertexArray;
-            result_ptr->pGLBlendEquation      = entry_points->pGLBlendEquation;
-            result_ptr->pGLBlendFunc          = entry_points->pGLBlendFunc;
-            result_ptr->pGLDeleteVertexArrays = entry_points->pGLDeleteVertexArrays;
-            result_ptr->pGLDisable            = entry_points->pGLDisable;
-            result_ptr->pGLDrawArrays         = entry_points->pGLDrawArrays;
-            result_ptr->pGLEnable             = entry_points->pGLEnable;
-            result_ptr->pGLGenVertexArrays    = entry_points->pGLGenVertexArrays;
-            result_ptr->pGLGenerateMipmap     = entry_points->pGLGenerateMipmap;
-            result_ptr->pGLProgramUniform1i   = entry_points->pGLProgramUniform1i;
-            result_ptr->pGLScissor            = entry_points->pGLScissor;
-            result_ptr->pGLTexBufferRange     = ts_entry_points->pGLTexBufferRangeEXT;
-            result_ptr->pGLTexParameteri      = entry_points->pGLTexParameteri;
-            result_ptr->pGLUseProgram         = entry_points->pGLUseProgram;
-            result_ptr->pGLViewport           = entry_points->pGLViewport;
+            result_ptr->pGLActiveTexture      = entry_points_ptr->pGLActiveTexture;
+            result_ptr->pGLBindBuffer         = entry_points_ptr->pGLBindBuffer;
+            result_ptr->pGLBindBufferRange    = entry_points_ptr->pGLBindBufferRange;
+            result_ptr->pGLBindSampler        = entry_points_ptr->pGLBindSampler;
+            result_ptr->pGLBindTexture        = entry_points_ptr->pGLBindTexture;
+            result_ptr->pGLBindVertexArray    = entry_points_ptr->pGLBindVertexArray;
+            result_ptr->pGLBlendEquation      = entry_points_ptr->pGLBlendEquation;
+            result_ptr->pGLBlendFunc          = entry_points_ptr->pGLBlendFunc;
+            result_ptr->pGLDeleteVertexArrays = entry_points_ptr->pGLDeleteVertexArrays;
+            result_ptr->pGLDisable            = entry_points_ptr->pGLDisable;
+            result_ptr->pGLDrawArrays         = entry_points_ptr->pGLDrawArrays;
+            result_ptr->pGLEnable             = entry_points_ptr->pGLEnable;
+            result_ptr->pGLGenVertexArrays    = entry_points_ptr->pGLGenVertexArrays;
+            result_ptr->pGLGenerateMipmap     = entry_points_ptr->pGLGenerateMipmap;
+            result_ptr->pGLProgramUniform1i   = entry_points_ptr->pGLProgramUniform1i;
+            result_ptr->pGLScissor            = entry_points_ptr->pGLScissor;
+            result_ptr->pGLTexBufferRange     = ts_entry_points_ptr->pGLTexBufferRangeEXT;
+            result_ptr->pGLTexParameteri      = entry_points_ptr->pGLTexParameteri;
+            result_ptr->pGLUseProgram         = entry_points_ptr->pGLUseProgram;
+            result_ptr->pGLViewport           = entry_points_ptr->pGLViewport;
         }
         else
         {
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized backend type");
 
-            const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
-            const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+            const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points_ptr = nullptr;
+            const ogl_context_gl_entrypoints*                         entry_points_ptr     = nullptr;
 
             ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entry_points);
+                                    &entry_points_ptr);
             ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                                    &dsa_entry_points);
+                                    &dsa_entry_points_ptr);
 
-            result_ptr->gl_pGLPolygonMode           = entry_points->pGLPolygonMode;
-            result_ptr->gl_pGLTextureParameteriEXT  = dsa_entry_points->pGLTextureParameteriEXT;
-            result_ptr->pGLActiveTexture            = entry_points->pGLActiveTexture;
-            result_ptr->pGLBindBuffer               = entry_points->pGLBindBuffer;
-            result_ptr->pGLBindBufferRange          = entry_points->pGLBindBufferRange;
-            result_ptr->pGLBindSampler              = entry_points->pGLBindSampler;
-            result_ptr->pGLBindTexture              = entry_points->pGLBindTexture;
-            result_ptr->pGLBindVertexArray          = entry_points->pGLBindVertexArray;
-            result_ptr->pGLBlendEquation            = entry_points->pGLBlendEquation;
-            result_ptr->pGLBlendFunc                = entry_points->pGLBlendFunc;
-            result_ptr->pGLDeleteVertexArrays       = entry_points->pGLDeleteVertexArrays;
-            result_ptr->pGLDisable                  = entry_points->pGLDisable;
-            result_ptr->pGLDrawArrays               = entry_points->pGLDrawArrays;
-            result_ptr->pGLEnable                   = entry_points->pGLEnable;
-            result_ptr->pGLGenVertexArrays          = entry_points->pGLGenVertexArrays;
-            result_ptr->pGLGenerateMipmap           = entry_points->pGLGenerateMipmap;
-            result_ptr->pGLProgramUniform1i         = entry_points->pGLProgramUniform1i;
-            result_ptr->pGLScissor                  = entry_points->pGLScissor;
-            result_ptr->pGLTexBufferRange           = entry_points->pGLTexBufferRange;
-            result_ptr->pGLTexParameteri            = entry_points->pGLTexParameteri;
-            result_ptr->pGLUseProgram               = entry_points->pGLUseProgram;
-            result_ptr->pGLViewport                 = entry_points->pGLViewport;
+            result_ptr->gl_pGLPolygonMode           = entry_points_ptr->pGLPolygonMode;
+            result_ptr->gl_pGLTextureParameteriEXT  = dsa_entry_points_ptr->pGLTextureParameteriEXT;
+            result_ptr->pGLActiveTexture            = entry_points_ptr->pGLActiveTexture;
+            result_ptr->pGLBindBuffer               = entry_points_ptr->pGLBindBuffer;
+            result_ptr->pGLBindBufferRange          = entry_points_ptr->pGLBindBufferRange;
+            result_ptr->pGLBindSampler              = entry_points_ptr->pGLBindSampler;
+            result_ptr->pGLBindTexture              = entry_points_ptr->pGLBindTexture;
+            result_ptr->pGLBindVertexArray          = entry_points_ptr->pGLBindVertexArray;
+            result_ptr->pGLBlendEquation            = entry_points_ptr->pGLBlendEquation;
+            result_ptr->pGLBlendFunc                = entry_points_ptr->pGLBlendFunc;
+            result_ptr->pGLDeleteVertexArrays       = entry_points_ptr->pGLDeleteVertexArrays;
+            result_ptr->pGLDisable                  = entry_points_ptr->pGLDisable;
+            result_ptr->pGLDrawArrays               = entry_points_ptr->pGLDrawArrays;
+            result_ptr->pGLEnable                   = entry_points_ptr->pGLEnable;
+            result_ptr->pGLGenVertexArrays          = entry_points_ptr->pGLGenVertexArrays;
+            result_ptr->pGLGenerateMipmap           = entry_points_ptr->pGLGenerateMipmap;
+            result_ptr->pGLProgramUniform1i         = entry_points_ptr->pGLProgramUniform1i;
+            result_ptr->pGLScissor                  = entry_points_ptr->pGLScissor;
+            result_ptr->pGLTexBufferRange           = entry_points_ptr->pGLTexBufferRange;
+            result_ptr->pGLTexParameteri            = entry_points_ptr->pGLTexParameteri;
+            result_ptr->pGLUseProgram               = entry_points_ptr->pGLUseProgram;
+            result_ptr->pGLViewport                 = entry_points_ptr->pGLViewport;
         }
 
         /* Make sure the font table has been assigned a texture object */
@@ -1241,9 +1241,9 @@ PUBLIC EMERALD_API void varia_text_renderer_draw(ral_context         context,
 PUBLIC EMERALD_API const unsigned char* varia_text_renderer_get(varia_text_renderer                text,
                                                                 varia_text_renderer_text_string_id text_string_id)
 {
-    const unsigned char*              result          = NULL;
+    const unsigned char*              result          = nullptr;
     _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
-    _varia_text_renderer_text_string* text_string_ptr = NULL;
+    _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
     if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                text_string_id,
@@ -1277,7 +1277,7 @@ PUBLIC EMERALD_API ral_context varia_text_renderer_get_context(varia_text_render
 PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_renderer                      text,
                                                                      varia_text_renderer_text_string_property property,
                                                                      varia_text_renderer_text_string_id       text_string_id,
-                                                                     void*                                    out_result)
+                                                                     void*                                    out_result_ptr)
 {
     _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
@@ -1285,11 +1285,11 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
     {
         case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR:
         {
-            _varia_text_renderer_text_string* text_string_ptr = NULL;
+            _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
             if (text_string_id == VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT)
             {
-                memcpy(out_result,
+                memcpy(out_result_ptr,
                         text_ptr->default_color,
                        sizeof(text_ptr->default_color) );
             }
@@ -1298,7 +1298,7 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
                                                        text_string_id,
                                                       &text_string_ptr) )
             {
-                memcpy(out_result,
+                memcpy(out_result_ptr,
                        text_string_ptr->color,
                        sizeof(float) * 3);
             }
@@ -1319,7 +1319,7 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
         case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX:
         case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY:
         {
-            _varia_text_renderer_text_string* text_string_ptr = NULL;
+            _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
             if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                        text_string_id,
@@ -1327,7 +1327,7 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
             {
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX)
                 {
-                    int* position = (int*) out_result;
+                    int* position = (int*) out_result_ptr;
 
                     position[0] = (int) ((text_string_ptr->position[0]) * (float) text_ptr->screen_width);
                     position[1] = (int) ((text_string_ptr->position[1]) * (float) text_ptr->screen_height);
@@ -1335,7 +1335,7 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS)
                 {
-                    float* position = (float*) out_result;
+                    float* position = (float*) out_result_ptr;
 
                     position[0] = text_string_ptr->position[0];
                     position[1] = text_string_ptr->position[1];
@@ -1343,30 +1343,30 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCISSOR_BOX)
                 {
-                    memcpy(out_result,
+                    memcpy(out_result_ptr,
                            text_string_ptr->scissor_box,
                            sizeof(text_string_ptr->scissor_box) );
                 }
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX)
                 {
-                    *(int*) out_result = int( float(text_string_ptr->height_px) * (1-text_string_ptr->scale));
+                    *(int*) out_result_ptr = int( float(text_string_ptr->height_px) * (1-text_string_ptr->scale));
                 }
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS)
                 {
                     unsigned int window_height = 0;
 
-                    *(float*) out_result = (float(text_string_ptr->height_px) * (1 - text_string_ptr->scale)) / float(text_ptr->screen_height);
+                    *(float*) out_result_ptr = (float(text_string_ptr->height_px) * (1 - text_string_ptr->scale)) / float(text_ptr->screen_height);
                 }
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX)
                 {
-                    *(int*) out_result = int( float(text_string_ptr->width_px) * (1-text_string_ptr->scale));
+                    *(int*) out_result_ptr = int( float(text_string_ptr->width_px) * (1-text_string_ptr->scale));
                 }
                 else
                 {
-                    *(bool*) out_result = text_string_ptr->visible;
+                    *(bool*) out_result_ptr = text_string_ptr->visible;
                 }
             }
             else
@@ -1381,18 +1381,18 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
 
         case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE:
         {
-            _varia_text_renderer_text_string* text_string_ptr = NULL;
+            _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
             if (text_string_id == VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT)
             {
-                *(float*) out_result = text_ptr->default_scale;
+                *(float*) out_result_ptr = text_ptr->default_scale;
             }
             else
             if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                        text_string_id,
                                                       &text_string_ptr) )
             {
-                *(float*) out_result = text_string_ptr->scale;
+                *(float*) out_result_ptr = text_string_ptr->scale;
             }
             else
             {
@@ -1408,7 +1408,7 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized text string property");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
@@ -1418,15 +1418,15 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
 {
     size_t                            raw_text_length = 0;
     _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
-    _varia_text_renderer_text_string* text_string_ptr = NULL;
+    _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
     system_critical_section_enter(text_ptr->draw_cs);
 
     /* Make sure input arguments are okay */
-    ASSERT_DEBUG_SYNC(raw_text_ptr != NULL,
+    ASSERT_DEBUG_SYNC(raw_text_ptr != nullptr,
                       "Input text pointer is NULL!");
 
-    if (raw_text_ptr == NULL)
+    if (raw_text_ptr == nullptr)
     {
         LOG_ERROR("Input text pointer is NULL.");
 
@@ -1437,7 +1437,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
                                            text_string_id,
                                           &text_string_ptr);
 
-    if (text_string_ptr == NULL)
+    if (text_string_ptr == nullptr)
     {
         LOG_ERROR("Could not retrieve text string descriptor");
 
@@ -1468,16 +1468,16 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
         }
 
         text_string_ptr->width_px += font_width;
-    } /* for (uint32_t n_character = 0; n_character < raw_text_length; ++n_character) */
+    }
 
     /* Excellent. Update underlying structure's data and we're done here */
     if (text_string_ptr->string_buffer_length <= raw_text_length)
     {
-        if (text_string_ptr->string != NULL)
+        if (text_string_ptr->string != nullptr)
         {
             delete [] text_string_ptr->string;
 
-            text_string_ptr->string = NULL;
+            text_string_ptr->string = nullptr;
         }
 
         if (raw_text_length == 0)
@@ -1488,10 +1488,10 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
         text_string_ptr->string_buffer_length = (unsigned int) raw_text_length * 2;
         text_string_ptr->string               = new (std::nothrow) unsigned char[text_string_ptr->string_buffer_length];
 
-        ASSERT_ALWAYS_SYNC(text_string_ptr->string != NULL,
+        ASSERT_ALWAYS_SYNC(text_string_ptr->string != nullptr,
                            "Could not reallocate memory block used for raw text storage!");
 
-        if (text_string_ptr->string == NULL)
+        if (text_string_ptr->string == nullptr)
         {
             LOG_ERROR("Could not reallocate memory block used for raw text storage");
 
@@ -1499,7 +1499,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
         }
     }
 
-    if (text_string_ptr->string != NULL)
+    if (text_string_ptr->string != nullptr)
     {
         memset(text_string_ptr->string,
                text_string_ptr->string_buffer_length,
@@ -1528,7 +1528,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
                                                                      const void*                              data)
 {
     _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
-    _varia_text_renderer_text_string* text_string_ptr = NULL;
+    _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
     switch (property)
     {
@@ -1583,7 +1583,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
             }
 
             break;
-        } /* case OGL_TEXT_STRING_PROPERTY_SCALE: */
+        }
 
         case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX:
         case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS:
@@ -1636,7 +1636,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized text string property");
         }
-    } /* switch (property) */
+    }
 
     text_ptr->dirty = true;
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Pipeline test app (kbi/elude @2012-2015)
+ * Pipeline test app (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -10,7 +10,6 @@
 #include "main.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_program.h"
@@ -19,6 +18,7 @@
 #include "ral/ral_framebuffer.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "shaders/shaders_vertex_fullscreen.h"
@@ -111,13 +111,21 @@ void _deinit_gl(ral_context context)
 }
 
 /* GL initialization */
-void _init_gl(ogl_context context,
+void _init_gl(ral_context context_ral,
+              system_time unused1,
+              uint32_t    unused2,
+              const int*  unused3,
               void*       arg)
 {
+    ogl_context                                               context          = nullptr;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
     ral_texture                                               tos[2]           = {0};
     ral_texture_create_info                                   to_create_info_items[2];
+
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -467,9 +475,9 @@ static void _stage_step_modify_data(ral_context context,
 
 
 /** Rendering handler */
-void _rendering_handler(ogl_context context,
-                        uint32_t    n_frames_rendered,
+void _rendering_handler(ral_context context,
                         system_time frame_time,
+                        uint32_t    n_frames_rendered,
                         const int*  rendering_area_px_topdown,
                         void*       renderer)
 {
@@ -525,8 +533,8 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     int main()
 #endif
 {
-    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
-    ogl_rendering_handler                   rendering_handler  = NULL;
+    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
+    ral_rendering_handler                   rendering_handler  = NULL;
     system_screen_mode                      screen_mode        = NULL;
     system_window                           window             = NULL;
     demo_window_create_info                 window_create_info;
@@ -550,8 +558,8 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                              DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
                             &rendering_handler);
 
-    ogl_rendering_handler_set_property(rendering_handler,
-                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+    ral_rendering_handler_set_property(rendering_handler,
+                                       RAL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
                                       &pfn_callback_proc);
 
     demo_window_add_callback_func(_window,
@@ -600,9 +608,9 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                &data_update_stage_step);
 
     /* Initialize GL objects */
-    ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
-                                                               _init_gl,
-                                                               NULL); /* callback_user_arg */
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
+                                                     _init_gl,
+                                                     NULL); /* callback_user_arg */
 
     /* Carry on */
     demo_window_start_rendering(_window,

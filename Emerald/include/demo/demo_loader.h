@@ -164,21 +164,21 @@ typedef struct
 
 typedef struct
 {
-    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback_proc;
+    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback_proc;
     void*                                   user_arg;
 } demo_loader_op_render_animation;
 
 typedef struct
 {
-    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_rendering_callback_proc;
-    void*                                      user_arg;
+    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback_proc;
+    void*                                   user_arg;
 } demo_loader_op_render_frame;
 
 typedef struct
 {
-    PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_rendering_callback_proc;
-    bool                                       should_swap_buffers;
-    void*                                      user_arg;
+    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback_proc;
+    bool                                    should_swap_buffers;
+    void*                                   user_arg;
 
     /* Optional func pointer which will be called right before the demo application quits. The call-back
      * is not going to be coming from the rendering thread but the rendering context is still going to be

@@ -9,11 +9,11 @@
 #include "demo/demo_app.h"
 #include "demo/demo_loader.h"
 #include "demo/demo_window.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_shader.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_shader.h"
 #include "scene/scene.h"
 #include "scene/scene_multiloader.h"
@@ -141,7 +141,7 @@ typedef struct _demo_loader
                     ++object_type_index)
         {
             loaded_objects[object_type_index] = system_resizable_vector_create(4 /* capacity */);
-        } /* for (all object types) */
+        }
     }
 
     ~_demo_loader()
@@ -201,7 +201,7 @@ typedef struct _demo_loader
                         ASSERT_DEBUG_SYNC(false,
                                           "Unrecognized loader op type");
                     }
-                } /* switch (enqueued_op_ptr->type) */
+                }
 
                 delete enqueued_op_ptr;
                 enqueued_op_ptr = NULL;
@@ -209,7 +209,7 @@ typedef struct _demo_loader
 
             system_resizable_vector_release(enqueued_ops);
             enqueued_ops = NULL;
-        } /* if (enqueued_ops != NULL) */
+        }
 
         for (uint32_t object_type_index = 0;
                       object_type_index < DEMO_LOADER_OBJECT_TYPE_COUNT;
@@ -230,12 +230,12 @@ typedef struct _demo_loader
                     demo_loader_release_object_by_index( (demo_loader)             this,
                                                          (demo_loader_object_type) object_type_index,
                                                         n_loaded_object);
-                } /* for (all loaded objects) */
+                }
 
                 system_resizable_vector_release(loaded_objects[object_type_index]);
                 loaded_objects[object_type_index] = NULL;
-            } /* if (loaded_objects[object_type_index] != NULL) */
-        } /* for (all object types) */
+            }
+        }
     }
 } _demo_loader;
 
@@ -318,7 +318,7 @@ PUBLIC EMERALD_API void demo_loader_enqueue_operation(demo_loader    loader,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized demo loader operation");
         }
-    } /* switch (operation) */
+    }
 
     ASSERT_DEBUG_SYNC(new_op_ptr != NULL,
                       "Out of memory");
@@ -326,7 +326,7 @@ PUBLIC EMERALD_API void demo_loader_enqueue_operation(demo_loader    loader,
     {
         system_resizable_vector_push(loader_ptr->enqueued_ops,
                                      new_op_ptr);
-    } /* if (new_op_ptr != NULL) */
+    }
 }
 
 /** Please see header for specification */
@@ -368,7 +368,7 @@ PUBLIC EMERALD_API void demo_loader_get_property(demo_loader          loader,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized demo_loader_property value.");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
@@ -420,12 +420,12 @@ PUBLIC void demo_loader_release_object_by_index(demo_loader             loader,
                     ASSERT_DEBUG_SYNC(false,
                                       "Unrecognized object type");
                 }
-            } /* switch (object_type_index) */
+            }
 
             system_resizable_vector_set_element_at(loader_ptr->loaded_objects[object_type],
                                                    object_index,
                                                    (void*) object_null);
-        } /* if (object != NULL) */
+        }
     }
     else
     {
@@ -570,8 +570,8 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                                    1, /* n_objects */
                                                    (const void**) &new_shader);
-                    } /* if (current_shader.data_ptr->body != NULL) */
-                } /* for (all shader objects to init) */
+                    }
+                }
 
                 if (new_program != NULL)
                 {
@@ -586,8 +586,8 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                     {
                         op_ptr->data.build_program.pfn_on_link_finished_callback_proc(new_program,
                                                                                       op_ptr->data.build_program.on_link_finished_callback_user_arg);
-                    } /* if (op_ptr->data.build_program.pfn_callback_proc != NULL) */
-                } /* if (new_program != NULL) */
+                    }
+                }
 
                 break;
             }
@@ -677,7 +677,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                                          op_ptr->data.load_scenes.result_scene_indices_ptr + n_scene);
                     system_resizable_vector_push        (loader_ptr->loaded_objects[DEMO_LOADER_OBJECT_TYPE_SCENE],
                                                          result_scene);
-                } /* for (all scenes enqueued to load) */
+                }
 
                 break;
             }
@@ -686,27 +686,27 @@ PUBLIC void demo_loader_run(demo_loader   loader,
             {
                 system_event          playback_in_progress_event = NULL;
                 system_event          playback_stopped_event     = NULL;
-                ogl_rendering_handler rendering_handler          = NULL;
+                ral_rendering_handler rendering_handler          = NULL;
 
                 system_window_get_property        (window_private,
                                                    SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                                                   &rendering_handler);
-                ogl_rendering_handler_get_property(rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT,
+                ral_rendering_handler_get_property(rendering_handler,
+                                                   RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT,
                                                   &playback_in_progress_event);
-                ogl_rendering_handler_get_property(rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT,
+                ral_rendering_handler_get_property(rendering_handler,
+                                                   RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT,
                                                   &playback_stopped_event);
 
-                ogl_rendering_handler_set_property(rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+                ral_rendering_handler_set_property(rendering_handler,
+                                                   RAL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
                                                   &op_ptr->data.render_animation.pfn_rendering_callback_proc);
-                ogl_rendering_handler_set_property(rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT,
+                ral_rendering_handler_set_property(rendering_handler,
+                                                   RAL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT,
                                                   &op_ptr->data.render_animation.user_arg);
 
                 /* Kick off the playback and block until it stops */
-                ogl_rendering_handler_play(rendering_handler,
+                ral_rendering_handler_play(rendering_handler,
                                            0); /* start_time */
 
                 system_event_wait_single(playback_in_progress_event);
@@ -717,32 +717,32 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
             case DEMO_LOADER_OP_RENDER_FRAME:
             {
-                ogl_rendering_handler rendering_handler = NULL;
+                ral_rendering_handler rendering_handler = NULL;
 
                 system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                                           &rendering_handler);
 
-                ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
-                                                                           op_ptr->data.render_frame.pfn_rendering_callback_proc,
-                                                                           op_ptr->data.render_frame.user_arg,
-                                                                           true); /* swap_buffers_afterward */
+                ral_rendering_handler_request_rendering_callback(rendering_handler,
+                                                                 op_ptr->data.render_frame.pfn_rendering_callback_proc,
+                                                                 op_ptr->data.render_frame.user_arg,
+                                                                 true); /* swap_buffers_afterward */
 
                 break;
             }
 
             case DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK:
             {
-                ogl_rendering_handler rendering_handler = NULL;
+                ral_rendering_handler rendering_handler = NULL;
 
                 system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                                           &rendering_handler);
 
-                ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
-                                                                           op_ptr->data.request_rendering_thread_callback.pfn_rendering_callback_proc,
-                                                                           op_ptr->data.request_rendering_thread_callback.user_arg,
-                                                                           op_ptr->data.request_rendering_thread_callback.should_swap_buffers);
+                ral_rendering_handler_request_rendering_callback(rendering_handler,
+                                                                 op_ptr->data.request_rendering_thread_callback.pfn_rendering_callback_proc,
+                                                                 op_ptr->data.request_rendering_thread_callback.user_arg,
+                                                                 op_ptr->data.request_rendering_thread_callback.should_swap_buffers);
 
                 break;
             }
@@ -752,8 +752,8 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized loader op type");
             }
-        } /* switch (op_ptr->type) */
-    } /* for (all enqueued operations) */
+        }
+    }
 
     LOG_INFO("Loader finished");
 }

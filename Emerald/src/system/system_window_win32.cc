@@ -5,8 +5,8 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_constants.h"
 #include "system/system_event.h"
@@ -59,7 +59,7 @@ typedef struct _system_window_win32
         action_forbidden_cursor_resource     = 0;
         arrow_cursor_resource                = 0;
         crosshair_cursor_resource            = 0;
-        current_mouse_cursor_system_resource = NULL;
+        current_mouse_cursor_system_resource = nullptr;
         hand_cursor_resource                 = 0;
         horizontal_resize_cursor_resource    = 0;
         is_message_pump_locked               = false;
@@ -67,8 +67,8 @@ typedef struct _system_window_win32
         message_pump_thread_id               = 0;
         message_pump_unlock_event            = system_event_create(true); /* manual_reset */
         move_cursor_resource                 = 0;
-        system_dc                            = NULL;
-        system_handle                        = NULL;
+        system_dc                            = nullptr;
+        system_handle                        = nullptr;
         teardown_completed_event             = system_event_create(true); /* manual_reset */
         window                               = in_window;
         vertical_resize_cursor_resource      = 0;
@@ -79,35 +79,35 @@ typedef struct _system_window_win32
         ASSERT_DEBUG_SYNC(!is_message_pump_locked,
                           "System window about to be deinited while message pump is locked!");
 
-        if (message_pump_lock_event != NULL)
+        if (message_pump_lock_event != nullptr)
         {
             system_event_release(message_pump_lock_event);
 
-            message_pump_lock_event = NULL;
+            message_pump_lock_event = nullptr;
         }
 
-        if (message_pump_unlock_event != NULL)
+        if (message_pump_unlock_event != nullptr)
         {
             system_event_release(message_pump_unlock_event);
 
-            message_pump_unlock_event = NULL;
+            message_pump_unlock_event = nullptr;
         }
 
-        if (system_dc != NULL)
+        if (system_dc != nullptr)
         {
             /* TODO? */
         }
 
-        if (system_handle != NULL)
+        if (system_handle != nullptr)
         {
             /* TODO? */
         }
 
-        if (teardown_completed_event != NULL)
+        if (teardown_completed_event != nullptr)
         {
             system_event_release(teardown_completed_event);
 
-            teardown_completed_event = NULL;
+            teardown_completed_event = nullptr;
         }
     }
 } _system_window_win32;
@@ -206,8 +206,8 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
         {
             /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
              * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
-            ral_context           context           = NULL;
-            ogl_rendering_handler rendering_handler = NULL;
+            ral_context           context           = nullptr;
+            ral_rendering_handler rendering_handler = nullptr;
 
             system_window_get_property(win32_ptr->window,
                                        SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
@@ -216,18 +216,18 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                                       &rendering_handler);
 
-            if (rendering_handler != NULL)
+            if (rendering_handler != nullptr)
             {
-                ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+                ral_rendering_handler_playback_status playback_status = RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
 
-                ogl_rendering_handler_get_property(rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                ral_rendering_handler_get_property(rendering_handler,
+                                                   RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
                                                   &playback_status);
 
-                if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+                if (playback_status != RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
                 {
-                    ogl_rendering_handler_stop(rendering_handler);
-                } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+                    ral_rendering_handler_stop(rendering_handler);
+                }
 
                 /* For the "window closing" call-back, we need to work from the rendering thread, as the caller
                  * may need to release GL stuff.
@@ -369,7 +369,7 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                                                  SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
                                                  (void*) wparam);
 
-            if (win32_ptr->current_mouse_cursor_system_resource != NULL)
+            if (win32_ptr->current_mouse_cursor_system_resource != nullptr)
             {
                 ::SetCursor(win32_ptr->current_mouse_cursor_system_resource);
             }
@@ -424,7 +424,7 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                         /* Call back the web-cam manager with notification on new device just been plugged in */
                         system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
                                                                                                                                     _webcam_manager_on_device_arrival,
-                                                                                                                                    NULL);
+                                                                                                                                    nullptr);
 
                         system_thread_pool_submit_single_task(task_descriptor);
 
@@ -436,7 +436,7 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                         /* Call back the web-cam manager with notification on a device just been plugged out */
                         system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
                                                                                                                                     _webcam_manager_on_device_removal,
-                                                                                                                                    NULL);
+                                                                                                                                    nullptr);
 
                         system_thread_pool_submit_single_task(task_descriptor);
 
@@ -501,12 +501,12 @@ PUBLIC void system_window_win32_close_window(system_window_win32 window)
 {
     _system_window_win32* win32_ptr = (_system_window_win32*) window;
 
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr != nullptr,
                       "Input argument is NULL");
-    ASSERT_DEBUG_SYNC(win32_ptr->system_handle != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->system_handle != nullptr,
                       "No window to close - system handle is NULL.");
 
-    if (win32_ptr->system_handle != NULL)
+    if (win32_ptr->system_handle != nullptr)
     {
         ::SendMessageA(win32_ptr->system_handle,
                        WM_CLOSE,
@@ -520,11 +520,11 @@ PUBLIC void system_window_win32_deinit(system_window_win32 window)
 {
     _system_window_win32* win32_ptr = (_system_window_win32*) window;
 
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr != nullptr,
                       "Input argument is NULL");
 
     delete win32_ptr;
-    win32_ptr = NULL;
+    win32_ptr = nullptr;
 }
 
 /** Please see header for spec */
@@ -596,7 +596,7 @@ PUBLIC bool system_window_win32_get_property(  system_window_win32    window,
             /* Fall-back! */
             result = false;
         }
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -605,8 +605,8 @@ PUBLIC bool system_window_win32_get_property(  system_window_win32    window,
 PUBLIC void system_window_win32_get_screen_size(int* out_screen_width_ptr,
                                                 int* out_screen_height_ptr)
 {
-    ASSERT_DEBUG_SYNC(out_screen_width_ptr  != NULL &&
-                      out_screen_height_ptr != NULL,
+    ASSERT_DEBUG_SYNC(out_screen_width_ptr  != nullptr &&
+                      out_screen_height_ptr != nullptr,
                       "Input arguments are NULL");
 
     *out_screen_width_ptr  = ::GetSystemMetrics(SM_CXSCREEN);
@@ -618,7 +618,7 @@ PUBLIC system_window_win32 system_window_win32_init(system_window owner)
 {
     _system_window_win32* win32_ptr = new (std::nothrow) _system_window_win32(owner);
 
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr != nullptr,
                       "Out of memory");
 
     /* The descriptor is fully initialized in the constructor. */
@@ -694,14 +694,14 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
             window_class.cbClsExtra    = 0;
             window_class.cbWndExtra    = 0;
             window_class.hbrBackground = 0;
-            window_class.hCursor       = ::LoadCursorA     (NULL,
+            window_class.hCursor       = ::LoadCursorA     (nullptr,
                                                             IDC_ARROW);
-            window_class.hIcon         = ::LoadIconA       (NULL,
+            window_class.hIcon         = ::LoadIconA       (nullptr,
                                                             IDI_WINLOGO);
-            window_class.hInstance     = ::GetModuleHandleA(NULL);
+            window_class.hInstance     = ::GetModuleHandleA(nullptr);
             window_class.lpfnWndProc   = _system_window_class_message_loop_entrypoint;
             window_class.lpszClassName = EMERALD_WINDOW_CLASS_NAME;
-            window_class.lpszMenuName  = NULL;
+            window_class.lpszMenuName  = nullptr;
             window_class.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
 
             if (!::RegisterClassA(&window_class) )
@@ -713,8 +713,8 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
             }
 
             window_class_registered = true;
-        } /* if (!window_class_registered) */
-    } /* if (is_first_window) */
+        }
+    }
 
     /* Cache mouse cursor */
     win32_ptr->action_forbidden_cursor_resource  = ::LoadCursorA(0, IDC_NO);
@@ -725,26 +725,26 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
     win32_ptr->move_cursor_resource              = ::LoadCursorA(0, IDC_SIZEALL);
     win32_ptr->vertical_resize_cursor_resource   = ::LoadCursorA(0, IDC_SIZENS);
 
-    ASSERT_DEBUG_SYNC(win32_ptr->action_forbidden_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->action_forbidden_cursor_resource != nullptr,
                       "Failed to load action forbidden cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->arrow_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->arrow_cursor_resource != nullptr,
                       "Failed to load arrow cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->crosshair_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->crosshair_cursor_resource != nullptr,
                       "Failed to load crosshair cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->hand_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->hand_cursor_resource != nullptr,
                       "Failed to load hand cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->horizontal_resize_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->horizontal_resize_cursor_resource != nullptr,
                       "Failed to load horizontal resize cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->move_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->move_cursor_resource != nullptr,
                       "Failed to load move cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->vertical_resize_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr->vertical_resize_cursor_resource != nullptr,
                       "Failed to load vertical resize cursor resource.");
 
     /* If full-screen window was requested, change display mode. */
     bool                      is_window_fullscreen = false;
     bool                      is_window_scalable   = false;
-    system_window_handle      parent_window_handle = NULL;
-    system_hashed_ansi_string window_title         = NULL;
+    system_window_handle      parent_window_handle = nullptr;
+    system_hashed_ansi_string window_title         = nullptr;
     int                       x1y1x2y2[4];
 
     system_window_get_property(win32_ptr->window,
@@ -766,7 +766,7 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
 
     if (is_window_fullscreen)
     {
-        system_screen_mode screen_mode = NULL;
+        system_screen_mode screen_mode = nullptr;
 
         system_window_get_property(win32_ptr->window,
                                    SYSTEM_WINDOW_PROPERTY_SCREEN_MODE,
@@ -783,11 +783,11 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
         /* Configure style bitfields accordingly. */
         ex_style = WS_EX_APPWINDOW;
         style    = WS_POPUP;
-    } /* if (is_window_fullscreen) */
+    }
     else
     {
         /* Non-full-screen window requested. Configure style bitfields accordingly. */
-        if (parent_window_handle == NULL)
+        if (parent_window_handle == nullptr)
         {
             style = WS_POPUP;
         }
@@ -811,7 +811,7 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
             y_border_width = 0;
         }
 
-        if (parent_window_handle != NULL)
+        if (parent_window_handle != nullptr)
         {
             x1_delta = -::GetSystemMetrics(SM_CXFRAME);
             y1_delta = (is_window_scalable ? -::GetSystemMetrics(SM_CYSIZEFRAME) :
@@ -828,11 +828,11 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
                                                  x1y1x2y2[2] - x1y1x2y2[0] + x_border_width,
                                                  x1y1x2y2[3] - x1y1x2y2[1] + y_border_width,
                                                  parent_window_handle,
-                                                 NULL,                                       /* no menu */
+                                                 nullptr,                                       /* no menu */
                                                  ::GetModuleHandleA(0),
                                                  window);
 
-    if (win32_ptr->system_handle == NULL)
+    if (win32_ptr->system_handle == nullptr)
     {
         LOG_FATAL("Could not create window [%s]",
                   system_hashed_ansi_string_get_buffer(window_title) );
@@ -858,7 +858,7 @@ PUBLIC bool system_window_win32_open_window(system_window_win32 window,
 
     win32_ptr->system_dc = ::GetDC(win32_ptr->system_handle);
 
-    if (win32_ptr->system_dc == NULL)
+    if (win32_ptr->system_dc == nullptr)
     {
         LOG_FATAL("Could not obtain device context for window [%s]",
                   system_hashed_ansi_string_get_buffer(window_title) );
@@ -974,7 +974,7 @@ PUBLIC bool system_window_win32_set_property(system_window_win32    window,
 
         case SYSTEM_WINDOW_PROPERTY_POSITION:
         {
-            system_window_handle parent_window_handle = NULL;
+            system_window_handle parent_window_handle = nullptr;
             const int*           xy_ptr               = (const int*) data;
 
             system_window_get_property(win32_ptr->window,
@@ -996,7 +996,7 @@ PUBLIC bool system_window_win32_set_property(system_window_win32    window,
         {
             result = false;
         }
-    } /* switch (property) */
+    }
 
     return result;
 }

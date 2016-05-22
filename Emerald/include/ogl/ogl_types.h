@@ -7,7 +7,6 @@
 #define OGL_TYPES_H
 
 #include "ogl/gl3.h"
-#include "raGL/raGL_types.h"
 #include "ral/ral_types.h"
 #include "system/system_time.h"
 #include "system/system_types.h"
@@ -131,25 +130,6 @@ typedef enum
     OGL_TEXTURE_WRAP_MODE_MIRRORED_REPEAT      = GL_MIRRORED_REPEAT,
     OGL_TEXTURE_WRAP_MODE_REPEAT               = GL_REPEAT
 } ogl_texture_wrap_mode;
-
-/** Enumerator that describes current rendering handler's playback status */
-typedef enum
-{
-    RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED,
-    RENDERING_HANDLER_PLAYBACK_STATUS_PAUSED,
-    RENDERING_HANDLER_PLAYBACK_STATUS_STARTED
-} ogl_rendering_handler_playback_status;
-
-/** Enumerator that describes rendering handler policy. */
-typedef enum
-{
-    /* Rendering handler should limit the number of window swaps as defined by user-provided FPS rate. */
-    RENDERING_HANDLER_POLICY_FPS,
-    /* Rendering handler should not limit the number of window swaps */
-    RENDERING_HANDLER_POLICY_MAX_PERFORMANCE,
-    /* Rendering handler will render only ONE frame per Play() call */
-    RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST
-} ogl_rendering_handler_policy;
 
 /* Enumerator that describes OpenGL texture binding points */
 typedef enum
@@ -1449,9 +1429,6 @@ DECLARE_HANDLE(shaders_vertex_combinedmvp_simplified_twopoint);
 DECLARE_HANDLE(shaders_vertex_fullscreen);
 DECLARE_HANDLE(shaders_vertex_uber);
 
-/** Rendering handler handle */
-DECLARE_HANDLE(ogl_rendering_handler);
-
 /** OpenGL context handle */
 DECLARE_HANDLE(ogl_context);
 
@@ -1483,25 +1460,5 @@ typedef void (*PFNOGLPIPELINECALLBACKPROC)(ral_context context,
                                            system_time frame_time,
                                            const int*  rendering_area_px_topdown,
                                            void*       callback_user_arg);
-
-/** Rendering handler call-back
- *
- *  @param context           TODO
- *  @param n_frame           TODO
- *  @param frame_time        TODO
- *  @param rendering_area_px_topdown [0]: x1 of the rendering area (in pixels)
- *                           [1]: y1 of the rendering area (in pixels)
- *                           [2]: x2 of the rendering area (in pixels)
- *                           [3]: y2 of the rendering area (in pixels)
- *  @param user_arg          TODO
- *
- */
-typedef void (*PFNOGLRENDERINGHANDLERRENDERINGCALLBACK)   (ogl_context context,
-                                                           uint32_t    n_frame,
-                                                           system_time frame_time,
-                                                           const int*  rendering_area_px_topdown,
-                                                           void*       user_arg);
-typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context context,
-                                                           void*       user_arg);
 
 #endif /* OGL_TYPES_H */

@@ -11,6 +11,7 @@ DECLARE_HANDLE(ral_gfx_state);
 DECLARE_HANDLE(ral_present_job);
 DECLARE_HANDLE(ral_present_task);
 DECLARE_HANDLE(ral_program);
+DECLARE_HANDLE(ral_rendering_handler);
 DECLARE_HANDLE(ral_sampler);
 DECLARE_HANDLE(ral_scheduler);
 DECLARE_HANDLE(ral_shader);
@@ -18,6 +19,24 @@ DECLARE_HANDLE(ral_texture);
 DECLARE_HANDLE(ral_texture_pool);
 DECLARE_HANDLE(ral_texture_view);
 
+
+/** Rendering handler call-back
+ *
+ *  @param context           TODO
+ *  @param frame_time        TODO
+ *  @param n_frame           TODO
+ *  @param rendering_area_px_topdown [0]: x1 of the rendering area (in pixels)
+ *                           [1]: y1 of the rendering area (in pixels)
+ *                           [2]: x2 of the rendering area (in pixels)
+ *                           [3]: y2 of the rendering area (in pixels)
+ *  @param user_arg          TODO
+ *
+ */
+typedef void (*PFNRALRENDERINGHANDLERRENDERINGCALLBACK)(ral_context context,
+                                                        system_time frame_time,
+                                                        uint32_t    n_frame,
+                                                        const int*  rendering_area_px_topdown,
+                                                        void*       user_arg);
 
 typedef enum
 {
@@ -375,6 +394,27 @@ typedef enum
 };
 typedef int ral_queue_bits;
 
+/** Enumerator that describes current rendering handler's playback status */
+typedef enum
+{
+    RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED,
+    RAL_RENDERING_HANDLER_PLAYBACK_STATUS_PAUSED,
+    RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STARTED
+} ral_rendering_handler_playback_status;
+
+/** Enumerator that describes rendering handler policy. */
+typedef enum
+{
+    /* Rendering handler should limit the number of window swaps as defined by user-provided FPS rate. */
+    RAL_RENDERING_HANDLER_POLICY_FPS,
+
+    /* Rendering handler should not limit the number of window swaps */
+    RAL_RENDERING_HANDLER_POLICY_MAX_PERFORMANCE,
+
+    /* Rendering handler will render only ONE frame per Play() call */
+    RAL_RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST
+} ral_rendering_handler_policy;
+
 typedef enum
 {
     /* sampler + texture */
@@ -534,7 +574,7 @@ typedef enum
      */
     RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS,
 
-    /* not settable; ogl_rendering_handler */
+    /* not settable; ral_rendering_handler */
     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
 
     /* not settable, ral_texture_format

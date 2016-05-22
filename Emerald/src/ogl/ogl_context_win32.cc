@@ -1,12 +1,13 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_win32.h"
-#include "ogl/ogl_rendering_handler.h"
+#include "raGL/raGL_rendering_handler.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_types.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
@@ -34,14 +35,14 @@ typedef struct _ogl_context_win32
 
     _ogl_context_win32()
     {
-        context                       = NULL;
-        device_context_handle         = NULL;
-        opengl32_dll_handle           = NULL;
-        pWGLChoosePixelFormatARB      = NULL;
-        pWGLCreateContextAttribsARB   = NULL;
-        pWGLGetExtensionsStringEXT    = NULL;
-        pWGLSwapIntervalEXT           = NULL;
-        wgl_rendering_context         = NULL;
+        context                       = nullptr;
+        device_context_handle         = nullptr;
+        opengl32_dll_handle           = nullptr;
+        pWGLChoosePixelFormatARB      = nullptr;
+        pWGLCreateContextAttribsARB   = nullptr;
+        pWGLGetExtensionsStringEXT    = nullptr;
+        pWGLSwapIntervalEXT           = nullptr;
+        wgl_rendering_context         = nullptr;
         wgl_swap_control_support      = false;
         wgl_swap_control_tear_support = false;
     }
@@ -51,13 +52,13 @@ typedef struct _ogl_context_win32
 /** TODO */
 PRIVATE void _ogl_context_win32_initialize_wgl_extensions(_ogl_context_win32* context_ptr)
 {
-    if (context_ptr->pWGLGetExtensionsStringEXT != NULL)
+    if (context_ptr->pWGLGetExtensionsStringEXT != nullptr)
     {
         const char* wgl_extensions = context_ptr->pWGLGetExtensionsStringEXT();
 
         /* Is EXT_wgl_swap_control supported? */
         context_ptr->wgl_swap_control_support = (strstr(wgl_extensions,
-                                                        "WGL_EXT_swap_control") != NULL);
+                                                        "WGL_EXT_swap_control") != nullptr);
 
         if (context_ptr->wgl_swap_control_support)
         {
@@ -66,8 +67,8 @@ PRIVATE void _ogl_context_win32_initialize_wgl_extensions(_ogl_context_win32* co
 
         /* Is EXT_WGL_swap_control_tear supported? */
         context_ptr->wgl_swap_control_tear_support = (strstr(wgl_extensions,
-                                                             "WGL_EXT_swap_control_tear") != NULL);
-    } /* if (pWGLGetExtensionsString != NULL) */
+                                                             "WGL_EXT_swap_control_tear") != nullptr);
+    }
 }
 
 /** TODO */
@@ -76,14 +77,14 @@ PRIVATE bool _ogl_context_win32_set_pixel_format_multisampling(_ogl_context_win3
 {
     bool result = false;
 
-    ASSERT_ALWAYS_SYNC(win32_ptr->pWGLChoosePixelFormatARB != NULL,
+    ASSERT_ALWAYS_SYNC(win32_ptr->pWGLChoosePixelFormatARB != nullptr,
                        "wglChoosePixelFormat() unavailable - please update your WGL implementation.");
 
-    if (win32_ptr->pWGLChoosePixelFormatARB != NULL)
+    if (win32_ptr->pWGLChoosePixelFormatARB != nullptr)
     {
         int                 alpha_bits  = 0;
         int                 depth_bits  = 0;
-        system_pixel_format pfd         = NULL;
+        system_pixel_format pfd         = nullptr;
         int                 rgb_bits[3] = {0, 0, 0};
 
         ogl_context_get_property(win32_ptr->context,
@@ -139,15 +140,15 @@ PUBLIC void ogl_context_win32_bind_to_current_thread(ogl_context_win32 context_w
 {
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
-    if (win32_ptr != NULL)
+    if (win32_ptr != nullptr)
     {
         ::wglMakeCurrent(win32_ptr->device_context_handle,
                          win32_ptr->wgl_rendering_context);
     }
     else
     {
-        ::wglMakeCurrent(NULL,  /* HDC   */
-                         NULL); /* HGLRC */
+        ::wglMakeCurrent(nullptr,  /* HDC   */
+                         nullptr); /* HGLRC */
     }
 }
 
@@ -156,7 +157,7 @@ PUBLIC void ogl_context_win32_deinit(ogl_context_win32 context_win32)
 {
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr != nullptr,
                       "Input argument is NULL");
 
     if (::wglDeleteContext(win32_ptr->wgl_rendering_context) == FALSE)
@@ -164,32 +165,32 @@ PUBLIC void ogl_context_win32_deinit(ogl_context_win32 context_win32)
         LOG_ERROR("wglDeleteContext() failed.");
     }
 
-    if (win32_ptr->opengl32_dll_handle != NULL)
+    if (win32_ptr->opengl32_dll_handle != nullptr)
     {
         ::FreeLibrary(win32_ptr->opengl32_dll_handle);
 
-        win32_ptr->opengl32_dll_handle = NULL;
+        win32_ptr->opengl32_dll_handle = nullptr;
     }
 
     delete win32_ptr;
-    win32_ptr = NULL;
+    win32_ptr = nullptr;
 }
 
 /** Please see header for spec */
 PUBLIC void* ogl_context_win32_get_func_ptr(ogl_context_win32 context_win32,
                                             const char*       name)
 {
-    void*               result    = NULL;
+    void*               result    = nullptr;
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
-    ASSERT_DEBUG_SYNC(name      != NULL &&
-                      win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(name      != nullptr &&
+                      win32_ptr != nullptr,
                       "Input argument is NULL");
 
     result = ::GetProcAddress(win32_ptr->opengl32_dll_handle,
                               name);
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         result = ::wglGetProcAddress(name);
     }
@@ -222,7 +223,7 @@ PUBLIC bool ogl_context_win32_get_property(ogl_context_win32    context_win32,
 
             break;
         }
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -233,10 +234,10 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
 {
     _ogl_context_win32* new_win32_ptr = new (std::nothrow) _ogl_context_win32;
 
-    ASSERT_DEBUG_SYNC(new_win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_win32_ptr != nullptr,
                       "Out of memory");
 
-    if (new_win32_ptr == NULL)
+    if (new_win32_ptr == nullptr)
     {
         goto end;
     }
@@ -250,14 +251,14 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
     /* Load up the ICD */
     new_win32_ptr->opengl32_dll_handle = ::LoadLibraryA("opengl32.dll");
 
-    ASSERT_ALWAYS_SYNC(new_win32_ptr->opengl32_dll_handle != NULL,
+    ASSERT_ALWAYS_SYNC(new_win32_ptr->opengl32_dll_handle != nullptr,
                        "Could not load opengl32.dll");
 
     /* Create the context instance */
-    system_pixel_format          context_pf    = NULL;
-    const PIXELFORMATDESCRIPTOR* system_pf_ptr = NULL;
-    system_window                window        = NULL;
-    system_window_handle         window_handle = NULL;
+    system_pixel_format          context_pf    = nullptr;
+    const PIXELFORMATDESCRIPTOR* system_pf_ptr = nullptr;
+    system_window                window        = nullptr;
+    system_window_handle         window_handle = nullptr;
 
     ogl_context_get_property  (context,
                                OGL_CONTEXT_PROPERTY_PIXEL_FORMAT,
@@ -276,7 +277,7 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_DESCRIPTOR_PTR,
                                     &system_pf_ptr);
 
-    if (system_pf_ptr == NULL)
+    if (system_pf_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not retrieve pixel format descriptor");
@@ -323,7 +324,7 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
     new_win32_ptr->pWGLGetExtensionsStringEXT  = (PFNWGLGETEXTENSIONSSTRINGEXTPROC)  ::wglGetProcAddress("wglGetExtensionsStringEXT");
 
     /* Okay, let's check the func ptr */
-    if (new_win32_ptr->pWGLCreateContextAttribsARB == NULL)
+    if (new_win32_ptr->pWGLCreateContextAttribsARB == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not obtain func ptr to wglCreateContextAttribsARB! Update your drivers.");
@@ -333,16 +334,18 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
 
     /* If context we are to share objects with is not NULL, lock corresponding renderer thread before continuing.
      * Otherwise GL impl could potentially forbid the context creation (happens on NViDiA drivers) */
-    ogl_context           parent_context                   = NULL;
-    system_window         parent_context_window            = NULL;
-    HGLRC                 parent_context_rendering_context = NULL;
-    ogl_rendering_handler parent_context_rendering_handler = NULL;
+    ogl_context            parent_context                        = nullptr;
+    system_window          parent_context_window                 = nullptr;
+    HGLRC                  parent_context_rendering_context      = nullptr;
+    raGL_rendering_handler parent_context_rendering_handler_raGL = nullptr;
+    ral_rendering_handler  parent_context_rendering_handler_ral  = nullptr;
+
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,
                             &parent_context);
 
-    if (parent_context != NULL)
+    if (parent_context != nullptr)
     {
         ogl_context_get_property(parent_context,
                                  OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT,
@@ -351,14 +354,14 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
                                  OGL_CONTEXT_PROPERTY_WINDOW,
                                 &parent_context_window);
 
-        system_window_get_property(parent_context_window,
-                                   SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                  &parent_context_rendering_handler);
+        system_window_get_property        (parent_context_window,
+                                           SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                          &parent_context_rendering_handler_ral);
+        ral_rendering_handler_get_property(parent_context_rendering_handler_ral,
+                                           RAL_RENDERING_HANDLER_PROPERTY_RENDERING_HANDLER_BACKEND,
+                                          &parent_context_rendering_handler_raGL);
 
-        ASSERT_DEBUG_SYNC(parent_context_rendering_handler != NULL,
-                          "No rendering handler attached to the parent context");
-
-        ogl_rendering_handler_lock_bound_context(parent_context_rendering_handler);
+        raGL_rendering_handler_lock_bound_context(parent_context_rendering_handler_raGL);
     }
 
     /* Okay, try creating the context */
@@ -408,12 +411,12 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
                                                                                       wgl_attrib_list);
 
     /* Sharing? Unlock corresponding renderer thread */
-    if (parent_context != NULL)
+    if (parent_context != nullptr)
     {
-        ogl_rendering_handler_unlock_bound_context(parent_context_rendering_handler);
+        raGL_rendering_handler_unlock_bound_context(parent_context_rendering_handler_raGL);
     }
 
-    if (new_win32_ptr->wgl_rendering_context == NULL)
+    if (new_win32_ptr->wgl_rendering_context == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not create WGL rendering context. [GetLastError():%d]",
@@ -435,7 +438,7 @@ end:
     return;
 
 end_error:
-    if (new_win32_ptr != NULL)
+    if (new_win32_ptr != nullptr)
     {
         ogl_context_win32_deinit( (ogl_context_win32) new_win32_ptr);
     }
@@ -451,7 +454,7 @@ PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
     bool                result    = false;
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(win32_ptr != nullptr,
                       "Input argument is NULL");
 
     switch (property)
@@ -463,7 +466,7 @@ PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
             ASSERT_ALWAYS_SYNC(win32_ptr->wgl_swap_control_support,
                                "WGL_EXT_swap_control extension not supported. Update your drivers.");
 
-            if (win32_ptr->pWGLSwapIntervalEXT != NULL)
+            if (win32_ptr->pWGLSwapIntervalEXT != nullptr)
             {
                 int  swap_interval = (win32_ptr->wgl_swap_control_tear_support) ? -1 : /* use adaptive vsync  */
                                                                                    1;  /* force regular vsync */
@@ -478,7 +481,7 @@ PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
             break;
         }
 
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -494,6 +497,6 @@ PUBLIC void ogl_context_win32_swap_buffers(ogl_context_win32 context_win32)
 /** Please see header for spec */
 PUBLIC void ogl_context_win32_unbind_from_current_thread(ogl_context_win32 context_win32)
 {
-    ::wglMakeCurrent(NULL,  /* HDC */
-                     NULL); /* HGLRC */
+    ::wglMakeCurrent(nullptr,  /* HDC */
+                     nullptr); /* HGLRC */
 }

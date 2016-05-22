@@ -85,7 +85,7 @@ PUBLIC EMERALD_API ral_context varia_text_renderer_get_context(varia_text_render
 PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_renderer                      text,
                                                                      varia_text_renderer_text_string_property property,
                                                                      varia_text_renderer_text_string_id       text_string_id,
-                                                                     void*                                    out_result);
+                                                                     void*                                    out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer                text,

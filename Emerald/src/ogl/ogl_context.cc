@@ -13,12 +13,13 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "raGL/raGL_buffers.h"
+#include "raGL/raGL_rendering_handler.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
 #include "ral/ral_framebuffer.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
 #include "scene_renderer/scene_renderer_sm.h"
@@ -159,9 +160,9 @@ struct func_ptr_table_entry
 
 
 #ifdef _WIN32
-    __declspec(thread) ogl_context _current_context = NULL;
+    __declspec(thread) ogl_context _current_context = nullptr;
 #else
-    __thread ogl_context _current_context = NULL;
+    __thread ogl_context _current_context = nullptr;
 #endif
 
 
@@ -184,19 +185,19 @@ PRIVATE bool                      _ogl_context_get_attachment_formats_for_system
                                                                                                       ral_texture_format*          out_color_attachment_internalformat_ptr,
                                                                                                       ral_texture_format*          out_depth_stencil_attachment_internalformat_ptr);
 PRIVATE bool                      _ogl_context_get_color_attachment_format_for_rgba_bits             (unsigned char*               n_rgba_bits,
-                                                                                                      bool                         use_srgb_color_space,
-                                                                                                      ral_texture_format*          out_format);
+                                                                                                      bool                         use_srgb_color_space_ptr,
+                                                                                                      ral_texture_format*          out_format_ptr);
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename                               (void*                        user_arg,
                                                                                                       system_hashed_ansi_string    decompressed_filename,
-                                                                                                      GLenum*                      out_compressed_gl_enum,
-                                                                                                      system_file_unpacker*        out_file_unpacker);
+                                                                                                      GLenum*                      out_compressed_gl_enum_ptr,
+                                                                                                      system_file_unpacker*        out_file_unpacker_ptr);
 PRIVATE bool                      _ogl_context_get_depth_attachment_format_for_bits                  (unsigned char                n_depth_bits,
                                                                                                       ral_texture_format*          out_format_ptr);
 PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_format_for_bits          (unsigned char                n_depth_bits,
                                                                                                       unsigned char                n_stencil_bits,
                                                                                                       ral_texture_format*          out_format_ptr);
 PRIVATE bool                      _ogl_context_get_function_pointers                                 (_ogl_context*                context_ptr,
-                                                                                                      func_ptr_table_entry*        entries,
+                                                                                                      const func_ptr_table_entry*  entries,
                                                                                                       uint32_t                     n_entries);
 PRIVATE void                      _ogl_context_gl_info_deinit                                        (ogl_context_gl_info*         info_ptr);
 PRIVATE void                      _ogl_context_gl_info_init                                          (ogl_context_gl_info*         info_ptr,
@@ -234,9 +235,9 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
 {
     /* Create the ogl_context instance. */
     _ogl_context*             new_context_ptr = new (std::nothrow) _ogl_context;
-    system_hashed_ansi_string window_name     = NULL;
+    system_hashed_ansi_string window_name     = nullptr;
 
-    ASSERT_ALWAYS_SYNC(new_context_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_context_ptr != nullptr,
                        "Out of memory when creating ogl_context instance.");
 
     memset(new_context_ptr,
@@ -256,12 +257,12 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
 
     new_context_ptr->backend                                = backend;
     new_context_ptr->context                                = context;
-    new_context_ptr->context_platform                       = NULL;
-    new_context_ptr->fbo                                    = NULL;
+    new_context_ptr->context_platform                       = nullptr;
+    new_context_ptr->fbo                                    = nullptr;
     new_context_ptr->is_helper_context                      = system_hashed_ansi_string_contains(window_name,
                                                                                                  system_hashed_ansi_string_create("Helper") );
-    new_context_ptr->msaa_enumeration_color_samples         = NULL;
-    new_context_ptr->msaa_enumeration_depth_stencil_samples = NULL;
+    new_context_ptr->msaa_enumeration_color_samples         = nullptr;
+    new_context_ptr->msaa_enumeration_depth_stencil_samples = nullptr;
     new_context_ptr->parent_context                         = parent_context;
     new_context_ptr->pfd                                    = in_pfd;
     new_context_ptr->window                                 = window;
@@ -297,7 +298,7 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
                                SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
                               &new_context_ptr->vsync_enabled);
 
-    if (new_context_ptr->parent_context != NULL)
+    if (new_context_ptr->parent_context != nullptr)
     {
         ral_context_retain(((_ogl_context*) new_context_ptr->parent_context)->context);
     }
@@ -366,9 +367,9 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
         !context_ptr->is_intel_driver && !context_ptr->is_nv_driver)
     {
         /* This function is called back from within driver layer! Do not issue GL commands from here! */
-        const char*   source_name   = NULL;
-        const char*   type_name     = NULL;
-        const char*   severity_name = NULL;
+        const char*   source_name   = nullptr;
+        const char*   type_name     = nullptr;
+        const char*   severity_name = nullptr;
 
         switch(source)
         {
@@ -423,7 +424,7 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
                                                                            void*       user_arg)
 {
     _ogl_context*                context_ptr            = (_ogl_context*) context;
-    PFNGLGETINTERNALFORMATIVPROC pGLGetInternalformativ = NULL;
+    PFNGLGETINTERNALFORMATIVPROC pGLGetInternalformativ = nullptr;
 
     /* Determine all supported n_samples for the internalformat we intend to use for the color attachment */
     struct _internalformat
@@ -466,7 +467,7 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
          {
              *internalformat_ptr->samples_ptr = new GLint[*internalformat_ptr->n_samples_ptr];
 
-             ASSERT_DEBUG_SYNC(*internalformat_ptr->samples_ptr != NULL,
+             ASSERT_DEBUG_SYNC(*internalformat_ptr->samples_ptr != nullptr,
                                "Out of memory");
 
              pGLGetInternalformativ(GL_RENDERBUFFER,
@@ -477,9 +478,9 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
          }
          else
          {
-             *internalformat_ptr->samples_ptr = NULL;
+             *internalformat_ptr->samples_ptr = nullptr;
          }
-    } /* for (all internalformats) */
+    }
 }
 
 /** TODO */
@@ -573,12 +574,12 @@ end:
 /** TODO */
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*                     user_arg,
                                                                        system_hashed_ansi_string decompressed_filename,
-                                                                       GLenum*                   out_compressed_gl_enum,
-                                                                       system_file_unpacker*     out_file_unpacker)
+                                                                       GLenum*                   out_compressed_gl_enum_ptr,
+                                                                       system_file_unpacker*     out_file_unpacker_ptr)
 {
     _ogl_context*             context_ptr                  = (_ogl_context*) user_arg;
     int                       n_compressed_internalformats = 0;
-    system_hashed_ansi_string result                       = NULL;
+    system_hashed_ansi_string result                       = nullptr;
 
     /* Identify location where the extension starts */
     unsigned int decompressed_filename_length         = system_hashed_ansi_string_get_length(decompressed_filename);
@@ -590,10 +591,10 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
     unsigned int n_asset_paths                        = 0;
     unsigned int n_file_unpackers                     = 0;
 
-    ASSERT_DEBUG_SYNC(decompressed_filename_last_dot_ptr != NULL,
+    ASSERT_DEBUG_SYNC(decompressed_filename_last_dot_ptr != nullptr,
                       "Input file name does not use any extension");
 
-    if (decompressed_filename_last_dot_ptr == NULL)
+    if (decompressed_filename_last_dot_ptr == nullptr)
     {
         goto end;
     }
@@ -627,7 +628,7 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
                       n_file_unpacker < (n_file_unpackers + 1 /* non-existing file unpacker */);
                     ++n_file_unpacker)
     {
-        system_file_unpacker current_file_unpacker = NULL;
+        system_file_unpacker current_file_unpacker = nullptr;
 
         if (n_file_unpacker < n_file_unpackers)
         {
@@ -636,31 +637,31 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
                                               &current_file_unpacker);
         }
 
-        if (current_file_unpacker != NULL)
+        if (current_file_unpacker != nullptr)
         {
             /* For file unpackers, also try the original file name which was not found
              * in the working directory.
              */
             if (system_file_enumerator_is_file_present_in_system_file_unpacker(current_file_unpacker,
                                                                                decompressed_filename,
-                                                                               true, /* use_exact_match */
-                                                                               NULL) ) /* out_file_index */
+                                                                               true,      /* use_exact_match */
+                                                                               nullptr) ) /* out_file_index */
             {
-                *out_compressed_gl_enum = GL_NONE;
-                *out_file_unpacker      = current_file_unpacker;
-                 result                 = decompressed_filename;
+                *out_compressed_gl_enum_ptr = GL_NONE;
+                *out_file_unpacker_ptr      = current_file_unpacker;
+                 result                     = decompressed_filename;
 
                  break;
             }
-        } /* if (current_file_unpacker != NULL) */
+        }
 
         for (unsigned int n_asset_path = 0;
                           n_asset_path < n_asset_paths;
                         ++n_asset_path)
         {
             /* Retrieve current asset path */
-            system_hashed_ansi_string current_asset_path     = NULL;
-            const char*               current_asset_path_raw = NULL;
+            system_hashed_ansi_string current_asset_path     = nullptr;
+            const char*               current_asset_path_raw = nullptr;
 
             system_global_get_indexed_property(SYSTEM_GLOBAL_PROPERTY_ASSET_PATH,
                                                n_asset_path,
@@ -679,7 +680,7 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
                    ++n_compressed_internalformat)
             {
                 GLenum                    enum_value = GL_NONE;
-                system_hashed_ansi_string extension  = NULL;
+                system_hashed_ansi_string extension  = nullptr;
 
                 if (n_compressed_internalformat < 0)
                 {
@@ -704,7 +705,7 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
 
                 if (n_compressed_internalformat < 0)
                 {
-                    system_hashed_ansi_string decompressed_filename_wo_path = NULL;
+                    system_hashed_ansi_string decompressed_filename_wo_path = nullptr;
 
                     decompressed_filename_wo_path = system_hashed_ansi_string_create_substring(decompressed_filename_last_slash_ptr + 1,
                                                                                                0,                             /* start_offset */
@@ -724,21 +725,21 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
                 result_filename_has  = system_hashed_ansi_string_create(result_filename.c_str() );
 
                 /* Is the file available? */
-                if (current_file_unpacker != NULL && system_file_enumerator_is_file_present_in_system_file_unpacker(current_file_unpacker,
-                                                                                                                    result_filename_has,
-                                                                                                                    true,                    /* use_exact_match */
-                                                                                                                    NULL)                 || /* out_file_index */
-                    current_file_unpacker == NULL && system_file_enumerator_is_file_present                        (result_filename_has) )
+                if (current_file_unpacker != nullptr && system_file_enumerator_is_file_present_in_system_file_unpacker(current_file_unpacker,
+                                                                                                                       result_filename_has,
+                                                                                                                       true,                       /* use_exact_match */
+                                                                                                                       nullptr)                 || /* out_file_index  */
+                    current_file_unpacker == nullptr && system_file_enumerator_is_file_present                        (result_filename_has) )
                 {
-                    result                  = result_filename_has;
-                    *out_compressed_gl_enum = enum_value;
-                    *out_file_unpacker      = current_file_unpacker;
+                    result                      = result_filename_has;
+                    *out_compressed_gl_enum_ptr = enum_value;
+                    *out_file_unpacker_ptr      = current_file_unpacker;
 
                     break;
                 }
-            } /* for (all compressed internalformats) */
-        } /* for (all asset paths) */
-    } /* for (all active file unpackers) */
+            }
+        }
+    }
 
 end:
     return result;
@@ -747,30 +748,30 @@ end:
 /** TODO */
 PRIVATE bool _ogl_context_get_color_attachment_format_for_rgba_bits(unsigned char*      n_rgba_bits,
                                                                     bool                use_srgb_color_space,
-                                                                    ral_texture_format* out_format)
+                                                                    ral_texture_format* out_format_ptr)
 {
     bool result = true;
 
     if (n_rgba_bits[0] == 0 && n_rgba_bits[1] == 0 && n_rgba_bits[2] == 0 && n_rgba_bits[3] == 0)
     {
-        *out_format = RAL_TEXTURE_FORMAT_UNKNOWN;
+        *out_format_ptr = RAL_TEXTURE_FORMAT_UNKNOWN;
     }
     else
     if (use_srgb_color_space)
     {
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format = RAL_TEXTURE_FORMAT_SRGB8_UNORM; else
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format = RAL_TEXTURE_FORMAT_SRGBA8_UNORM;else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format_ptr = RAL_TEXTURE_FORMAT_SRGB8_UNORM; else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format_ptr = RAL_TEXTURE_FORMAT_SRGBA8_UNORM;else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported number of RGBA bits requested");
 
             result = false;
         }
-    } /* if (use_srgb_color_space) */
+    }
     else
     {
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format = RAL_TEXTURE_FORMAT_RGB8_UNORM; else
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format = RAL_TEXTURE_FORMAT_RGBA8_UNORM;else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format_ptr = RAL_TEXTURE_FORMAT_RGB8_UNORM; else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format_ptr = RAL_TEXTURE_FORMAT_RGBA8_UNORM;else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported number of RGBA bits requested");
@@ -825,7 +826,7 @@ PRIVATE bool _ogl_context_get_depth_attachment_format_for_bits(unsigned char    
 
             result = false;
         }
-    } /* switch (n_depth_bits) */
+    }
 
     return result;
 }
@@ -858,9 +859,9 @@ PRIVATE bool _ogl_context_get_depth_stencil_attachment_format_for_bits(unsigned 
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*         context_ptr,
-                                                func_ptr_table_entry* entries,
-                                                uint32_t              n_entries)
+PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*               context_ptr,
+                                                const func_ptr_table_entry* entries,
+                                                uint32_t                    n_entries)
 {
     bool result = true;
 
@@ -874,7 +875,7 @@ PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*         context_pt
         *ptr_to_update = context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
                                                        func_name);
 
-        if (*ptr_to_update == NULL)
+        if (*ptr_to_update == nullptr)
         {
             LOG_ERROR("Could not retrieve function pointer to %s - update your drivers, OpenGL 4.2 is required to run.",
                       func_name);
@@ -892,18 +893,18 @@ PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*         context_pt
 /** TODO */
 PRIVATE void _ogl_context_gl_info_deinit(ogl_context_gl_info* info_ptr)
 {
-    ASSERT_DEBUG_SYNC(info_ptr != NULL,
+    ASSERT_DEBUG_SYNC(info_ptr != nullptr,
                       "Input argument is NULL");
 
-    if (info_ptr != NULL)
+    if (info_ptr != nullptr)
     {
         delete [] info_ptr->extensions;
-        info_ptr->extensions = NULL;
+        info_ptr->extensions = nullptr;
 
-        info_ptr->renderer                 = NULL;
-        info_ptr->shading_language_version = NULL;
-        info_ptr->vendor                   = NULL;
-        info_ptr->version                  = NULL;
+        info_ptr->renderer                 = nullptr;
+        info_ptr->shading_language_version = nullptr;
+        info_ptr->vendor                   = nullptr;
+        info_ptr->version                  = nullptr;
     }
 }
 
@@ -911,16 +912,16 @@ PRIVATE void _ogl_context_gl_info_deinit(ogl_context_gl_info* info_ptr)
 PRIVATE void _ogl_context_gl_info_init(      ogl_context_gl_info*   info_ptr,
                                        const ogl_context_gl_limits* limits_ptr)
 {
-    ASSERT_DEBUG_SYNC(info_ptr   != NULL &&
-                      limits_ptr != NULL,
+    ASSERT_DEBUG_SYNC(info_ptr   != nullptr &&
+                      limits_ptr != nullptr,
                       "Input arguments are NULL.");
 
-    if (info_ptr   != NULL &&
-        limits_ptr != NULL)
+    if (info_ptr   != nullptr &&
+        limits_ptr != nullptr)
     {
         info_ptr->extensions = new (std::nothrow) const GLubyte*[limits_ptr->num_extensions];
 
-        ASSERT_ALWAYS_SYNC(info_ptr->extensions != NULL, 
+        ASSERT_ALWAYS_SYNC(info_ptr->extensions != nullptr, 
                            "Out of memory while allocating extension name array (%d entries)", 
                            limits_ptr->num_extensions);
     }
@@ -941,11 +942,11 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
            0,
            sizeof(context_ptr->fbo_to_size) );
 
-    context_ptr->bo_bindings                                = NULL;
+    context_ptr->bo_bindings                                = nullptr;
     context_ptr->es_ext_texture_buffer_support              = false;
-    context_ptr->fbo                                        = NULL;
-    context_ptr->fbo_color_to                               = NULL;
-    context_ptr->fbo_depth_stencil_to                       = NULL;
+    context_ptr->fbo                                        = nullptr;
+    context_ptr->fbo_color_to                               = nullptr;
+    context_ptr->fbo_depth_stencil_to                       = nullptr;
     context_ptr->gl_arb_buffer_storage_support              = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
     context_ptr->gl_arb_sparse_buffer_support               = false;
@@ -956,11 +957,11 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->is_intel_driver                            = false; /* determined later */
     context_ptr->is_nv_driver                               = false; /* determined later */
     context_ptr->multisampling_samples                      = 0;
-    context_ptr->sampler_bindings                           = NULL;
-    context_ptr->state_cache                                = NULL;
-    context_ptr->text_renderer                              = NULL;
-    context_ptr->texture_compression                        = NULL;
-    context_ptr->to_bindings                                = NULL;
+    context_ptr->sampler_bindings                           = nullptr;
+    context_ptr->state_cache                                = nullptr;
+    context_ptr->text_renderer                              = nullptr;
+    context_ptr->texture_compression                        = nullptr;
+    context_ptr->to_bindings                                = nullptr;
     context_ptr->vao_no_vaas_id                             = 0;
 
     #ifdef _WIN32
@@ -1074,7 +1075,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                                                  GL_DONT_CARE,
                                                                  GL_DONT_CARE,
                                                                  0,
-                                                                 NULL,
+                                                                 nullptr,
                                                                  true);
 
             context_ptr->entry_points_private.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -1096,7 +1097,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
         /* Set up the zero-VAA VAO */
         context_ptr->entry_points_gl.pGLGenVertexArrays(1,
                                                        &context_ptr->vao_no_vaas_id);
-    } /* if (type == OGL_CONTEXT_TYPE_GL) */
+    }
 
     /* Update gfx_image alternative file getter provider so that it can
      * search for compressed textures supported by this rendering context. */
@@ -1122,20 +1123,24 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
      *       The rendering thread is blocked at the time of this call so we need to use this thread
      *       temporarily to set up everything.
      */
-    static const bool     call_passthrough_mode_disabled = false;
-    static const bool     call_passthrough_mode_enabled  = true;
-    ogl_rendering_handler rendering_handler              = NULL;
+    static const bool      call_passthrough_mode_disabled = false;
+    static const bool      call_passthrough_mode_enabled  = true;
+    raGL_rendering_handler rendering_handler_raGL         = nullptr;
+    ral_rendering_handler  rendering_handler_ral          = nullptr;
 
-    system_window_get_property(context_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    system_window_get_property        (context_ptr->window,
+                                       SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                      &rendering_handler_ral);
+    ral_rendering_handler_get_property(rendering_handler_ral,
+                                       RAL_RENDERING_HANDLER_PROPERTY_RENDERING_HANDLER_BACKEND,
+                                      &rendering_handler_raGL);
 
-    ogl_rendering_handler_set_private_property(rendering_handler,
-                                               OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_CONTEXT,
-                                              &context_ptr);
-    ogl_rendering_handler_set_private_property(rendering_handler,
-                                               OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
-                                              &call_passthrough_mode_enabled);
+    raGL_rendering_handler_set_property(rendering_handler_raGL,
+                                        RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_CONTEXT,
+                                       &context_ptr);
+    raGL_rendering_handler_set_property(rendering_handler_raGL,
+                                        RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_MODE,
+                                       &call_passthrough_mode_enabled);
 
     if (!context_ptr->is_helper_context)
     {
@@ -1144,7 +1149,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
         /* Set up text renderer */
         const  float              text_default_size = 0.75f;
         static float              text_color[3]     = {1.0f, 1.0f, 1.0f};
-        system_hashed_ansi_string window_name       = NULL;
+        system_hashed_ansi_string window_name       = nullptr;
         int                       window_size[2];
 
         system_window_get_property(context_ptr->window,
@@ -1169,9 +1174,9 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                                      VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
                                                      text_color);
     }
-    ogl_rendering_handler_set_private_property(rendering_handler,
-                                               OGL_RENDERING_HANDLER_PRIVATE_PROPERTY_CALL_PASSTHROUGH_MODE,
-                                              &call_passthrough_mode_disabled);
+    raGL_rendering_handler_set_property(rendering_handler_raGL,
+                                        RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_MODE,
+                                       &call_passthrough_mode_disabled);
 
     #ifdef __linux
     {
@@ -1213,7 +1218,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     bool                format_depth_stencil_includes_stencil = false;
     unsigned int        n_samples                             = 0;
     unsigned int        n_samples_effective                   = 0;
-    system_pixel_format pixel_format                          = NULL;
+    system_pixel_format pixel_format                          = nullptr;
     int                 window_dimensions[2]                  = {0};
 
     /* Determine what internalformats we need to use for the color, depth and stencil attachments.
@@ -1236,7 +1241,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     ASSERT_DEBUG_SYNC(window_dimensions[0] > 0 &&
                       window_dimensions[1] > 0,
                       "Window's width and/or height is reported as 0");
-    ASSERT_DEBUG_SYNC(pixel_format != NULL,
+    ASSERT_DEBUG_SYNC(pixel_format != nullptr,
                       "No pixel format associated with the rendering window");
 
     system_pixel_format_get_property(pixel_format,
@@ -1246,7 +1251,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     if (n_samples == SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES)
     {
         unsigned int  reported_n_samples = 0;
-        unsigned int* reported_samples   = NULL;
+        unsigned int* reported_samples   = nullptr;
 
         ogl_context_enumerate_msaa_samples(context_ptr->backend_type,
                                            pixel_format,
@@ -1267,13 +1272,13 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             n_samples = reported_samples[0];
         }
 
-        if (reported_samples != NULL)
+        if (reported_samples != nullptr)
         {
             delete [] reported_samples;
 
-            reported_samples = NULL;
+            reported_samples = nullptr;
         }
-    } /* if (n_samples == SYSTEM_PIXEL_FORMAT_USE_MAXIMUM_NUMBER_OF_SAMPLES) */
+    }
 
     if (!_ogl_context_get_attachment_formats_for_system_pixel_format(pixel_format,
                                                                     &format_color,
@@ -1304,7 +1309,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         {
             ral_texture_create_info color_to_create_info;
             bool                    color_to_is_rb       = false;
-            raGL_texture            color_to_raGL        = NULL;
+            raGL_texture            color_to_raGL        = nullptr;
             bool                    result;
 
             color_to_create_info.base_mipmap_depth      = 1;
@@ -1343,7 +1348,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         {
             ral_texture_create_info depth_stencil_to_create_info;
             bool                    depth_stencil_to_is_rb = false;
-            raGL_texture            depth_stencil_to_raGL  = NULL;
+            raGL_texture            depth_stencil_to_raGL  = nullptr;
             bool                    result;
 
             depth_stencil_to_create_info.base_mipmap_depth      = 1;
@@ -1385,7 +1390,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                                           context_ptr->fbo_color_to,
                                           0); /* n_mipmap */
 
-        if (context_ptr->fbo_depth_stencil_to != NULL)
+        if (context_ptr->fbo_depth_stencil_to != nullptr)
         {
             ral_framebuffer_set_attachment_2D(context_ptr->fbo,
                                               RAL_FRAMEBUFFER_ATTACHMENT_TYPE_DEPTH_STENCIL,
@@ -1393,15 +1398,15 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                                               context_ptr->fbo_depth_stencil_to,
                                               0); /* n_mipmap */
         }
-    } /* if (any of the attachments need to have a physical backing) */
+    }
 
     /* Store the framebuffer size */
     context_ptr->fbo_to_size[0] = window_dimensions[0];
     context_ptr->fbo_to_size[1] = window_dimensions[1];
 
     /* Log the context's FBO configuration. Could be useful for debugging in the future. */
-    const char* format_color_string         = NULL;
-    const char* format_depth_stencil_string = NULL;
+    const char* format_color_string         = nullptr;
+    const char* format_depth_stencil_string = nullptr;
 
     ral_utils_get_texture_format_property(format_color,
                                           RAL_TEXTURE_FORMAT_PROPERTY_NAME,
@@ -1460,32 +1465,32 @@ PRIVATE void _ogl_context_release(void* ptr)
 {
     _ogl_context* context_ptr = (_ogl_context*) ptr;
 
-    if (context_ptr->bo_bindings != NULL)
+    if (context_ptr->bo_bindings != nullptr)
     {
         ogl_context_bo_bindings_release(context_ptr->bo_bindings);
 
-        context_ptr->bo_bindings = NULL;
+        context_ptr->bo_bindings = nullptr;
     }
 
-    if (context_ptr->sampler_bindings != NULL)
+    if (context_ptr->sampler_bindings != nullptr)
     {
         ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
 
-        context_ptr->sampler_bindings = NULL;
+        context_ptr->sampler_bindings = nullptr;
     }
 
-    if (context_ptr->fbo != NULL)
+    if (context_ptr->fbo != nullptr)
     {
         ral_context_delete_objects(context_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
                                    1, /* n_framebuffers */
                                    (const void**) &context_ptr->fbo);
 
-        context_ptr->fbo = NULL;
+        context_ptr->fbo = nullptr;
     }
 
-    if (context_ptr->fbo_color_to         != NULL ||
-        context_ptr->fbo_depth_stencil_to != NULL)
+    if (context_ptr->fbo_color_to         != nullptr ||
+        context_ptr->fbo_depth_stencil_to != nullptr)
     {
         ral_texture fbo_tos[] =
         {
@@ -1499,56 +1504,56 @@ PRIVATE void _ogl_context_release(void* ptr)
                                    n_fbo_tos,
                                    (const void**) fbo_tos);
 
-        context_ptr->fbo_color_to         = NULL;
-        context_ptr->fbo_depth_stencil_to = NULL;
+        context_ptr->fbo_color_to         = nullptr;
+        context_ptr->fbo_depth_stencil_to = nullptr;
     }
 
-    if (context_ptr->state_cache != NULL)
+    if (context_ptr->state_cache != nullptr)
     {
         ogl_context_state_cache_release(context_ptr->state_cache);
 
-        context_ptr->state_cache = NULL;
+        context_ptr->state_cache = nullptr;
     }
 
-    if (context_ptr->texture_compression != NULL)
+    if (context_ptr->texture_compression != nullptr)
     {
         ogl_context_texture_compression_release(context_ptr->texture_compression);
 
-        context_ptr->texture_compression = NULL;
+        context_ptr->texture_compression = nullptr;
     }
 
-    if (context_ptr->to_bindings != NULL)
+    if (context_ptr->to_bindings != nullptr)
     {
         ogl_context_to_bindings_release(context_ptr->to_bindings);
 
-        context_ptr->to_bindings = NULL;
+        context_ptr->to_bindings = nullptr;
     }
 
     /* Release arrays allocated for "limits" storage */
-    if (context_ptr->limits.program_binary_formats != NULL)
+    if (context_ptr->limits.program_binary_formats != nullptr)
     {
         delete [] context_ptr->limits.program_binary_formats;
 
-        context_ptr->limits.program_binary_formats = NULL;
+        context_ptr->limits.program_binary_formats = nullptr;
     }
 
     /* Release the parent context */
-    if (context_ptr->parent_context != NULL)
+    if (context_ptr->parent_context != nullptr)
     {
         ral_context_release(((_ogl_context*) context_ptr->parent_context)->context);
 
-        context_ptr->parent_context = NULL;
+        context_ptr->parent_context = nullptr;
     }
 
     ogl_context_release_managers( (ogl_context) ptr);
     _ogl_context_gl_info_deinit (&context_ptr->info);
 
     /* Release the platform-specific bits */
-    if (context_ptr->context_platform != NULL)
+    if (context_ptr->context_platform != nullptr)
     {
         context_ptr->pfn_deinit(context_ptr->context_platform);
 
-        context_ptr->context_platform = NULL;
+        context_ptr->context_platform = nullptr;
     }
 }
 
@@ -2039,7 +2044,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
                                                                                                                                                            "glNamedBufferStorageEXT");
             context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferStorageEXT = ogl_context_wrappers_glNamedBufferStorageEXT;
 
-            if (context_ptr->entry_points_private.pGLNamedBufferStorageEXT == NULL)
+            if (context_ptr->entry_points_private.pGLNamedBufferStorageEXT == nullptr)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "DSA version entry-points of GL_ARB_buffer_storage are unavailable in spite of being reported.");
@@ -2051,7 +2056,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
             context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT = (PFNGLNAMEDBUFFERPAGECOMMITMENTARBPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
                                                                                                                                                                    "glNamedBufferPageCommitmentEXT");
 
-            if (context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT == NULL)
+            if (context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT == nullptr)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "DSA version entry-points for GL_ARB_sparse_buffer are unavailable in spite of being reported.");
@@ -2066,9 +2071,9 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DEXT = (PFNGLTEXTURESTORAGE3DEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
                                                                                                                                                    "glTextureStorage3DEXT");
 
-        if (context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage1DEXT == NULL ||
-            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DEXT == NULL ||
-            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DEXT == NULL)
+        if (context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage1DEXT == nullptr ||
+            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DEXT == nullptr ||
+            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DEXT == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "DSA version entry-points of GL_ARB_texture_storage are unavailable in spite of being reported.");
@@ -2080,8 +2085,8 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DMultisampleEXT = (PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
                                                                                                                                                                          "glTextureStorage3DMultisampleEXT");
 
-        if (context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DMultisampleEXT == NULL ||
-            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DMultisampleEXT == NULL)
+        if (context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage2DMultisampleEXT == nullptr ||
+            context_ptr->entry_points_gl_ext_direct_state_access.pGLTextureStorage3DMultisampleEXT == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "DSA version entry-points of GL_ARB_texture_storage_multisample are unavailable in spite of being reported.");
@@ -2670,8 +2675,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
 {
-    PFNGLGETSTRINGPROC  pGLGetString  = NULL;
-    PFNGLGETSTRINGIPROC pGLGetStringi = NULL;
+    PFNGLGETSTRINGPROC  pGLGetString  = nullptr;
+    PFNGLGETSTRINGIPROC pGLGetStringi = nullptr;
 
     if (context_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
@@ -2694,21 +2699,21 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
 
     /* Is this an AMD driver? */
     if (strstr((const char*) context_ptr->info.vendor,
-               "ATI") != NULL)
+               "ATI") != nullptr)
     {
         context_ptr->is_amd_driver = true;
     }
 
     /* Is this an Intel driver? */
     if (strstr((const char*) context_ptr->info.vendor,
-               "Intel") != NULL)
+               "Intel") != nullptr)
     {
         context_ptr->is_intel_driver = true;
     }
 
     /* Is this a NV driver? */
     if (strstr((const char*) context_ptr->info.vendor,
-               "NV") != NULL)
+               "NV") != nullptr)
     {
         context_ptr->is_nv_driver = true;
     }
@@ -2728,7 +2733,7 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
     _ogl_context_gl_info_init(&context_ptr->info,
                               &context_ptr->limits);
 
-    if (context_ptr->info.extensions != NULL)
+    if (context_ptr->info.extensions != nullptr)
     {
         for (int n_extension = 0;
                  n_extension < context_ptr->limits.num_extensions;
@@ -2740,7 +2745,7 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
             LOG_INFO("%s",
                      context_ptr->info.extensions[n_extension]);
 
-            ASSERT_ALWAYS_SYNC(context_ptr->info.extensions[n_extension] != NULL,
+            ASSERT_ALWAYS_SYNC(context_ptr->info.extensions[n_extension] != nullptr,
                                "GL reports %d extensions supported but %dth extension name is NULL!",
                                context_ptr->limits.num_extensions,
                                n_extension);
@@ -2967,7 +2972,7 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
 
     /* Retrieve "program binary" limits */
     context_ptr->limits.num_program_binary_formats = 0;
-    context_ptr->limits.program_binary_formats     = NULL;
+    context_ptr->limits.program_binary_formats     = nullptr;
 
     context_ptr->entry_points_private.pGLGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS,
                                                     &context_ptr->limits.num_program_binary_formats);
@@ -2976,18 +2981,18 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
     {
         context_ptr->limits.program_binary_formats = new (std::nothrow) GLint[context_ptr->limits.num_program_binary_formats];
 
-        ASSERT_ALWAYS_SYNC(context_ptr->limits.program_binary_formats != NULL,
+        ASSERT_ALWAYS_SYNC(context_ptr->limits.program_binary_formats != nullptr,
                            "Could not allocate space for supported program binary formats array");
 
-        if (context_ptr->limits.program_binary_formats != NULL)
+        if (context_ptr->limits.program_binary_formats != nullptr)
         {
             context_ptr->entry_points_private.pGLGetIntegerv(GL_PROGRAM_BINARY_FORMATS,
                                                              context_ptr->limits.program_binary_formats);
         }
-    } /* if (context_ptr->limits.num_program_binary_formats != 0) */
+    }
     else
     {
-        context_ptr->limits.program_binary_formats = NULL;
+        context_ptr->limits.program_binary_formats = nullptr;
     }
 }
 
@@ -3007,10 +3012,10 @@ PUBLIC void ogl_context_bind_to_current_thread(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    ASSERT_DEBUG_SYNC(context_ptr != NULL,
+    ASSERT_DEBUG_SYNC(context_ptr != nullptr,
                       "Input argument is NULL");
 
-    if (context_ptr != NULL)
+    if (context_ptr != nullptr)
     {
         context_ptr->pfn_bind_to_current_thread(context_ptr->context_platform);
 
@@ -3025,15 +3030,15 @@ PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    ASSERT_DEBUG_SYNC(context_ptr != NULL,
+    ASSERT_DEBUG_SYNC(context_ptr != nullptr,
                       "Input argument is NULL");
 
-    if (context_ptr != NULL)
+    if (context_ptr != nullptr)
     {
         context_ptr->pfn_unbind_from_current_thread(context_ptr->context_platform);
 
-        _current_context = NULL;
-        ogl_context_wrappers_set_private_functions(NULL);
+        _current_context = nullptr;
+        ogl_context_wrappers_set_private_functions(nullptr);
     }
 }
 
@@ -3057,8 +3062,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hash
                                                                      system_window             window,
                                                                      ogl_context               parent_context)
 {
-    system_pixel_format window_pf      = NULL;
-    system_pixel_format window_pf_copy = NULL;
+    system_pixel_format window_pf      = nullptr;
+    system_pixel_format window_pf_copy = nullptr;
 
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
@@ -3097,14 +3102,14 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
 {
     bool                    consider_color_internalformats         = false;
     bool                    consider_depth_stencil_internalformats = false;
-    system_resizable_vector depth_stencil_samples_vector           = NULL;
+    system_resizable_vector depth_stencil_samples_vector           = nullptr;
     ral_texture_format      format_color                           = RAL_TEXTURE_FORMAT_UNKNOWN;
     ral_texture_format      format_depth_stencil                   = RAL_TEXTURE_FORMAT_UNKNOWN;
     bool                    result                                 = true;
-    system_resizable_vector result_vector                          = NULL;
-    ral_context             root_context                           = NULL;
-    ogl_context             root_context_gl                        = NULL;
-    _ogl_context*           root_context_gl_ptr                    = NULL;
+    system_resizable_vector result_vector                          = nullptr;
+    ral_context             root_context                           = nullptr;
+    ogl_context             root_context_gl                        = nullptr;
+    _ogl_context*           root_context_gl_ptr                    = nullptr;
 
     result = _ogl_context_get_attachment_formats_for_system_pixel_format(pf,
                                                                         &format_color,
@@ -3121,7 +3126,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
     /* Determine the number of samples which can be used for the specified internalformats */
     root_context = raGL_backend_get_helper_context(backend_type);
 
-    if (root_context == NULL)
+    if (root_context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not obtain root context");
@@ -3138,7 +3143,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
 
     ogl_context_request_callback_from_context_thread(root_context_gl,
                                                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback,
-                                                     NULL); /* user_arg */
+                                                     nullptr); /* user_arg */
 
     /* Extract the information we gathered in the rendering thread. Since the number of samples
      * used for color & depth attachments must match, we can only return values that are supported
@@ -3164,7 +3169,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
 
     result_vector = system_resizable_vector_create(32 /* capacity */);
 
-    ASSERT_DEBUG_SYNC(result_vector != NULL,
+    ASSERT_DEBUG_SYNC(result_vector != nullptr,
                       "Out of memory");
 
     for (unsigned int n_depth_stencil_n_samples = 0;
@@ -3175,7 +3180,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
                                      (void*) root_context_gl_ptr->msaa_enumeration_depth_stencil_samples[n_depth_stencil_n_samples]);
     }
 
-    if (depth_stencil_samples_vector != NULL)
+    if (depth_stencil_samples_vector != nullptr)
     {
         for (unsigned int n_result_sample = 0;
                           n_result_sample < (uint32_t) root_context_gl_ptr->msaa_enumeration_color_n_samples;
@@ -3189,7 +3194,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
                                              (void*) root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]);
             }
         }
-    } /* if (depth_stencil_samples_vector != NULL) */
+    }
     else
     {
         /* Treat the color samples data as the needed info */
@@ -3213,7 +3218,7 @@ end:
     else
     {
         /* Copy the result data to the output variables */
-        GLint* result_vector_data_ptr = NULL;
+        GLint* result_vector_data_ptr = nullptr;
 
         system_resizable_vector_get_property(result_vector,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
@@ -3224,9 +3229,9 @@ end:
 
         *out_supported_samples = new unsigned int [*out_n_supported_samples];
 
-        ASSERT_DEBUG_SYNC(result_vector_data_ptr != NULL,
+        ASSERT_DEBUG_SYNC(result_vector_data_ptr != nullptr,
                           "system_resizable_vector returned NULL for SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY query");
-        ASSERT_DEBUG_SYNC(*out_supported_samples != NULL,
+        ASSERT_DEBUG_SYNC(*out_supported_samples != nullptr,
                           "Out of memory");
 
         memcpy(*out_supported_samples,
@@ -3235,32 +3240,32 @@ end:
     }
 
     /* Clean up */
-    if (root_context_gl_ptr->msaa_enumeration_color_samples != NULL)
+    if (root_context_gl_ptr->msaa_enumeration_color_samples != nullptr)
     {
         delete [] root_context_gl_ptr->msaa_enumeration_color_samples;
 
-        root_context_gl_ptr->msaa_enumeration_color_samples = NULL;
+        root_context_gl_ptr->msaa_enumeration_color_samples = nullptr;
     }
 
-    if (root_context_gl_ptr->msaa_enumeration_depth_stencil_samples != NULL)
+    if (root_context_gl_ptr->msaa_enumeration_depth_stencil_samples != nullptr)
     {
         delete [] root_context_gl_ptr->msaa_enumeration_depth_stencil_samples;
 
-        root_context_gl_ptr->msaa_enumeration_depth_stencil_samples = NULL;
+        root_context_gl_ptr->msaa_enumeration_depth_stencil_samples = nullptr;
     }
 
-    if (depth_stencil_samples_vector != NULL)
+    if (depth_stencil_samples_vector != nullptr)
     {
         system_resizable_vector_release(depth_stencil_samples_vector);
 
-        depth_stencil_samples_vector = NULL;
+        depth_stencil_samples_vector = nullptr;
     }
 
-    if (result_vector != NULL)
+    if (result_vector != nullptr)
     {
         system_resizable_vector_release(result_vector);
 
-        result_vector = NULL;
+        result_vector = nullptr;
     }
 }
 
@@ -3277,7 +3282,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    if (context_ptr->context_platform != NULL)
+    if (context_ptr->context_platform != nullptr)
     {
         bool result = context_ptr->pfn_get_property(context_ptr->context_platform,
                                                     property,
@@ -3287,7 +3292,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
         {
             goto end;
         }
-    } /* if (context_ptr->context_platform != NULL) */
+    }
 
     switch (property)
     {
@@ -3544,7 +3549,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_TEXT_RENDERER:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->text_renderer != NULL,
+            ASSERT_DEBUG_SYNC(context_ptr->text_renderer != nullptr,
                               "Text renderer is NULL");
 
             *((varia_text_renderer*) out_result) = context_ptr->text_renderer;
@@ -3592,7 +3597,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ogl_context property requested");
         }
-    } /* switch (property) */
+    }
 
 end:
     ;
@@ -3640,38 +3645,42 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    if (context_ptr->text_renderer != NULL)
+    if (context_ptr->text_renderer != nullptr)
     {
         varia_text_renderer_release(context_ptr->text_renderer);
 
-        context_ptr->text_renderer = NULL;
+        context_ptr->text_renderer = nullptr;
     }
 
     return true;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context                                context,
-                                                                         PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback,
-                                                                         void*                                      user_arg,
-                                                                         bool                                       swap_buffers_afterward,
-                                                                         ogl_rendering_handler_execution_mode       execution_mode)
+PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context                                 context,
+                                                                         PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
+                                                                         void*                                       user_arg,
+                                                                         bool                                        swap_buffers_afterward,
+                                                                         raGL_rendering_handler_execution_mode       execution_mode)
 {
-    bool                  result            = false;
-    _ogl_context*         context_ptr       = (_ogl_context*) context;
-    ogl_rendering_handler rendering_handler = NULL;
+    bool                   result                 = false;
+    _ogl_context*          context_ptr            = (_ogl_context*) context;
+    raGL_rendering_handler rendering_handler_raGL = nullptr;
+    ral_rendering_handler  rendering_handler_ral  = nullptr;
 
-    system_window_get_property(context_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                              &rendering_handler);
+    system_window_get_property        (context_ptr->window,
+                                       SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                      &rendering_handler_ral);
+    ral_rendering_handler_get_property(rendering_handler_ral,
+                                       RAL_RENDERING_HANDLER_PROPERTY_RENDERING_HANDLER_BACKEND,
+                                      &rendering_handler_raGL);
 
-    if (rendering_handler != NULL)
+    if (rendering_handler_raGL != nullptr)
     {
-        result = ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
-                                                                            pfn_callback,
-                                                                            user_arg,
-                                                                            swap_buffers_afterward,
-                                                                            execution_mode);
+        result = raGL_rendering_handler_request_callback_from_context_thread(rendering_handler_raGL,
+                                                                             pfn_callback_proc,
+                                                                             user_arg,
+                                                                             swap_buffers_afterward,
+                                                                             execution_mode);
     }
     else
     {
@@ -3689,7 +3698,7 @@ PUBLIC bool ogl_context_set_property(ogl_context          context,
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    ASSERT_DEBUG_SYNC(context_ptr != NULL,
+    ASSERT_DEBUG_SYNC(context_ptr != nullptr,
                       "Input argument is NULL");
 
     switch (property)
@@ -3703,7 +3712,7 @@ PUBLIC bool ogl_context_set_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_PLATFORM_CONTEXT:
         {
-            ASSERT_DEBUG_SYNC(context_ptr->context_platform == NULL,
+            ASSERT_DEBUG_SYNC(context_ptr->context_platform == nullptr,
                               "Platform-specific context instance is not NULL");
 
             context_ptr->context_platform = *(ogl_context_platform*) data;
@@ -3725,7 +3734,7 @@ PUBLIC void ogl_context_swap_buffers(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    ASSERT_DEBUG_SYNC(context_ptr != NULL,
+    ASSERT_DEBUG_SYNC(context_ptr != nullptr,
                       "Input argument is NULL");
 
     context_ptr->pfn_swap_buffers(context_ptr->context_platform);
