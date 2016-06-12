@@ -36,17 +36,26 @@ typedef struct _raGL_program_variable
     /* Buffer variables, uniforms (default & regular uniform block): */
     uint32_t block_index;
 
+    /* Image uniforms (default uniform block): */
+    uint32_t image_unit;
+
     /* Uniforms (default & regular uniform block): */
     int32_t location;
 
     /* Common: */
     system_hashed_ansi_string name;
 
+    /* Sampler uniforms (default uniform block): */
+    uint32_t texture_unit;
+
+
     _raGL_program_variable()
     {
-        block_index = -1;
-        location    = -1;
-        name        = NULL;
+        block_index  = -1;
+        image_unit   = -1;
+        location     = -1;
+        name         = NULL;
+        texture_unit = -1;
     }
 } _raGL_program_variable;
 
@@ -100,7 +109,7 @@ PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
 
 /** TODO */
 PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program                   program,
-                                                         system_hashed_ansi_string      index,
+                                                         system_hashed_ansi_string      name,
                                                          const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */

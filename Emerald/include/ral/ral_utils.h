@@ -6,28 +6,41 @@
 
 typedef enum
 {
-    /* bool.
-     *
-     * true if the texture format describes stencil data; false otherwise */
-    RAL_TEXTURE_FORMAT_PROPERTY_HAS_STENCIL_DATA,
+    /* ral_format_type */
+    RAL_FORMAT_PROPERTY_FORMAT_TYPE,
 
     /* bool.
      *
-     * true if the texture format is compressed; false otherwise */
-    RAL_TEXTURE_FORMAT_PROPERTY_IS_COMPRESSED,
+     * true if the format can be used to describe color data; false otherwise */
+    RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+
+    /* bool.
+     *
+     * true if the format can be used to describe depth data; false otherwise */
+    RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+
+    /* bool.
+     *
+     * true if the format can be used to describe stencil data; false otherwise */
+    RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+
+    /* bool.
+     *
+     * true if the format is compressed; false otherwise */
+    RAL_FORMAT_PROPERTY_IS_COMPRESSED,
 
     /* uint32_t.
      *
-     * Number of components that a given texture format provides data for.
+     * Number of components that a given format provides data for.
      */
-    RAL_TEXTURE_FORMAT_PROPERTY_N_COMPONENTS,
+    RAL_FORMAT_PROPERTY_N_COMPONENTS,
 
     /* const char*
      *
-     * texture format name as a null-terminated string
+     * format name as a null-terminated string
      */
-    RAL_TEXTURE_FORMAT_PROPERTY_NAME,
-} ral_texture_format_property;
+    RAL_FORMAT_PROPERTY_NAME,
+} ral_format_property;
 
 typedef enum
 {
@@ -37,18 +50,23 @@ typedef enum
     RAL_TEXTURE_TYPE_PROPERTY_N_DIMENSIONS
 } ral_texture_type_property;
 
-/** Provides information about specified RAL texture format.
+/** Provides information about specified RAL format.
  *
- *  @param texture_format RAL texture format to return info for.
+ *  @param texture_format RAL format to return info for.
  *  @param property       Property to use for the query.
  *  @param out_result_ptr Deref will be set to the requested value if the function returns true.
  *                        Not touched otherwise.
  *
  *  @return true if the query was successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool ral_utils_get_texture_format_property(ral_texture_format          texture_format,
-                                                              ral_texture_format_property property,
-                                                              void*                       out_result_ptr);
+PUBLIC EMERALD_API bool ral_utils_get_format_property(ral_format          format,
+                                                      ral_format_property property,
+                                                      void*               out_result_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_property(ral_program_variable_type          variable_type,
+                                                                         ral_program_variable_type_property property,
+                                                                         void**                             out_result_ptr);
 
 /** Provides information about specified RAL texture type.
  *

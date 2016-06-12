@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-typedef enum
+enum
 {
     /* One or more buffer->buffer copy ops are pending for a ral_buffer instance.
      *

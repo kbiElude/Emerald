@@ -3,7 +3,7 @@
 
 #include "ral/ral_types.h"
 
-typedef enum
+enum
 {
     /* Notification fired whenever the shader body is updated.
      *

@@ -52,7 +52,7 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
 /** TODO */
 PUBLIC EMERALD_API bool raGL_texture_get_property(raGL_texture          texture,
                                                   raGL_texture_property property,
-                                                  void*                 out_result_ptr);
+                                                  void**                out_result_ptr);
 
 /** TODO */
 PUBLIC void raGL_texture_release(raGL_texture texture);

@@ -15,6 +15,9 @@ typedef enum
     /* not settable; ral_context */
     RAL_GFX_STATE_PROPERTY_CONTEXT,
 
+    /* not settable; bool */
+    RAL_GFX_STATE_PROPERTY_CULLING_ENABLED,
+
     /* not settable; ral_cull_mode */
     RAL_GFX_STATE_PROPERTY_CULL_MODE,
 
@@ -64,7 +67,10 @@ typedef enum
     RAL_GFX_STATE_PROPERTY_N_VERTEX_ATTRIBUTES,
 
     /* not settable; ral_polygon_mode */
-    RAL_GFX_STATE_PROPERTY_POLYGON_MODE,
+    RAL_GFX_STATE_PROPERTY_POLYGON_MODE_BACK,
+
+    /* not settable; ral_polygon_mode */
+    RAL_GFX_STATE_PROPERTY_POLYGON_MODE_FRONT,
 
     /* not settable; bool */
     RAL_GFX_STATE_PROPERTY_PRIMITIVE_RESTART_ENABLED,

@@ -6,50 +6,61 @@
 
 
 /** TODO */
-PUBLIC EMERALD_API ogl_compare_function raGL_utils_get_ogl_compare_function_for_ral_compare_function(ral_compare_function in_compare_function);
+PUBLIC ogl_compare_function raGL_utils_get_ogl_compare_function_for_ral_compare_function(ral_compare_function in_compare_function);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_texture_format(ral_texture_format in_format);
+PUBLIC ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_format(ral_format in_format);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_type(ral_texture_data_type in_data_type);
+PUBLIC ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_type(ral_texture_data_type in_data_type);
+
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_compare_op(ral_compare_op compare_op);
 
 /** TODO */
-PUBLIC EMERALD_API GLenum raGL_utils_get_ogl_enum_for_ral_program_variable_type(ral_program_variable_type in_type);
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_index_type(ral_index_type in_index_type);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_primitive_type raGL_utils_get_ogl_primive_type_for_ral_primitive_type(ral_primitive_type in_primitive_type);
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_polygon_mode(ral_polygon_mode polygon_mode);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_shader_type raGL_utils_get_ogl_shader_type_for_ral_shader_type(ral_shader_type in_shader_type);
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_stencil_op(ral_stencil_op stencil_op);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(ral_texture_filter in_texture_filter);
+PUBLIC ogl_primitive_type raGL_utils_get_ogl_enum_for_ral_primitive_type(ral_primitive_type in_primitive_type);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_min_texture_filter(ral_texture_filter      in_texture_filter,
-                                                                                                   ral_texture_mipmap_mode in_mipmap_mode);
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_program_variable_type(ral_program_variable_type in_type);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture_internalformat raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(ral_texture_format in_texture_format);
+PUBLIC ogl_shader_type raGL_utils_get_ogl_shader_type_for_ral_shader_type(ral_shader_type in_shader_type);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture_target raGL_utils_get_ogl_texture_target_for_ral_texture_type(ral_texture_type in_texture_type);
+PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(ral_texture_filter in_texture_filter);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture_wrap_mode raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(ral_texture_wrap_mode in_texture_wrap_mode);
+PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_min_texture_filter(ral_texture_filter      in_texture_filter,
+                                                                                       ral_texture_mipmap_mode in_mipmap_mode);
 
 /** TODO */
-PUBLIC EMERALD_API ral_program_variable_type raGL_utils_get_ral_program_variable_type_for_ogl_enum(GLenum type);
+PUBLIC ogl_texture_internalformat raGL_utils_get_ogl_texture_internalformat_for_ral_format(ral_format in_texture_format);
 
 /** TODO */
-PUBLIC EMERALD_API ral_texture_format raGL_utils_get_ral_texture_format_for_ogl_enum(GLenum internalformat);
+PUBLIC ogl_texture_target raGL_utils_get_ogl_texture_target_for_ral_texture_type(ral_texture_type in_texture_type);
 
 /** TODO */
-PUBLIC EMERALD_API ral_texture_format raGL_utils_get_ral_texture_format_for_ogl_texture_internalformat(ogl_texture_internalformat internalformat);
+PUBLIC ogl_texture_wrap_mode raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(ral_texture_wrap_mode in_texture_wrap_mode);
 
 /** TODO */
-PUBLIC EMERALD_API ral_texture_type raGL_utils_get_ral_texture_type_for_ogl_enum(GLenum in_texture_target_glenum);
+PUBLIC ral_program_variable_type raGL_utils_get_ral_program_variable_type_for_ogl_enum(GLenum type);
+
+/** TODO */
+PUBLIC ral_format raGL_utils_get_ral_format_for_ogl_enum(GLenum internalformat);
+
+/** TODO */
+PUBLIC ral_format raGL_utils_get_ral_format_for_ogl_texture_internalformat(ogl_texture_internalformat internalformat);
+
+/** TODO */
+PUBLIC ral_texture_type raGL_utils_get_ral_texture_type_for_ogl_enum(GLenum in_texture_target_glenum);
 
 /** TODO */
 PUBLIC EMERALD_API ral_texture_type raGL_utils_get_ral_texture_type_for_ogl_texture_target(ogl_texture_target in_texture_target);

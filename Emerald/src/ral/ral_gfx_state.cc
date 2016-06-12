@@ -62,6 +62,13 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
             break;
         }
 
+        case RAL_GFX_STATE_PROPERTY_CULLING_ENABLED:
+        {
+            *(bool*) out_result_ptr = gfx_state_ptr->create_info.culling;
+
+            break;
+        }
+
         case RAL_GFX_STATE_PROPERTY_CULL_MODE:
         {
             *(ral_cull_mode*) out_result_ptr = gfx_state_ptr->create_info.cull_mode;
@@ -167,9 +174,16 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
             break;
         }
 
-        case RAL_GFX_STATE_PROPERTY_POLYGON_MODE:
+        case RAL_GFX_STATE_PROPERTY_POLYGON_MODE_BACK:
         {
-            *(ral_polygon_mode*) out_result_ptr = gfx_state_ptr->create_info.polygon_mode;
+            *(ral_polygon_mode*) out_result_ptr = gfx_state_ptr->create_info.polygon_mode_back;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_POLYGON_MODE_FRONT:
+        {
+            *(ral_polygon_mode*) out_result_ptr = gfx_state_ptr->create_info.polygon_mode_front;
 
             break;
         }

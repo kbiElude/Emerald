@@ -70,7 +70,7 @@ typedef struct _ral_texture
     ral_context               context;
     system_hashed_ansi_string file_name;
     bool                      fixed_sample_locations;
-    ral_texture_format        format;
+    ral_format                format;
     uint32_t                  n_layers;
     uint32_t                  n_mipmaps_per_layer;
     uint32_t                  n_samples;
@@ -90,7 +90,7 @@ typedef struct _ral_texture
                  uint32_t                  in_base_mipmap_height,
                  uint32_t                  in_base_mipmap_depth,
                  bool                      in_fixed_sample_locations,
-                 ral_texture_format        in_format,
+                 ral_format                in_format,
                  uint32_t                  in_n_layers,
                  uint32_t                  in_n_mipmaps,
                  uint32_t                  in_n_samples,
@@ -600,7 +600,7 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
     system_hashed_ansi_string                                       base_image_file_name    = NULL;
     unsigned int                                                    base_image_height       = 0;
     unsigned int                                                    base_image_width        = 0;
-    ral_texture_format                                              image_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format                                                      image_format            = RAL_FORMAT_UNKNOWN;
     bool                                                            image_is_compressed     = false;
     unsigned int                                                    image_n_mipmaps         = 0;
     std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = NULL;
@@ -988,7 +988,7 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
 
         case RAL_TEXTURE_PROPERTY_FORMAT:
         {
-            *(ral_texture_format*) out_result_ptr = texture_ptr->format;
+            *(ral_format*) out_result_ptr = texture_ptr->format;
 
             break;
         }

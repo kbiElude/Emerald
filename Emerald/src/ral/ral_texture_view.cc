@@ -33,7 +33,7 @@ typedef struct _ral_texture_view
 /** Please see header for specification */
 PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_info* create_info_ptr)
 {
-    ral_texture_format parent_texture_format   = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format         parent_texture_format   = RAL_FORMAT_UNKNOWN;
     uint32_t           parent_texture_n_layers = 0;
     uint32_t           parent_texture_n_mips   = 0;
     ral_texture_type   parent_texture_type     = RAL_TEXTURE_TYPE_UNKNOWN;
@@ -159,157 +159,157 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
     switch (create_info_ptr->format)
     {
         /* 128-bit */
-        case RAL_TEXTURE_FORMAT_RGBA32_FLOAT:
-        case RAL_TEXTURE_FORMAT_RGBA32_SINT:
-        case RAL_TEXTURE_FORMAT_RGBA32_UINT:
+        case RAL_FORMAT_RGBA32_FLOAT:
+        case RAL_FORMAT_RGBA32_SINT:
+        case RAL_FORMAT_RGBA32_UINT:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_RGBA32_FLOAT ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA32_SINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA32_UINT);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_RGBA32_FLOAT ||
+                                    parent_texture_format == RAL_FORMAT_RGBA32_SINT  ||
+                                    parent_texture_format == RAL_FORMAT_RGBA32_UINT);
 
             break;
         }
 
         /* 96-bit */
-        case RAL_TEXTURE_FORMAT_RGB32_FLOAT:
-        case RAL_TEXTURE_FORMAT_RGB32_SINT:
-        case RAL_TEXTURE_FORMAT_RGB32_UINT:
+        case RAL_FORMAT_RGB32_FLOAT:
+        case RAL_FORMAT_RGB32_SINT:
+        case RAL_FORMAT_RGB32_UINT:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_RGB32_FLOAT ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB32_SINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB32_UINT);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_RGB32_FLOAT ||
+                                    parent_texture_format == RAL_FORMAT_RGB32_SINT  ||
+                                    parent_texture_format == RAL_FORMAT_RGB32_UINT);
 
             break;
         }
 
         /* 64-bit */
-        case RAL_TEXTURE_FORMAT_RG32_FLOAT:
-        case RAL_TEXTURE_FORMAT_RG32_SINT:
-        case RAL_TEXTURE_FORMAT_RG32_UINT:
-        case RAL_TEXTURE_FORMAT_RGBA16_FLOAT:
-        case RAL_TEXTURE_FORMAT_RGBA16_UINT:
-        case RAL_TEXTURE_FORMAT_RGBA16_UNORM:
-        case RAL_TEXTURE_FORMAT_RGBA16_SINT:
-        case RAL_TEXTURE_FORMAT_RGBA16_SNORM:
+        case RAL_FORMAT_RG32_FLOAT:
+        case RAL_FORMAT_RG32_SINT:
+        case RAL_FORMAT_RG32_UINT:
+        case RAL_FORMAT_RGBA16_FLOAT:
+        case RAL_FORMAT_RGBA16_UINT:
+        case RAL_FORMAT_RGBA16_UNORM:
+        case RAL_FORMAT_RGBA16_SINT:
+        case RAL_FORMAT_RGBA16_SNORM:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_RG32_FLOAT   ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG32_SINT    ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG32_UINT    ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA16_FLOAT ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA16_UINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA16_UNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA16_SINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA16_SNORM);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_RG32_FLOAT   ||
+                                    parent_texture_format == RAL_FORMAT_RG32_SINT    ||
+                                    parent_texture_format == RAL_FORMAT_RG32_UINT    ||
+                                    parent_texture_format == RAL_FORMAT_RGBA16_FLOAT ||
+                                    parent_texture_format == RAL_FORMAT_RGBA16_UINT  ||
+                                    parent_texture_format == RAL_FORMAT_RGBA16_UNORM ||
+                                    parent_texture_format == RAL_FORMAT_RGBA16_SINT  ||
+                                    parent_texture_format == RAL_FORMAT_RGBA16_SNORM);
 
             break;
         }
 
          /* 48-bit */
-        case RAL_TEXTURE_FORMAT_RGB16_UNORM:
-        case RAL_TEXTURE_FORMAT_RGB16_SNORM:
-        case RAL_TEXTURE_FORMAT_RGB16_FLOAT:
-        case RAL_TEXTURE_FORMAT_RGB16_UINT:
-        case RAL_TEXTURE_FORMAT_RGB16_SINT:
+        case RAL_FORMAT_RGB16_UNORM:
+        case RAL_FORMAT_RGB16_SNORM:
+        case RAL_FORMAT_RGB16_FLOAT:
+        case RAL_FORMAT_RGB16_UINT:
+        case RAL_FORMAT_RGB16_SINT:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_RGB16_UNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB16_SNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB16_FLOAT ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB16_UINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB16_SINT);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_RGB16_UNORM ||
+                                    parent_texture_format == RAL_FORMAT_RGB16_SNORM ||
+                                    parent_texture_format == RAL_FORMAT_RGB16_FLOAT ||
+                                    parent_texture_format == RAL_FORMAT_RGB16_UINT  ||
+                                    parent_texture_format == RAL_FORMAT_RGB16_SINT);
 
             break;
         }
 
         /* 32-bit */
-        case RAL_TEXTURE_FORMAT_R11FG11FB10F:
-        case RAL_TEXTURE_FORMAT_R32_FLOAT:
-        case RAL_TEXTURE_FORMAT_R32_SINT:
-        case RAL_TEXTURE_FORMAT_R32_UINT:
-        case RAL_TEXTURE_FORMAT_RG16_FLOAT:
-        case RAL_TEXTURE_FORMAT_RG16_SINT:
-        case RAL_TEXTURE_FORMAT_RG16_SNORM:
-        case RAL_TEXTURE_FORMAT_RG16_UINT:
-        case RAL_TEXTURE_FORMAT_RG16_UNORM:
-        case RAL_TEXTURE_FORMAT_RGB10A2_UINT:
-        case RAL_TEXTURE_FORMAT_RGB10A2_UNORM:
-        case RAL_TEXTURE_FORMAT_RGB9E5_FLOAT:
-        case RAL_TEXTURE_FORMAT_RGBA8_SINT:
-        case RAL_TEXTURE_FORMAT_RGBA8_SNORM:
-        case RAL_TEXTURE_FORMAT_RGBA8_UINT:
-        case RAL_TEXTURE_FORMAT_RGBA8_UNORM:
-        case RAL_TEXTURE_FORMAT_SRGBA8_UNORM:
+        case RAL_FORMAT_R11FG11FB10F:
+        case RAL_FORMAT_R32_FLOAT:
+        case RAL_FORMAT_R32_SINT:
+        case RAL_FORMAT_R32_UINT:
+        case RAL_FORMAT_RG16_FLOAT:
+        case RAL_FORMAT_RG16_SINT:
+        case RAL_FORMAT_RG16_SNORM:
+        case RAL_FORMAT_RG16_UINT:
+        case RAL_FORMAT_RG16_UNORM:
+        case RAL_FORMAT_RGB10A2_UINT:
+        case RAL_FORMAT_RGB10A2_UNORM:
+        case RAL_FORMAT_RGB9E5_FLOAT:
+        case RAL_FORMAT_RGBA8_SINT:
+        case RAL_FORMAT_RGBA8_SNORM:
+        case RAL_FORMAT_RGBA8_UINT:
+        case RAL_FORMAT_RGBA8_UNORM:
+        case RAL_FORMAT_SRGBA8_UNORM:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_R11FG11FB10F  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R32_FLOAT     ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R32_SINT      ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R32_UINT      ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG16_FLOAT    ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG16_SINT     ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG16_SNORM    ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG16_UINT     ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG16_UNORM    ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB10A2_UINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB10A2_UNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB9E5_FLOAT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA8_SINT    ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA8_SNORM   ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA8_UINT    ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGBA8_UNORM   ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_SRGBA8_UNORM);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_R11FG11FB10F  ||
+                                    parent_texture_format == RAL_FORMAT_R32_FLOAT     ||
+                                    parent_texture_format == RAL_FORMAT_R32_SINT      ||
+                                    parent_texture_format == RAL_FORMAT_R32_UINT      ||
+                                    parent_texture_format == RAL_FORMAT_RG16_FLOAT    ||
+                                    parent_texture_format == RAL_FORMAT_RG16_SINT     ||
+                                    parent_texture_format == RAL_FORMAT_RG16_SNORM    ||
+                                    parent_texture_format == RAL_FORMAT_RG16_UINT     ||
+                                    parent_texture_format == RAL_FORMAT_RG16_UNORM    ||
+                                    parent_texture_format == RAL_FORMAT_RGB10A2_UINT  ||
+                                    parent_texture_format == RAL_FORMAT_RGB10A2_UNORM ||
+                                    parent_texture_format == RAL_FORMAT_RGB9E5_FLOAT  ||
+                                    parent_texture_format == RAL_FORMAT_RGBA8_SINT    ||
+                                    parent_texture_format == RAL_FORMAT_RGBA8_SNORM   ||
+                                    parent_texture_format == RAL_FORMAT_RGBA8_UINT    ||
+                                    parent_texture_format == RAL_FORMAT_RGBA8_UNORM   ||
+                                    parent_texture_format == RAL_FORMAT_SRGBA8_UNORM);
 
             break;
         }
 
         /* 24-bit */
-        case RAL_TEXTURE_FORMAT_RGB8_SINT:
-        case RAL_TEXTURE_FORMAT_RGB8_SNORM:
-        case RAL_TEXTURE_FORMAT_RGB8_UINT:
-        case RAL_TEXTURE_FORMAT_RGB8_UNORM:
-        case RAL_TEXTURE_FORMAT_SRGB8_UNORM:
+        case RAL_FORMAT_RGB8_SINT:
+        case RAL_FORMAT_RGB8_SNORM:
+        case RAL_FORMAT_RGB8_UINT:
+        case RAL_FORMAT_RGB8_UNORM:
+        case RAL_FORMAT_SRGB8_UNORM:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_RGB8_SINT   ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB8_SNORM  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB8_UINT   ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RGB8_UNORM  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_SRGB8_UNORM);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_RGB8_SINT   ||
+                                    parent_texture_format == RAL_FORMAT_RGB8_SNORM  ||
+                                    parent_texture_format == RAL_FORMAT_RGB8_UINT   ||
+                                    parent_texture_format == RAL_FORMAT_RGB8_UNORM  ||
+                                    parent_texture_format == RAL_FORMAT_SRGB8_UNORM);
 
             break;
         }
 
         /* 16-bit */
-        case RAL_TEXTURE_FORMAT_R16_FLOAT:
-        case RAL_TEXTURE_FORMAT_RG8_UINT:
-        case RAL_TEXTURE_FORMAT_R16_UINT:
-        case RAL_TEXTURE_FORMAT_RG8_SINT:
-        case RAL_TEXTURE_FORMAT_R16_SINT:
-        case RAL_TEXTURE_FORMAT_RG8_UNORM:
-        case RAL_TEXTURE_FORMAT_R16_UNORM:
-        case RAL_TEXTURE_FORMAT_RG8_SNORM:
-        case RAL_TEXTURE_FORMAT_R16_SNORM:
+        case RAL_FORMAT_R16_FLOAT:
+        case RAL_FORMAT_RG8_UINT:
+        case RAL_FORMAT_R16_UINT:
+        case RAL_FORMAT_RG8_SINT:
+        case RAL_FORMAT_R16_SINT:
+        case RAL_FORMAT_RG8_UNORM:
+        case RAL_FORMAT_R16_UNORM:
+        case RAL_FORMAT_RG8_SNORM:
+        case RAL_FORMAT_R16_SNORM:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_R16_FLOAT ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG8_UINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R16_UINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG8_SINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R16_SINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG8_UNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R16_UNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_RG8_SNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R16_SNORM);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_R16_FLOAT ||
+                                    parent_texture_format == RAL_FORMAT_RG8_UINT  ||
+                                    parent_texture_format == RAL_FORMAT_R16_UINT  ||
+                                    parent_texture_format == RAL_FORMAT_RG8_SINT  ||
+                                    parent_texture_format == RAL_FORMAT_R16_SINT  ||
+                                    parent_texture_format == RAL_FORMAT_RG8_UNORM ||
+                                    parent_texture_format == RAL_FORMAT_R16_UNORM ||
+                                    parent_texture_format == RAL_FORMAT_RG8_SNORM ||
+                                    parent_texture_format == RAL_FORMAT_R16_SNORM);
 
             break;
         }
 
         /* 8-bit */
-        case RAL_TEXTURE_FORMAT_R8_SINT:
-        case RAL_TEXTURE_FORMAT_R8_SNORM:
-        case RAL_TEXTURE_FORMAT_R8_UINT:
-        case RAL_TEXTURE_FORMAT_R8_UNORM:
+        case RAL_FORMAT_R8_SINT:
+        case RAL_FORMAT_R8_SNORM:
+        case RAL_FORMAT_R8_UINT:
+        case RAL_FORMAT_R8_UNORM:
         {
-            texture_format_valid = (parent_texture_format == RAL_TEXTURE_FORMAT_R8_SINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R8_SNORM ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R8_UINT  ||
-                                    parent_texture_format == RAL_TEXTURE_FORMAT_R8_UNORM);
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_R8_SINT  ||
+                                    parent_texture_format == RAL_FORMAT_R8_SNORM ||
+                                    parent_texture_format == RAL_FORMAT_R8_UINT  ||
+                                    parent_texture_format == RAL_FORMAT_R8_UNORM);
 
             break;
         }
@@ -358,7 +358,7 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
 
         case RAL_TEXTURE_VIEW_PROPERTY_FORMAT:
         {
-            *(ral_texture_format*) out_result_ptr = texture_view_ptr->create_info.format;
+            *(ral_format*) out_result_ptr = texture_view_ptr->create_info.format;
 
             break;
         }

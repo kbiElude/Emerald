@@ -12,7 +12,6 @@
 #include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
-#include "ral/ral_framebuffer.h"
 #include "ral/ral_gfx_state.h"
 #include "ral/ral_program.h"
 #include "ral/ral_sampler.h"
@@ -58,10 +57,6 @@ typedef struct _ral_context
     system_resizable_vector command_buffers; /* owns ral_command_buffer instances */
     system_critical_section command_buffers_cs;
     uint32_t                n_command_buffers_created;
-
-    system_resizable_vector framebuffers; /* owns ral_framebuffer instances */
-    system_critical_section framebuffers_cs;
-    uint32_t                n_framebuffers_created;
 
     system_resizable_vector gfx_states; /* owns ral_gfx_state instances */
     system_critical_section gfx_states_cs;
@@ -112,13 +107,10 @@ typedef struct _ral_context
         callback_manager          = system_callback_manager_create((_callback_id) RAL_CONTEXT_CALLBACK_ID_COUNT);
         command_buffers           = system_resizable_vector_create(sizeof(ral_command_buffer) );
         command_buffers_cs        = system_critical_section_create();
-        framebuffers              = system_resizable_vector_create(sizeof(ral_framebuffer) );
-        framebuffers_cs           = system_critical_section_create();
         gfx_states                = system_resizable_vector_create(sizeof(ral_framebuffer) );
         gfx_states_cs             = system_critical_section_create();
         n_buffers_created         = 0;
         n_command_buffers_created = 0;
-        n_framebuffers_created    = 0;
         n_gfx_states_created      = 0;
         n_samplers_created        = 0;
         n_textures_created        = 0;
@@ -163,7 +155,6 @@ typedef struct _ral_context
         {
             &buffers_cs,
             &command_buffers_cs,
-            &framebuffers_cs,
             &gfx_states_cs,
             &object_to_refcount_cs,
             &programs_cs,
@@ -183,7 +174,6 @@ typedef struct _ral_context
         {
             &buffers,
             &command_buffers,
-            &framebuffers,
             &gfx_states,
             &programs,
             &samplers,
@@ -444,16 +434,6 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             break;
         }
 
-        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-        {
-            object_counter_ptr    = &context_ptr->n_framebuffers_created;
-            object_storage_cs     =  context_ptr->framebuffers_cs;
-            object_storage_vector =  context_ptr->framebuffers;
-            object_type_name      = "RAL Framebuffer [%d]";
-
-            break;
-        }
-
         case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:
         {
             object_counter_ptr    = &context_ptr->n_gfx_states_created;
@@ -476,7 +456,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         {
-            object_counter_ptr    = &context_ptr->n_framebuffers_created;
+            object_counter_ptr    = &context_ptr->n_samplers_created;
             object_storage_cs     =  context_ptr->samplers_cs;
             object_storage_vector =  context_ptr->samplers;
             object_type_name      = "RAL Sampler [%d]";
@@ -574,14 +554,6 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             {
                 result_objects_ptr[n_object] = ral_command_buffer_create((ral_context) context_ptr,
                                                                          (const ral_command_buffer_create_info*) (object_create_info_ptrs) + n_object);
-
-                break;
-            }
-
-            case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-            {
-                result_objects_ptr[n_object] = ral_framebuffer_create( (ral_context) context_ptr,
-                                                                      name_has);
 
                 break;
             }
@@ -785,7 +757,6 @@ end:
                     {
                         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        ( (ral_buffer&)         result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release( (ral_command_buffer&) result_objects_ptr[n_object]); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:    ral_framebuffer_release   ( (ral_framebuffer&)    result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     ( (ral_gfx_state&)      result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       ( (ral_program&)        result_objects_ptr[n_object]); break;
                         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       ( (ral_sampler&)        result_objects_ptr[n_object]); break;
@@ -848,14 +819,6 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
         {
             cs            = context_ptr->command_buffers_cs;
             object_vector = context_ptr->command_buffers;
-
-            break;
-        }
-
-        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-        {
-            cs            = context_ptr->framebuffers_cs;
-            object_vector = context_ptr->framebuffers;
 
             break;
         }
@@ -937,15 +900,6 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
         {
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_COMMAND_BUFFERS_DELETED,
-                                             &callback_arg);
-
-            break;
-        }
-
-        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-        {
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_DELETED,
                                              &callback_arg);
 
             break;
@@ -1054,7 +1008,6 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
             {
                 case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        ( (ral_buffer&)         object_ptr); break;
                 case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release( (ral_command_buffer&) object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:    ral_framebuffer_release   ( (ral_framebuffer&)    object_ptr); break;
                 case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     ( (ral_gfx_state&)      object_ptr); break;
                 case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       ( (ral_program&)        object_ptr); break;
                 case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       ( (ral_sampler&)        object_ptr); break;
@@ -1254,15 +1207,6 @@ PRIVATE void _ral_context_notify_backend_about_new_object(ral_context           
             break;
         }
 
-        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
-        {
-            system_callback_manager_call_back(context_ptr->callback_manager,
-                                              RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
-                                             &callback_arg);
-
-            break;
-        }
-
         case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:
         {
             system_callback_manager_call_back(context_ptr->callback_manager,
@@ -1373,7 +1317,6 @@ PRIVATE void _ral_context_release(void* context)
     /* Detect any leaking objects */
     uint32_t n_buffers         = 0;
     uint32_t n_command_buffers = 0;
-    uint32_t n_framebuffers    = 0;
     uint32_t n_gfx_states      = 0;
     uint32_t n_programs        = 0;
     uint32_t n_samplers        = 0;
@@ -1386,9 +1329,6 @@ PRIVATE void _ral_context_release(void* context)
     system_resizable_vector_get_property(context_ptr->command_buffers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_command_buffers);
-    system_resizable_vector_get_property(context_ptr->framebuffers,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_framebuffers);
     system_resizable_vector_get_property(context_ptr->gfx_states,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_gfx_states);
@@ -1409,8 +1349,6 @@ PRIVATE void _ral_context_release(void* context)
                       "Buffer object leak detected");
     ASSERT_DEBUG_SYNC(n_command_buffers == 0,
                       "Command buffer object leak detected");
-    ASSERT_DEBUG_SYNC(n_framebuffers == 0,
-                      "Framebuffer object leak detected");
     ASSERT_DEBUG_SYNC(n_gfx_states == 0,
                       "GFX state object leak detected");
     ASSERT_DEBUG_SYNC(n_programs == 0,
@@ -1597,46 +1535,6 @@ PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context          
                                          n_command_buffers,
                                          (void**) command_buffer_create_info_ptr,
                                          (void**) out_result_command_buffers_ptr);
-
-end:
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context,
-                                                        uint32_t         n_framebuffers,
-                                                        ral_framebuffer* out_result_framebuffers_ptr)
-{
-    _ral_context* context_ptr = (_ral_context*) context;
-    bool          result      = false;
-
-    /* Sanity checks */
-    if (context == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input context is NULL");
-
-        goto end;
-    }
-
-    if (n_framebuffers == 0)
-    {
-        goto end;
-    }
-
-    if (out_result_framebuffers_ptr == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Output variable is NULL");
-
-        goto end;
-    }
-
-    result = _ral_context_create_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
-                                         n_framebuffers,
-                                         nullptr, /* object_create_info_ptrs */
-                                         (void**) out_result_framebuffers_ptr);
 
 end:
     return result;
@@ -2212,7 +2110,6 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
     {
         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
         case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER:
-        case RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER:
         case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
@@ -2291,34 +2188,6 @@ end:
 }
 
 /** TODO */
-PUBLIC EMERALD_API raGL_buffer ral_context_get_buffer_gl(ral_context context,
-                                                         ral_buffer  buffer)
-{
-    raGL_buffer   buffer_raGL = nullptr;
-    _ral_context* context_ptr = (_ral_context*) context;
-
-    raGL_backend_get_buffer(context_ptr->backend,
-                            buffer,
-                  (void**) &buffer_raGL);
-
-    return buffer_raGL;
-}
-
-/** TODO */
-PUBLIC EMERALD_API raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
-                                                                   ral_framebuffer framebuffer)
-{
-    _ral_context*    context_ptr      = (_ral_context*) context;
-    raGL_framebuffer framebuffer_raGL = nullptr;
-
-    raGL_backend_get_framebuffer(context_ptr->backend,
-                                 framebuffer,
-                       (void**) &framebuffer_raGL);
-
-    return framebuffer_raGL;
-}
-
-/** TODO */
 PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context)
 {
     raGL_backend backend         = (raGL_backend) ((_ral_context*) context)->backend;
@@ -2369,21 +2238,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API raGL_program ral_context_get_program_gl(ral_context context,
-                                                           ral_program program)
-{
-    _ral_context* context_ptr  = (_ral_context*) context;
-    raGL_program  program_raGL = nullptr;
-
-    raGL_backend_get_program(context_ptr->backend,
-                             program,
-                   (void**) &program_raGL);
-
-    return program_raGL;
-}
-
-
-/** Please see header for specification */
 PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
                                                  ral_context_property property,
                                                  void*                out_result_ptr)
@@ -2419,8 +2273,6 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
 
         case RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT:
         case RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS:
-        case RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS:
-        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS:
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT:
         case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE:
         {
@@ -2467,34 +2319,6 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
     }
 end:
     ;
-}
-
-/** TODO */
-PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
-                                                           ral_sampler sampler)
-{
-    raGL_sampler  sampler_raGL = nullptr;
-    _ral_context* context_ptr  = (_ral_context*) context;
-
-    raGL_backend_get_sampler(context_ptr->backend,
-                             sampler,
-                   (void**) &sampler_raGL);
-
-    return sampler_raGL;
-}
-
-/** TODO */
-PUBLIC EMERALD_API raGL_shader ral_context_get_shader_gl(ral_context context,
-                                                         ral_shader  shader)
-{
-    _ral_context* context_ptr = (_ral_context*) context;
-    raGL_shader   shader_raGL = nullptr;
-
-    raGL_backend_get_shader(context_ptr->backend,
-                            shader,
-                  (void**) &shader_raGL);
-
-    return shader_raGL;
 }
 
 /** Please see header for specification */
@@ -2605,37 +2429,6 @@ PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context      
     system_critical_section_leave(context_ptr->textures_cs);
 
 end:
-    return result;
-}
-
-/** TODO */
-PUBLIC EMERALD_API raGL_texture ral_context_get_texture_gl(ral_context context,
-                                                           ral_texture texture)
-{
-    _ral_context* context_ptr  = (_ral_context*) context;
-    raGL_texture  texture_raGL = nullptr;
-
-    raGL_backend_get_texture(context_ptr->backend,
-                             texture,
-                   (void**) &texture_raGL);
-
-    return texture_raGL;
-}
-
-PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
-                                            ral_texture texture)
-{
-    _ral_context* context_ptr  = (_ral_context*) context;
-    GLuint        result       = 0;
-    raGL_texture  texture_raGL = nullptr;
-
-    raGL_backend_get_texture (context_ptr->backend,
-                              texture,
-                    (void**) &texture_raGL);
-    raGL_texture_get_property(texture_raGL,
-                              RAGL_TEXTURE_PROPERTY_ID,
-                             &result);
-
     return result;
 }
 

@@ -18,6 +18,9 @@ typedef enum
      * which need to be wrapped inside this CS are glGen*() calls. */
     RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
 
+    /* not settable; raGL_vaos */
+    RAGL_BACKEND_PRIVATE_PROPERTY_VAOS,
+
 } raGL_backend_private_property;
 
 
@@ -38,8 +41,6 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context,
  *  If sync object has been scheduled from a backend, from which a sync object is still outstanding for
  *  some of the rendering contexts, it will be released and the newer sync object will be used instead.
  *
- *  @param sync        Sync object created after the invalidating command has been scheduled. Must not be NULL.
- *
  **/
 PUBLIC void raGL_backend_enqueue_sync();
 
@@ -55,9 +56,15 @@ PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 
                                                    void*                        out_result_ptr);
 
 /** TODO */
-PUBLIC bool raGL_backend_get_framebuffer(void*           backend,
-                                         ral_framebuffer framebuffer_ral,
-                                         void**          out_framebuffer_raGL_ptr);
+PUBLIC void raGL_backend_get_command_buffer(raGL_backend         backend,
+                                            ral_command_buffer   command_buffer_ral,
+                                            raGL_command_buffer* out_command_buffer_raGL_ptr);
+
+/** TODO */
+PUBLIC void raGL_backend_get_framebuffer(raGL_backend                       backend,
+                                         uint32_t                           n_attachments,
+                                         const raGL_framebuffer_attachment* attachments,
+                                         raGL_framebuffer*                  out_framebuffer_ptr);
 
 /** TODO */
 PUBLIC ral_context raGL_backend_get_helper_context(ral_backend_type type);

@@ -37,7 +37,7 @@ typedef struct
     ral_texture_type texture_type;
 
     /** Format of the texture accepted by the new IO. */
-    ral_texture_format texture_format;
+    ral_format texture_format;
 
     /** Number of texture data components expected at the input, or exposed by the output. */
     unsigned int texture_n_components;
@@ -89,7 +89,7 @@ typedef struct
 {
     ral_texture                   bound_texture;
     ral_texture_component         components[4];
-    ral_texture_format            format;
+    ral_format                    format;
     uint32_t                      n_layers;
     uint32_t                      n_samples;
     system_hashed_ansi_string     name;

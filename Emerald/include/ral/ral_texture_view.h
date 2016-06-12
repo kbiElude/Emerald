@@ -8,7 +8,7 @@ typedef enum
     /* not settable; ral_context */
     RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
 
-    /* not settable; ral_texture_format */
+    /* not settable; ral_format */
     RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
 
     /* not settable; uint32_t */

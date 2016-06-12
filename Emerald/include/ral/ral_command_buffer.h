@@ -7,10 +7,34 @@
 #define N_MAX_DEPENDENCIES (8)
 
 
+typedef enum
+{
+    /* Called back when command buffer contents is about to start recording.
+     *
+     * This call-back may also be fired for already recorded command buffers, in
+     * which case it is assumed that previous cmd buffer contents should be wiped
+     * out. This will only occur for command bufers which have been marked as
+     * resettable at creation time.
+     *
+     * arg: ral_command_buffer instance.
+     **/
+    RAL_COMMAND_BUFFER_CALLBACK_ID_RECORDING_STARTED,
+
+    /* Called back when command buffer contents has finished recording.
+     *
+     * arg: ral_command_buffer instance.
+     */
+    RAL_COMMAND_BUFFER_CALLBACK_ID_RECORDING_STOPPED,
+
+    /* Always last */
+    RAL_COMMAND_BUFFER_CALLBACK_ID_COUNT
+} ral_command_buffer_callback_id;
+
 typedef struct ral_command_buffer_copy_texture_to_texture_command_info
 {
-    ral_texture dst_texture;
-    ral_texture src_texture;
+    ral_texture_aspect_bits aspect;
+    ral_texture             dst_texture;
+    ral_texture             src_texture;
 
     uint32_t n_dst_texture_layer;
     uint32_t n_dst_texture_mipmap;
@@ -20,8 +44,10 @@ typedef struct ral_command_buffer_copy_texture_to_texture_command_info
     uint32_t dst_start_xyz[3];
     uint32_t src_start_xyz[3];
 
+    uint32_t           dst_size[3];
     ral_texture_filter scaling_filter;
-    uint32_t           size[3];
+    uint32_t           src_size[3];
+
 } ral_command_buffer_copy_texture_to_texture_command_info;
 
 /* Defines any load/store/texel fetch-based buffer/texture access (read or write) a program may perform.
@@ -120,14 +146,15 @@ typedef struct ral_object_access
 
 typedef struct ral_command_buffer_draw_call_indexed_command_info
 {
-    ral_buffer index_buffer;
+    ral_buffer     index_buffer;
+    ral_index_type index_type;
 
     uint32_t n_indices;
     uint32_t n_instances;
 
     uint32_t base_instance;
 
-    uint32_t base_index;  /* first index to use */
+    uint32_t first_index; /* number of indices to move forward in the index buffer before consuming index data */
     uint32_t base_vertex; /* constant added to each index when choosing elements from vertex arrays */
 
     ral_object_access read_deps[N_MAX_DEPENDENCIES];
@@ -138,13 +165,16 @@ typedef struct ral_command_buffer_draw_call_indexed_command_info
 
 typedef struct ral_command_buffer_draw_call_indirect_command_info
 {
-    ral_buffer buffer;
+    ral_buffer indirect_buffer;
     uint32_t   offset;
-
-    uint32_t   n_draw_calls;
     uint32_t   stride;
 
-    ral_object_access read_deps[N_MAX_DEPENDENCIES];
+    /* May be nullptr */
+    ral_buffer index_buffer;
+    /* Ignored if index_buffer == nullptr */
+    ral_index_type index_type;
+
+    ral_object_access read_deps [N_MAX_DEPENDENCIES];
     ral_object_access write_deps[N_MAX_DEPENDENCIES];
     uint32_t          n_read_deps;
     uint32_t          n_write_deps;
@@ -173,6 +203,9 @@ typedef struct ral_command_buffer_execute_command_buffer_command_info
 
 typedef enum
 {
+    /* not settable; system_callback_manager */
+    RAL_COMMAND_BUFFER_PROPERTY_CALLBACK_MANAGER,
+
     /* not settable; ral_queue_bits */
     RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES,
 
@@ -195,28 +228,44 @@ typedef enum
     RAL_COMMAND_BUFFER_PROPERTY_STATUS,
 } ral_command_buffer_property;
 
+typedef struct
+{
+    ral_buffer buffer;
+    uint32_t   offset;
+
+    /* use 0 for the region to contain data from <offset, buffer size) range */
+    uint32_t size;
+
+} ral_command_buffer_buffer_binding_info;
+
+typedef struct
+{
+    ral_sampler      sampler;
+    ral_texture_view texture_view;
+
+} ral_command_buffer_sampled_image_binding_info;
+
+typedef struct
+{
+    ral_image_access_bits access_bits;
+    ral_texture_view      texture_view;
+
+} ral_command_buffer_storage_image_binding_info;
+
 typedef struct ral_command_buffer_set_binding_command_info
 {
-    uint32_t buffer_offset;
-    uint32_t buffer_size;  /* use 0 for the region to contain data from <offset, buffer size) range */
+    ral_binding_type binding_type;
+
+    /* Binding or uniform name, to which the object is to be assigned */
+    system_hashed_ansi_string name;
 
     union
     {
-        uint32_t location;
-        uint32_t n_binding;
+        ral_command_buffer_sampled_image_binding_info sampled_image_binding;
+        ral_command_buffer_buffer_binding_info        storage_buffer_binding;
+        ral_command_buffer_storage_image_binding_info storage_image_binding;
+        ral_command_buffer_buffer_binding_info        uniform_buffer_binding;
     };
-
-    /* Vulkan only */
-    uint32_t n_set;
-
-    union
-    {
-        ral_buffer       buffer;
-        ral_texture_view texture_view;
-    };
-
-    ral_sampler      sampler;
-    ral_binding_type type;
 } ral_command_buffer_set_binding_command_info;
 
 typedef struct ral_command_buffer_set_gfx_state_command_info
@@ -289,19 +338,19 @@ typedef struct ral_command_buffer_set_scissor_box_command_info
 } ral_command_buffer_set_scissor_box_command_info;
 
 
-typedef struct ral_command_buffer_set_vertex_attribute_command_info
+typedef struct ral_command_buffer_set_vertex_buffer_command_info
 {
     ral_buffer buffer;
     uint32_t   location;
     uint32_t   start_offset;
-} ral_command_buffer_set_vertex_attribute_command_info;
+} ral_command_buffer_set_vertex_buffer_command_info;
 
 typedef struct ral_command_buffer_set_viewport_command_info
 {
     uint32_t index;
 
-    uint32_t size[2];
-    uint32_t xy  [2];
+    float size[2];
+    float xy  [2];
 } ral_command_buffer_set_viewport_command_info;
 
 typedef enum
@@ -323,7 +372,7 @@ typedef enum
     RAL_COMMAND_TYPE_SET_PROGRAM,
     RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE,
     RAL_COMMAND_TYPE_SET_SCISSOR_BOX,
-    RAL_COMMAND_TYPE_SET_VERTEX_ATTRIBUTE,
+    RAL_COMMAND_TYPE_SET_VERTEX_BUFFER,
     RAL_COMMAND_TYPE_SET_VIEWPORT,
 
     RAL_COMMAND_TYPE_UNKNOWN
@@ -370,7 +419,10 @@ PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer      
                                                         uint32_t                                                 n_draw_calls,
                                                         const ral_command_buffer_draw_call_regular_command_info* draw_call_ptrs);
 
-/** TODO */
+/** TODO
+ *
+ *  NOTE: All scheduled command buffers must be created for the same context.
+ **/
 PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer                                            recording_command_buffer,
                                                              uint32_t                                                      n_commands,
                                                              const ral_command_buffer_execute_command_buffer_command_info* command_ptrs);
@@ -398,14 +450,23 @@ PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer      
                                                         const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_vertex_attributes(ral_command_buffer                                          recording_command_buffer,
-                                                            uint32_t                                                    n_vertex_attributes,
-                                                            const ral_command_buffer_set_vertex_attribute_command_info* vertex_attribute_ptrs);
+PUBLIC void ral_command_buffer_record_set_vertex_buffers(ral_command_buffer                                       recording_command_buffer,
+                                                         uint32_t                                                 n_vertex_buffers,
+                                                         const ral_command_buffer_set_vertex_buffer_command_info* vertex_buffer_ptrs);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer                                  recording_command_buffer,
                                                     uint32_t                                            n_viewports,
                                                     const ral_command_buffer_set_viewport_command_info* viewport_ptrs);
+
+/** TODO */
+PUBLIC void ral_command_buffer_record_sync_point(ral_command_buffer recording_command_buffer,
+                                                 uint32_t*          out_sync_point_id);
+
+/** TODO */
+PUBLIC void ral_command_buffer_record_wait_for_sync_point(ral_command_buffer       recording_command_buffer,
+                                                          const ral_command_buffer sync_point_parent_command_buffer,
+                                                          uint32_t                 sync_point_id);
 
 /** TODO */
 PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer);

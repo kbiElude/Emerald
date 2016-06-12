@@ -65,12 +65,14 @@
                                                                                 ALWAYS_ASSERTION, \
                                                                                 condition,        \
                                                                                 message,          \
-                                                                                __VA_ARGS__);
+                                                                                __VA_ARGS__);     \
+                                                         __analysis_assume(condition);
     #define ASSERT_ALWAYS_SYNC(condition, message, ...)  system_assertions_assert(true,           \
                                                                                 ALWAYS_ASSERTION, \
                                                                                 condition,        \
                                                                                 message,          \
-                                                                                __VA_ARGS__);
+                                                                                __VA_ARGS__);     \
+                                                         __analysis_assume(condition);
 #else
     #define ASSERT_ALWAYS_ASYNC(condition, message, ...) system_assertions_assert(false,          \
                                                                                 ALWAYS_ASSERTION, \

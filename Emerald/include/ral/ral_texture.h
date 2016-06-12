@@ -24,7 +24,7 @@ typedef struct
 
 } _ral_texture_client_memory_source_update_requested_callback_arg;
 
-typedef enum
+enum
 {
     /* Notification fired whenever the app requests one or more mipmaps to be updated
      * with data coming from the client memory.
@@ -76,7 +76,7 @@ typedef enum
     /* settable, system_hashed_ansi_string */
     RAL_TEXTURE_PROPERTY_FILENAME,
 
-    /* not settable, ral_texture_format */
+    /* not settable, ral_format */
     RAL_TEXTURE_PROPERTY_FORMAT,
 
     /* settable, system_hashed_ansi_string */

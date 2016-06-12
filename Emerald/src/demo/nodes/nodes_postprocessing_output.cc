@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -9,7 +9,6 @@
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
-#include "ral/ral_framebuffer.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
 #include "system/system_callback_manager.h"
@@ -144,21 +143,21 @@ PUBLIC RENDERING_CONTEXT_CALL void nodes_postprocessing_output_deinit(demo_timel
 {
     _nodes_postprocessing_output* node_ptr = (_nodes_postprocessing_output*) node;
 
-    if (node_ptr->blit_src_fb != NULL)
+    if (node_ptr->blit_src_fb != nullptr
     {
         ral_context_delete_objects(node_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
                                    1, /* n_objects */
                                    (const void**) &node_ptr->blit_src_fb);
 
-        node_ptr->blit_src_fb = NULL;
+        node_ptr->blit_src_fb = nullptr;
     }
 
     _nodes_postprocessing_output_update_subscriptions(node_ptr,
                                                       false /* should_subscribe */);
 
     delete node_ptr;
-    node_ptr = NULL;
+    node_ptr = nullptr;
 }
 
 /** Please see header for specification */
@@ -167,7 +166,7 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
                                                                                                   ral_context                context)
 {
     ral_texture_format            color_texture_format;
-    _nodes_postprocessing_output* new_node_data_ptr = NULL;
+    _nodes_postprocessing_output* new_node_data_ptr = nullptr;
     demo_texture_io_declaration   new_node_input_declaration;
     bool                          result;
     demo_timeline_segment_node_id texture_input_id;
@@ -219,15 +218,14 @@ PUBLIC RENDERING_CONTEXT_CALL bool nodes_postprocessing_output_render(demo_timel
                                                                       system_time                        frame_time,
                                                                       const int32_t*                     rendering_area_px_topdown)
 {
-    raGL_framebuffer                  blit_src_fb_raGL    = NULL;
+    raGL_framebuffer                  blit_src_fb_raGL    = nullptr;
     GLuint                            blit_src_fb_raGL_id = -1;
-    ogl_context                       context_gl          = NULL;
-    const ogl_context_gl_entrypoints* entrypoints_ptr     = NULL;
+    ogl_context                       context_gl          = nullptr;
+    const ogl_context_gl_entrypoints* entrypoints_ptr     = nullptr;
     uint32_t                          fb_size[2];
-    uint32_t                          n_system_fbs        = 0;
     _nodes_postprocessing_output*     node_ptr            = (_nodes_postprocessing_output*) node;
-    ral_framebuffer                   system_fb           = NULL; 
-    raGL_framebuffer                  system_fb_raGL      = NULL;
+    ral_framebuffer                   system_fb           = nullptr; 
+    raGL_framebuffer                  system_fb_raGL      = nullptr;
     GLuint                            system_fb_raGL_id   = -1;
 
     context_gl = ral_context_get_gl_context(node_ptr->context);
@@ -235,14 +233,6 @@ PUBLIC RENDERING_CONTEXT_CALL bool nodes_postprocessing_output_render(demo_timel
     ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
-
-    #ifdef _DEBUG
-    {
-        ral_context_get_property(node_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS,
-                                &n_system_fbs);
-    }
-    #endif /* _DEBUG */
 
     ral_context_get_property(node_ptr->context,
                              RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,

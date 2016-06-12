@@ -13,6 +13,8 @@
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
+#include "ral/ral_utils.h"
+#include "system/system_callback_manager.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
 
@@ -25,6 +27,7 @@ PRIVATE system_resource_pool command_pool        = nullptr; /* holds _ral_comman
 
 typedef struct _ral_command_buffer
 {
+    system_callback_manager   callback_manager;
     system_resizable_vector   commands;
     ral_queue_bits            compatible_queues;
     ral_context               context;
@@ -52,7 +55,7 @@ typedef struct _ral_command
         ral_command_buffer_set_program_command_info             set_program_command;
         ral_command_buffer_set_rendertarget_state_command_info  set_rendertarget_state_command;
         ral_command_buffer_set_scissor_box_command_info         set_scissor_box_command;
-        ral_command_buffer_set_vertex_attribute_command_info    set_vertex_attribute_command;
+        ral_command_buffer_set_vertex_buffer_command_info       set_vertex_buffer_command;
         ral_command_buffer_set_viewport_command_info            set_viewport_command;
     };
 
@@ -104,14 +107,14 @@ typedef struct _ral_command
             {
                 ral_context buffer_context = nullptr;
 
-                ral_buffer_get_property(draw_call_indirect_command.buffer,
+                ral_buffer_get_property(draw_call_indirect_command.indirect_buffer,
                                         RAL_BUFFER_PROPERTY_CONTEXT,
                                        &buffer_context);
 
                 ral_context_delete_objects(buffer_context,
                                            RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                            1, /* n_objects */
-                                           (const void**) &draw_call_indirect_command.buffer);
+                                           (const void**) &draw_call_indirect_command.indirect_buffer);
 
                 break;
             }
@@ -128,32 +131,34 @@ typedef struct _ral_command
 
             case RAL_COMMAND_TYPE_SET_BINDING:
             {
-                switch (set_binding_command.type)
+                switch (set_binding_command.binding_type)
                 {
                     case RAL_BINDING_TYPE_SAMPLED_IMAGE:
                     case RAL_BINDING_TYPE_STORAGE_IMAGE:
                     {
-                        ral_context texture_view_context = nullptr;
+                        const ral_texture_view texture_view         = (set_binding_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE) ? set_binding_command.sampled_image_binding.texture_view
+                                                                                                                                           : set_binding_command.storage_image_binding.texture_view;
+                        ral_context            texture_view_context = nullptr;
 
-                        ral_texture_view_get_property(set_binding_command.texture_view,
+                        ral_texture_view_get_property(texture_view,
                                                       RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                                      &texture_view_context);
                         ral_context_delete_objects   (texture_view_context,
                                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                                       1, /* n_objects */
-                                                      (const void**) &set_binding_command.texture_view);
+                                                      (const void**) &texture_view);
 
-                        if (set_binding_command.type == RAL_BINDING_TYPE_SAMPLED_IMAGE)
+                        if (set_binding_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE)
                         {
                             ral_context sampler_context = nullptr;
 
-                            ral_sampler_get_property  (set_binding_command.sampler,
+                            ral_sampler_get_property  (set_binding_command.sampled_image_binding.sampler,
                                                        RAL_SAMPLER_PROPERTY_CONTEXT,
                                                       &sampler_context);
                             ral_context_delete_objects(sampler_context,
                                                        RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                                        1, /* n_objects */
-                                                       (const void**) &set_binding_command.sampler);
+                                                       (const void**) &set_binding_command.sampled_image_binding.sampler);
                         }
 
                         break;
@@ -162,15 +167,17 @@ typedef struct _ral_command
                     case RAL_BINDING_TYPE_STORAGE_BUFFER:
                     case RAL_BINDING_TYPE_UNIFORM_BUFFER:
                     {
-                        ral_context buffer_context = nullptr;
+                        const ral_buffer buffer         = (set_binding_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? set_binding_command.storage_buffer_binding.buffer
+                                                                                                                                : set_binding_command.uniform_buffer_binding.buffer;
+                        ral_context      buffer_context = nullptr;
 
-                        ral_buffer_get_property   (set_binding_command.buffer,
+                        ral_buffer_get_property   (buffer,
                                                    RAL_BUFFER_PROPERTY_CONTEXT,
                                                   &buffer_context);
                         ral_context_delete_objects(buffer_context,
                                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                                    1, /* n_objects */
-                                                   (const void**) &set_binding_command.buffer);
+                                                   (const void**) &buffer);
 
                         break;
                     }
@@ -232,17 +239,17 @@ typedef struct _ral_command
                 break;
             }
 
-            case RAL_COMMAND_TYPE_SET_VERTEX_ATTRIBUTE:
+            case RAL_COMMAND_TYPE_SET_VERTEX_BUFFER:
             {
                 ral_context buffer_context = nullptr;
 
-                ral_buffer_get_property   (set_vertex_attribute_command.buffer,
+                ral_buffer_get_property   (set_vertex_buffer_command.buffer,
                                            RAL_BUFFER_PROPERTY_CONTEXT,
                                           &buffer_context);
                 ral_context_delete_objects(buffer_context,
                                            RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                            1, /* n_objects */
-                                           (const void**) &set_vertex_attribute_command.buffer);
+                                           (const void**) &set_vertex_buffer_command.buffer);
 
                 break;
             }
@@ -294,7 +301,19 @@ PRIVATE void _ral_command_buffer_deinit_command_buffer(system_resource_pool_bloc
 {
     _ral_command_buffer* cmd_buffer_ptr = (_ral_command_buffer*) block; 
 
-    system_resizable_vector_release(cmd_buffer_ptr->commands);
+    if (cmd_buffer_ptr->callback_manager != nullptr)
+    {
+        system_callback_manager_release(cmd_buffer_ptr->callback_manager);
+
+        cmd_buffer_ptr->callback_manager = nullptr;
+    }
+
+    if (cmd_buffer_ptr->commands != nullptr)
+    {
+        system_resizable_vector_release(cmd_buffer_ptr->commands);
+
+        cmd_buffer_ptr->commands = nullptr;
+    }
 }
 
 /** TODO */
@@ -302,8 +321,9 @@ PRIVATE void _ral_command_buffer_init_command_buffer(system_resource_pool_block 
 {
     _ral_command_buffer* cmd_buffer_ptr = (_ral_command_buffer*) block; 
 
-    cmd_buffer_ptr->commands = system_resizable_vector_create(N_MAX_PREALLOCED_COMMANDS);
-    cmd_buffer_ptr->context  = nullptr;
+    cmd_buffer_ptr->callback_manager = system_callback_manager_create((_callback_id) RAL_COMMAND_BUFFER_CALLBACK_ID_COUNT);
+    cmd_buffer_ptr->commands         = system_resizable_vector_create(N_MAX_PREALLOCED_COMMANDS);
+    cmd_buffer_ptr->context          = nullptr;
 }
 
 
@@ -335,7 +355,7 @@ PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                 
 
     if (new_command_buffer_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(new_command_buffer_ptr != NULL,
+        ASSERT_DEBUG_SYNC(new_command_buffer_ptr != nullptr,
                           "Could not retrieve a command buffer from the command buffer pool");
 
         goto end;
@@ -525,18 +545,21 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
 
         new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
 
+        static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.dst_size)      == sizeof(src_command.dst_size),      "");
         static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.dst_start_xyz) == sizeof(src_command.dst_start_xyz), "");
-        static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.size)          == sizeof(src_command.size),          "");
+        static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.src_size)      == sizeof(src_command.src_size),      "");
         static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.src_start_xyz) == sizeof(src_command.src_start_xyz), "");
 
         #ifdef _DEBUG
         {
-            uint32_t dst_mip_size[3]       = {0};
-            uint32_t dst_texture_n_layers  =  0;
-            uint32_t src_mip_size[3]       = {0};
-            uint32_t dst_texture_n_mipmaps =  0;
-            uint32_t src_texture_n_layers  =  0;
-            uint32_t src_texture_n_mipmaps =  0;
+            uint32_t   dst_mip_size[3]       = {0};
+            ral_format dst_texture_format;
+            uint32_t   dst_texture_n_layers  =  0;
+            uint32_t   dst_texture_n_mipmaps =  0;
+            uint32_t   src_mip_size[3]       = {0};
+            ral_format src_texture_format;
+            uint32_t   src_texture_n_layers  =  0;
+            uint32_t   src_texture_n_mipmaps =  0;
 
             /* Sanity checks */
             if (src_command.scaling_filter == RAL_TEXTURE_FILTER_LINEAR)
@@ -554,8 +577,14 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                               "Unrecognized scaling filter setting value");
 
             ral_texture_get_property(src_command.dst_texture,
+                                     RAL_TEXTURE_PROPERTY_FORMAT,
+                                    &dst_texture_format);
+            ral_texture_get_property(src_command.dst_texture,
                                      RAL_TEXTURE_PROPERTY_N_LAYERS,
                                     &dst_texture_n_layers);
+            ral_texture_get_property(src_command.src_texture,
+                                     RAL_TEXTURE_PROPERTY_FORMAT,
+                                    &src_texture_format);
             ral_texture_get_property(src_command.src_texture,
                                      RAL_TEXTURE_PROPERTY_N_LAYERS,
                                     &src_texture_n_layers);
@@ -607,30 +636,87 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                             RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                             src_mip_size + 2);
 
-            ASSERT_DEBUG_SYNC(src_command.src_start_xyz[0] + src_command.size[0] < src_mip_size[0] &&
-                              src_command.src_start_xyz[1] + src_command.size[1] < src_mip_size[1] &&
-                              src_command.src_start_xyz[2] + src_command.size[2] < src_mip_size[2],
+            ASSERT_DEBUG_SYNC(src_command.src_start_xyz[0] + src_command.src_size[0] < src_mip_size[0] &&
+                              src_command.src_start_xyz[1] + src_command.src_size[1] < src_mip_size[1] &&
+                              src_command.src_start_xyz[2] + src_command.src_size[2] < src_mip_size[2],
                               "Source copy region exceeds source texture size");
-            ASSERT_DEBUG_SYNC(src_command.dst_start_xyz[0] + src_command.size[0] < dst_mip_size[0] &&
-                              src_command.dst_start_xyz[1] + src_command.size[1] < dst_mip_size[1] &&
-                              src_command.dst_start_xyz[2] + src_command.size[2] < dst_mip_size[2],
+            ASSERT_DEBUG_SYNC(src_command.dst_start_xyz[0] + src_command.dst_size[0] < dst_mip_size[0] &&
+                              src_command.dst_start_xyz[1] + src_command.dst_size[1] < dst_mip_size[1] &&
+                              src_command.dst_start_xyz[2] + src_command.dst_size[2] < dst_mip_size[2],
                               "Target copy region exceeds target texture size");
 
+            if ((src_command.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0)
+            {
+                bool dst_texture_has_color_data = false;
+                bool src_texture_has_color_data = false;
+
+                ral_utils_get_format_property(dst_texture_format,
+                                              RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                             &dst_texture_has_color_data);
+                ral_utils_get_format_property(src_texture_format,
+                                              RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                             &src_texture_has_color_data);
+
+                ASSERT_DEBUG_SYNC(dst_texture_has_color_data && src_texture_has_color_data,
+                                  "Invalid texture->texture copy op requested");
+            }
+
+            if ((src_command.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0)
+            {
+                bool dst_texture_has_depth_data = false;
+                bool src_texture_has_depth_data = false;
+
+                ral_utils_get_format_property(dst_texture_format,
+                                              RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                             &dst_texture_has_depth_data);
+                ral_utils_get_format_property(src_texture_format,
+                                              RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                             &src_texture_has_depth_data);
+
+                ASSERT_DEBUG_SYNC(dst_texture_has_depth_data && src_texture_has_depth_data,
+                                  "Invalid texture->texture copy op requested");
+            }
+
+            if ((src_command.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0)
+            {
+                bool dst_texture_has_stencil_data = false;
+                bool src_texture_has_stencil_data = false;
+
+                ral_utils_get_format_property(dst_texture_format,
+                                              RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                             &dst_texture_has_stencil_data);
+                ral_utils_get_format_property(src_texture_format,
+                                              RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                             &src_texture_has_stencil_data);
+
+                ASSERT_DEBUG_SYNC(dst_texture_has_stencil_data && src_texture_has_stencil_data,
+                                  "Invalid texture->texture copy op requested");
+            }
         }
         #endif
 
+        memcpy(new_command_ptr->copy_texture_to_texture_command.dst_size,
+               src_command.dst_size,
+               sizeof(src_command.dst_size) );
         memcpy(new_command_ptr->copy_texture_to_texture_command.dst_start_xyz,
                src_command.dst_start_xyz,
                sizeof(src_command.dst_start_xyz) );
-        memcpy(new_command_ptr->copy_texture_to_texture_command.size,
-               src_command.size,
-               sizeof(src_command.size) );
+        memcpy(new_command_ptr->copy_texture_to_texture_command.src_size,
+               src_command.src_size,
+               sizeof(src_command.src_size) );
         memcpy(new_command_ptr->copy_texture_to_texture_command.src_start_xyz,
                src_command.src_start_xyz,
                sizeof(src_command.src_start_xyz) );
 
-        new_command_ptr->copy_texture_to_texture_command = src_command;
-        new_command_ptr->type                            = RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE;
+        new_command_ptr->copy_texture_to_texture_command.aspect               = src_command.aspect;
+        new_command_ptr->copy_texture_to_texture_command.dst_texture          = src_command.dst_texture;
+        new_command_ptr->copy_texture_to_texture_command.n_dst_texture_layer  = src_command.n_dst_texture_layer;
+        new_command_ptr->copy_texture_to_texture_command.n_dst_texture_mipmap = src_command.n_dst_texture_mipmap;
+        new_command_ptr->copy_texture_to_texture_command.n_src_texture_layer  = src_command.n_src_texture_layer;
+        new_command_ptr->copy_texture_to_texture_command.n_src_texture_mipmap = src_command.n_src_texture_mipmap;
+        new_command_ptr->copy_texture_to_texture_command.scaling_filter       = src_command.scaling_filter;
+
+        new_command_ptr->type = RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE;
 
         ral_context_retain_object(command_buffer_ptr->context,
                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
@@ -725,7 +811,7 @@ PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buf
         #ifdef _DEBUG
         {
             /* Sanity checks */
-            ASSERT_DEBUG_SYNC(src_command.buffer != nullptr,
+            ASSERT_DEBUG_SYNC(src_command.indirect_buffer != nullptr,
                               "Index buffer is NULL");
         }
         #endif
@@ -736,7 +822,7 @@ PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buf
 
         ral_context_retain_object(command_buffer_ptr->context,
                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                  src_command.buffer);
+                                  src_command.indirect_buffer);
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -793,9 +879,12 @@ PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer 
                                                              uint32_t                                                      n_commands,
                                                              const ral_command_buffer_execute_command_buffer_command_info* command_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
-    _ral_command*        new_command_ptr    = nullptr;
+    ral_context          command_buffer_context = nullptr;
+    _ral_command_buffer* command_buffer_ptr     = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr        = nullptr;
 
+    ASSERT_DEBUG_SYNC(recording_command_buffer != nullptr,
+                      "Specified RAL command buffer instance is NULL");
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
                       "Command buffer not in recording status");
 
@@ -824,6 +913,16 @@ PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer 
 
         new_command_ptr->execute_command_buffer_command.command_buffer = src_command.command_buffer;
         new_command_ptr->type                                          = RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER;
+
+        if (n_command == 0)
+        {
+            command_buffer_context = ((_ral_command_buffer*) src_command.command_buffer)->context;
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(((_ral_command_buffer*) src_command.command_buffer)->context == command_buffer_context,
+                              "Scheduled command buffers use different rendering contexts.");
+        }
 
         ral_context_retain_object(command_buffer_ptr->context,
                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
@@ -862,20 +961,23 @@ PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer           
         #ifdef _DEBUG
         {
             /* Sanity checks */
-            switch (src_command.type)
+            switch (src_command.binding_type)
             {
                 case RAL_BINDING_TYPE_SAMPLED_IMAGE:
                 {
-                    ASSERT_DEBUG_SYNC(src_command.sampler != nullptr,
+                    ASSERT_DEBUG_SYNC(src_command.sampled_image_binding.sampler != nullptr,
                                       "Null sampler defined for a sampled image binding");
 
-                    /* Fall-back */
+                    ASSERT_DEBUG_SYNC(src_command.sampled_image_binding.texture_view != nullptr,
+                                      "Null texture view defined for a sampled image binding.");
+
+                    break;
                 }
 
                 case RAL_BINDING_TYPE_STORAGE_IMAGE:
                 {
-                    ASSERT_DEBUG_SYNC(src_command.texture_view != nullptr,
-                                      "Null texture view defined for a sampled / storage image binding.");
+                    ASSERT_DEBUG_SYNC(src_command.storage_image_binding.texture_view != nullptr,
+                                      "Null texture view defined for a storage image binding.");
 
                     break;
                 }
@@ -883,21 +985,27 @@ PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer           
                 case RAL_BINDING_TYPE_STORAGE_BUFFER:
                 case RAL_BINDING_TYPE_UNIFORM_BUFFER:
                 {
-                    uint32_t buffer_size = 0;
+                    const ral_buffer buffer             = (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? src_command.storage_buffer_binding.buffer
+                                                                                                                        : src_command.uniform_buffer_binding.buffer;
+                    const uint32_t   buffer_offset      = (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? src_command.storage_buffer_binding.offset
+                                                                                                                        : src_command.uniform_buffer_binding.offset;
+                    const uint32_t   buffer_region_size = (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? src_command.storage_buffer_binding.size
+                                                                                                                        : src_command.uniform_buffer_binding.size;
+                    uint32_t         buffer_size        = 0;
 
-                    ASSERT_DEBUG_SYNC(src_command.buffer != nullptr,
+                    ASSERT_DEBUG_SYNC(buffer != nullptr,
                                       "Null buffer defined for a storage/uniform buffer binding.");
 
-                    ral_buffer_get_property(src_command.buffer,
+                    ral_buffer_get_property(buffer,
                                             RAL_BUFFER_PROPERTY_SIZE,
                                            &buffer_size);
 
-                    ASSERT_DEBUG_SYNC(src_command.buffer_offset < buffer_size,
+                    ASSERT_DEBUG_SYNC(buffer_offset < buffer_size,
                                       "Start offset for the storage/uniform buffer binding exceeds available buffer storage");
 
-                    if (src_command.buffer_size != 0)
+                    if (buffer_region_size != 0)
                     {
-                        ASSERT_DEBUG_SYNC(src_command.buffer_offset + src_command.buffer_size <= buffer_size,
+                        ASSERT_DEBUG_SYNC(buffer_offset + buffer_region_size <= buffer_size,
                                           "Region for the storage/uniform buffer binding exceeds available buffer storage");
                     }
 
@@ -918,27 +1026,29 @@ PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer           
         new_command_ptr->set_binding_command = src_command;
         new_command_ptr->type                = RAL_COMMAND_TYPE_SET_BINDING;
 
-        if (src_command.type == RAL_BINDING_TYPE_STORAGE_BUFFER ||
-            src_command.type == RAL_BINDING_TYPE_UNIFORM_BUFFER)
+        if (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER ||
+            src_command.binding_type == RAL_BINDING_TYPE_UNIFORM_BUFFER)
         {
             ral_context_retain_object(command_buffer_ptr->context,
                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                      new_command_ptr->set_binding_command.buffer);
+                                      (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? new_command_ptr->set_binding_command.storage_buffer_binding.buffer
+                                                                                                    : new_command_ptr->set_binding_command.uniform_buffer_binding.buffer);
         }
 
-        if (src_command.type == RAL_BINDING_TYPE_SAMPLED_IMAGE)
+        if (src_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE)
         {
             ral_context_retain_object(command_buffer_ptr->context,
                                       RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-                                      new_command_ptr->set_binding_command.sampler);
+                                      new_command_ptr->set_binding_command.sampled_image_binding.sampler);
         }
 
-        if (src_command.type == RAL_BINDING_TYPE_SAMPLED_IMAGE ||
-            src_command.type == RAL_BINDING_TYPE_STORAGE_IMAGE)
+        if (src_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE ||
+            src_command.binding_type == RAL_BINDING_TYPE_STORAGE_IMAGE)
         {
             ral_context_retain_object(command_buffer_ptr->context,
                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                      new_command_ptr->set_binding_command.texture_view);
+                                      (src_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE) ? new_command_ptr->set_binding_command.sampled_image_binding.texture_view
+                                                                                                   : new_command_ptr->set_binding_command.storage_image_binding.texture_view);
         }
 
         system_resizable_vector_push(command_buffer_ptr->commands,
@@ -1114,9 +1224,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_command_buffer_record_set_vertex_attributes(ral_command_buffer                                          recording_command_buffer,
-                                                            uint32_t                                                    n_vertex_attributes,
-                                                            const ral_command_buffer_set_vertex_attribute_command_info* vertex_attribute_ptrs)
+PUBLIC void ral_command_buffer_record_set_vertex_buffers(ral_command_buffer                                       recording_command_buffer,
+                                                         uint32_t                                                 n_vertex_buffers,
+                                                         const ral_command_buffer_set_vertex_buffer_command_info* vertex_buffer_ptrs)
 {
     _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
     _ral_command*        new_command_ptr    = nullptr;
@@ -1129,11 +1239,11 @@ PUBLIC void ral_command_buffer_record_set_vertex_attributes(ral_command_buffer  
         goto end;
     }
 
-    for (uint32_t n_vertex_attribute = 0;
-                  n_vertex_attribute < n_vertex_attributes;
-                ++n_vertex_attribute)
+    for (uint32_t n_vertex_buffer = 0;
+                  n_vertex_buffer < n_vertex_buffers;
+                ++n_vertex_buffer)
     {
-        const ral_command_buffer_set_vertex_attribute_command_info& src_command = vertex_attribute_ptrs[n_vertex_attribute];
+        const ral_command_buffer_set_vertex_buffer_command_info& src_command = vertex_buffer_ptrs[n_vertex_buffer];
 
         #ifdef _DEBUG
         {
@@ -1154,8 +1264,8 @@ PUBLIC void ral_command_buffer_record_set_vertex_attributes(ral_command_buffer  
 
         new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
 
-        new_command_ptr->set_vertex_attribute_command = src_command;
-        new_command_ptr->type                         = RAL_COMMAND_TYPE_SET_VERTEX_ATTRIBUTE;
+        new_command_ptr->set_vertex_buffer_command = src_command;
+        new_command_ptr->type                      = RAL_COMMAND_TYPE_SET_VERTEX_BUFFER;
 
         ral_context_retain_object(command_buffer_ptr->context,
                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
@@ -1214,7 +1324,7 @@ end:
 /** Please see header for specification */
 PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer)
 {
-    ASSERT_DEBUG_SYNC(command_buffer != NULL,
+    ASSERT_DEBUG_SYNC(command_buffer != nullptr,
                       "Input ral_command_buffer instance is NULL");
 
     system_resource_pool_return_to_pool(command_buffer_pool,

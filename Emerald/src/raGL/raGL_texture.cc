@@ -109,10 +109,10 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
 {
     _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg* callback_arg_ptr          = (_raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg*) user_arg;
     ogl_context                                                               context                   = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints_ext_direct_state_access*                 entrypoints_dsa_ptr       = NULL;
-    const ogl_context_gl_entrypoints*                                         entrypoints_ptr           = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access*                 entrypoints_dsa_ptr       = nullptr;
+    const ogl_context_gl_entrypoints*                                         entrypoints_ptr           = nullptr;
     ogl_texture_data_format                                                   texture_data_format_gl    = OGL_TEXTURE_DATA_FORMAT_UNDEFINED;
-    ral_texture_format                                                        texture_format            = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format                                                                texture_format            = RAL_FORMAT_UNKNOWN;
     bool                                                                      texture_format_compressed = false;
     ogl_texture_internalformat                                                texture_format_gl         = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
     ral_texture_type                                                          texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
@@ -137,12 +137,12 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
                             RAL_TEXTURE_PROPERTY_TYPE,
                            &texture_type);
 
-    texture_data_format_gl = raGL_utils_get_ogl_data_format_for_ral_texture_format           (texture_format);
-    texture_format_gl      = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
+    texture_data_format_gl = raGL_utils_get_ogl_data_format_for_ral_format           (texture_format);
+    texture_format_gl      = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_format);
 
-    ral_utils_get_texture_format_property(texture_format,
-                                          RAL_TEXTURE_FORMAT_PROPERTY_IS_COMPRESSED,
-                                         &texture_format_compressed);
+    ral_utils_get_format_property(texture_format,
+                                  RAL_FORMAT_PROPERTY_IS_COMPRESSED,
+                                 &texture_format_compressed);
 
     for (auto update_info_ptr : callback_arg_ptr->updates)
     {
@@ -185,10 +185,10 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
                 case 3: texture_target_gl = GL_TEXTURE_CUBE_MAP_POSITIVE_X; break;
                 case 4: texture_target_gl = GL_TEXTURE_CUBE_MAP_POSITIVE_Y; break;
                 case 5: texture_target_gl = GL_TEXTURE_CUBE_MAP_POSITIVE_Z; break;
-            } /* switch (update_info.n_layer % 6) */
+            }
 
             texture_layer_gl /= 6;
-        } /* if (cube-map or CM array texture) */
+        }
         else
         {
             texture_target_gl = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type);
@@ -220,8 +220,8 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
                     ASSERT_DEBUG_SYNC(false,
                                       "Client memory-sourced texture update not supported for the requested texture type.");
                 }
-            } /* switch (texture_type) */
-        } /* if (texture_format_compressed) */
+            }
+        }
         else
         {
             switch (texture_type)
@@ -340,9 +340,9 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
                     ASSERT_DEBUG_SYNC(false,
                                       "Unsupported texture type");
                 }
-            } /* switch (texture_type) */
+            }
         }
-    } /* for (all requested updates) */
+    }
 
     if (callback_arg_ptr->async)
     {
@@ -357,7 +357,7 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callback(ogl_context    context,
                                                                                     void*          user_arg)
 {
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     _raGL_texture*                    texture_ptr     = (_raGL_texture*) user_arg;
 
     ogl_context_get_property(context,
@@ -371,7 +371,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
 
         entrypoints_ptr->pGLDeleteRenderbuffers(1,
                                                &texture_ptr->id);
-    } /* if (texture_ptr->is_renderbuffer) */
+    }
     else
     {
         LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%u])",
@@ -397,8 +397,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_renderer_call
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_scheduler_callback(void* texture)
 {
     const ogl_context                                         current_context     = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = nullptr;
     _raGL_texture*                                            texture_ptr         = (_raGL_texture*) texture;
     ral_texture_type                                          texture_type        = RAL_TEXTURE_TYPE_UNKNOWN;
 
@@ -473,11 +473,11 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_renderer_callback
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raGL_texture* texture_ptr)
 {
     ogl_context                                               current_context     = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = nullptr;
     uint32_t                                                  texture_base_height = 0;
     uint32_t                                                  texture_base_width  = 0;
-    ral_texture_format                                        texture_format      = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format                                                texture_format      = RAL_FORMAT_UNKNOWN;
     ogl_texture_internalformat                                texture_format_gl   = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
     uint32_t                                                  texture_n_samples   = 0;
 
@@ -512,7 +512,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
     LOG_INFO("[GL back-end]: Allocating new renderbuffer storage for GL renderbuffer ID [%u]",
              texture_ptr->id);
 
-    texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
+    texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_format);
 
     if (texture_n_samples > 1)
     {
@@ -539,21 +539,21 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_texture* texture_ptr)
 {
     const ogl_context                                         current_context                = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr            = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints_ptr                = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr            = nullptr;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr                = nullptr;
     GLuint                                                    precall_bound_to_id            = 0;
     uint32_t                                                  texture_base_depth             = 0;
     uint32_t                                                  texture_base_height            = 0;
     uint32_t                                                  texture_base_width             = 0;
     bool                                                      texture_fixed_sample_locations = false;
-    ral_texture_format                                        texture_format                 = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format                                                texture_format                 = RAL_FORMAT_UNKNOWN;
     ogl_texture_internalformat                                texture_format_gl              = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
     uint32_t                                                  texture_n_layers               = 0;
     uint32_t                                                  texture_n_mipmaps              = 0;
     uint32_t                                                  texture_n_samples              = 0;
     GLenum                                                    texture_target                 = GL_NONE;
     ral_texture_type                                          texture_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
-    ogl_context_to_bindings                                   to_bindings_cache              = NULL;
+    ogl_context_to_bindings                                   to_bindings_cache              = nullptr;
 
     ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -599,7 +599,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
                                     RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_base_width);
 
-    texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(texture_format);
+    texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_format);
 
     entrypoints_ptr->pGLGenTextures(1,
                                    &texture_ptr->id);
@@ -727,7 +727,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ral_texture_type value.");
         }
-    } /* switch (texture_type) */
+    }
 
     /* Sync other contexts */
     raGL_backend_enqueue_sync();
@@ -749,7 +749,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(og
     raGL_texture                      parent_texture_raGL       = nullptr;
     GLuint                            parent_texture_raGL_id    = -1;
     _raGL_texture*                    texture_ptr               = (_raGL_texture*) texture;
-    ral_texture_format                texture_view_format       = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format                        texture_view_format       = RAL_FORMAT_UNKNOWN;
     ral_texture_type                  texture_view_type         = RAL_TEXTURE_TYPE_UNKNOWN;
 
     /* Extract texture view properties */
@@ -787,7 +787,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(og
                               (void**) &parent_texture_raGL);
     raGL_texture_get_property(parent_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
-                             &parent_texture_raGL_id);
+                              (void**) &parent_texture_raGL_id);
 
     /* Assign a texture view to the ID */
     entrypoints_ptr->pGLTextureView(texture_ptr->id,
@@ -804,8 +804,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(og
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* texture_ptr)
 {
     const ogl_context                                         current_context     = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = nullptr;
 
     ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -819,12 +819,12 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
     GLint gl_general_n_mipmaps = 0;
     GLint gl_general_n_samples = 0;
 
-    ral_texture_format ral_general_format    = RAL_TEXTURE_FORMAT_UNKNOWN;
-    uint32_t           ral_general_n_layers  = 0;
-    uint32_t           ral_general_n_mipmaps = 0;
-    uint32_t           ral_general_n_samples = 0;
-    ral_texture_type   ral_general_type      = RAL_TEXTURE_TYPE_UNKNOWN;
-    GLenum             ral_general_type_gl   = GL_NONE;
+    ral_format       ral_general_format    = RAL_FORMAT_UNKNOWN;
+    uint32_t         ral_general_n_layers  = 0;
+    uint32_t         ral_general_n_mipmaps = 0;
+    uint32_t         ral_general_n_samples = 0;
+    ral_texture_type ral_general_type      = RAL_TEXTURE_TYPE_UNKNOWN;
+    GLenum           ral_general_type_gl   = GL_NONE;
 
     ral_texture_get_property(texture_ptr->texture,
                              RAL_TEXTURE_PROPERTY_FORMAT,
@@ -920,7 +920,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
         GLint                      gl_mipmap_width           = 0;
         uint32_t                   ral_mipmap_depth          = 0;
         uint32_t                   ral_mipmap_height         = 0;
-        ral_texture_format         ral_mipmap_format          = RAL_TEXTURE_FORMAT_UNKNOWN;
+        ral_format                 ral_mipmap_format         = RAL_FORMAT_UNKNOWN;
         uint32_t                   ral_mipmap_width          = 0;
 
         if (texture_ptr->is_renderbuffer)
@@ -936,7 +936,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
             entrypoints_dsa_ptr->pGLGetNamedRenderbufferParameterivEXT(texture_ptr->id,
                                                                        GL_RENDERBUFFER_WIDTH,
                                                                       &gl_mipmap_width);
-        } /* if (texture_ptr->is_renderbuffer) */
+        }
         else
         {
             entrypoints_dsa_ptr->pGLGetTextureLevelParameterivEXT(texture_ptr->id,
@@ -977,7 +977,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                        &ral_mipmap_width);
 
-        ral_mipmap_format = raGL_utils_get_ral_texture_format_for_ogl_enum(gl_mipmap_internal_format);
+        ral_mipmap_format = raGL_utils_get_ral_format_for_ogl_enum(gl_mipmap_internal_format);
 
         if (ral_mipmap_format != ral_general_format)
         {
@@ -993,17 +993,17 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
                               "GL/RAL mip-map size detected at mip-map level [%d]",
                               n_mipmap);
         }
-    } /* for (all mipmaps recognized by GL and RAL) */
+    }
 }
 
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context context,
                                                                ral_texture texture)
 {
-    _raGL_texture* result_ptr = NULL;
+    _raGL_texture* result_ptr = nullptr;
 
     /* Sanity checks */
-    if (context == NULL)
+    if (context == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input context is NULL");
@@ -1011,7 +1011,7 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context conte
         goto end;
     }
 
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_texture instance is NULL");
@@ -1023,7 +1023,7 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context conte
     result_ptr = new (std::nothrow) _raGL_texture(context,
                                                   texture);
 
-    if (result_ptr == NULL)
+    if (result_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -1093,7 +1093,7 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
     _raGL_texture* texture_ptr = (_raGL_texture*) texture;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(texture != NULL,
+    ASSERT_DEBUG_SYNC(texture != nullptr,
                       "Input raGL_texture instance is NULL");
 
     if (async)
@@ -1122,8 +1122,8 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
     {
         const ogl_context current_context = ogl_context_get_current_context();
 
-        ogl_context_request_callback_from_context_thread( (current_context != NULL) ? current_context
-                                                                                    : texture_ptr->context,
+        ogl_context_request_callback_from_context_thread( (current_context != nullptr) ? current_context
+                                                                                       : texture_ptr->context,
                                                          _raGL_texture_generate_mipmaps_renderer_callback,
                                                          texture);
     }
@@ -1132,13 +1132,13 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
 /** Please see header for specification */
 PUBLIC EMERALD_API bool raGL_texture_get_property(raGL_texture          texture,
                                                   raGL_texture_property property,
-                                                  void*                 out_result_ptr)
+                                                  void**                out_result_ptr)
 {
     bool           result      = false;
     _raGL_texture* texture_ptr = (_raGL_texture*) texture;
 
     /* Sanity checks */
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input texture instance is NULL");
@@ -1179,7 +1179,7 @@ PUBLIC EMERALD_API bool raGL_texture_get_property(raGL_texture          texture,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized raGL_texture_property value.");
         }
-    } /* switch (property) */
+    }
 
 end:
     return result;
@@ -1190,7 +1190,7 @@ PUBLIC void raGL_texture_release(raGL_texture texture)
 {
     _raGL_texture* texture_ptr = (_raGL_texture*) texture;
 
-    ASSERT_DEBUG_SYNC(texture != NULL,
+    ASSERT_DEBUG_SYNC(texture != nullptr,
                       "Input raGL_texture instance is NULL");
 
     ogl_context_request_callback_from_context_thread(texture_ptr->context,
@@ -1198,7 +1198,7 @@ PUBLIC void raGL_texture_release(raGL_texture texture)
                                                      texture_ptr);
 
     delete (_raGL_texture*) texture;
-    texture = NULL;
+    texture = nullptr;
 }
 
 /** Please see header for specification */
@@ -1210,7 +1210,7 @@ PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture           
     _raGL_texture* texture_ptr = (_raGL_texture*) texture;
 
     /* Sanity checks.. */
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input raGL_texture instance is NULL");
@@ -1234,7 +1234,7 @@ PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture           
         ral_backend_type                                                          backend_type;
         _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg* callback_arg_ptr = new _raGL_texture_client_memory_sourced_update_rendering_thread_callback_arg;
         ral_scheduler_job_info                                                    job_info;
-        ral_scheduler                                                             scheduler   = NULL;
+        ral_scheduler                                                             scheduler   = nullptr;
 
         /* Request an async call-back from the GPU scheduler */
         ogl_context_get_property(texture_ptr->context,
@@ -1265,8 +1265,8 @@ PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture           
         callback_arg.texture_ptr = texture_ptr;
         callback_arg.updates     = updates;
 
-        ogl_context_request_callback_from_context_thread((current_context != NULL) ? current_context
-                                                                                   : texture_ptr->context,
+        ogl_context_request_callback_from_context_thread((current_context != nullptr) ? current_context
+                                                                                      : texture_ptr->context,
                                                          _raGL_texture_client_memory_sourced_update_renderer_callback,
                                                         &callback_arg);
 

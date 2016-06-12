@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -25,8 +25,8 @@
  *  Yeah, yeah, globals suck. But assuming demo environment, this solution
  *  will do just fine.
  */
-static volatile PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR _alternative_filename_getter_proc_ptr = NULL;
-static          void*                                    _alternative_filename_getter_user_arg = NULL;
+static volatile PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR _alternative_filename_getter_proc_ptr = nullptr;
+static          void*                                    _alternative_filename_getter_user_arg = nullptr;
 
 /** Private declarations */
 typedef struct _gfx_image_mipmap
@@ -35,7 +35,7 @@ typedef struct _gfx_image_mipmap
     unsigned int          data_size;
     ral_texture_data_type data_type;
     const unsigned char*  data_ptr;
-    ral_texture_format    format;
+    ral_format            format;
     unsigned int          height;
     bool                  is_compressed;
     unsigned int          row_alignment;
@@ -43,11 +43,11 @@ typedef struct _gfx_image_mipmap
 
     _gfx_image_mipmap()
     {
-        data_ptr             = NULL;
+        data_ptr             = nullptr;
         data_ptr_releaseable = false;
         data_size            = 0;
         data_type            = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
-        format               = RAL_TEXTURE_FORMAT_UNKNOWN;
+        format               = RAL_FORMAT_UNKNOWN;
         height               = 0;
         is_compressed        = false;
         row_alignment        = 0;
@@ -116,16 +116,16 @@ REFCOUNT_INSERT_IMPLEMENTATION(gfx_image,
 /** TODO */
 PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_string name,
                                                           system_hashed_ansi_string alternative_filename,
-                                                          ral_texture_format        alternative_filename_texture_format,
+                                                          ral_format                alternative_filename_texture_format,
                                                           system_file_unpacker      file_unpacker)
 {
 
-    const unsigned char*                                   data                   = NULL;
+    const unsigned char*                                   data                   = nullptr;
     unsigned int                                           data_total_n_bytes     = 0;
     size_t                                                 file_size              = 0;
     ogl_context_texture_compression_compressed_blob_header header;
-    gfx_image                                              result                    = NULL;
-    const unsigned char*                                   serializer_raw_storage    = NULL;
+    gfx_image                                              result                    = nullptr;
+    const unsigned char*                                   serializer_raw_storage    = nullptr;
     bool                                                   should_release_serializer = false;
 
     /* Load the file contents.
@@ -134,9 +134,9 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_str
      *       all threads in the thread pool. If we did not create a synchronous
      *       serializer here, we would have ended up with a deadlock.
      */
-    system_file_serializer serializer = NULL;
+    system_file_serializer serializer = nullptr;
 
-    if (file_unpacker == NULL)
+    if (file_unpacker == nullptr)
     {
         serializer                = system_file_serializer_create_for_reading(alternative_filename,
                                                                               false);              /* async_read */
@@ -177,10 +177,10 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_str
     /* Create a new gfx_image instance */
     result = gfx_image_create(name);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "Failed to create a gfx_image instance");
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         goto end;
     }
@@ -233,7 +233,7 @@ end:
     {
         system_file_serializer_release(serializer);
 
-        serializer = NULL;
+        serializer = nullptr;
     }
 
     return result;
@@ -244,7 +244,7 @@ PUBLIC void _gfx_image_release(void* image)
 {
     _gfx_image* image_ptr = (_gfx_image*) image;
 
-    if (image_ptr->mipmaps != NULL)
+    if (image_ptr->mipmaps != nullptr)
     {
         unsigned int n_mipmaps = 0;
 
@@ -256,26 +256,26 @@ PUBLIC void _gfx_image_release(void* image)
                           n_mipmap < n_mipmaps;
                         ++n_mipmap)
         {
-            _gfx_image_mipmap* mipmap_ptr = NULL;
+            _gfx_image_mipmap* mipmap_ptr = nullptr;
 
             if (system_resizable_vector_get_element_at(image_ptr->mipmaps,
                                                        n_mipmap,
                                                       &mipmap_ptr) )
             {
-                if (mipmap_ptr->data_ptr != NULL && mipmap_ptr->data_ptr_releaseable)
+                if (mipmap_ptr->data_ptr != nullptr && mipmap_ptr->data_ptr_releaseable)
                 {
                     delete [] mipmap_ptr->data_ptr;
 
-                    mipmap_ptr->data_ptr = NULL;
+                    mipmap_ptr->data_ptr = nullptr;
                 }
 
                 delete mipmap_ptr;
-                mipmap_ptr = NULL;
+                mipmap_ptr = nullptr;
             }
-        } /* for (all mipmaps) */
+        }
 
         system_resizable_vector_release(image_ptr->mipmaps);
-        image_ptr->mipmaps = NULL;
+        image_ptr->mipmaps = nullptr;
     }
 }
 
@@ -284,7 +284,7 @@ PUBLIC unsigned int gfx_image_add_mipmap(gfx_image             image,
                                          unsigned int          width,
                                          unsigned int          height,
                                          unsigned int          row_alignment,
-                                         ral_texture_format    format,
+                                         ral_format            format,
                                          bool                  is_compressed,
                                          const unsigned char*  data_ptr,
                                          unsigned int          data_size,
@@ -298,9 +298,9 @@ PUBLIC unsigned int gfx_image_add_mipmap(gfx_image             image,
     /* Spawn new mipmap descriptor */
     _gfx_image_mipmap* mipmap_ptr = new (std::nothrow) _gfx_image_mipmap;
 
-    ASSERT_ALWAYS_SYNC(mipmap_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(mipmap_ptr != nullptr,
                        "Out of memory");
-    if (mipmap_ptr == NULL)
+    if (mipmap_ptr == nullptr)
     {
         goto end;
     }
@@ -323,14 +323,14 @@ PUBLIC unsigned int gfx_image_add_mipmap(gfx_image             image,
         mipmap_ptr->data_ptr             = new (std::nothrow) unsigned char[mipmap_ptr->data_size];
         mipmap_ptr->data_ptr_releaseable = true;
 
-        ASSERT_DEBUG_SYNC(mipmap_ptr->data_ptr != NULL,
+        ASSERT_DEBUG_SYNC(mipmap_ptr->data_ptr != nullptr,
                           "Out of memory while allocating [%d] bytes for gfx_image mipmap",
                           mipmap_ptr->data_size);
 
-        if (mipmap_ptr->data_ptr == NULL)
+        if (mipmap_ptr->data_ptr == nullptr)
         {
             delete mipmap_ptr;
-            mipmap_ptr = NULL;
+            mipmap_ptr = nullptr;
 
             goto end;
         }
@@ -356,26 +356,26 @@ end:
 /** Please see header for specification */
 PUBLIC gfx_image gfx_image_create(system_hashed_ansi_string name)
 {
-    _gfx_image* new_gfx_image = new (std::nothrow) _gfx_image;
+    _gfx_image* new_gfx_image_ptr = new (std::nothrow) _gfx_image;
 
-    ASSERT_DEBUG_SYNC(new_gfx_image != NULL,
+    ASSERT_DEBUG_SYNC(new_gfx_image_ptr != nullptr,
                       "Out of memory while allocating _gfx_image");
 
-    if (new_gfx_image != NULL)
+    if (new_gfx_image_ptr != nullptr)
     {
-        new_gfx_image->filename        = NULL;
-        new_gfx_image->filename_actual = NULL;
-        new_gfx_image->mipmaps         = system_resizable_vector_create(1 /* capacity */);
-        new_gfx_image->name            = name;
+        new_gfx_image_ptr->filename        = nullptr;
+        new_gfx_image_ptr->filename_actual = nullptr;
+        new_gfx_image_ptr->mipmaps         = system_resizable_vector_create(1 /* capacity */);
+        new_gfx_image_ptr->name            = name;
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_gfx_image,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_gfx_image_ptr,
                                                        _gfx_image_release,
                                                        OBJECT_TYPE_GFX_IMAGE,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\GFX Images\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (gfx_image) new_gfx_image;
+    return (gfx_image) new_gfx_image_ptr;
 }
 
 /** Please see header for specification */
@@ -383,14 +383,14 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
                                                         system_hashed_ansi_string file_name,
                                                         bool                      use_alternative_filename_getter)
 {
+    ral_format                alternative_file_texture_format = RAL_FORMAT_UNKNOWN;
+    system_file_unpacker      alternative_file_unpacker       = nullptr;
     const char*               file_name_raw_ptr               = system_hashed_ansi_string_get_buffer(file_name);
-    ral_texture_format        alternative_file_texture_format = RAL_TEXTURE_FORMAT_UNKNOWN;
-    system_file_unpacker      alternative_file_unpacker       = NULL;
     system_hashed_ansi_string in_file_name                    = file_name;
-    gfx_image                 result                          = NULL;
+    gfx_image                 result                          = nullptr;
 
     /* If an alternative filename getter was configured, use it against input filename */
-    if (_alternative_filename_getter_proc_ptr != NULL &&
+    if (_alternative_filename_getter_proc_ptr != nullptr &&
         use_alternative_filename_getter)
     {
         system_hashed_ansi_string proposed_file_name = _alternative_filename_getter_proc_ptr(_alternative_filename_getter_user_arg,
@@ -398,11 +398,11 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
                                                                                             &alternative_file_texture_format,
                                                                                             &alternative_file_unpacker);
 
-        if (proposed_file_name != NULL)
+        if (proposed_file_name != nullptr)
         {
             system_hashed_ansi_string file_unpacker_name = system_hashed_ansi_string_create("none");
 
-            if (alternative_file_unpacker != NULL)
+            if (alternative_file_unpacker != nullptr)
             {
                 system_file_unpacker_get_property(alternative_file_unpacker,
                                                   SYSTEM_FILE_UNPACKER_PROPERTY_PACKED_FILENAME,
@@ -423,23 +423,23 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
          */
         if (alternative_file_texture_format == GL_NONE)
         {
-            alternative_file_texture_format = RAL_TEXTURE_FORMAT_UNKNOWN;
+            alternative_file_texture_format = RAL_FORMAT_UNKNOWN;
         }
         else
         {
-            alternative_file_texture_format = raGL_utils_get_ral_texture_format_for_ogl_enum( (GLenum) alternative_file_texture_format);
+            alternative_file_texture_format = raGL_utils_get_ral_format_for_ogl_enum( (GLenum) alternative_file_texture_format);
         }
     }
 
     /* Look for extension in the file name */
-    const char* file_name_last_dot_ptr = NULL;
+    const char* file_name_last_dot_ptr = nullptr;
 
     if ( (file_name_last_dot_ptr = strrchr(file_name_raw_ptr,
-                                           '.')) != NULL)
+                                           '.')) != nullptr)
     {
         bool has_found_handler = false;
 
-        if (alternative_file_texture_format == RAL_TEXTURE_FORMAT_UNKNOWN)
+        if (alternative_file_texture_format == RAL_FORMAT_UNKNOWN)
         {
             /* Browse available file handlers and see if we can load the original file */
             for (uint32_t n_extension = 0;
@@ -456,7 +456,7 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
                     break;
                 }
             }
-        } /* if (alternative_file_texture_format == RAL_TEXTURE_FORMAT_UNKNOWN) */
+        }
         else
         {
             /* This is a compressed file, so need to use a special internal handler */
@@ -464,7 +464,7 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
                                                                         file_name,
                                                                         alternative_file_texture_format,
                                                                         alternative_file_unpacker);
-            has_found_handler = (result != NULL);
+            has_found_handler = (result != nullptr);
         }
 
         if (!has_found_handler)
@@ -474,9 +474,10 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
                                file_name_raw_ptr);
         }
 
-        if (result != NULL)
+        if (result != nullptr)
         {
-            LOG_INFO("Created gfx_image instance for file [%s]", file_name_raw_ptr);
+            LOG_INFO("Created gfx_image instance for file [%s]",
+                     file_name_raw_ptr);
 
             /* Set the gfx_image's filename */
             _gfx_image* image_ptr = (_gfx_image*) result;
@@ -497,23 +498,23 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
 }
 
 /** Please see header for specification */
-PUBLIC unsigned int gfx_image_get_data_size(ral_texture_format format,
-                                            unsigned int       width,
-                                            unsigned int       height,
-                                            unsigned int       row_alignment)
+PUBLIC unsigned int gfx_image_get_data_size(ral_format   format,
+                                            unsigned int width,
+                                            unsigned int height,
+                                            unsigned int row_alignment)
 {
     unsigned int pixel_size = 0;
 
     switch (format)
     {
-        case RAL_TEXTURE_FORMAT_RGB8_UNORM:
+        case RAL_FORMAT_RGB8_UNORM:
         {
             pixel_size = 24;
 
             break;
         }
 
-        case RAL_TEXTURE_FORMAT_RGBA8_UNORM:
+        case RAL_FORMAT_RGBA8_UNORM:
         {
             pixel_size = 32;
 
@@ -526,7 +527,7 @@ PUBLIC unsigned int gfx_image_get_data_size(ral_texture_format format,
                                "Unrecognized texture format format [%x]",
                                format);
         }
-    } /* switch (format) */
+    }
 
     /* Align width before we return the result */
     if (width % row_alignment != 0)
@@ -546,9 +547,9 @@ PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 
     _gfx_image* image_ptr = (_gfx_image*) image;
     bool        result    = false;
 
-    if (image_ptr->mipmaps != NULL)
+    if (image_ptr->mipmaps != nullptr)
     {
-        _gfx_image_mipmap* mipmap_ptr = NULL;
+        _gfx_image_mipmap* mipmap_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(image_ptr->mipmaps,
                                                    n_mipmap,
@@ -579,7 +580,7 @@ PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 
 
                 case GFX_IMAGE_MIPMAP_PROPERTY_FORMAT_RAL:
                 {
-                    *((ral_texture_format*) out_result) = mipmap_ptr->format;
+                    *((ral_format*) out_result) = mipmap_ptr->format;
 
                     break;
                 }
@@ -617,7 +618,7 @@ PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 
                     ASSERT_DEBUG_SYNC(false,
                                       "Unrecognized gfx_image mipmap property");
                 }
-            } /* switch (mipmap_property) */
+            }
         }
         else
         {
@@ -674,7 +675,7 @@ PUBLIC EMERALD_API void gfx_image_get_property(const gfx_image          image,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized GFX image property");
         }
-    } /* switch (property) */
+    }
 }
 
 /** TODO */
@@ -689,7 +690,7 @@ PUBLIC EMERALD_API void gfx_image_set_global_property(gfx_image_property propert
              *       Take this as a warning - everything should be fine *but* this scenario
              *       was not tested.
              */
-            ASSERT_DEBUG_SYNC(_alternative_filename_getter_proc_ptr == NULL ||
+            ASSERT_DEBUG_SYNC(_alternative_filename_getter_proc_ptr == nullptr ||
                               _alternative_filename_getter_proc_ptr == value,
                               "TODO: Unsupported scenario");
 
@@ -710,5 +711,5 @@ PUBLIC EMERALD_API void gfx_image_set_global_property(gfx_image_property propert
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized global gfx_image property");
         }
-    } /* switch (property_value) */
+    }
 }

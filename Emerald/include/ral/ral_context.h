@@ -53,23 +53,6 @@ enum
     RAL_CONTEXT_CALLBACK_ID_COMMAND_BUFFERS_DELETED,
 
 
-    /* One or more ral_framebuffer instances were created.
-     *
-     * NOTE: This callback ID only supports synchronous call-backs.
-     *
-     * arg: ral_context_callback_objects_created_callback_arg
-     */
-    RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_CREATED,
-
-    /* One or more existing ral_framebuffer instances were deleted.
-     *
-     * NOTE: This callback ID only supports synchronous call-backs.
-     *
-     * arg: ral_context_callback_objects_deleted_callback_arg instance.
-     */
-    RAL_CONTEXT_CALLBACK_ID_FRAMEBUFFERS_DELETED,
-
-
     /* One or more ral_gfx_state instances were created.
      *
      * NOTE: This callback ID only supports synchronous call-backs.
@@ -180,7 +163,6 @@ typedef enum
 {
     RAL_CONTEXT_OBJECT_TYPE_BUFFER,
     RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
-    RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
     RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
     RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
     RAL_CONTEXT_OBJECT_TYPE_SAMPLER,

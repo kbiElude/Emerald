@@ -1,0 +1,2810 @@
+/**
+ *
+ * Emerald (kbi/elude @2016)
+ *
+ */
+#include "shared.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_context_state_cache.h"
+#include "raGL/raGL_backend.h"
+#include "raGL/raGL_buffer.h"
+#include "raGL/raGL_command_buffer.h"
+#include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_program.h"
+#include "raGL/raGL_sampler.h"
+#include "raGL/raGL_texture.h"
+#include "raGL/raGL_utils.h"
+#include "raGL/raGL_vaos.h"
+#include "ral/ral_command_buffer.h"
+#include "ral/ral_gfx_state.h"
+#include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
+#include "ral/ral_types.h"
+#include "ral/ral_utils.h"
+#include "system/system_resource_pool.h"
+#include "system/system_resizable_vector.h"
+
+/* Internal limit for the number of vertex attributes which can be used at once.
+ *
+ * Equal to the min max for GL_MAX_VERTEX_ATTRIBS */
+#define N_MAX_VERTEX_ATTRIBUTES (16)
+
+
+typedef enum
+{
+    /* Command args stored in _raGL_command_active_texture_command_info */
+    RAGL_COMMAND_TYPE_ACTIVE_TEXTURE,
+
+    /* Command args stored in _raGL_command_bind_buffer_command_info */
+    RAGL_COMMAND_TYPE_BIND_BUFFER,
+
+    /* Command args stored in _raGL_command_bind_buffer_base_command_info */
+    RAGL_COMMAND_TYPE_BIND_BUFFER_BASE,
+
+    /* Command args stored in _raGL_command_bind_buffer_range_command_info */
+    RAGL_COMMAND_TYPE_BIND_BUFFER_RANGE,
+
+    /* Command args stored in _raGL_command_bind_image_texture_command_info */
+    RAGL_COMMAND_TYPE_BIND_IMAGE_TEXTURE,
+
+    /* Command args stored in _raGL_command_bind_sampler_command_info */
+    RAGL_COMMAND_TYPE_BIND_SAMPLER,
+
+    /* Command args stored in _raGL_command_bind_texture_command_info */
+    RAGL_COMMAND_TYPE_BIND_TEXTURE,
+
+    /* Command args stored in _raGL_command_bind_vertex_array_command_info */
+    RAGL_COMMAND_TYPE_BIND_VERTEX_ARRAY,
+
+    /* Command args stored in _raGL_command_blit_framebuffer_command_info */
+    RAGL_COMMAND_TYPE_BLIT_FRAMEBUFFER,
+
+    /* Command args stored in _raGL_command_copy_image_sub_data_command_info */
+    RAGL_COMMAND_TYPE_COPY_IMAGE_SUB_DATA,
+
+    /* Command args stored in _raGL_command_cull_face_command_info */
+    RAGL_COMMAND_TYPE_CULL_FACE,
+
+    /* Command args stored in _raGL_command_disable_command_info */
+    RAGL_COMMAND_TYPE_DISABLE,
+
+    /* Command args stored in _raGL_command_draw_arrays_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ARRAYS,
+
+    /* Command args stored in _raGL_command_draw_arrays_indirect_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ARRAYS_INDIRECT,
+
+    /* Command args stored in _raGL_command_draw_arrays_instanced_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED,
+
+    /* Command args stored in _raGL_command_draw_arrays_instanced_base_instance_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED_BASE_INSTANCE,
+
+    /* Command args stored in _raGL_command_draw_elements_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ELEMENTS,
+
+    /* Command args stored in _raGL_command_draw_elements_base_vertex_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ELEMENTS_BASE_VERTEX,
+
+    /* Command args stored in _raGL_command_draw_elements_indirect_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INDIRECT,
+
+    /* Command args stored in _raGL_command_draw_elements_instanced_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED,
+
+    /* Command args stored in _raGL_command_draw_elements_instanced_base_instance_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_INSTANCE,
+
+    /* Command args stored in _raGL_command_draw_elements_instanced_base_vertex_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX,
+
+    /* Command args stored in _raGL_command_draw_elements_instanced_base_vertex_base_instance_command_info */
+    RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX_BASE_INSTANCE,
+
+    /* Command args stored in _raGL_command_enable_command_info */
+    RAGL_COMMAND_TYPE_ENABLE,
+
+    /* Command args stored in _raGL_command_execute_command_buffer_command_info */
+    RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER,
+
+    /* Command args stored in _raGL_command_front_face_command_info */
+    RAGL_COMMAND_TYPE_FRONT_FACE,
+
+    /* Command args stored in _raGL_command_line_width_command_info */
+    RAGL_COMMAND_TYPE_LINE_WIDTH,
+
+    /* Command args stored in _raGL_command_logic_op_command_info */
+    RAGL_COMMAND_TYPE_LOGIC_OP,
+
+    /* Command args stored in _raGL_command_min_sample_shading_command_info */
+    RAGL_COMMAND_TYPE_MIN_SAMPLE_SHADING,
+
+    /* Command args stored in _raGL_command_multi_draw_array_indirect_command_info */
+    RAGL_COMMAND_TYPE_MULTI_DRAW_ARRAYS_INDIRECT,
+
+    /* Command args stored in _raGL_command_multi_draw_elements_indirect_command_info */
+    RAGL_COMMAND_TYPE_MULTI_DRAW_ELEMENTS_INDIRECT,
+
+    /* Command args stored in _raGL_command_patch_parameteri_command_info */
+    RAGL_COMMAND_TYPE_PATCH_PARAMETERI,
+
+    /* Command args stored in _raGL_command_polygon_mode_command_info */
+    RAGL_COMMAND_TYPE_POLYGON_MODE,
+
+    /* Command args stored in _raGL_command_polygon_offset_command_info */
+    RAGL_COMMAND_TYPE_POLYGON_OFFSET,
+
+    /* Command args stored in _raGL_command_scissor_indexedv_command_info */
+    RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV,
+
+    /* Command args stored in _raGL_command_stencil_func_separate_command_info */
+    RAGL_COMMAND_TYPE_STENCIL_FUNC_SEPARATE,
+
+    /* Command args stored in _raGL_command_stencil_mask_separate_command_info */
+    RAGL_COMMAND_TYPE_STENCIL_MASK_SEPARATE,
+
+    /* Command args stored in _raGL_command_stencil_op_separate_command_info */
+    RAGL_COMMAND_TYPE_STENCIL_OP_SEPARATE,
+
+    /* Command args stored in _raGL_command_use_program_command_info */
+    RAGL_COMMAND_TYPE_USE_PROGRAM,
+
+    /* Command args stored in _raGL_command_viewport_indexedfv_command_info */
+    RAGL_COMMAND_TYPE_VIEWPORT_INDEXEDFV
+} raGL_command_type;
+
+
+typedef struct
+{
+    GLenum target;
+
+} _raGL_command_active_texture_command_info;
+
+typedef struct
+{
+    GLuint bo_id;
+    GLuint bp_index;
+    GLenum target;
+
+} _raGL_command_bind_buffer_base_command_info;
+
+typedef struct
+{
+    GLuint bo_id;
+    GLenum target;
+
+} _raGL_command_bind_buffer_command_info;
+
+typedef struct
+{
+    GLuint     bo_id;
+    GLuint     bp_index;
+    GLintptr   offset;
+    GLsizeiptr size;
+    GLenum     target;
+
+} _raGL_command_bind_buffer_range_command_info;
+
+typedef struct
+{
+    GLenum access;
+    GLenum format;
+    bool   is_layered;
+    GLint  layer;
+    GLint  level;
+    GLuint to_id;
+    GLuint tu_index;
+
+} _raGL_command_bind_image_texture_command_info;
+
+typedef struct
+{
+    GLuint sampler_id;
+    GLuint unit;
+
+} _raGL_command_bind_sampler_command_info;
+
+typedef struct
+{
+    GLenum target;
+    GLuint to_id;
+
+} _raGL_command_bind_texture_command_info;
+
+typedef struct
+{
+    GLuint vao_id;
+
+} _raGL_command_bind_vertex_array_command_info;
+
+typedef struct
+{
+    GLuint     draw_fbo_id;
+    GLint      dst_x0y0x1y1[4];
+    GLenum     filter;
+    GLbitfield mask;
+    GLuint     read_fbo_id;
+    GLint      src_x0y0x1y1[4];
+
+} _raGL_command_blit_framebuffer_command_info;
+
+typedef struct
+{
+    GLint   dst_level;
+    GLenum  dst_object_id;
+    GLenum  dst_target;
+    GLint   dst_xyz[3];
+    GLsizei size[3];
+    GLint   src_level;
+    GLenum  src_object_id;
+    GLenum  src_target;
+    GLint   src_xyz[3];
+
+} _raGL_command_copy_image_sub_data_command_info;
+
+typedef struct
+{
+    GLenum mode;
+
+} _raGL_command_cull_face_command_info;
+
+typedef struct
+{
+    GLenum capability;
+
+} _raGL_command_disable_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLsizei count;
+    GLint   first;
+
+} _raGL_command_draw_arrays_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLvoid* indirect;
+
+} _raGL_command_draw_arrays_indirect_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLsizei count;
+    GLint   first;
+    GLsizei primcount;
+
+} _raGL_command_draw_arrays_instanced_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLuint  base_instance;
+    GLsizei count;
+    GLint   first;
+    GLsizei primcount;
+
+} _raGL_command_draw_arrays_instanced_base_instance_command_info;
+
+typedef struct
+{
+    GLint    base_vertex;
+    GLsizei  count;
+    GLvoid*  indices;
+    GLenum   type;
+} _raGL_command_draw_elements_base_vertex_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLsizei count;
+    GLvoid* indices;
+    GLenum  type;
+} _raGL_command_draw_elements_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLenum  type;
+} _raGL_command_draw_elements_indirect_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLsizei count;
+    GLvoid* indices;
+    GLsizei primcount;
+    GLenum  type;
+} _raGL_command_draw_elements_instanced_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLuint  base_instance;
+    GLsizei count;
+    GLvoid* indices;
+    GLsizei primcount;
+    GLenum  type;
+} _raGL_command_draw_elements_instanced_base_instance_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLuint  base_instance;
+    GLint   base_vertex;
+    GLsizei count;
+    GLvoid* indices;
+    GLsizei primcount;
+    GLenum  type;
+} _raGL_command_draw_elements_instanced_base_vertex_base_instance_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLint   base_vertex;
+    GLsizei count;
+    GLvoid* indices;
+    GLsizei primcount;
+    GLenum  type;
+} _raGL_command_draw_elements_instanced_base_vertex_command_info;
+
+typedef struct
+{
+    GLenum capability;
+
+} _raGL_command_enable_command_info;
+
+typedef struct
+{
+    raGL_command_buffer command_buffer_raGL;
+
+} _raGL_command_execute_command_buffer_command_info;
+
+typedef struct
+{
+    GLenum mode;
+
+} _raGL_command_front_face_command_info;
+
+typedef struct
+{
+    float width;
+
+} _raGL_command_line_width_command_info;
+
+typedef struct
+{
+    GLenum opcode;
+
+} _raGL_command_logic_op_command_info;
+
+typedef struct
+{
+    GLfloat value;
+
+} _raGL_command_min_sample_shading_command_info;
+
+typedef struct
+{
+    // mode - defined by bound gfx state
+    GLsizei drawcount;
+    GLvoid* indirect;
+    GLsizei stride;
+
+} _raGL_command_multi_draw_arrays_indirect_command_info;
+
+typedef struct
+{
+    GLsizei drawcount;
+    GLvoid* indirect;
+    GLsizei stride;
+    GLenum  type;
+
+} _raGL_command_multi_draw_elements_indirect_command_info;
+
+typedef struct
+{
+    GLenum pname;
+    GLint  value;
+
+} _raGL_command_patch_parameteri_command_info;
+
+typedef struct
+{
+    GLenum face;
+    GLenum mode;
+
+} _raGL_command_polygon_mode_command_info;
+
+typedef struct
+{
+    GLfloat factor;
+    GLfloat units;
+
+} _raGL_command_polygon_offset_command_info;
+
+typedef struct
+{
+    GLuint index;
+    GLint  v[4];
+
+} _raGL_command_scissor_indexedv_command_info;
+
+typedef struct
+{
+    GLenum face;
+    GLenum func;
+    GLint  ref;
+    GLuint mask;
+
+} _raGL_command_stencil_func_separate_command_info;
+
+typedef struct
+{
+    GLenum face;
+    GLuint mask;
+
+} _raGL_command_stencil_mask_separate_command_info;
+
+typedef struct
+{
+    GLenum face;
+    GLenum sfail;
+    GLenum dpfail;
+    GLenum dppass;
+
+} _raGL_command_stencil_op_separate_command_info;
+
+typedef struct
+{
+    GLuint po_id;
+
+} _raGL_command_use_program_command_info;
+
+typedef struct
+{
+    GLuint  index;
+    GLfloat v[4];
+
+} _raGL_command_viewport_indexedfv_command_info;
+
+typedef struct
+{
+    raGL_command_type type;
+
+    union
+    {
+        _raGL_command_active_texture_command_info                                    active_texture_command_info;
+        _raGL_command_bind_buffer_command_info                                       bind_buffer_command_info;
+        _raGL_command_bind_buffer_base_command_info                                  bind_buffer_base_command_info;
+        _raGL_command_bind_buffer_range_command_info                                 bind_buffer_range_command_info;
+        _raGL_command_bind_image_texture_command_info                                bind_image_texture_command_info;
+        _raGL_command_bind_sampler_command_info                                      bind_sampler_command_info;
+        _raGL_command_bind_texture_command_info                                      bind_texture_command_info;
+        _raGL_command_bind_vertex_array_command_info                                 bind_vertex_array_command_info;
+        _raGL_command_blit_framebuffer_command_info                                  blit_framebuffer_command_info;
+        _raGL_command_copy_image_sub_data_command_info                               copy_image_sub_data_command_info;
+        _raGL_command_cull_face_command_info                                         cull_face_command_info;
+        _raGL_command_disable_command_info                                           disable_command_info;
+        _raGL_command_draw_arrays_command_info                                       draw_arrays_command_info;
+        _raGL_command_draw_arrays_indirect_command_info                              draw_arrays_indirect_command_info;
+        _raGL_command_draw_arrays_instanced_base_instance_command_info               draw_arrays_instanced_base_instance_command_info;
+        _raGL_command_draw_arrays_instanced_command_info                             draw_arrays_instanced_command_info;
+        _raGL_command_draw_elements_base_vertex_command_info                         draw_elements_base_vertex_command_info;
+        _raGL_command_draw_elements_command_info                                     draw_elements_command_info;
+        _raGL_command_draw_elements_indirect_command_info                            draw_elements_indirect_command_info;
+        _raGL_command_draw_elements_instanced_base_instance_command_info             draw_elements_instanced_base_instance_command_info;
+        _raGL_command_draw_elements_instanced_base_vertex_base_instance_command_info draw_elements_instanced_base_vertex_base_instance_command_info;
+        _raGL_command_draw_elements_instanced_base_vertex_command_info               draw_elements_instanced_base_vertex_command_info;
+        _raGL_command_draw_elements_instanced_command_info                           draw_elements_instanced_command_info;
+        _raGL_command_enable_command_info                                            enable_command_info;
+        _raGL_command_execute_command_buffer_command_info                            execute_command_buffer_command_info;
+        _raGL_command_front_face_command_info                                        front_face_command_info;
+        _raGL_command_line_width_command_info                                        line_width_command_info;
+        _raGL_command_logic_op_command_info                                          logic_op_command_info;
+        _raGL_command_min_sample_shading_command_info                                min_sample_shading_command_info;
+        _raGL_command_multi_draw_arrays_indirect_command_info                        multi_draw_arrays_indirect_command_info;
+        _raGL_command_multi_draw_elements_indirect_command_info                      multi_draw_elements_indirect_command_info;
+        _raGL_command_patch_parameteri_command_info                                  patch_parameteri_command_info;
+        _raGL_command_polygon_mode_command_info                                      polygon_mode_command_info;
+        _raGL_command_polygon_offset_command_info                                    polygon_offset_command_info;
+        _raGL_command_scissor_indexedv_command_info                                  scissor_indexedv_command_info;
+        _raGL_command_stencil_func_separate_command_info                             stencil_func_separate_command_info;
+        _raGL_command_stencil_mask_separate_command_info                             stencil_mask_separate_command_info;
+        _raGL_command_stencil_op_separate_command_info                               stencil_op_separate_command_info;
+        _raGL_command_use_program_command_info                                       use_program_command_info;
+        _raGL_command_viewport_indexedfv_command_info                                viewport_indexedfv_command_info;
+    };
+
+    void deinit();
+} _raGL_command;
+
+typedef struct
+{
+    raGL_program active_program;
+
+    ral_gfx_state active_gfx_state;
+    bool          active_gfx_state_dirty;
+
+    bool                    vao_dirty;
+    raGL_buffer             vao_index_buffer;
+    raGL_vaos_vertex_buffer vbs[N_MAX_VERTEX_ATTRIBUTES];
+
+    void reset()
+    {
+        memset(vbs,
+               0,
+               sizeof(vbs) );
+
+        active_gfx_state        = nullptr;
+        active_gfx_state_dirty  = false;
+        active_program          = nullptr;
+        vao_dirty               = true; /* GL requires a VAO to be bound at all times */
+        vao_index_buffer        = nullptr;
+    }
+} _raGL_command_buffer_bake_state;
+
+typedef struct _raGL_command_buffer
+{
+    _raGL_command_buffer_bake_state                           bake_state;
+    ral_command_buffer                                        command_buffer_ral;
+    system_resizable_vector                                   commands;
+    ogl_context                                               context; /* do NOT release */
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr;
+    const ogl_context_gl_limits*                              limits_ptr;
+
+    explicit _raGL_command_buffer(ogl_context in_context)
+    {
+        command_buffer_ral = nullptr;
+        commands           = system_resizable_vector_create(32); /* capacity */
+        context            = in_context;
+
+        ogl_context_get_property(in_context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                &entrypoints_ptr);
+        ogl_context_get_property(in_context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                                &entrypoints_dsa_ptr);
+        ogl_context_get_property(in_context,
+                                 OGL_CONTEXT_PROPERTY_LIMITS,
+                                &limits_ptr);
+    }
+
+    void bake_and_bind_vao();
+    void bake_gfx_state   ();
+
+    void bake_commands();
+    void clear_commands();
+
+    void process_copy_texture_to_texture_command(const ral_command_buffer_copy_texture_to_texture_command_info* command_ral_ptr);
+    void process_draw_call_indexed_command      (const ral_command_buffer_draw_call_indexed_command_info*       command_ral_ptr);
+    void process_draw_call_indirect_command     (const ral_command_buffer_draw_call_indirect_command_info*      command_ral_ptr);
+    void process_draw_call_regular_command      (const ral_command_buffer_draw_call_regular_command_info*       command_ral_ptr);
+    void process_execute_command_buffer_command (const ral_command_buffer_execute_command_buffer_command_info*  command_ral_ptr);
+    void process_set_binding_command            (const ral_command_buffer_set_binding_command_info*             command_ral_ptr);
+    void process_set_gfx_state_command          (const ral_command_buffer_set_gfx_state_command_info*           command_ral_ptr);
+    void process_set_program_command            (const ral_command_buffer_set_program_command_info*             command_ral_ptr);
+    void process_set_rendertarget_state_command (const ral_command_buffer_set_rendertarget_state_command_info*  command_ral_ptr);
+    void process_set_scissor_box_command        (const ral_command_buffer_set_scissor_box_command_info*         command_ral_ptr);
+    void process_set_vertex_buffer_command      (const ral_command_buffer_set_vertex_buffer_command_info*       command_ral_ptr);
+    void process_set_viewport_command           (const ral_command_buffer_set_viewport_command_info*            command_ral_ptr);
+} _raGL_command_buffer;
+
+PRIVATE system_resource_pool command_buffer_pool = nullptr;
+PRIVATE system_resource_pool command_pool        = nullptr;
+
+
+/** TODO */
+void _raGL_command_buffer::bake_and_bind_vao()
+{
+    raGL_backend                    backend_gl = nullptr;
+    uint32_t                        n_vas      = 0;
+    uint32_t                        n_vbs      = 0;
+    raGL_vao                        vao        = nullptr;
+    GLuint                          vao_id     = 0;
+    raGL_vaos                       vaos       = nullptr;
+    ral_gfx_state_vertex_attribute* vas        = nullptr;
+
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend_gl);
+    raGL_backend_get_private_property(backend_gl,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_VAOS,
+                                     &vaos);
+
+    ral_gfx_state_get_property(bake_state.active_gfx_state,
+                               RAL_GFX_STATE_PROPERTY_N_VERTEX_ATTRIBUTES,
+                              &n_vas);
+    ral_gfx_state_get_property(bake_state.active_gfx_state,
+                               RAL_GFX_STATE_PROPERTY_VERTEX_ATTRIBUTES,
+                              &vas);
+
+    /* Count the number of VBS used */
+    bool null_vb_entry_found = false;
+
+    for (uint32_t n_vb = 0;
+                  n_vb < sizeof(bake_state.vbs) / sizeof(bake_state.vbs[0]);
+                ++n_vb)
+    {
+        if (bake_state.vbs[n_vb].buffer_raGL != nullptr)
+        {
+            /* TODO: We need a "VB" reset command to reset all VB bindings */
+            ASSERT_DEBUG_SYNC(!null_vb_entry_found,
+                              "Vertex buffer bindings must be contiguous.");
+
+            ++n_vbs;
+        }
+        else
+        {
+            null_vb_entry_found = true;
+        }
+    }
+
+    ASSERT_DEBUG_SYNC(n_vas == n_vbs,
+                      "n_VAS / n_VBS mismatch detected"); /* TODO */
+
+    /* Retrieve the VAO. Note that raGL_vaos takes care of baking the VAO, if a new one
+     * is needed. */
+    vao = raGL_vaos_get_vao(vaos,
+                            bake_state.vao_index_buffer,
+                            n_vbs,
+                            vas,
+                            bake_state.vbs);
+
+    raGL_vao_get_property(vao,
+                          RAGL_VAO_PROPERTY_ID,
+                          (void**) &vao_id);
+
+    /* Enqueue a command to bind the VAO */
+    _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    bind_command_ptr->bind_vertex_array_command_info.vao_id = vao_id;
+    bind_command_ptr->type                                  = RAGL_COMMAND_TYPE_BIND_VERTEX_ARRAY;
+
+    system_resizable_vector_push(commands,
+                                 bind_command_ptr);
+
+    /* All done */
+    bake_state.vao_dirty = false;
+}
+
+/** TODO */
+void _raGL_command_buffer::bake_commands()
+{
+    uint32_t n_ral_commands = 0;
+
+    ral_command_buffer_get_property(command_buffer_ral,
+                                    RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
+                                   &n_ral_commands);
+
+    for (uint32_t n_ral_command = 0;
+                  n_ral_command < n_ral_commands;
+                ++n_ral_command)
+    {
+        const void*      command_ral_raw_ptr = nullptr;
+        ral_command_type command_ral_type    = RAL_COMMAND_TYPE_UNKNOWN;
+        bool             result;
+
+        result = ral_command_buffer_get_recorded_command(command_buffer_ral,
+                                                         n_ral_command,
+                                                        &command_ral_type,
+                                                        &command_ral_raw_ptr);
+        ASSERT_DEBUG_SYNC(result,
+                          "ral_command_buffer_get_recorded_command() failed.");
+
+        switch (command_ral_type)
+        {
+            case RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE:
+            {
+                process_copy_texture_to_texture_command(reinterpret_cast<const ral_command_buffer_copy_texture_to_texture_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_DRAW_CALL_INDEXED:
+            {
+                process_draw_call_indexed_command(reinterpret_cast<const ral_command_buffer_draw_call_indexed_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT:
+            {
+                process_draw_call_indirect_command(reinterpret_cast<const ral_command_buffer_draw_call_indirect_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_DRAW_CALL_REGULAR:
+            {
+                process_draw_call_regular_command(reinterpret_cast<const ral_command_buffer_draw_call_regular_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
+            {
+                process_execute_command_buffer_command(reinterpret_cast<const ral_command_buffer_execute_command_buffer_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_BINDING:
+            {
+                process_set_binding_command(reinterpret_cast<const ral_command_buffer_set_binding_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_GFX_STATE:
+            {
+                process_set_gfx_state_command(reinterpret_cast<const ral_command_buffer_set_gfx_state_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_PROGRAM:
+            {
+                process_set_program_command(reinterpret_cast<const ral_command_buffer_set_program_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE:
+            {
+                process_set_rendertarget_state_command(reinterpret_cast<const ral_command_buffer_set_rendertarget_state_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_SCISSOR_BOX:
+            {
+                process_set_scissor_box_command(reinterpret_cast<const ral_command_buffer_set_scissor_box_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_VERTEX_BUFFER:
+            {
+                process_set_vertex_buffer_command(reinterpret_cast<const ral_command_buffer_set_vertex_buffer_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_VIEWPORT:
+            {
+                process_set_viewport_command(reinterpret_cast<const ral_command_buffer_set_viewport_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized RAL command type");
+            }
+        }
+    }
+}
+
+/** TODO */
+void _raGL_command_buffer::bake_gfx_state()
+{
+    bool                 alpha_to_coverage_enabled   = false;
+    bool                 alpha_to_one_enabled        = false;
+    bool                 culling_enabled             = false;
+    ral_cull_mode        cull_mode                   = RAL_CULL_MODE_NONE;
+    float                depth_bias_constant_factor  = 0.0f;
+    bool                 depth_bias_enabled          = false;
+    float                depth_bias_slope_factor     = 0.0f;
+    float                depth_bounds_max            = 0.0f;
+    float                depth_bounds_min            = 0.0f;
+    bool                 depth_bounds_test_enabled   = false;
+    bool                 depth_clamp_enabled         = false;
+    bool                 depth_test_enabled          = false;
+    bool                 depth_writes_enabled        = false;
+    ral_front_face       front_face                  = RAL_FRONT_FACE_UNKNOWN;
+    float                line_width                  = 0.0f;
+    ral_logic_op         logic_op                    = RAL_LOGIC_OP_UNKNOWN;
+    bool                 logic_op_enabled            = false;
+    uint32_t             n_patch_control_points      = 0;
+    ral_polygon_mode     polygon_mode_back           = RAL_POLYGON_MODE_UNKNOWN;
+    ral_polygon_mode     polygon_mode_front          = RAL_POLYGON_MODE_UNKNOWN;
+    bool                 primitive_restart_enabled   = false;
+    ral_primitive_type   primitive_type              = RAL_PRIMITIVE_TYPE_UNKNOWN;
+    bool                 rasterizer_discard_enabled  = false;
+    bool                 sample_shading_enabled      = false;
+    float                sample_shading_min          = 0.0f;
+    ral_stencil_op_state stencil_test_back;
+    bool                 stencil_test_enabled        = false;
+    ral_stencil_op_state stencil_test_front;
+
+    struct
+    {
+        ral_gfx_state_property property;
+        void*                  out_result_ptr;
+    } gfx_state_prop_to_var_mappings[] =
+    {
+        {RAL_GFX_STATE_PROPERTY_ALPHA_TO_COVERAGE_ENABLED,  &alpha_to_coverage_enabled},
+        {RAL_GFX_STATE_PROPERTY_ALPHA_TO_ONE_ENABLED,       &alpha_to_one_enabled},
+        {RAL_GFX_STATE_PROPERTY_CULLING_ENABLED,            &culling_enabled},
+        {RAL_GFX_STATE_PROPERTY_CULL_MODE,                  &cull_mode},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_CONSTANT_FACTOR, &depth_bias_constant_factor},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_ENABLED,         &depth_bias_enabled},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_SLOPE_FACTOR,    &depth_bias_slope_factor},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_MAX,           &depth_bounds_max},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_MIN,           &depth_bounds_min},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_TEST_ENABLED,  &depth_bounds_test_enabled},    // <- not available as core func in gl
+        {RAL_GFX_STATE_PROPERTY_DEPTH_CLAMP_ENABLED,        &depth_clamp_enabled},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_TEST_ENABLED,         &depth_test_enabled},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_WRITES_ENABLED,       &depth_writes_enabled},
+        {RAL_GFX_STATE_PROPERTY_FRONT_FACE,                 &front_face},
+        {RAL_GFX_STATE_PROPERTY_LINE_WIDTH,                 &line_width},
+        {RAL_GFX_STATE_PROPERTY_LOGIC_OP,                   &logic_op},
+        {RAL_GFX_STATE_PROPERTY_LOGIC_OP_ENABLED,           &logic_op_enabled},
+        {RAL_GFX_STATE_PROPERTY_N_PATCH_CONTROL_POINTS,     &n_patch_control_points},
+        {RAL_GFX_STATE_PROPERTY_POLYGON_MODE_BACK,          &polygon_mode_back},
+        {RAL_GFX_STATE_PROPERTY_POLYGON_MODE_FRONT,         &polygon_mode_front},
+        {RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,             &primitive_type},
+        {RAL_GFX_STATE_PROPERTY_PRIMITIVE_RESTART_ENABLED,  &primitive_restart_enabled},
+        {RAL_GFX_STATE_PROPERTY_RASTERIZER_DISCARD_ENABLED, &rasterizer_discard_enabled},
+        {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_ENABLED,     &sample_shading_enabled},
+        {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_MIN,         &sample_shading_min},
+        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_BACK,          &stencil_test_back},
+        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_ENABLED,       &stencil_test_enabled},
+        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_FRONT,         &stencil_test_front}
+    };
+    const uint32_t n_gfx_state_prop_to_var_mappings = sizeof(gfx_state_prop_to_var_mappings) / sizeof(gfx_state_prop_to_var_mappings[0]);
+
+    for (uint32_t n_mapping = 0;
+                  n_mapping < n_gfx_state_prop_to_var_mappings;
+                ++n_mapping)
+    {
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   gfx_state_prop_to_var_mappings[n_mapping].property,
+                                   gfx_state_prop_to_var_mappings[n_mapping].out_result_ptr);
+    }
+
+    ASSERT_DEBUG_SYNC(!depth_bounds_test_enabled,
+                      "TODO");
+
+    struct _mode_state
+    {
+        GLenum mode;
+        bool   state;
+    } mode_states[] =
+    {
+        /* NOTE: Depth bias is handled separately */
+
+        {GL_SAMPLE_ALPHA_TO_COVERAGE, alpha_to_coverage_enabled},
+        {GL_SAMPLE_ALPHA_TO_ONE,      alpha_to_one_enabled},
+        {GL_CULL_FACE,                culling_enabled},
+        {GL_DEPTH_CLAMP,              depth_clamp_enabled},
+        {GL_DEPTH_TEST,               depth_test_enabled},
+        {GL_COLOR_LOGIC_OP,           logic_op_enabled},
+        {GL_PRIMITIVE_RESTART,        primitive_restart_enabled},
+        {GL_RASTERIZER_DISCARD,       rasterizer_discard_enabled},
+        {GL_SAMPLE_SHADING,           sample_shading_enabled},
+        {GL_STENCIL_TEST,             stencil_test_enabled}
+    };
+    const uint32_t n_mode_states = sizeof(mode_states) / sizeof(mode_states[0]);
+
+    for (uint32_t n_mode = 0;
+                  n_mode < n_mode_states;
+                ++n_mode)
+    {
+        const _mode_state& current_mode_state = mode_states[n_mode];
+
+        /* Enqueue a GL command */
+        _raGL_command* new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        if (current_mode_state.state)
+        {
+            new_command_ptr->enable_command_info.capability = current_mode_state.mode;
+            new_command_ptr->type                           = RAGL_COMMAND_TYPE_ENABLE;
+        }
+        else
+        {
+            new_command_ptr->disable_command_info.capability = current_mode_state.mode;
+            new_command_ptr->type                            = RAGL_COMMAND_TYPE_DISABLE;
+        }
+
+        system_resizable_vector_push(commands,
+                                     new_command_ptr);
+    }
+
+    /* Cull mode */
+    if (culling_enabled)
+    {
+        _raGL_command* new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        switch (cull_mode)
+        {
+            case RAL_CULL_MODE_BACK:           new_command_ptr->cull_face_command_info.mode = GL_BACK;           break;
+            case RAL_CULL_MODE_FRONT:          new_command_ptr->cull_face_command_info.mode = GL_FRONT;          break;
+            case RAL_CULL_MODE_FRONT_AND_BACK: new_command_ptr->cull_face_command_info.mode = GL_FRONT_AND_BACK; break;
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized RAL cull mode requested.");
+            }
+        }
+
+        new_command_ptr->type = RAGL_COMMAND_TYPE_CULL_FACE;
+
+        system_resizable_vector_push(commands,
+                                     new_command_ptr);
+    }
+
+    /* Depth bias */
+    bool polygon_offset_fill_mode_enabled  = false;
+    bool polygon_offset_line_mode_enabled  = false;
+    bool polygon_offset_point_mode_enabled = false;
+
+    for (uint32_t n_polygon_mode = 0;
+                  n_polygon_mode < 2; /* back, front */
+                ++n_polygon_mode)
+    {
+        const ral_polygon_mode current_polygon_mode = (n_polygon_mode == 0) ? polygon_mode_back
+                                                                            : polygon_mode_front;
+
+        if (fabs(depth_bias_constant_factor) > 1e-5f ||
+            fabs(depth_bias_slope_factor)    > 1e-5f)
+        {
+            switch (current_polygon_mode)
+            {
+                case RAL_POLYGON_MODE_FILL:   polygon_offset_fill_mode_enabled  = true; break;
+                case RAL_POLYGON_MODE_LINES:  polygon_offset_line_mode_enabled  = true; break;
+                case RAL_POLYGON_MODE_POINTS: polygon_offset_point_mode_enabled = true; break;
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized RAL polygon mode value encountered.");
+                }
+            }
+        }
+    }
+
+    struct _polygon_offset_mode
+    {
+        bool   status;
+        GLenum mode;
+    } polygon_offset_modes[] =
+    {
+        { polygon_offset_fill_mode_enabled,  GL_POLYGON_OFFSET_FILL },
+        { polygon_offset_line_mode_enabled,  GL_POLYGON_OFFSET_LINE },
+        { polygon_offset_point_mode_enabled, GL_POLYGON_OFFSET_POINT}
+    };
+    const uint32_t n_polygon_offset_modes = sizeof(polygon_offset_modes) / sizeof(polygon_offset_modes[0]);
+    bool           has_set_polygon_offset = false;
+
+    for (uint32_t n_mode = 0;
+                  n_mode < 3;
+                ++n_mode)
+    {
+        const _polygon_offset_mode& current_mode = polygon_offset_modes[n_mode];
+
+        if (current_mode.status)
+        {
+            _raGL_command* new_enable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            new_enable_command_ptr->enable_command_info.capability = current_mode.mode;
+            new_enable_command_ptr->type                           = RAGL_COMMAND_TYPE_ENABLE;
+
+            if (!has_set_polygon_offset)
+            {
+                _raGL_command* new_polygon_offset_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+                new_polygon_offset_command_ptr->polygon_offset_command_info.factor = depth_bias_slope_factor;
+                new_polygon_offset_command_ptr->polygon_offset_command_info.units  = depth_bias_constant_factor;
+                new_polygon_offset_command_ptr->type                               = RAGL_COMMAND_TYPE_POLYGON_OFFSET;
+
+                system_resizable_vector_push(commands,
+                                             new_polygon_offset_command_ptr);
+
+                has_set_polygon_offset = true;
+            }
+
+            system_resizable_vector_push(commands,
+                                         new_enable_command_ptr);
+        }
+        else
+        {
+            _raGL_command* new_disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            new_disable_command_ptr->disable_command_info.capability = current_mode.mode;
+            new_disable_command_ptr->type                            = RAGL_COMMAND_TYPE_DISABLE;
+
+            system_resizable_vector_push(commands,
+                                         new_disable_command_ptr);
+
+        }
+    }
+
+    /* Front face */
+    {
+        _raGL_command* new_front_face_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        switch (front_face)
+        {
+            case RAL_FRONT_FACE_CCW: new_front_face_command_ptr->front_face_command_info.mode = GL_CCW; break;
+            case RAL_FRONT_FACE_CW:  new_front_face_command_ptr->front_face_command_info.mode = GL_CW;  break;
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized RAL front face requested");
+            }
+        }
+
+        new_front_face_command_ptr->type = RAGL_COMMAND_TYPE_FRONT_FACE;
+
+        system_resizable_vector_push(commands,
+                                     new_front_face_command_ptr);
+    }
+
+    /* Line width. */
+    {
+        _raGL_command* new_line_width_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        ASSERT_DEBUG_SYNC(line_width >= limits_ptr->aliased_line_width_range[0] &&
+                          line_width <= limits_ptr->aliased_line_width_range[1],
+                          "Unsupported line width requested.");
+
+        new_line_width_command_ptr->line_width_command_info.width = line_width;
+        new_line_width_command_ptr->type                          = RAGL_COMMAND_TYPE_LINE_WIDTH;
+
+        system_resizable_vector_push(commands,
+                                     new_line_width_command_ptr);
+    }
+
+    /* Logic op */
+    if (logic_op_enabled)
+    {
+        _raGL_command* new_logic_op_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        switch (logic_op)
+        {
+            case RAL_LOGIC_OP_AND:           new_logic_op_command_ptr->logic_op_command_info.opcode = GL_AND;           break;
+            case RAL_LOGIC_OP_AND_INVERTED:  new_logic_op_command_ptr->logic_op_command_info.opcode = GL_AND_INVERTED;  break;
+            case RAL_LOGIC_OP_AND_REVERSE:   new_logic_op_command_ptr->logic_op_command_info.opcode = GL_AND_REVERSE;   break;
+            case RAL_LOGIC_OP_CLEAR:         new_logic_op_command_ptr->logic_op_command_info.opcode = GL_CLEAR;         break;
+            case RAL_LOGIC_OP_COPY:          new_logic_op_command_ptr->logic_op_command_info.opcode = GL_COPY;          break;
+            case RAL_LOGIC_OP_COPY_INVERTED: new_logic_op_command_ptr->logic_op_command_info.opcode = GL_COPY_INVERTED; break;
+            case RAL_LOGIC_OP_EQUIVALENT:    new_logic_op_command_ptr->logic_op_command_info.opcode = GL_EQUIV;         break;
+            case RAL_LOGIC_OP_INVERT:        new_logic_op_command_ptr->logic_op_command_info.opcode = GL_INVERT;        break;
+            case RAL_LOGIC_OP_NAND:          new_logic_op_command_ptr->logic_op_command_info.opcode = GL_NAND;          break;
+            case RAL_LOGIC_OP_NOOP:          new_logic_op_command_ptr->logic_op_command_info.opcode = GL_NOOP;          break;
+            case RAL_LOGIC_OP_NOR:           new_logic_op_command_ptr->logic_op_command_info.opcode = GL_NOR;           break;
+            case RAL_LOGIC_OP_OR:            new_logic_op_command_ptr->logic_op_command_info.opcode = GL_OR;            break;
+            case RAL_LOGIC_OP_OR_INVERTED:   new_logic_op_command_ptr->logic_op_command_info.opcode = GL_OR_INVERTED;   break;
+            case RAL_LOGIC_OP_OR_REVERSE:    new_logic_op_command_ptr->logic_op_command_info.opcode = GL_OR_REVERSE;    break;
+            case RAL_LOGIC_OP_SET:           new_logic_op_command_ptr->logic_op_command_info.opcode = GL_SET;           break;
+            case RAL_LOGIC_OP_XOR:           new_logic_op_command_ptr->logic_op_command_info.opcode = GL_XOR;           break;
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized RAL logic op requested.");
+            }
+
+            new_logic_op_command_ptr->type = RAGL_COMMAND_TYPE_LOGIC_OP;
+
+            system_resizable_vector_push(commands,
+                                         new_logic_op_command_ptr);
+        }
+    }
+
+    /* Number of patch control points.
+     *
+     * This call is actually only necessary if we're using tessellation, but we want to avoid
+     * tying GFX state with the active program for now.
+     **/
+    {
+        _raGL_command* new_patch_parameteri_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_patch_parameteri_command_ptr->patch_parameteri_command_info.pname = GL_PATCH_VERTICES;
+        new_patch_parameteri_command_ptr->patch_parameteri_command_info.value = n_patch_control_points;
+        new_patch_parameteri_command_ptr->type                                = RAGL_COMMAND_TYPE_PATCH_PARAMETERI;
+
+        system_resizable_vector_push(commands,
+                                     new_patch_parameteri_command_ptr);
+        
+    }
+
+    /* Polygon mode */
+    {
+        if (polygon_mode_back == polygon_mode_front)
+        {
+            _raGL_command* new_polygon_mode_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            new_polygon_mode_command_ptr->polygon_mode_command_info.face = GL_FRONT_AND_BACK;
+            new_polygon_mode_command_ptr->polygon_mode_command_info.mode = raGL_utils_get_ogl_enum_for_ral_polygon_mode(polygon_mode_back);
+            new_polygon_mode_command_ptr->type                           = RAGL_COMMAND_TYPE_POLYGON_MODE;
+
+            system_resizable_vector_push(commands,
+                                         new_polygon_mode_command_ptr);
+        }
+        else
+        {
+            _raGL_command* new_polygon_mode_back_command_ptr  = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* new_polygon_mode_front_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            new_polygon_mode_back_command_ptr->polygon_mode_command_info.face = GL_BACK;
+            new_polygon_mode_back_command_ptr->polygon_mode_command_info.mode = raGL_utils_get_ogl_enum_for_ral_polygon_mode(polygon_mode_back);
+            new_polygon_mode_back_command_ptr->type                           = RAGL_COMMAND_TYPE_POLYGON_MODE;
+
+            new_polygon_mode_front_command_ptr->polygon_mode_command_info.face = GL_FRONT;
+            new_polygon_mode_front_command_ptr->polygon_mode_command_info.mode = raGL_utils_get_ogl_enum_for_ral_polygon_mode(polygon_mode_front);
+            new_polygon_mode_front_command_ptr->type                           = RAGL_COMMAND_TYPE_POLYGON_MODE;
+
+            system_resizable_vector_push(commands,
+                                         new_polygon_mode_back_command_ptr);
+            system_resizable_vector_push(commands,
+                                         new_polygon_mode_front_command_ptr);
+
+        }
+    }
+
+    /* Sample shading */
+    if (sample_shading_enabled)
+    {
+        _raGL_command* disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        disable_command_ptr->disable_command_info.capability = GL_SAMPLE_SHADING;
+        disable_command_ptr->type                            = RAGL_COMMAND_TYPE_DISABLE;
+
+        system_resizable_vector_push(commands,
+                                     disable_command_ptr);
+    }
+    else
+    {
+        _raGL_command* enable_command_ptr             = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* min_sample_shading_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        enable_command_ptr->disable_command_info.capability = GL_SAMPLE_SHADING;
+        enable_command_ptr->type                            = RAGL_COMMAND_TYPE_ENABLE;
+
+        min_sample_shading_command_ptr->min_sample_shading_command_info.value = sample_shading_min;
+        min_sample_shading_command_ptr->type                                  = RAGL_COMMAND_TYPE_MIN_SAMPLE_SHADING;
+
+        system_resizable_vector_push(commands,
+                                     enable_command_ptr);
+        system_resizable_vector_push(commands,
+                                     min_sample_shading_command_ptr);
+    }
+
+    /* Stencil test */
+    if (stencil_test_enabled)
+    {
+        for (uint32_t n_iteration = 0;
+                      n_iteration < 2; /* back + front stencil test state */
+                    ++n_iteration)
+        {
+            const bool                  is_back_state_iteration = (n_iteration == 0);
+            const GLenum                current_face            = (is_back_state_iteration) ? GL_BACK
+                                                                                            : GL_FRONT;
+            const ral_stencil_op_state& state                   = (is_back_state_iteration) ? stencil_test_back
+                                                                                            : stencil_test_front;
+
+            _raGL_command* stencil_func_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* stencil_mask_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* stencil_op_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            stencil_func_command_ptr->stencil_func_separate_command_info.face = current_face;
+            stencil_func_command_ptr->stencil_func_separate_command_info.func = raGL_utils_get_ogl_enum_for_ral_compare_op(state.compare_op);
+            stencil_func_command_ptr->stencil_func_separate_command_info.mask = state.compare_mask;
+            stencil_func_command_ptr->stencil_func_separate_command_info.ref  = state.reference_value;
+            stencil_func_command_ptr->type                                    = RAGL_COMMAND_TYPE_STENCIL_FUNC_SEPARATE;
+
+            stencil_mask_command_ptr->stencil_mask_separate_command_info.face = current_face;
+            stencil_mask_command_ptr->stencil_mask_separate_command_info.mask = state.write_mask;
+            stencil_mask_command_ptr->type                                    = RAGL_COMMAND_TYPE_STENCIL_MASK_SEPARATE;
+
+            stencil_op_command_ptr->stencil_op_separate_command_info.dpfail = raGL_utils_get_ogl_enum_for_ral_stencil_op(state.depth_fail);
+            stencil_op_command_ptr->stencil_op_separate_command_info.dppass = raGL_utils_get_ogl_enum_for_ral_stencil_op(state.pass);
+            stencil_op_command_ptr->stencil_op_separate_command_info.face   = current_face;
+            stencil_op_command_ptr->stencil_op_separate_command_info.sfail  = raGL_utils_get_ogl_enum_for_ral_stencil_op(state.fail);
+            stencil_op_command_ptr->type                                    = RAGL_COMMAND_TYPE_STENCIL_OP_SEPARATE;
+
+            system_resizable_vector_push(commands,
+                                         stencil_func_command_ptr);
+            system_resizable_vector_push(commands,
+                                         stencil_mask_command_ptr);
+            system_resizable_vector_push(commands,
+                                         stencil_op_command_ptr);
+        }
+    }
+}
+
+/** TODO */
+void _raGL_command_buffer::clear_commands()
+{
+    _raGL_command* current_command_ptr = nullptr;
+
+    while (system_resizable_vector_pop(commands,
+                                      &current_command_ptr) )
+    {
+        current_command_ptr->deinit();
+
+        system_resource_pool_return_to_pool(command_pool,
+                                            (system_resource_pool_block) current_command_ptr);
+    }
+
+    bake_state.reset();
+}
+
+/** TODO */
+void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_command_buffer_copy_texture_to_texture_command_info* command_ral_ptr)
+{
+    raGL_backend       backend_raGL      = nullptr;
+    ral_format         dst_texture_format_ral;
+    GLuint             dst_texture_id    = 0;
+    bool               dst_texture_is_rb = false;
+    raGL_texture       dst_texture_raGL  = nullptr;
+    ral_texture_type   dst_texture_type;
+    _raGL_command*     new_command_ptr   = nullptr;
+    bool               result            = true;
+    ral_format         src_texture_format_ral;
+    GLuint             src_texture_id    = 0;
+    bool               src_texture_is_rb = false;
+    raGL_texture       src_texture_raGL  = nullptr;
+    ral_texture_type   src_texture_type;
+    bool               use_copy_op       = false;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    result &= raGL_backend_get_texture(backend_raGL,
+                                       command_ral_ptr->dst_texture,
+                                       (void**) &dst_texture_raGL);
+    result &= raGL_backend_get_texture(backend_raGL,
+                                       command_ral_ptr->src_texture,
+                                       (void**) &src_texture_raGL);
+
+    ASSERT_DEBUG_SYNC(result,
+                      "Could not retrieve raGL_texture instances");
+
+    ral_texture_get_property(command_ral_ptr->dst_texture,
+                             RAL_TEXTURE_PROPERTY_FORMAT,
+                            &dst_texture_format_ral);
+    ral_texture_get_property(command_ral_ptr->dst_texture,
+                             RAL_TEXTURE_PROPERTY_TYPE,
+                            &dst_texture_type);
+    ral_texture_get_property(command_ral_ptr->src_texture,
+                             RAL_TEXTURE_PROPERTY_FORMAT,
+                            &src_texture_format_ral);
+    ral_texture_get_property(command_ral_ptr->src_texture,
+                             RAL_TEXTURE_PROPERTY_TYPE,
+                            &src_texture_type);
+
+    raGL_texture_get_property(dst_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                              (void**) &dst_texture_id);
+    raGL_texture_get_property(dst_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                              (void**) &dst_texture_is_rb);
+    raGL_texture_get_property(src_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                              (void**) &src_texture_id);
+    raGL_texture_get_property(src_texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                              (void**) &src_texture_is_rb);
+
+    new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    if (command_ral_ptr->dst_size[0] == command_ral_ptr->src_size[0] &&
+        command_ral_ptr->dst_size[1] == command_ral_ptr->src_size[1] &&
+        command_ral_ptr->dst_size[2] == command_ral_ptr->src_size[2])
+    {
+        /* This is a copy op, as long as all aspects supported by the format have been requested .. */
+        bool dst_format_aspects[3];
+        bool src_format_aspects[3];
+
+        for (uint32_t n_texture = 0;
+                      n_texture < 2;
+                    ++n_texture)
+        {
+            ral_format current_texture_format = (n_texture == 0) ? dst_texture_format_ral : src_texture_format_ral;
+            bool*      out_result_ptr         = (n_texture == 0) ? dst_format_aspects     : src_format_aspects;
+
+            ral_utils_get_format_property(current_texture_format,
+                                          RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                          out_result_ptr + 0);
+            ral_utils_get_format_property(current_texture_format,
+                                          RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                          out_result_ptr + 1);
+            ral_utils_get_format_property(current_texture_format,
+                                          RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                          out_result_ptr + 2);
+        }
+
+        use_copy_op = (dst_format_aspects[0] == src_format_aspects[0] &&
+                       dst_format_aspects[1] == src_format_aspects[1] &&
+                       dst_format_aspects[2] == src_format_aspects[2]);
+    }
+
+    if (use_copy_op)
+    {
+        _raGL_command_copy_image_sub_data_command_info& command_args = new_command_ptr->copy_image_sub_data_command_info;
+
+        ASSERT_DEBUG_SYNC(dst_texture_format_ral == src_texture_format_ral,
+                          "TODO"); /* glCopyImageSubData() will only work for compatible formats. */
+
+        command_args.dst_level     = command_ral_ptr->n_dst_texture_mipmap;
+        command_args.dst_object_id = dst_texture_id;
+        command_args.dst_target    = (dst_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_texture_target_for_ral_texture_type(dst_texture_type);
+        command_args.src_level     = command_ral_ptr->n_src_texture_mipmap;
+        command_args.src_object_id = src_texture_id;
+        command_args.src_target    = (src_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_texture_target_for_ral_texture_type(src_texture_type);
+
+        static_assert(sizeof(command_args.dst_xyz) == sizeof(command_ral_ptr->dst_start_xyz), "");
+        static_assert(sizeof(command_args.size)    == sizeof(command_ral_ptr->dst_size),      "");
+        static_assert(sizeof(command_args.src_xyz) == sizeof(command_ral_ptr->src_start_xyz), "");
+
+        memcpy(command_args.size,
+               command_ral_ptr->dst_size,
+               sizeof(command_args.size) );
+        memcpy(command_args.dst_xyz,
+               command_ral_ptr->dst_start_xyz,
+               sizeof(command_args.dst_xyz) );
+        memcpy(command_args.src_xyz,
+               command_ral_ptr->src_start_xyz,
+               sizeof(command_args.src_xyz) );
+
+        new_command_ptr->type = RAGL_COMMAND_TYPE_COPY_IMAGE_SUB_DATA;
+
+        system_resizable_vector_push(commands,
+                                     new_command_ptr);
+    }
+    else
+    {
+        /* This is a blit op */
+        _raGL_command_blit_framebuffer_command_info& command_args       = new_command_ptr->blit_framebuffer_command_info;
+        raGL_framebuffer_attachment                  draw_fb_attachment;
+        raGL_framebuffer                             draw_fb_raGL       = nullptr;
+        raGL_framebuffer_attachment                  read_fb_attachment;
+        raGL_framebuffer                             read_fb_raGL       = nullptr;
+
+        draw_fb_attachment.aspect        = command_ral_ptr->aspect;
+        draw_fb_attachment.n_base_layer  = command_ral_ptr->n_dst_texture_layer;
+        draw_fb_attachment.n_base_mipmap = command_ral_ptr->n_dst_texture_mipmap;
+        draw_fb_attachment.n_layers      = 1;
+        draw_fb_attachment.n_mipmaps     = 1;
+        draw_fb_attachment.texture       = dst_texture_raGL;
+
+        read_fb_attachment.aspect        = command_ral_ptr->aspect;
+        read_fb_attachment.n_base_layer  = command_ral_ptr->n_src_texture_layer;
+        read_fb_attachment.n_base_mipmap = command_ral_ptr->n_src_texture_mipmap;
+        read_fb_attachment.n_layers      = 1;
+        read_fb_attachment.n_mipmaps     = 1;
+        read_fb_attachment.texture       = src_texture_raGL;
+
+        raGL_backend_get_framebuffer(backend_raGL,
+                                     1, /* n_attachments */
+                                    &draw_fb_attachment,
+                                    &draw_fb_raGL);
+
+        raGL_backend_get_framebuffer(backend_raGL,
+                                     1, /* n_attachments */
+                                    &read_fb_attachment,
+                                    &read_fb_raGL);
+
+        raGL_framebuffer_get_property(draw_fb_raGL,
+                                      RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                     &command_args.draw_fbo_id);
+        raGL_framebuffer_get_property(read_fb_raGL,
+                                      RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                     &command_args.read_fbo_id);
+
+        ASSERT_DEBUG_SYNC(command_ral_ptr->dst_start_xyz[2] == 0 &&
+                          command_ral_ptr->src_start_xyz[2] == 0,
+                          "TODO");
+
+        command_args.dst_x0y0x1y1[0] = command_ral_ptr->dst_start_xyz[0];
+        command_args.dst_x0y0x1y1[1] = command_ral_ptr->dst_start_xyz[1];
+        command_args.dst_x0y0x1y1[2] = command_args.dst_x0y0x1y1[0] + command_ral_ptr->dst_size[0];
+        command_args.dst_x0y0x1y1[3] = command_args.dst_x0y0x1y1[1] + command_ral_ptr->dst_size[1];
+        command_args.filter          = raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(command_ral_ptr->scaling_filter);
+        command_args.mask            = ((command_ral_ptr->aspect & RAL_TEXTURE_ASPECT_COLOR_BIT)   ? GL_COLOR_BUFFER_BIT   : 0) |
+                                       ((command_ral_ptr->aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT)   ? GL_DEPTH_BUFFER_BIT   : 0) |
+                                       ((command_ral_ptr->aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) ? GL_STENCIL_BUFFER_BIT : 0);
+        command_args.src_x0y0x1y1[0] = command_ral_ptr->src_start_xyz[0];
+        command_args.src_x0y0x1y1[1] = command_ral_ptr->src_start_xyz[1];
+        command_args.src_x0y0x1y1[1] = command_args.src_x0y0x1y1[0] + command_ral_ptr->src_size[0];
+        command_args.src_x0y0x1y1[1] = command_args.src_x0y0x1y1[1] + command_ral_ptr->src_size[1];
+
+        new_command_ptr->type = RAGL_COMMAND_TYPE_BLIT_FRAMEBUFFER;
+
+        system_resizable_vector_push(commands,
+                                     new_command_ptr);
+    }
+}
+
+/** TODO */
+void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_buffer_draw_call_indexed_command_info* command_ral_ptr)
+{
+    /* TODO: Coalesce multiple indexed draw calls into a single multi-draw call. */
+    raGL_backend backend_raGL                   = nullptr;
+    raGL_buffer  index_buffer_raGL              = nullptr;
+    uint32_t     index_buffer_raGL_start_offset = -1;
+    uint32_t     n_bytes_per_index              = 0;
+
+    switch (command_ral_ptr->index_type)
+    {
+        case RAL_INDEX_TYPE_16BIT: n_bytes_per_index = 2; break;
+        case RAL_INDEX_TYPE_32BIT: n_bytes_per_index = 4; break;
+        case RAL_INDEX_TYPE_8BIT:  n_bytes_per_index = 1; break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized index type requested");
+        }
+    }
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    /* Bind the index buffer */
+    if (index_buffer_raGL != bake_state.vao_index_buffer)
+    {
+        bake_state.vao_dirty        = true;
+        bake_state.vao_index_buffer = index_buffer_raGL;
+    }
+
+    /* If no VAO is currently bound, or current VAO configuration does not match bake state,
+     * we need to bind a different vertex array object. */
+    if (bake_state.vao_dirty)
+    {
+        bake_and_bind_vao();
+
+        ASSERT_DEBUG_SYNC(!bake_state.vao_dirty,
+                          "VAO state still marked as dirty.");
+    }
+
+    /* Update context state if a new GFX state has been bound */
+    if (bake_state.active_gfx_state_dirty)
+    {
+        bake_gfx_state();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_gfx_state_dirty,
+                          "GFX state still marked as dirty.");
+    }
+
+    /* Issue the draw call */
+    _raGL_command* draw_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    raGL_buffer_get_property(index_buffer_raGL,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &index_buffer_raGL_start_offset);
+
+    if (command_ral_ptr->base_instance == 0)
+    {
+        if (command_ral_ptr->base_vertex == 0)
+        {
+            if (command_ral_ptr->n_instances == 1)
+            {
+                draw_command_ptr->draw_elements_command_info.count   = command_ral_ptr->n_indices;
+                draw_command_ptr->draw_elements_command_info.indices = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_command_info.type    = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+                draw_command_ptr->type                               = RAGL_COMMAND_TYPE_DRAW_ELEMENTS;
+            }
+            else
+            {
+                draw_command_ptr->draw_elements_instanced_command_info.count     = command_ral_ptr->n_indices;
+                draw_command_ptr->draw_elements_instanced_command_info.indices   = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_instanced_command_info.primcount = command_ral_ptr->n_instances;
+                draw_command_ptr->draw_elements_instanced_command_info.type      = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+                draw_command_ptr->type                                           = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED;
+            }
+        }
+        else
+        {
+            if (command_ral_ptr->n_instances == 1)
+            {
+                draw_command_ptr->draw_elements_base_vertex_command_info.base_vertex = command_ral_ptr->base_vertex;
+                draw_command_ptr->draw_elements_base_vertex_command_info.count       = command_ral_ptr->n_indices;
+                draw_command_ptr->draw_elements_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_base_vertex_command_info.type        = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+                draw_command_ptr->type                                               = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_BASE_VERTEX;
+            }
+            else
+            {
+                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.base_vertex = command_ral_ptr->base_vertex;
+                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.count       = command_ral_ptr->n_indices;
+                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.primcount   = command_ral_ptr->n_instances;
+                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.type        = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+                draw_command_ptr->type                                                         = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX;
+            }
+        }
+    }
+    else
+    {
+        if (command_ral_ptr->base_vertex == 0)
+        {
+            draw_command_ptr->draw_elements_instanced_base_instance_command_info.base_instance = command_ral_ptr->base_instance;
+            draw_command_ptr->draw_elements_instanced_base_instance_command_info.count         = command_ral_ptr->n_indices;
+            draw_command_ptr->draw_elements_instanced_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+            draw_command_ptr->draw_elements_instanced_base_instance_command_info.primcount     = command_ral_ptr->n_instances;
+            draw_command_ptr->draw_elements_instanced_base_instance_command_info.type          = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+            draw_command_ptr->type                                                             = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_INSTANCE;
+        }
+        else
+        {
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.base_instance = command_ral_ptr->base_instance;
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.base_vertex   = command_ral_ptr->base_vertex;
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.count         = command_ral_ptr->n_indices;
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.primcount     = command_ral_ptr->n_instances;
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.type          = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+            draw_command_ptr->type                                                                         = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX_BASE_INSTANCE;
+        }
+    }
+
+    system_resizable_vector_push(commands,
+                                 draw_command_ptr);
+}
+
+/** TODO */
+void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_buffer_draw_call_indirect_command_info* command_ral_ptr)
+{
+    /* TODO: Coalesce multiple indirect draw calls into a single multi-draw call. */
+    raGL_backend   backend_raGL     = nullptr;
+    _raGL_command* draw_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    ASSERT_DEBUG_SYNC(command_ral_ptr->indirect_buffer != nullptr,
+                      "Indirect buffer is nullptr");
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    /* Bind the indirect buffer */
+    {
+        _raGL_command* bind_command_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        raGL_buffer    indirect_buffer_raGL    = nullptr;
+        GLuint         indirect_buffer_raGL_id = 0;
+
+        ASSERT_DEBUG_SYNC(command_ral_ptr->indirect_buffer != nullptr,
+                          "Indirect buffer is null");
+
+        raGL_backend_get_buffer (backend_raGL,
+                                 command_ral_ptr->indirect_buffer,
+                                 (void**) &indirect_buffer_raGL);
+        raGL_buffer_get_property(indirect_buffer_raGL,
+                                 RAGL_BUFFER_PROPERTY_ID,
+                                &indirect_buffer_raGL_id);
+
+        bind_command_ptr->bind_buffer_command_info.bo_id  = indirect_buffer_raGL_id;
+        bind_command_ptr->bind_buffer_command_info.target = GL_DRAW_INDIRECT_BUFFER;
+        bind_command_ptr->type                            = RAGL_COMMAND_TYPE_BIND_BUFFER;
+
+        system_resizable_vector_push(commands,
+                                     bind_command_ptr);
+    }
+
+    /* Update context state if a new GFX state has been bound */
+    if (bake_state.active_gfx_state_dirty)
+    {
+        bake_gfx_state();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_gfx_state_dirty,
+                          "GFX state still marked as dirty.");
+    }
+
+    if (command_ral_ptr->index_buffer == nullptr)
+    {
+        /* Issue the draw call */
+        _raGL_command_multi_draw_arrays_indirect_command_info& command_args = draw_command_ptr->multi_draw_arrays_indirect_command_info;
+
+        command_args.drawcount = 1;
+        command_args.indirect  = (GLvoid*) command_ral_ptr->offset;
+        command_args.stride    = command_ral_ptr->stride;
+
+        draw_command_ptr->type = RAGL_COMMAND_TYPE_MULTI_DRAW_ARRAYS_INDIRECT;
+    }
+    else
+    {
+        /* Bind the index buffer */
+        {
+            _raGL_command* bind_command_ptr  = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            raGL_buffer    index_buffer_raGL = nullptr;
+
+            raGL_backend_get_buffer (backend_raGL,
+                                     command_ral_ptr->index_buffer,
+                                     (void**) &index_buffer_raGL);
+
+            /* Bind the index buffer */
+            if (index_buffer_raGL != bake_state.vao_index_buffer)
+            {
+                bake_state.vao_dirty        = true;
+                bake_state.vao_index_buffer = index_buffer_raGL;
+            }
+
+            /* If no VAO is currently bound, or current VAO configuration does not match bake state,
+            * we need to bind a different vertex array object. */
+            if (bake_state.vao_dirty)
+            {
+                bake_and_bind_vao();
+
+                ASSERT_DEBUG_SYNC(!bake_state.vao_dirty,
+                    "VA state still marked as dirty.");
+            }
+        }
+
+        /* Issue the draw call */
+        _raGL_command_multi_draw_elements_indirect_command_info& command_args = draw_command_ptr->multi_draw_elements_indirect_command_info;
+
+        command_args.drawcount = 1;
+        command_args.indirect  = (GLvoid*) command_ral_ptr->offset;
+        command_args.stride    = command_ral_ptr->stride;
+        command_args.type      = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+
+        draw_command_ptr->type = RAGL_COMMAND_TYPE_MULTI_DRAW_ELEMENTS_INDIRECT;
+    }
+
+    system_resizable_vector_push(commands,
+                                 draw_command_ptr);
+}
+
+void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_buffer_draw_call_regular_command_info* command_ral_ptr)
+{
+    /* TODO: Coalesce multiple draw calls into a single multi-draw call. */
+    _raGL_command* draw_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    /* Update context state if a new GFX state has been bound */
+    if (bake_state.active_gfx_state_dirty)
+    {
+        bake_gfx_state();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_gfx_state_dirty,
+            "GFX state still marked as dirty.");
+    }
+
+    if (command_ral_ptr->n_instances == 1)
+    {
+        _raGL_command_draw_arrays_command_info& command_args = draw_command_ptr->draw_arrays_command_info;
+
+        ASSERT_DEBUG_SYNC(command_ral_ptr->base_instance == 0,
+                          "Base instance must be 0 for single-instanced draw calls");
+
+        command_args.count = command_ral_ptr->n_vertices;
+        command_args.first = command_ral_ptr->base_vertex;
+
+        draw_command_ptr->type = RAGL_COMMAND_TYPE_DRAW_ARRAYS;
+    }
+    else
+    {
+        if (command_ral_ptr->base_instance == 0)
+        {
+            _raGL_command_draw_arrays_instanced_command_info& command_args = draw_command_ptr->draw_arrays_instanced_command_info;
+
+            command_args.count     = command_ral_ptr->n_vertices;
+            command_args.first     = command_ral_ptr->base_vertex;
+            command_args.primcount = command_ral_ptr->n_instances;
+
+            draw_command_ptr->type = RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED;
+        }
+        else
+        {
+            _raGL_command_draw_arrays_instanced_base_instance_command_info& command_args = draw_command_ptr->draw_arrays_instanced_base_instance_command_info;
+
+            command_args.base_instance = command_ral_ptr->base_instance;
+            command_args.count         = command_ral_ptr->n_vertices;
+            command_args.first         = command_ral_ptr->base_vertex;
+            command_args.primcount     = command_ral_ptr->n_instances;
+
+            draw_command_ptr->type = RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED_BASE_INSTANCE;
+        }
+    }
+
+    system_resizable_vector_push(commands,
+                                 draw_command_ptr);
+}
+
+/** TODO */
+void _raGL_command_buffer::process_execute_command_buffer_command(const ral_command_buffer_execute_command_buffer_command_info* command_ral_ptr)
+{
+    raGL_backend        backend_raGL        = nullptr;
+    raGL_command_buffer command_buffer_raGL = nullptr;
+    _raGL_command*      execute_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    raGL_backend_get_command_buffer(backend_raGL,
+                                    command_ral_ptr->command_buffer,
+                                   &command_buffer_raGL);
+
+    ASSERT_DEBUG_SYNC(command_buffer_raGL != nullptr,
+                      "raGL command buffer returned by GL backend is null");
+
+    execute_command_ptr->execute_command_buffer_command_info.command_buffer_raGL = command_buffer_raGL;
+    execute_command_ptr->type                                                    = RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER;
+
+    system_resizable_vector_push(commands,
+                                 execute_command_ptr);
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_set_binding_command_info* command_ral_ptr)
+{
+    raGL_backend backend_gl = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_gl);
+
+    ASSERT_DEBUG_SYNC(bake_state.active_program != nullptr,
+                      "No active raGL_program assigned.");
+
+    switch (command_ral_ptr->binding_type)
+    {
+        case RAL_BINDING_TYPE_SAMPLED_IMAGE:
+        {
+            _raGL_command*                active_texture_command_ptr = nullptr;
+            _raGL_command*                bind_sampler_command_ptr   = nullptr;
+            _raGL_command*                bind_texture_command_ptr   = nullptr;
+            raGL_sampler                  sampler_raGL               = nullptr;
+            GLuint                        sampler_raGL_id            = 0;
+            raGL_texture                  texture_raGL               = nullptr;
+            GLuint                        texture_raGL_id            = 0;
+            bool                          texture_raGL_is_rb;
+            ral_texture                   texture_ral                = nullptr;
+            ral_texture_type              texture_ral_type;
+            const _raGL_program_variable* variable_ptr               = nullptr;
+
+            raGL_program_get_uniform_by_name(bake_state.active_program,
+                                             command_ral_ptr->name,
+                                            &variable_ptr);
+
+            ASSERT_DEBUG_SYNC(variable_ptr != nullptr,
+                              "No _raGL_program_variable instance exposed for uniform [%s]",
+                              system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
+
+            ASSERT_DEBUG_SYNC(variable_ptr->location != -1,
+                              "Location of value -1 assigned to uniform [%s]",
+                              system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
+
+            ral_texture_view_get_property(command_ral_ptr->sampled_image_binding.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                         &texture_ral);
+            ral_texture_view_get_property(command_ral_ptr->sampled_image_binding.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                         &texture_ral_type);
+
+            raGL_backend_get_sampler(backend_gl,
+                                     command_ral_ptr->sampled_image_binding.sampler,
+                                     (void**) &sampler_raGL);
+            raGL_backend_get_texture(backend_gl,
+                                     texture_ral,
+                                     (void**) &texture_raGL);
+
+            raGL_sampler_get_property(sampler_raGL,
+                                      RAGL_SAMPLER_PROPERTY_ID,
+                                      (void**) &sampler_raGL_id);
+            raGL_texture_get_property(texture_raGL,
+                                      RAGL_TEXTURE_PROPERTY_ID,
+                                      (void**) &texture_raGL_id);
+            raGL_texture_get_property(texture_raGL,
+                                      RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                      (void**) &texture_raGL_is_rb);
+
+            ASSERT_DEBUG_SYNC(!texture_raGL_is_rb,
+                              "Cannot use a renderbuffer for sampling purposes");
+
+            /* Configure & enqueue relevant GL commands */
+            active_texture_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            bind_sampler_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            bind_texture_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            active_texture_command_ptr->active_texture_command_info.target = GL_TEXTURE0 + variable_ptr->texture_unit;
+            active_texture_command_ptr->type                               = RAGL_COMMAND_TYPE_ACTIVE_TEXTURE;
+
+            bind_sampler_command_ptr->bind_sampler_command_info.sampler_id = sampler_raGL_id;
+            bind_sampler_command_ptr->bind_sampler_command_info.unit       = variable_ptr->texture_unit;
+            bind_sampler_command_ptr->type                                 = RAGL_COMMAND_TYPE_BIND_SAMPLER;
+
+            bind_texture_command_ptr->bind_texture_command_info.target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_ral_type);
+            bind_texture_command_ptr->bind_texture_command_info.to_id  = texture_raGL_id;
+            bind_texture_command_ptr->type                             = RAGL_COMMAND_TYPE_BIND_TEXTURE;
+
+            system_resizable_vector_push(commands,
+                                         active_texture_command_ptr);
+            system_resizable_vector_push(commands,
+                                         bind_sampler_command_ptr);
+            system_resizable_vector_push(commands,
+                                         bind_texture_command_ptr);
+
+            break;
+        }
+
+        case RAL_BINDING_TYPE_STORAGE_BUFFER:
+        case RAL_BINDING_TYPE_UNIFORM_BUFFER:
+        {
+            const ral_command_buffer_buffer_binding_info& buffer_binding_info   = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? command_ral_ptr->storage_buffer_binding : command_ral_ptr->uniform_buffer_binding;
+            const GLenum                                  buffer_binding_target = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BUFFER                : GL_UNIFORM_BUFFER;
+            raGL_buffer                                   buffer_raGL           = nullptr;
+            GLuint                                        buffer_raGL_id        = 0;
+            GLuint                                        sb_bp                 = -1;
+
+            raGL_backend_get_buffer(backend_gl,
+                                    buffer_binding_info.buffer,
+                                    (void**) &buffer_raGL);
+
+            ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
+                              "No raGL_buffer instance associated with the specified RAL buffer");
+
+            raGL_buffer_get_property               (buffer_raGL,
+                                                    RAGL_BUFFER_PROPERTY_ID,
+                                                   &buffer_raGL_id);
+            raGL_program_get_block_property_by_name(bake_state.active_program,
+                                                    command_ral_ptr->name,
+                                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                                   &sb_bp);
+
+            ASSERT_DEBUG_SYNC(sb_bp != -1,
+                              "Buffer name [%s] was not recognized by raGL_program.",
+                              system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
+
+            /* Enqueue a GL command */
+            if (buffer_binding_info.size == 0)
+            {
+                _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+                ASSERT_DEBUG_SYNC(buffer_binding_info.offset == 0,
+                                  "Size must not be 0 for a buffer binding, if non-zero offset has also been requested.");
+
+                bind_command_ptr->bind_buffer_base_command_info.bo_id    = buffer_raGL_id;
+                bind_command_ptr->bind_buffer_base_command_info.bp_index = sb_bp;
+                bind_command_ptr->bind_buffer_base_command_info.target   = buffer_binding_target;
+                bind_command_ptr->type                                   = RAGL_COMMAND_TYPE_BIND_BUFFER_BASE;
+
+                system_resizable_vector_push(commands,
+                                             bind_command_ptr);
+            }
+            else
+            {
+                _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+                ASSERT_DEBUG_SYNC(buffer_binding_info.size != 0,
+                                  "Zero-sized buffer binding was requested.");
+
+                bind_command_ptr->bind_buffer_range_command_info.bo_id    = buffer_raGL_id;
+                bind_command_ptr->bind_buffer_range_command_info.bp_index = sb_bp;
+                bind_command_ptr->bind_buffer_range_command_info.offset   = buffer_binding_info.offset;
+                bind_command_ptr->bind_buffer_range_command_info.size     = buffer_binding_info.size;
+                bind_command_ptr->bind_buffer_range_command_info.target   = buffer_binding_target;
+                bind_command_ptr->type                                    = RAGL_COMMAND_TYPE_BIND_BUFFER_RANGE;
+
+                system_resizable_vector_push(commands,
+                                             bind_command_ptr);
+            }
+
+            break;
+        }
+
+        case RAL_BINDING_TYPE_STORAGE_IMAGE:
+        {
+            raGL_texture                  parent_texture_raGL       = nullptr;
+            GLuint                        parent_texture_raGL_id    = 0;
+            bool                          parent_texture_raGL_is_rb = false;
+            ral_texture                   parent_texture_ral        = nullptr;
+            ral_format                    texture_view_format;
+            GLuint                        texture_view_n_base_layer = -1;
+            GLuint                        texture_view_n_base_level = -1;
+            GLuint                        texture_view_n_layers     = 0;
+            const _raGL_program_variable* variable_ptr              = nullptr;
+
+            raGL_program_get_uniform_by_name(bake_state.active_program,
+                                             command_ral_ptr->name,
+                                            &variable_ptr);
+
+            ral_texture_view_get_property(command_ral_ptr->storage_image_binding.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                         &texture_view_format);
+            ral_texture_view_get_property(command_ral_ptr->storage_image_binding.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER,
+                                         &texture_view_n_base_layer);
+            ral_texture_view_get_property(command_ral_ptr->storage_image_binding.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP,
+                                         &texture_view_n_base_level);
+            ral_texture_view_get_property(command_ral_ptr->storage_image_binding.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
+                                         &texture_view_n_layers);
+            ral_texture_view_get_property(command_ral_ptr->storage_image_binding.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                         &parent_texture_ral);
+
+            raGL_backend_get_texture(backend_gl,
+                                     parent_texture_ral,
+                                     (void**) &parent_texture_raGL);
+
+            ASSERT_DEBUG_SYNC(parent_texture_raGL != nullptr,
+                              "Null raGL_texture reported for a RAL texture");
+
+
+            raGL_texture_get_property(parent_texture_raGL,
+                                      RAGL_TEXTURE_PROPERTY_ID,
+                                      (void**) &parent_texture_raGL_id);
+            raGL_texture_get_property(parent_texture_raGL,
+                                      RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                      (void**) &parent_texture_raGL_is_rb);
+
+            ASSERT_DEBUG_SYNC(!parent_texture_raGL_is_rb,
+                              "Cannot bind a renderbuffer to a storage image binding.");
+
+            /* Bind the image */
+            _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            bind_command_ptr->bind_image_texture_command_info.access     = ((command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_READ) != 0 && (command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_WRITE) == 0) ? GL_READ_ONLY
+                                                                         : ((command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_READ) != 0 && (command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_WRITE) != 0) ? GL_READ_WRITE
+                                                                                                                                                                                                                                                     : GL_WRITE_ONLY;
+            bind_command_ptr->bind_image_texture_command_info.format     = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_view_format);
+            bind_command_ptr->bind_image_texture_command_info.is_layered = (texture_view_n_layers > 1) ? GL_TRUE : GL_FALSE;
+            bind_command_ptr->bind_image_texture_command_info.layer      = texture_view_n_base_layer;
+            bind_command_ptr->bind_image_texture_command_info.level      = texture_view_n_base_level;
+            bind_command_ptr->bind_image_texture_command_info.to_id      = parent_texture_raGL_id;
+            bind_command_ptr->bind_image_texture_command_info.tu_index   = variable_ptr->image_unit;
+            bind_command_ptr->type                                       = RAGL_COMMAND_TYPE_BIND_IMAGE_TEXTURE;
+
+            system_resizable_vector_push(commands,
+                                         bind_command_ptr);
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized RAL binding type");
+        }
+    }
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_gfx_state_command(const ral_command_buffer_set_gfx_state_command_info* command_ral_ptr)
+{
+    ASSERT_DEBUG_SYNC(command_ral_ptr->new_state != nullptr,
+                      "NULL ral_gfx_state instance specified.");
+
+    if (command_ral_ptr->new_state != bake_state.active_gfx_state)
+    {
+        /* Do not fire any GL calls yet. Cache the new gfx_state and wait until actual draw call. */
+        bake_state.active_gfx_state       = command_ral_ptr->new_state;
+        bake_state.active_gfx_state_dirty = true;
+    }
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_program_command(const ral_command_buffer_set_program_command_info* command_ral_ptr)
+{
+    raGL_backend backend_gl      = nullptr;
+    raGL_program program_raGL    = nullptr;
+    GLuint       program_raGL_id = 0;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_gl);
+
+    raGL_backend_get_program(backend_gl,
+                             command_ral_ptr->new_program,
+                             (void**) &program_raGL);
+
+    ASSERT_DEBUG_SYNC(program_raGL != nullptr,
+                      "No raGL_program instance associated with the specified RAL program");
+
+    raGL_program_get_property(program_raGL,
+                              RAGL_PROGRAM_PROPERTY_ID,
+                             &program_raGL_id);
+
+    /* Enqueue the GL command */
+    _raGL_command* gl_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    gl_command_ptr->use_program_command_info.po_id = program_raGL_id;
+    gl_command_ptr->type                           = RAGL_COMMAND_TYPE_USE_PROGRAM;
+
+    system_resizable_vector_push(commands,
+                                 gl_command_ptr);
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_scissor_box_command(const ral_command_buffer_set_scissor_box_command_info* command_ral_ptr)
+{
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(command_ral_ptr->index < static_cast<uint32_t>(limits_ptr->max_viewports),
+                      "Invalid scissor box index");
+
+    /* Enqueue the GL command */
+    _raGL_command* gl_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    gl_command_ptr->scissor_indexedv_command_info.index = command_ral_ptr->index;
+    gl_command_ptr->scissor_indexedv_command_info.v[0]  = command_ral_ptr->xy  [0];
+    gl_command_ptr->scissor_indexedv_command_info.v[1]  = command_ral_ptr->xy  [1];
+    gl_command_ptr->scissor_indexedv_command_info.v[2]  = command_ral_ptr->size[0];
+    gl_command_ptr->scissor_indexedv_command_info.v[2]  = command_ral_ptr->size[0];
+    gl_command_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
+
+    system_resizable_vector_push(commands,
+                                 gl_command_ptr);
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_buffer_set_vertex_buffer_command_info* command_ral_ptr)
+{
+    /* RAL holds most of the VAA state in gfx_state container. Furthermore, it doesn't directly
+     * map to vertex arrays & vertex buffers we have in GL.
+     *
+     * In order to avoid doing insensible bind calls all the time, we cache configured VA state
+     * and bind corresponding VAOs at draw call time. */
+    raGL_backend backend_raGL = nullptr;
+    raGL_buffer  buffer_raGL  = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_ral_ptr->location < static_cast<uint32_t>(limits_ptr->max_vertex_attribs) &&
+                      command_ral_ptr->location < N_MAX_VERTEX_ATTRIBUTES,
+                      "Invalid vertex attribute index requested.");
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    raGL_backend_get_buffer(backend_raGL,
+                            command_ral_ptr->buffer,
+                            (void**) &buffer_raGL);
+
+    ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
+                      "No raGL buffer instance found for the specified RAL buffer instance.");
+
+    if (bake_state.vbs[command_ral_ptr->location].buffer_raGL  != buffer_raGL                   ||
+        bake_state.vbs[command_ral_ptr->location].start_offset != command_ral_ptr->start_offset)
+    {
+        /* Need to update the VA configuration */
+        bake_state.vbs[command_ral_ptr->location].buffer_raGL  = buffer_raGL;
+        bake_state.vbs[command_ral_ptr->location].start_offset = command_ral_ptr->start_offset;
+        bake_state.vao_dirty                                   = true;
+    }
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_viewport_command(const ral_command_buffer_set_viewport_command_info* command_ral_ptr)
+{
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(command_ral_ptr->index < static_cast<uint32_t>(limits_ptr->max_viewports),
+                      "Invalid viewport index");
+
+    /* Enqueue the GL command */
+    _raGL_command* gl_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+    gl_command_ptr->viewport_indexedfv_command_info.index = command_ral_ptr->index;
+    gl_command_ptr->viewport_indexedfv_command_info.v[0]  = command_ral_ptr->xy  [0];
+    gl_command_ptr->viewport_indexedfv_command_info.v[1]  = command_ral_ptr->xy  [1];
+    gl_command_ptr->viewport_indexedfv_command_info.v[2]  = command_ral_ptr->size[0];
+    gl_command_ptr->viewport_indexedfv_command_info.v[3]  = command_ral_ptr->size[1];
+    gl_command_ptr->type                                  = RAGL_COMMAND_TYPE_VIEWPORT_INDEXEDFV;
+
+    system_resizable_vector_push(commands,
+                                 gl_command_ptr);
+}
+
+
+/** TODO */
+PRIVATE void _raGL_command_buffer_deinit_command(system_resource_pool_block block)
+{
+    _raGL_command* command_ptr = reinterpret_cast<_raGL_command*>(block);
+
+    command_ptr->deinit();
+}
+
+/** TODO */
+PRIVATE void _raGL_command_buffer_deinit_command_buffer(system_resource_pool_block block)
+{
+    _raGL_command_buffer* cmd_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(block); 
+
+    if (cmd_buffer_ptr->commands != nullptr)
+    {
+        system_resizable_vector_release(cmd_buffer_ptr->commands);
+
+        cmd_buffer_ptr->commands = nullptr;
+    }
+}
+
+/** TODO */
+PRIVATE void _raGL_command_buffer_init_command_buffer(system_resource_pool_block block)
+{
+    _raGL_command_buffer* cmd_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(block);
+
+    cmd_buffer_ptr->commands = system_resizable_vector_create(32);
+    cmd_buffer_ptr->context  = nullptr;
+}
+
+
+/** Please see header for specification */
+PUBLIC raGL_command_buffer raGL_command_buffer_create(ral_command_buffer command_buffer_ral,
+                                                      ogl_context        context)
+{
+    _raGL_command_buffer* new_command_buffer_ptr = nullptr;
+
+    new_command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(system_resource_pool_get_from_pool(command_buffer_pool) );
+
+    if (new_command_buffer_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(new_command_buffer_ptr != nullptr,
+                          "Could not retrieve a command buffer from the command buffer pool");
+
+        goto end;
+    }
+
+    new_command_buffer_ptr->clear_commands();
+
+    new_command_buffer_ptr->command_buffer_ral = command_buffer_ral;
+    new_command_buffer_ptr->context            = context;
+end:
+    return reinterpret_cast<raGL_command_buffer>(new_command_buffer_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_command_buffer_deinit()
+{
+    system_resource_pool_release(command_buffer_pool);
+    system_resource_pool_release(command_pool);
+
+    command_buffer_pool = nullptr;
+    command_pool        = nullptr;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
+{
+    _raGL_command_buffer* command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
+    uint32_t              n_commands         = 0;
+
+    system_resizable_vector_get_property(command_buffer_ptr->commands,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_commands);
+
+    for (uint32_t n_command = 0;
+                  n_command < n_commands;
+                ++n_command)
+    {
+        _raGL_command* command_ptr = nullptr;
+
+        system_resizable_vector_get_element_at(command_buffer_ptr->commands,
+                                               n_command,
+                                              &command_ptr);
+
+        /* Retrieve current GFX state, if needs be */
+        switch (command_ptr->type)
+        {
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS:
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INDIRECT:
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED:
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED_BASE_INSTANCE:
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS:
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_BASE_VERTEX:
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INDIRECT:
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED:
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_INSTANCE:
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX:
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX_BASE_INSTANCE:
+            case RAGL_COMMAND_TYPE_MULTI_DRAW_ARRAYS_INDIRECT:
+            case RAGL_COMMAND_TYPE_MULTI_DRAW_ELEMENTS_INDIRECT:
+            {
+                raGL_backend backend = nullptr;
+
+                ogl_context_get_property(command_buffer_ptr->context,
+                                         OGL_CONTEXT_PROPERTY_BACKEND,
+                                        &backend);
+
+                ASSERT_DEBUG_SYNC(command_buffer_ptr->bake_state.active_gfx_state != nullptr,
+                                  "No GFX state assigned to the command buffer");
+            }
+        }
+
+        /* Execute GL command(s) for the RAL command */
+        switch (command_ptr->type)
+        {
+            case RAGL_COMMAND_TYPE_BIND_BUFFER:
+            {
+                const _raGL_command_bind_buffer_command_info& command_args = command_ptr->bind_buffer_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindBuffer(command_args.target,
+                                                                   command_args.bo_id);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BIND_BUFFER_BASE:
+            {
+                const _raGL_command_bind_buffer_base_command_info& command_args = command_ptr->bind_buffer_base_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindBufferBase(command_args.target,
+                                                                       command_args.bp_index,
+                                                                       command_args.bo_id);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BIND_BUFFER_RANGE:
+            {
+                const _raGL_command_bind_buffer_range_command_info& command_args = command_ptr->bind_buffer_range_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindBufferRange(command_args.target,
+                                                                        command_args.bp_index,
+                                                                        command_args.bo_id,
+                                                                        command_args.offset,
+                                                                        command_args.size);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BIND_IMAGE_TEXTURE:
+            {
+                const _raGL_command_bind_image_texture_command_info& command_args = command_ptr->bind_image_texture_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindImageTexture(command_args.tu_index,
+                                                                         command_args.to_id,
+                                                                         command_args.level,
+                                                                         command_args.is_layered,
+                                                                         command_args.layer,
+                                                                         command_args.access,
+                                                                         command_args.format);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BIND_SAMPLER:
+            {
+                const _raGL_command_bind_sampler_command_info& command_args = command_ptr->bind_sampler_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindSampler(command_args.unit,
+                                                                    command_args.sampler_id);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BIND_TEXTURE:
+            {
+                const _raGL_command_bind_texture_command_info& command_args = command_ptr->bind_texture_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindTexture(command_args.target,
+                                                                    command_args.to_id);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BIND_VERTEX_ARRAY:
+            {
+                const _raGL_command_bind_vertex_array_command_info& command_args = command_ptr->bind_vertex_array_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindVertexArray(command_args.vao_id);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BLIT_FRAMEBUFFER:
+            {
+                const _raGL_command_blit_framebuffer_command_info& command_args = command_ptr->blit_framebuffer_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                                        command_args.draw_fbo_id);
+                command_buffer_ptr->entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                                                        command_args.read_fbo_id);
+
+                command_buffer_ptr->entrypoints_ptr->pGLBlitFramebuffer(command_args.src_x0y0x1y1[0],
+                                                                        command_args.src_x0y0x1y1[1],
+                                                                        command_args.src_x0y0x1y1[2],
+                                                                        command_args.src_x0y0x1y1[3],
+                                                                        command_args.dst_x0y0x1y1[0],
+                                                                        command_args.dst_x0y0x1y1[1],
+                                                                        command_args.dst_x0y0x1y1[2],
+                                                                        command_args.dst_x0y0x1y1[3],
+                                                                        command_args.mask,
+                                                                        command_args.filter);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_COPY_IMAGE_SUB_DATA:
+            {
+                const _raGL_command_copy_image_sub_data_command_info& command_args = command_ptr->copy_image_sub_data_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLCopyImageSubData(command_args.src_object_id,
+                                                                         command_args.src_target,
+                                                                         command_args.src_level,
+                                                                         command_args.src_xyz[0],
+                                                                         command_args.src_xyz[1],
+                                                                         command_args.src_xyz[2],
+                                                                         command_args.dst_object_id,
+                                                                         command_args.dst_target,
+                                                                         command_args.dst_level,
+                                                                         command_args.dst_xyz[0],
+                                                                         command_args.dst_xyz[1],
+                                                                         command_args.dst_xyz[2],
+                                                                         command_args.size[0],
+                                                                         command_args.size[1],
+                                                                         command_args.size[2]);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_CULL_FACE:
+            {
+                const _raGL_command_cull_face_command_info& command_args = command_ptr->cull_face_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLCullFace(command_args.mode);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DISABLE:
+            {
+                const _raGL_command_disable_command_info& command_args = command_ptr->disable_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLDisable(command_args.capability);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS:
+            {
+                const _raGL_command_draw_arrays_command_info& command_args = command_ptr->draw_arrays_command_info;
+                ral_primitive_type                            primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArrays(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                   command_args.first,
+                                                                   command_args.count);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INDIRECT:
+            {
+                const _raGL_command_draw_arrays_indirect_command_info& command_args = command_ptr->draw_arrays_indirect_command_info;
+                ral_primitive_type                                     primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                           command_args.indirect);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED:
+            {
+                const _raGL_command_draw_arrays_instanced_command_info& command_args = command_ptr->draw_arrays_instanced_command_info;
+                ral_primitive_type                                      primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysInstanced(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                            command_args.first,
+                                                                            command_args.count,
+                                                                            command_args.primcount);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED_BASE_INSTANCE:
+            {
+                const _raGL_command_draw_arrays_instanced_base_instance_command_info& command_args = command_ptr->draw_arrays_instanced_base_instance_command_info;
+                ral_primitive_type                                                    primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysInstancedBaseInstance(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                        command_args.first,
+                                                                                        command_args.count,
+                                                                                        command_args.primcount,
+                                                                                        command_args.base_instance);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS:
+            {
+                const _raGL_command_draw_elements_command_info& command_args = command_ptr->draw_elements_command_info;
+                ral_primitive_type                              primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElements(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                         &command_args.count,
+                                                                          command_args.type,
+                                                                         &command_args.indices,
+                                                                          1); /* primcount */
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_BASE_VERTEX:
+            {
+                const _raGL_command_draw_elements_base_vertex_command_info& command_args = command_ptr->draw_elements_base_vertex_command_info;
+                ral_primitive_type                                          primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsBaseVertex(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                   &command_args.count,
+                                                                                    command_args.type,
+                                                                                   &command_args.indices,
+                                                                                    1, /* primcount */
+                                                                                   &command_args.base_vertex);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INDIRECT:
+            {
+                const _raGL_command_draw_elements_indirect_command_info& command_args = command_ptr->draw_elements_indirect_command_info;
+                ral_primitive_type                                       primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                  command_args.type,
+                                                                                  nullptr, /* indirect  */
+                                                                                  1,       /* drawcount */
+                                                                                  0);      /* stride    */
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED:
+            {
+                const _raGL_command_draw_elements_instanced_command_info command_args = command_ptr->draw_elements_instanced_command_info;
+                ral_primitive_type                                       primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstanced(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                              command_args.count,
+                                                                              command_args.type,
+                                                                              command_args.indices,
+                                                                              command_args.primcount);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_INSTANCE:
+            {
+                const _raGL_command_draw_elements_instanced_base_instance_command_info& command_args = command_ptr->draw_elements_instanced_base_instance_command_info;
+                ral_primitive_type                                                      primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseInstance(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                          command_args.count,
+                                                                                          command_args.type,
+                                                                                          command_args.indices,
+                                                                                          command_args.primcount,
+                                                                                          command_args.base_instance);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX:
+            {
+                const _raGL_command_draw_elements_instanced_base_vertex_command_info& command_args = command_ptr->draw_elements_instanced_base_vertex_command_info;
+                ral_primitive_type                                                    primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseVertex(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                        command_args.count,
+                                                                                        command_args.type,
+                                                                                        command_args.indices,
+                                                                                        command_args.primcount,
+                                                                                        command_args.base_vertex);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX_BASE_INSTANCE:
+            {
+                const _raGL_command_draw_elements_instanced_base_vertex_base_instance_command_info& command_args = command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info;
+                ral_primitive_type                                                                  primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseVertexBaseInstance(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                                    command_args.count,
+                                                                                                    command_args.type,
+                                                                                                    command_args.indices,
+                                                                                                    command_args.primcount,
+                                                                                                    command_args.base_vertex,
+                                                                                                    command_args.base_instance);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_ENABLE:
+            {
+                const _raGL_command_enable_command_info& command_args = command_ptr->enable_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLEnable(command_args.capability);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
+            {
+                raGL_command_buffer_execute(command_ptr->execute_command_buffer_command_info.command_buffer_raGL);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_FRONT_FACE:
+            {
+                const _raGL_command_front_face_command_info& command_args = command_ptr->front_face_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLFrontFace(command_args.mode);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_LINE_WIDTH:
+            {
+                const _raGL_command_line_width_command_info& command_args = command_ptr->line_width_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLLineWidth(command_args.width);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_LOGIC_OP:
+            {
+                const _raGL_command_logic_op_command_info& command_args = command_ptr->logic_op_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLLogicOp(command_args.opcode);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_MIN_SAMPLE_SHADING:
+            {
+                const _raGL_command_min_sample_shading_command_info& command_args = command_ptr->min_sample_shading_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLMinSampleShading(command_args.value);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_MULTI_DRAW_ARRAYS_INDIRECT:
+            {
+                const _raGL_command_multi_draw_arrays_indirect_command_info& command_args = command_ptr->multi_draw_arrays_indirect_command_info;
+                ral_primitive_type                                           primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawArraysIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                command_args.indirect,
+                                                                                command_args.drawcount,
+                                                                                command_args.stride);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_MULTI_DRAW_ELEMENTS_INDIRECT:
+            {
+                const _raGL_command_multi_draw_elements_indirect_command_info& command_args = command_ptr->multi_draw_elements_indirect_command_info;
+                ral_primitive_type                                             primitive_type_ral;
+
+                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                                          &primitive_type_ral);
+
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                                  command_args.type,
+                                                                                  command_args.indirect,
+                                                                                  command_args.drawcount,
+                                                                                  command_args.stride);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_PATCH_PARAMETERI:
+            {
+                const _raGL_command_patch_parameteri_command_info& command_args = command_ptr->patch_parameteri_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLPatchParameteri(command_args.pname,
+                                                                        command_args.value);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_POLYGON_MODE:
+            {
+                const _raGL_command_polygon_mode_command_info& command_args = command_ptr->polygon_mode_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLPolygonMode(command_args.face,
+                                                                    command_args.mode);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_POLYGON_OFFSET:
+            {
+                const _raGL_command_polygon_offset_command_info& command_args = command_ptr->polygon_offset_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLPolygonOffset(command_args.factor,
+                                                                      command_args.units);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV:
+            {
+                const _raGL_command_scissor_indexedv_command_info& command_args = command_ptr->scissor_indexedv_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLScissorIndexedv(command_args.index,
+                                                                        command_args.v);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_STENCIL_FUNC_SEPARATE:
+            {
+                const _raGL_command_stencil_func_separate_command_info& command_args = command_ptr->stencil_func_separate_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLStencilFuncSeparate(command_args.face,
+                                                                            command_args.func,
+                                                                            command_args.ref,
+                                                                            command_args.mask);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_STENCIL_MASK_SEPARATE:
+            {
+                const _raGL_command_stencil_mask_separate_command_info& command_args = command_ptr->stencil_mask_separate_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLStencilMaskSeparate(command_args.face,
+                                                                            command_args.mask);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_STENCIL_OP_SEPARATE:
+            {
+                const _raGL_command_stencil_op_separate_command_info& command_args = command_ptr->stencil_op_separate_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLStencilOpSeparate(command_args.face,
+                                                                          command_args.sfail,
+                                                                          command_args.dpfail,
+                                                                          command_args.dppass);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_USE_PROGRAM:
+            {
+                const _raGL_command_use_program_command_info& command_args = command_ptr->use_program_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLUseProgram(command_args.po_id);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_VIEWPORT_INDEXEDFV:
+            {
+                const _raGL_command_viewport_indexedfv_command_info& command_args = command_ptr->viewport_indexedfv_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLViewportIndexedfv(command_args.index,
+                                                                          command_args.v);
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized raGL command type");
+            }
+        }
+    }
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_command_buffer_init()
+{
+    command_buffer_pool = system_resource_pool_create(sizeof(_raGL_command_buffer),
+                                                      32 /* n_elements_to_preallocate */,
+                                                      _raGL_command_buffer_init_command_buffer,
+                                                      _raGL_command_buffer_deinit_command_buffer);
+    command_pool        = system_resource_pool_create(sizeof(_raGL_command),
+                                                      32,                                   /* n_elements_to_preallocate */
+                                                      nullptr,                              /* init_fn                   */
+                                                      _raGL_command_buffer_deinit_command); /* deinit_fn                 */
+
+    ASSERT_DEBUG_SYNC(command_buffer_pool != nullptr,
+                      "Could not create a raGL command buffer pool");
+    ASSERT_DEBUG_SYNC(command_pool != nullptr,
+                      "Could not create a raGL command pool");
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_command_buffer_release(raGL_command_buffer command_buffer)
+{
+    ASSERT_DEBUG_SYNC(command_buffer != nullptr,
+                      "Input raGL_command_buffer instance is NULL");
+
+    #ifdef _DEBUG
+    {
+        _raGL_command_buffer* command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
+
+        /* Ensure no commands are enqueued */
+        uint32_t n_commands = 0;
+
+        system_resizable_vector_get_property(command_buffer_ptr->commands,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_commands);
+
+        ASSERT_DEBUG_SYNC(n_commands == 0,
+                          "raGL_command_buffer_release() called for a command buffer with != 0 commands recorded.");
+    }
+    #endif /* _DEBUG */
+
+    system_resource_pool_return_to_pool(command_buffer_pool,
+                                        (system_resource_pool_block) command_buffer);
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_command_buffer_start_recording(raGL_command_buffer command_buffer)
+{
+    _raGL_command_buffer* command_buffer_ptr  = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
+    _raGL_command*        current_command_ptr = nullptr;
+
+    /* Reset any enqueued commands */
+    while (system_resizable_vector_pop(command_buffer_ptr->commands,
+                                      &current_command_ptr) )
+    {
+        current_command_ptr->deinit();
+
+        system_resource_pool_return_to_pool(command_pool,
+                                            (system_resource_pool_block) current_command_ptr);
+    }
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_command_buffer_stop_recording(raGL_command_buffer command_buffer)
+{
+    _raGL_command_buffer* command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
+
+    /* Process the RAL commands and convert them to a set of GL instructions */
+    command_buffer_ptr->bake_commands();
+}

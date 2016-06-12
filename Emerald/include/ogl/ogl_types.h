@@ -698,12 +698,14 @@ typedef struct
     GLint   max_uniform_buffer_bindings;
     GLint   max_vertex_atomic_counter_buffers;
     GLint   max_vertex_atomic_counters;
+    GLint   max_vertex_attrib_bindings;
     GLint   max_vertex_attribs;
     GLint   max_vertex_output_components;
     GLint   max_vertex_shader_storage_blocks;
     GLint   max_vertex_texture_image_units;
     GLint   max_vertex_uniform_blocks;
     GLint   max_vertex_uniform_components;
+    GLint   max_viewports;
     GLint   min_max_uniform_block_size;
     GLint   min_program_texel_offset;
     GLint   minor_version;
@@ -811,6 +813,7 @@ typedef struct
     PFNGLDRAWELEMENTSPROC                                pGLDrawElements;
     PFNGLDRAWELEMENTSINSTANCEDPROC                       pGLDrawElementsInstanced;
     PFNGLDRAWELEMENTSINSTANCEDBASEINSTANCEPROC           pGLDrawElementsInstancedBaseInstance;
+    PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC             pGLDrawElementsInstancedBaseVertex;
     PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXBASEINSTANCEPROC pGLDrawElementsInstancedBaseVertexBaseInstance;
     PFNGLDRAWRANGEELEMENTSPROC                           pGLDrawRangeElements;
     PFNGLDRAWTRANSFORMFEEDBACKPROC                       pGLDrawTransformFeedback;
@@ -933,6 +936,7 @@ typedef struct
     PFNGLMAPBUFFERPROC                                   pGLMapBuffer;
     PFNGLMAPBUFFERRANGEPROC                              pGLMapBufferRange;
     PFNGLMEMORYBARRIEREXTPROC                            pGLMemoryBarrier;
+    PFNGLMINSAMPLESHADINGPROC                            pGLMinSampleShading;
     PFNGLMULTIDRAWARRAYSPROC                             pGLMultiDrawArrays;
     PFNGLMULTIDRAWARRAYSINDIRECTPROC                     pGLMultiDrawArraysIndirect;
     PFNGLMULTIDRAWELEMENTSPROC                           pGLMultiDrawElements;
@@ -940,6 +944,7 @@ typedef struct
     PFNGLMULTIDRAWELEMENTSINDIRECTPROC                   pGLMultiDrawElementsIndirect;
     PFNGLOBJECTLABELPROC                                 pGLObjectLabel;
     PFNGLOBJECTPTRLABELPROC                              pGLObjectPtrLabel;
+    PFNGLPATCHPARAMETERIPROC                             pGLPatchParameteri;
     PFNGLPAUSETRANSFORMFEEDBACKPROC                      pGLPauseTransformFeedback;
     PFNGLPIXELSTOREFPROC                                 pGLPixelStoref;
     PFNGLPIXELSTOREIPROC                                 pGLPixelStorei;
@@ -1009,6 +1014,7 @@ typedef struct
     PFNGLSAMPLERPARAMETERIPROC                           pGLSamplerParameteri;
     PFNGLSAMPLERPARAMETERIVPROC                          pGLSamplerParameteriv;
     PFNGLSCISSORPROC                                     pGLScissor;
+    PFNGLSCISSORINDEXEDVPROC                             pGLScissorIndexedv;
     PFNGLSHADERSTORAGEBLOCKBINDINGPROC                   pGLShaderStorageBlockBinding;
     PFNGLSHADERSOURCEPROC                                pGLShaderSource;
     PFNGLSTENCILFUNCPROC                                 pGLStencilFunc;
@@ -1104,6 +1110,7 @@ typedef struct
     PFNGLVERTEXATTRIBPOINTERPROC                         pGLVertexAttribPointer;
     PFNGLVERTEXBINDINGDIVISORPROC                        pGLVertexBindingDivisor;
     PFNGLVIEWPORTPROC                                    pGLViewport;
+    PFNGLVIEWPORTINDEXEDFVPROC                           pGLViewportIndexedfv;
 } ogl_context_gl_entrypoints;
 
 typedef struct
@@ -1160,6 +1167,7 @@ typedef struct
     PFNGLDRAWELEMENTSPROC                                pGLDrawElements;
     PFNGLDRAWELEMENTSINSTANCEDPROC                       pGLDrawElementsInstanced;
     PFNGLDRAWELEMENTSINSTANCEDBASEINSTANCEPROC           pGLDrawElementsInstancedBaseInstance;
+    PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC             pGLDrawElementsInstancedBaseVertex;
     PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXBASEINSTANCEPROC pGLDrawElementsInstancedBaseVertexBaseInstance;
     PFNGLDRAWRANGEELEMENTSPROC                           pGLDrawRangeElements;
     PFNGLDRAWTRANSFORMFEEDBACKPROC                       pGLDrawTransformFeedback;
@@ -1213,17 +1221,20 @@ typedef struct
     PFNGLMAPBUFFERPROC                                   pGLMapBuffer;
     PFNGLMAPBUFFERRANGEPROC                              pGLMapBufferRange;
     PFNGLMEMORYBARRIERPROC                               pGLMemoryBarrier;
+    PFNGLMINSAMPLESHADINGPROC                            pGLMinSampleShading;
     PFNGLMULTIDRAWARRAYSPROC                             pGLMultiDrawArrays;
     PFNGLMULTIDRAWARRAYSINDIRECTPROC                     pGLMultiDrawArraysIndirect;
     PFNGLMULTIDRAWELEMENTSPROC                           pGLMultiDrawElements;
     PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC                 pGLMultiDrawElementsBaseVertex;
     PFNGLMULTIDRAWELEMENTSINDIRECTPROC                   pGLMultiDrawElementsIndirect;
+    PFNGLPATCHPARAMETERIPROC                             pGLPatchParameteri;
     PFNGLREADBUFFERPROC                                  pGLReadBuffer;
     PFNGLREADPIXELSPROC                                  pGLReadPixels;
     PFNGLRENDERBUFFERSTORAGEPROC                         pGLRenderbufferStorage;
     PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC              pGLRenderbufferStorageMultisample;
     PFNGLRESUMETRANSFORMFEEDBACKPROC                     pGLResumeTransformFeedback;
     PFNGLSCISSORPROC                                     pGLScissor;
+    PFNGLSCISSORINDEXEDVPROC                             pGLScissorIndexedv;
     PFNGLSHADERSTORAGEBLOCKBINDINGPROC                   pGLShaderStorageBlockBinding;
     PFNGLTEXPARAMETERIIVPROC                             pGLTexParameterIiv;
     PFNGLTEXPARAMETERIUIVPROC                            pGLTexParameterIuiv;
@@ -1246,6 +1257,7 @@ typedef struct
     PFNGLVERTEXATTRIBLFORMATPROC                         pGLVertexAttribLFormat;
     PFNGLVERTEXATTRIBPOINTERPROC                         pGLVertexAttribPointer;
     PFNGLVIEWPORTPROC                                    pGLViewport;
+    PFNGLVIEWPORTINDEXEDFVPROC                           pGLViewportIndexedfv;
 
     /* DSA */
     PFNGLBINDMULTITEXTUREEXTPROC             pGLBindMultiTextureEXT;

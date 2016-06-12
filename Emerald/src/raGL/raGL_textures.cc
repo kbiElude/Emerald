@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -27,7 +27,7 @@ typedef struct _raGL_textures_texture_heap
 
     ~_raGL_textures_texture_heap()
     {
-        if (heap != NULL)
+        if (heap != nullptr)
         {
             /* Textures should have been released at _release() time. */
             uint32_t n_textures_in_heap = 0;
@@ -41,8 +41,8 @@ typedef struct _raGL_textures_texture_heap
 
             /* Release the vector nevertheless */
             system_resizable_vector_release(heap);
-            heap = NULL;
-        } /* if (heap != NULL) */
+            heap = nullptr;
+        }
     }
 } _raGL_textures_texture_heap;
 
@@ -67,14 +67,14 @@ typedef struct _raGL_textures
 
     ~_raGL_textures()
     {
-        if (cs != NULL)
+        if (cs != nullptr)
         {
             system_critical_section_release(cs);
 
-            cs = NULL;
-        } /* if (cs != NULL) */
+            cs = nullptr;
+        }
 
-        if (key_hash_to_texture_heap_map != NULL)
+        if (key_hash_to_texture_heap_map != nullptr)
         {
             /* Texture vectors should have been released at _release() time .. */
             uint32_t n_items_in_texture_item_map = 0;
@@ -89,8 +89,8 @@ typedef struct _raGL_textures
             /* Release the map nevertheless */
             system_hash64map_release(key_hash_to_texture_heap_map);
 
-            key_hash_to_texture_heap_map = NULL;
-        } /* if (key_hash_to_texture_heap_map != NULL) */
+            key_hash_to_texture_heap_map = nullptr;
+        }
     }
 } _raGL_textures;
 
@@ -130,16 +130,16 @@ PRIVATE void _raGL_textures_alloc_texture_rendering_thread_callback(ogl_context 
 /** TODO */
 PRIVATE system_hash64 _raGL_textures_get_texture_hash(ral_texture texture)
 {
-    system_hash64      result                         = 0;
-    bool               texture_fixed_sample_locations = false;
-    uint32_t           texture_base_mipmap_depth      = 0;
-    uint32_t           texture_base_mipmap_height     = 0;
-    uint32_t           texture_base_mipmap_width      = 0;
-    ral_texture_format texture_format                 = RAL_TEXTURE_FORMAT_UNKNOWN;
-    uint32_t           texture_n_layers               = 0;
-    uint32_t           texture_n_mipmaps              = 0;
-    uint32_t           texture_n_samples              = 0;
-    ral_texture_type   texture_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
+    system_hash64    result                         = 0;
+    bool             texture_fixed_sample_locations = false;
+    uint32_t         texture_base_mipmap_depth      = 0;
+    uint32_t         texture_base_mipmap_height     = 0;
+    uint32_t         texture_base_mipmap_width      = 0;
+    ral_format       texture_format                 = RAL_FORMAT_UNKNOWN;
+    uint32_t         texture_n_layers               = 0;
+    uint32_t         texture_n_mipmaps              = 0;
+    uint32_t         texture_n_samples              = 0;
+    ral_texture_type texture_type                   = RAL_TEXTURE_TYPE_UNKNOWN;
 
     /* Retrieve the input texture properties */
     ral_texture_get_property       (texture,
@@ -239,13 +239,13 @@ PRIVATE void _raGL_textures_release_rendering_thread_callback(ogl_context contex
                       n_heap < n_heaps;
                     ++n_heap)
         {
-            raGL_texture                 current_texture = NULL;
-            _raGL_textures_texture_heap* heap_ptr        = NULL;
+            raGL_texture                 current_texture = nullptr;
+            _raGL_textures_texture_heap* heap_ptr        = nullptr;
 
             if (!system_hash64map_get_element_at(textures_ptr->key_hash_to_texture_heap_map,
                                                  n_heap,
                                                 &heap_ptr,
-                                                 NULL /* result_hash_ptr */) )
+                                                 nullptr /* result_hash_ptr */) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve the heap descriptor at index [%d]",
@@ -259,9 +259,9 @@ PRIVATE void _raGL_textures_release_rendering_thread_callback(ogl_context contex
             {
                 raGL_texture_release(current_texture);
 
-                current_texture = NULL;
+                current_texture = nullptr;
             }
-        } /* for (all maintained heaps) */
+        }
 
         system_hash64map_clear(textures_ptr->key_hash_to_texture_heap_map);
     }
@@ -276,7 +276,7 @@ PUBLIC raGL_textures raGL_textures_create(ral_context context_ral,
     _raGL_textures* new_textures_ptr = new (std::nothrow) _raGL_textures(context,
                                                                          context_ral);
 
-    if (new_textures_ptr == NULL)
+    if (new_textures_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -300,13 +300,13 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
                                                         ral_texture   texture_ral)
 {
     bool                         cs_entered       = false;
-    raGL_texture                 result           = NULL;
-    _raGL_textures_texture_heap* texture_heap_ptr = NULL;
+    raGL_texture                 result           = nullptr;
+    _raGL_textures_texture_heap* texture_heap_ptr = nullptr;
     system_hash64                texture_key      = 0;
     _raGL_textures*              textures_ptr     = (_raGL_textures*) textures;
 
     /* Sanity checks */
-    if (textures == NULL)
+    if (textures == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input raGL_textures instance is NULL");
@@ -314,7 +314,7 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
         goto end;
     }
 
-    if (texture_ral == NULL)
+    if (texture_ral == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_texture instance is NULL");
@@ -336,7 +336,7 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
             /* Need to instantiate the heap first.. */
             texture_heap_ptr = new (std::nothrow) _raGL_textures_texture_heap();
 
-            if (texture_heap_ptr == NULL)
+            if (texture_heap_ptr == nullptr)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Out of memory");
@@ -347,9 +347,9 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
             system_hash64map_insert(textures_ptr->key_hash_to_texture_heap_map,
                                     texture_key,
                                     texture_heap_ptr,
-                                    NULL,  /* on_removal_callback          */
-                                    NULL); /* on_removal_callback_user_arg */
-        } /* if (texture heap not present) */
+                                    nullptr,  /* on_removal_callback          */
+                                    nullptr); /* on_removal_callback_user_arg */
+        }
 
         /* Is there a preallocated texture available in the heap? */
         if (!system_resizable_vector_pop(texture_heap_ptr->heap,
@@ -358,7 +358,7 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
             /* Nope. Need to alloc it now. */
             _raGL_textures_alloc_texture_rendering_thread_callback_arg callback_arg;
 
-            callback_arg.result_texture = NULL;
+            callback_arg.result_texture = nullptr;
             callback_arg.texture_ral    = texture_ral;
             callback_arg.textures_ptr   = textures_ptr;
 
@@ -366,13 +366,13 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
                                                              _raGL_textures_alloc_texture_rendering_thread_callback,
                                                             &callback_arg);
 
-            if (callback_arg.result_texture == NULL)
+            if (callback_arg.result_texture == nullptr)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Failed to spawn a new raGL_texture instance.");
 
                 goto end;
-            } /* if (callback_arg.result_texture == NULL) */
+            }
 
             result = callback_arg.result_texture;
         }
@@ -393,8 +393,8 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool_with_create_info(raGL_te
                                                                          const ral_texture_create_info* info_ptr)
 {
     _raGL_textures* textures_ptr   = (_raGL_textures*) textures;
-    raGL_texture    result_texture = NULL;
-    ral_texture     temp_texture   = NULL;
+    raGL_texture    result_texture = nullptr;
+    ral_texture     temp_texture   = nullptr;
 
     temp_texture = ral_texture_create(textures_ptr->context_ral,
                                       system_hashed_ansi_string_create("Temporary RAL texture"),
@@ -414,12 +414,12 @@ PUBLIC void raGL_textures_return_to_pool(raGL_textures textures,
 {
     bool                         cs_entered       = false;
     system_hash64                texture_hash     = 0;
-    _raGL_textures_texture_heap* texture_heap_ptr = NULL;
-    ral_texture                  texture_ral      = NULL;
+    _raGL_textures_texture_heap* texture_heap_ptr = nullptr;
+    ral_texture                  texture_ral      = nullptr;
     _raGL_textures*              textures_ptr     = (_raGL_textures*) textures;
 
     /* Sanity checks */
-    if (textures == NULL)
+    if (textures == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input raGL_textures instance is NULL");
@@ -427,7 +427,7 @@ PUBLIC void raGL_textures_return_to_pool(raGL_textures textures,
         goto end;
     }
 
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input raGL_texture instance is NULL");
@@ -438,7 +438,7 @@ PUBLIC void raGL_textures_return_to_pool(raGL_textures textures,
     /* Identify the heap we want to store the returned texture in. */
     raGL_texture_get_property(texture,
                               RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                             &texture_ral);
+                              (void**) &texture_ral);
 
     texture_hash = _raGL_textures_get_texture_hash(texture_ral);
 

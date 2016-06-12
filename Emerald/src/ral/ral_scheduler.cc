@@ -52,60 +52,60 @@ typedef struct _ral_scheduler_backend
                           "RAL scheduler shutting down, even though %d backend threads are still up.",
                           n_threads_active);
 
-        if (active_locks_cs != NULL)
+        if (active_locks_cs != nullptr)
         {
             system_critical_section_release(active_locks_cs);
 
-            active_locks_cs = NULL;
+            active_locks_cs = nullptr;
         }
 
-        if (active_read_locks != NULL)
+        if (active_read_locks != nullptr)
         {
             system_resizable_vector_release(active_read_locks);
 
-            active_read_locks = NULL;
+            active_read_locks = nullptr;
         }
 
-        if (active_write_locks != NULL)
+        if (active_write_locks != nullptr)
         {
             system_resizable_vector_release(active_write_locks);
 
-            active_write_locks = NULL;
+            active_write_locks = nullptr;
         }
 
-        if (job_available_semaphore != NULL)
+        if (job_available_semaphore != nullptr)
         {
             system_semaphore_release(job_available_semaphore);
 
-            job_available_semaphore = NULL;
+            job_available_semaphore = nullptr;
         }
 
-        if (job_pool != NULL)
+        if (job_pool != nullptr)
         {
             system_resource_pool_release(job_pool);
 
-            job_pool = NULL;
+            job_pool = nullptr;
         }
 
-        if (jobs != NULL)
+        if (jobs != nullptr)
         {
             system_resizable_vector_release(jobs);
 
-            jobs = NULL;
+            jobs = nullptr;
         }
 
-        if (jobs_cs != NULL)
+        if (jobs_cs != nullptr)
         {
             system_critical_section_release(jobs_cs);
 
-            jobs_cs = NULL;
+            jobs_cs = nullptr;
         }
 
-        if (please_leave_event != NULL)
+        if (please_leave_event != nullptr)
         {
             system_event_release(please_leave_event);
 
-            please_leave_event = NULL;
+            please_leave_event = nullptr;
         }
     }
 } _ral_scheduler_backend;
@@ -121,7 +121,7 @@ PUBLIC ral_scheduler ral_scheduler_create()
 {
     _ral_scheduler* scheduler_ptr = new (std::nothrow) _ral_scheduler;
 
-    ASSERT_ALWAYS_SYNC(scheduler_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(scheduler_ptr != nullptr,
                        "Out of memory");
 
     return (ral_scheduler) scheduler_ptr;
@@ -220,8 +220,10 @@ PUBLIC void ral_scheduler_schedule_job(ral_scheduler                 scheduler,
 }
 
 /** Please see header for specification */
-PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
-                                             ral_backend_type backend_type)
+PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler                            scheduler,
+                                             ral_backend_type                         backend_type,
+                                             PFNRALSCHEDULEREXECUTECOMMANDBUFFERSPROC pfn_execute_command_buffers_proc,
+                                             void*                                    execute_command_buffers_proc_backend_callback_arg)
 {
     _ral_scheduler*         scheduler_ptr = (_ral_scheduler*) scheduler;
     _ral_scheduler_backend* backend_ptr   = scheduler_ptr->backends + backend_type;
@@ -388,8 +390,10 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                 }
             }
 
-            /* Fire the call-back */
-            job_ptr->pfn_callback_ptr(job_ptr->callback_user_arg);
+            /* Execute the command buffers */
+            pfn_execute_command_buffers_proc(execute_command_buffers_proc_backend_callback_arg,
+                                             job_ptr->n_command_buffers_to_execute,
+                                             job_ptr->command_buffers_to_execute);
 
             /* Return the locks */
             system_critical_section_enter(backend_ptr->active_locks_cs);
@@ -425,7 +429,7 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
             system_critical_section_leave(backend_ptr->active_locks_cs);
 
             /* Schedule for execution any "upon completion" call-backs assigned to the job */
-            if (job_ptr->pfn_callback_when_done_ptr != NULL)
+            if (job_ptr->pfn_callback_when_done_ptr != nullptr)
             {
                 system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
                                                                                            job_ptr->pfn_callback_when_done_ptr,
@@ -434,7 +438,7 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                 system_thread_pool_submit_single_task(task);
             }
 
-            if (job_ptr->signal_event != NULL)
+            if (job_ptr->signal_event != nullptr)
             {
                 system_event_set(job_ptr->signal_event);
             }
@@ -444,10 +448,8 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
                    0,
                    sizeof(*job_ptr) );
 
-#if 0
             system_resource_pool_return_to_pool(backend_ptr->job_pool,
                                                 (system_resource_pool_block) job_ptr);
-#endif
         };
     }
     system_atomics_decrement(&backend_ptr->n_threads_active);

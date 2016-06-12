@@ -260,7 +260,7 @@ PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_contex
                                                    renderer_ptr->draw_dataset_ids[n],
                                                   &dataset_ptr) )
         {
-            entry_points->pGLDrawArraysInstancedBaseInstance(raGL_utils_get_ogl_primive_type_for_ral_primitive_type(dataset_ptr->primitive_type),
+            entry_points->pGLDrawArraysInstancedBaseInstance(raGL_utils_get_ogl_enum_for_ral_primitive_type(dataset_ptr->primitive_type),
                                                              dataset_ptr->draw_first,
                                                              dataset_ptr->n_vertices,
                                                              1, /* primcount */

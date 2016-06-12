@@ -4,17 +4,20 @@
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
+#define RAL_SCHEDULER_N_MAX_COMMAND_BUFFERS (16)
+#define RAL_SCHEDULER_N_MAX_LOCKS           (16)
 
-#define RAL_SCHEDULER_N_MAX_LOCKS (16)
 
+typedef void (*PFNRALSCHEDULERCALLBACKPROC)             (void*               user_arg);
+typedef void (*PFNRALSCHEDULEREXECUTECOMMANDBUFFERSPROC)(void*               backend_callback_arg,
+                                                         uint32_t            n_command_buffers,
+                                                         ral_command_buffer* command_buffers);
 
-typedef void (*PFNRALSCHEDULERCALLBACKPROC)(void* user_arg);
 
 typedef struct ral_scheduler_job_info
 {
-    /* Call-back to be done from a backend thread */
-    PFNRALSCHEDULERCALLBACKPROC pfn_callback_ptr;
-    void*                       callback_user_arg;
+    ral_command_buffer command_buffers_to_execute  [RAL_SCHEDULER_N_MAX_COMMAND_BUFFERS];
+    uint32_t           n_command_buffers_to_execute;
 
     /* Call-back to be issued after pfn_callback_ptr returns, from a thread
      * taken from the engine-wide thread pool.
@@ -28,7 +31,7 @@ typedef struct ral_scheduler_job_info
     uint32_t n_write_locks;
 
 
-    void* read_locks[RAL_SCHEDULER_N_MAX_LOCKS];
+    void* read_locks [RAL_SCHEDULER_N_MAX_LOCKS];
     void* write_locks[RAL_SCHEDULER_N_MAX_LOCKS];
 
     /* Event to set after pfn_callback_ptr returns.
@@ -39,19 +42,17 @@ typedef struct ral_scheduler_job_info
 
     ral_scheduler_job_info()
     {
-        callback_user_arg           = NULL;
-        callback_when_done_user_arg = NULL;
+        n_command_buffers_to_execute = 0;
 
-        pfn_callback_ptr            = NULL;
-        pfn_callback_when_done_ptr  = NULL;
+        callback_when_done_user_arg = nullptr;
+        pfn_callback_when_done_ptr  = nullptr;
 
-        signal_event = NULL;
+        signal_event = nullptr;
 
         n_read_locks  = 0;
         n_write_locks = 0;
     }
 } ral_scheduler_job_info;
-
 
 /** TODO */
 PUBLIC ral_scheduler ral_scheduler_create();
@@ -81,8 +82,11 @@ PUBLIC void ral_scheduler_schedule_job(ral_scheduler                 scheduler,
  *
  *  NOTE: This function should ONLY be called by a rendering back-end.
  **/
-PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler    scheduler,
-                                             ral_backend_type backend_type);
+PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler                            scheduler,
+                                             ral_backend_type                         backend_type,
+                                             ral_queue_bits                           supported_queue_types,
+                                             PFNRALSCHEDULEREXECUTECOMMANDBUFFERSPROC pfn_execute_command_buffers_proc,
+                                             void*                                    execute_command_buffers_proc_backend_callback_arg);
 
 
 #endif /* RAL_SCHEDULER_H */

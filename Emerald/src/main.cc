@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -8,6 +8,7 @@
 #include "main.h"
 #include "audio/audio_device.h"
 #include "ogl/ogl_context.h"
+#include "raGL/raGL_command_buffer.h"
 #include "ral/ral_command_buffer.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
@@ -132,6 +133,7 @@ void main_init()
     audio_device_init();
     system_file_monitor_init();
 
+    raGL_command_buffer_init();
     ral_command_buffer_init();
 }
 
@@ -142,6 +144,7 @@ int main_deinit()
 {
     if (!_deinited)
     {
+        raGL_command_buffer_deinit();
         ral_command_buffer_deinit();
 
         _system_resources_deinit();

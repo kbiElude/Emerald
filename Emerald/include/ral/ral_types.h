@@ -97,7 +97,7 @@ typedef enum
     RAL_BLEND_OP_SUBTRACT_REVERSE,
 } ral_blend_op;
 
-typedef enum
+enum
 {
     RAL_BUFFER_MAPPABILITY_NONE = 0,
 
@@ -108,10 +108,10 @@ typedef enum
 
     /* Always last */
     RAL_BUFFER_MAPPABILITY_LAST_USED_BIT = 2
-};
+} ral_buffer_mappability;
 typedef int ral_buffer_mappability_bits;
 
-typedef enum
+enum
 {
     /* Use sparse memory backing */
     RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT = (1 << 0),
@@ -144,7 +144,7 @@ typedef struct ral_buffer_client_sourced_update_info
 } ral_buffer_client_sourced_update_info;
 
 
-typedef enum
+enum
 {
     RAL_BUFFER_USAGE_COPY_BIT                     = (1 << 0),
     RAL_BUFFER_USAGE_INDEX_BUFFER_BIT             = (1 << 1),
@@ -157,11 +157,13 @@ typedef enum
 
     /* Always last */
     RAL_BUFFER_USAGE_LAST_USED_BIT = 7
-};
+} ral_buffer_usage;
 typedef int ral_buffer_usage_bits;
 
 typedef enum
 {
+    /* NOTE: Update raGL_utils_get_ogl_enum_for_ral_compare_op() if this enum is ever updated. */
+
     RAL_COMPARE_OP_ALWAYS,
     RAL_COMPARE_OP_EQUAL,
     RAL_COMPARE_OP_GEQUAL,
@@ -171,6 +173,22 @@ typedef enum
     RAL_COMPARE_OP_NEVER,
     RAL_COMPARE_OP_GREATER,
 } ral_compare_op;
+
+typedef enum
+{
+    RAL_IMAGE_ACCESS_READ  = 1 << 0,
+    RAL_IMAGE_ACCESS_WRITE = 1 << 1
+} ral_image_access_bits;
+
+typedef enum
+{
+    RAL_INDEX_TYPE_8BIT,
+    RAL_INDEX_TYPE_16BIT,
+    RAL_INDEX_TYPE_32BIT,
+
+    /* Always last */
+    RAL_INDEX_TYPE_COUNT
+} ral_index_type;
 
 typedef enum
 {
@@ -249,8 +267,13 @@ typedef enum
 /** Enumerator that describes allowed types for a program uniform */
 typedef enum
 {
-    /* NOTE: If you need to modify this array, make sure to update raGL_utils_get_ogl_enum_for_ral_program_variable_type()
-     *       and raGL_utils_get_ral_program_variable_type_for_ogl_enum(). */
+    /* NOTE: If you need to modify this array, make sure to update:
+     *
+     *       * raGL_utils_get_ogl_enum_for_ral_program_variable_type()
+     *       * raGL_utils_get_ral_program_variable_type_for_ogl_enum()
+     *       * ral_utils_get_ral_program_variable_type_property
+     **/
+
     RAL_PROGRAM_VARIABLE_TYPE_BOOL,
     RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC2,
     RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC3,
@@ -355,6 +378,24 @@ typedef enum
 
 } ral_program_variable_type;
 
+typedef enum
+{
+    RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE,
+    RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX,
+    RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER,
+    RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR,
+    RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR,
+
+    RAL_PROGRAM_VARIABLE_TYPE_CLASS_UNKNOWN
+} ral_program_variable_type_class;
+
+typedef enum
+{
+    /* ral_program_variable_type_class */
+    RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
+
+} ral_program_variable_type_property;
+
 /** Structure that describes properties of a program uniform, or a shader storage block member, or the like.
  *
  *  For uniforms, this structure is used to describe both uniforms coming from the default uniform block,
@@ -378,7 +419,7 @@ typedef struct
 
 } ral_program_variable;
 
-typedef enum
+enum
 {
     /* This queue accepts compute shader invocations */
     RAL_QUEUE_COMPUTE_BIT = 1 << 0,
@@ -391,7 +432,7 @@ typedef enum
 
     /* Always last */
     RAL_QUEUE_LAST_USED_BIT = 2
-};
+} ral_queue;
 typedef int ral_queue_bits;
 
 /** Enumerator that describes current rendering handler's playback status */
@@ -562,18 +603,6 @@ typedef enum
      **/
     RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS,
 
-    /* not settable, uint32_t.
-     *
-     * A system framebuffer is a framebuffer which should be used to copy/render data into the
-     * back buffer of the rendering surface.
-     *
-     * NOTE: This query will be passed to the rendering back-end.
-     * NOTE: Backends can use one or more system framebuffers. Make no assumptions in this regard.
-     *       It is guaranteed that all framebuffer attachments will use the same properties (n of samples,
-     *       texture format).
-     */
-    RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS,
-
     /* not settable; ral_rendering_handler */
     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
 
@@ -581,21 +610,13 @@ typedef enum
      *
      * NOTE: This query will be passed to the rendering back-end.
      */
-    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT, // todo: rename to BACK_BUFFER_COLOR_FORMAT
 
     /* not settable, uint32_t[2]
      *
      * NOTE: This query will be passed to the rendering back-end.
      */
-    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE,
-
-    /* not settable, ral_framebuffer[RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS].
-     *
-     * Please see documentation of RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS for more details.
-     *
-     * NOTE: This query will be passed to the rendering back-end.
-     * */
-    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
+    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE, // todo: rename to BACK_BUFFER_SIZE
 
     /* not settable; demo_window */
     RAL_CONTEXT_PROPERTY_WINDOW_DEMO,
@@ -615,7 +636,9 @@ typedef enum
 typedef enum
 {
     RAL_FRONT_FACE_CCW,
-    RAL_FRONT_FACE_CW
+    RAL_FRONT_FACE_CW,
+
+    RAL_FRONT_FACE_UNKNOWN
 } ral_front_face;
 
 typedef enum
@@ -657,7 +680,7 @@ typedef enum
     RAL_LOGIC_OP_OR,
 
     /* ~source | destination */
-    RAL_LOGIC_OP_INVERTED,
+    RAL_LOGIC_OP_OR_INVERTED,
 
     /* source | ~destination */
     RAL_LOGIC_OP_OR_REVERSE,
@@ -668,13 +691,16 @@ typedef enum
     /* source ^ destination */
     RAL_LOGIC_OP_XOR,
 
+    RAL_LOGIC_OP_UNKNOWN
 } ral_logic_op;
 
 typedef enum
 {
     RAL_POLYGON_MODE_FILL,
     RAL_POLYGON_MODE_LINES,
-    RAL_POLYGON_MODE_POINTS
+    RAL_POLYGON_MODE_POINTS,
+
+    RAL_POLYGON_MODE_UNKNOWN
 } ral_polygon_mode;
 
 /* Primitive types supported by RAL */
@@ -850,6 +876,8 @@ typedef struct ral_shader_create_info
 
 typedef enum
 {
+    /* NOTE: If this enum is ever chasnged, make sure to update raGL_utils_get_ogl_enum_for_ral_stencil_op() */
+
     RAL_STENCIL_OP_DECREMENT_AND_CLAMP,
     RAL_STENCIL_OP_DECREMENT_AND_WRAP,
     RAL_STENCIL_OP_INCREMENT_AND_CLAMP,
@@ -923,133 +951,145 @@ typedef enum
     RAL_TEXTURE_DATA_TYPE_UNKNOWN,
 } ral_texture_data_type;
 
-/* RAL texture formats */
+/* RAL data formats */
 typedef enum
 {
-    /* NOTE: Make sure to update *_get_*_texture_internalformat_for_ral_texture_format() AND ral_utils_get_texture_format_property()
+    /* NOTE: Make sure to update *_get_*_texture_internalformat_for_ral_format() AND ral_utils_get_format_property()
     *        functions whenever modifying this enum definition!
      */
-    RAL_TEXTURE_FORMAT_COMPRESSED_R11_EAC_UNORM,                        // GL_COMPRESSED_R11_EAC,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC4_UNORM,                            // GL_COMPRESSED_RED_RGTC1,
-    RAL_TEXTURE_FORMAT_COMPRESSED_RG11_EAC_UNORM,                       // GL_COMPRESSED_RG11_EAC,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC5_UNORM,                            // GL_COMPRESSED_RG_RGTC2,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC6_SFLOAT,                           // GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT_ARB,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC6_UFLOAT,                           // GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT_ARB,
-    RAL_TEXTURE_FORMAT_COMPRESSED_RGB8_ETC2_UNORM,                      // GL_COMPRESSED_RGB8_ETC2,
-    RAL_TEXTURE_FORMAT_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM,  // GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2,
-    RAL_TEXTURE_FORMAT_COMPRESSED_RGBA8_ETC2_EAC_UNORM,                 // GL_COMPRESSED_RGBA8_ETC2_EAC,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC7_UNORM,                            // GL_COMPRESSED_RGBA_BPTC_UNORM_ARB,
-    RAL_TEXTURE_FORMAT_COMPRESSED_R11_EAC_SNORM,                        // GL_COMPRESSED_SIGNED_R11_EAC,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC4_SNORM,                            // GL_COMPRESSED_SIGNED_RED_RGTC1,
-    RAL_TEXTURE_FORMAT_COMPRESSED_RG11_EAC_SNORM,                       // GL_COMPRESSED_SIGNED_RG11_EAC,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC5_SNORM,                            // GL_COMPRESSED_SIGNED_RG_RGTC2,
-    RAL_TEXTURE_FORMAT_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC_UNORM,          // GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC,
-    RAL_TEXTURE_FORMAT_COMPRESSED_SRGB8_ETC2_UNORM,                     // GL_COMPRESSED_SRGB8_ETC2,
-    RAL_TEXTURE_FORMAT_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM, // GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2,
-    RAL_TEXTURE_FORMAT_COMPRESSED_BC7_SRGB_UNORM,                       // GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB,
+    RAL_FORMAT_COMPRESSED_R11_EAC_UNORM,                        // GL_COMPRESSED_R11_EAC,
+    RAL_FORMAT_COMPRESSED_BC4_UNORM,                            // GL_COMPRESSED_RED_RGTC1,
+    RAL_FORMAT_COMPRESSED_RG11_EAC_UNORM,                       // GL_COMPRESSED_RG11_EAC,
+    RAL_FORMAT_COMPRESSED_BC5_UNORM,                            // GL_COMPRESSED_RG_RGTC2,
+    RAL_FORMAT_COMPRESSED_BC6_SFLOAT,                           // GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT_ARB,
+    RAL_FORMAT_COMPRESSED_BC6_UFLOAT,                           // GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT_ARB,
+    RAL_FORMAT_COMPRESSED_RGB8_ETC2_UNORM,                      // GL_COMPRESSED_RGB8_ETC2,
+    RAL_FORMAT_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM,  // GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2,
+    RAL_FORMAT_COMPRESSED_RGBA8_ETC2_EAC_UNORM,                 // GL_COMPRESSED_RGBA8_ETC2_EAC,
+    RAL_FORMAT_COMPRESSED_BC7_UNORM,                            // GL_COMPRESSED_RGBA_BPTC_UNORM_ARB,
+    RAL_FORMAT_COMPRESSED_R11_EAC_SNORM,                        // GL_COMPRESSED_SIGNED_R11_EAC,
+    RAL_FORMAT_COMPRESSED_BC4_SNORM,                            // GL_COMPRESSED_SIGNED_RED_RGTC1,
+    RAL_FORMAT_COMPRESSED_RG11_EAC_SNORM,                       // GL_COMPRESSED_SIGNED_RG11_EAC,
+    RAL_FORMAT_COMPRESSED_BC5_SNORM,                            // GL_COMPRESSED_SIGNED_RG_RGTC2,
+    RAL_FORMAT_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC_UNORM,          // GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC,
+    RAL_FORMAT_COMPRESSED_SRGB8_ETC2_UNORM,                     // GL_COMPRESSED_SRGB8_ETC2,
+    RAL_FORMAT_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM, // GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2,
+    RAL_FORMAT_COMPRESSED_BC7_SRGB_UNORM,                       // GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB,
 
-    RAL_TEXTURE_FORMAT_DEPTH16_SNORM,
-    RAL_TEXTURE_FORMAT_DEPTH24_SNORM,
-    RAL_TEXTURE_FORMAT_DEPTH32_FLOAT,
-    RAL_TEXTURE_FORMAT_DEPTH32_SNORM,
+    RAL_FORMAT_DEPTH16_SNORM,
+    RAL_FORMAT_DEPTH24_SNORM,
+    RAL_FORMAT_DEPTH32_FLOAT,
+    RAL_FORMAT_DEPTH32_SNORM,
 
-    RAL_TEXTURE_FORMAT_DEPTH24_STENCIL8,
-    RAL_TEXTURE_FORMAT_DEPTH32F_STENCIL8,
+    RAL_FORMAT_DEPTH24_STENCIL8,
+    RAL_FORMAT_DEPTH32F_STENCIL8,
 
-    RAL_TEXTURE_FORMAT_R11FG11FB10F,
+    RAL_FORMAT_R11FG11FB10F,
 
-    RAL_TEXTURE_FORMAT_R16_FLOAT,
-    RAL_TEXTURE_FORMAT_R16_SINT,
-    RAL_TEXTURE_FORMAT_R16_SNORM,
-    RAL_TEXTURE_FORMAT_R16_UINT,
-    RAL_TEXTURE_FORMAT_R16_UNORM,
+    RAL_FORMAT_R16_FLOAT,
+    RAL_FORMAT_R16_SINT,
+    RAL_FORMAT_R16_SNORM,
+    RAL_FORMAT_R16_UINT,
+    RAL_FORMAT_R16_UNORM,
 
-    RAL_TEXTURE_FORMAT_R3G3B2_UNORM,
+    RAL_FORMAT_R3G3B2_UNORM,
 
-    RAL_TEXTURE_FORMAT_R32_FLOAT,
-    RAL_TEXTURE_FORMAT_R32_SINT,
-    RAL_TEXTURE_FORMAT_R32_UINT,
+    RAL_FORMAT_R32_FLOAT,
+    RAL_FORMAT_R32_SINT,
+    RAL_FORMAT_R32_UINT,
 
-    RAL_TEXTURE_FORMAT_R8_SINT,
-    RAL_TEXTURE_FORMAT_R8_SNORM,
-    RAL_TEXTURE_FORMAT_R8_UINT,
-    RAL_TEXTURE_FORMAT_R8_UNORM,
+    RAL_FORMAT_R8_SINT,
+    RAL_FORMAT_R8_SNORM,
+    RAL_FORMAT_R8_UINT,
+    RAL_FORMAT_R8_UNORM,
 
-    RAL_TEXTURE_FORMAT_RG16_FLOAT,
-    RAL_TEXTURE_FORMAT_RG16_SINT,
-    RAL_TEXTURE_FORMAT_RG16_SNORM,
-    RAL_TEXTURE_FORMAT_RG16_UINT,
-    RAL_TEXTURE_FORMAT_RG16_UNORM,
+    RAL_FORMAT_RG16_FLOAT,
+    RAL_FORMAT_RG16_SINT,
+    RAL_FORMAT_RG16_SNORM,
+    RAL_FORMAT_RG16_UINT,
+    RAL_FORMAT_RG16_UNORM,
 
-    RAL_TEXTURE_FORMAT_RG32_FLOAT,
-    RAL_TEXTURE_FORMAT_RG32_SINT,
-    RAL_TEXTURE_FORMAT_RG32_UINT,
+    RAL_FORMAT_RG32_FLOAT,
+    RAL_FORMAT_RG32_SINT,
+    RAL_FORMAT_RG32_UINT,
 
-    RAL_TEXTURE_FORMAT_RG8_UNORM,
-    RAL_TEXTURE_FORMAT_RG8_SINT,
-    RAL_TEXTURE_FORMAT_RG8_SNORM,
-    RAL_TEXTURE_FORMAT_RG8_UINT,
+    RAL_FORMAT_RG8_UNORM,
+    RAL_FORMAT_RG8_SINT,
+    RAL_FORMAT_RG8_SNORM,
+    RAL_FORMAT_RG8_UINT,
 
-    RAL_TEXTURE_FORMAT_RGB10_UNORM,
+    RAL_FORMAT_RGB10_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB10A2_UINT,
-    RAL_TEXTURE_FORMAT_RGB10A2_UNORM,
+    RAL_FORMAT_RGB10A2_UINT,
+    RAL_FORMAT_RGB10A2_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB12_UNORM,
+    RAL_FORMAT_RGB12_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB16_FLOAT,
-    RAL_TEXTURE_FORMAT_RGB16_SINT,
-    RAL_TEXTURE_FORMAT_RGB16_SNORM,
-    RAL_TEXTURE_FORMAT_RGB16_UINT,
-    RAL_TEXTURE_FORMAT_RGB16_UNORM,
+    RAL_FORMAT_RGB16_FLOAT,
+    RAL_FORMAT_RGB16_SINT,
+    RAL_FORMAT_RGB16_SNORM,
+    RAL_FORMAT_RGB16_UINT,
+    RAL_FORMAT_RGB16_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB32_FLOAT,
-    RAL_TEXTURE_FORMAT_RGB32_SINT,
-    RAL_TEXTURE_FORMAT_RGB32_UINT,
+    RAL_FORMAT_RGB32_FLOAT,
+    RAL_FORMAT_RGB32_SINT,
+    RAL_FORMAT_RGB32_UINT,
 
-    RAL_TEXTURE_FORMAT_RGB4_UNORM,
+    RAL_FORMAT_RGB4_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB5_UNORM,
+    RAL_FORMAT_RGB5_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB5A1_UNORM,
+    RAL_FORMAT_RGB5A1_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB8_SINT,
-    RAL_TEXTURE_FORMAT_RGB8_SNORM,
-    RAL_TEXTURE_FORMAT_RGB8_UINT,
-    RAL_TEXTURE_FORMAT_RGB8_UNORM,
+    RAL_FORMAT_RGB8_SINT,
+    RAL_FORMAT_RGB8_SNORM,
+    RAL_FORMAT_RGB8_UINT,
+    RAL_FORMAT_RGB8_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGB9E5_FLOAT,
+    RAL_FORMAT_RGB9E5_FLOAT,
 
-    RAL_TEXTURE_FORMAT_RGBA12_UNORM,
+    RAL_FORMAT_RGBA12_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGBA16_FLOAT,
-    RAL_TEXTURE_FORMAT_RGBA16_SINT,
-    RAL_TEXTURE_FORMAT_RGBA16_SNORM,
-    RAL_TEXTURE_FORMAT_RGBA16_UINT,
-    RAL_TEXTURE_FORMAT_RGBA16_UNORM,
+    RAL_FORMAT_RGBA16_FLOAT,
+    RAL_FORMAT_RGBA16_SINT,
+    RAL_FORMAT_RGBA16_SNORM,
+    RAL_FORMAT_RGBA16_UINT,
+    RAL_FORMAT_RGBA16_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGBA2_UNORM,
+    RAL_FORMAT_RGBA2_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGBA32_FLOAT,
-    RAL_TEXTURE_FORMAT_RGBA32_SINT,
-    RAL_TEXTURE_FORMAT_RGBA32_UINT,
+    RAL_FORMAT_RGBA32_FLOAT,
+    RAL_FORMAT_RGBA32_SINT,
+    RAL_FORMAT_RGBA32_UINT,
 
-    RAL_TEXTURE_FORMAT_RGBA4_UNORM,
+    RAL_FORMAT_RGBA4_UNORM,
 
-    RAL_TEXTURE_FORMAT_RGBA8_UNORM,
-    RAL_TEXTURE_FORMAT_RGBA8_SINT,
-    RAL_TEXTURE_FORMAT_RGBA8_SNORM,
-    RAL_TEXTURE_FORMAT_RGBA8_UINT,
+    RAL_FORMAT_RGBA8_UNORM,
+    RAL_FORMAT_RGBA8_SINT,
+    RAL_FORMAT_RGBA8_SNORM,
+    RAL_FORMAT_RGBA8_UINT,
 
-    RAL_TEXTURE_FORMAT_SRGB8_UNORM,
+    RAL_FORMAT_SRGB8_UNORM,
 
-    RAL_TEXTURE_FORMAT_SRGBA8_UNORM,
+    RAL_FORMAT_SRGBA8_UNORM,
 
-    RAL_TEXTURE_FORMAT_UNKNOWN,
-    RAL_TEXTURE_FORMAT_COUNT = RAL_TEXTURE_FORMAT_UNKNOWN
-} ral_texture_format;
+    RAL_FORMAT_UNKNOWN,
+    RAL_FORMAT_COUNT = RAL_FORMAT_UNKNOWN
+} ral_format;
 
+typedef enum
+{
+    RAL_FORMAT_TYPE_DS,
 
+    RAL_FORMAT_TYPE_SFLOAT,
+    RAL_FORMAT_TYPE_SINT,
+    RAL_FORMAT_TYPE_SNORM,
+
+    RAL_FORMAT_TYPE_UFLOAT,
+    RAL_FORMAT_TYPE_UINT,
+    RAL_FORMAT_TYPE_UNORM,
+
+} ral_format_type;
 
 typedef enum
 {
@@ -1076,7 +1116,7 @@ typedef enum
  * For OpenGL back-end, these bits help determine whether a renderbuffer or a texture
  * should be spawned when creating the raGL_texture instance for a RAL texture.
  */
-typedef enum
+enum
 {
     /* The described texture will be used as a destination for blit operations */
     RAL_TEXTURE_USAGE_BLIT_DST_BIT                 = 1 << 0,
@@ -1103,7 +1143,7 @@ typedef enum
     RAL_TEXTURE_USAGE_SAMPLED_BIT                  = 1 << 7,
 
     RAL_TEXTURE_MAX_BIT_USED = 7
-};
+} ral_texture_usage;
 typedef int ral_texture_usage_bits;
 
 /** All info required to create a single texture instance */
@@ -1113,7 +1153,7 @@ typedef struct
     unsigned int              base_mipmap_height;
     unsigned int              base_mipmap_width;
     bool                      fixed_sample_locations;
-    ral_texture_format        format;
+    ral_format                format;
     system_hashed_ansi_string name;
     unsigned int              n_layers;
     unsigned int              n_samples;
@@ -1159,25 +1199,6 @@ typedef struct ral_texture_mipmap_client_sourced_update_info
 
 typedef enum
 {
-
-    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_SINT,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_SNORM,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_UINT,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_BYTE_UNORM,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_FLOAT_SINT,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_SINT,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_SNORM,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_UINT,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_SHORT_UNORM,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_SINT,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_SNORM,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_UINT,
-    RAL_VERTEX_ATTRIBUTE_FORMAT_INT_UNORM
-
-} ral_vertex_attribute_format;
-
-typedef enum
-{
     RAL_VERTEX_INPUT_RATE_PER_INSTANCE,
     RAL_VERTEX_INPUT_RATE_PER_VERTEX,
 } ral_vertex_input_rate;
@@ -1185,11 +1206,20 @@ typedef enum
 
 typedef struct ral_gfx_state_vertex_attribute
 {
-    ral_vertex_attribute_format format;
-    ral_vertex_input_rate       input_rate;
-    uint32_t                    location;
-    uint32_t                    offset;
-    uint32_t                    stride;
+    ral_format            format;     // attr
+    ral_vertex_input_rate input_rate; // binding
+    uint32_t              location;   // attr
+    uint32_t              offset;     // attr
+    uint32_t              stride;     // binding
+
+    bool operator==(const ral_gfx_state_vertex_attribute& in) const
+    {
+        return (format     == in.format     &&
+                input_rate == in.input_rate &&
+                location   == in.location   &&
+                offset     == in.offset     &&
+                stride     == in.stride);
+    }
 } ral_gfx_state_vertex_attribute;
 
 
@@ -1197,6 +1227,7 @@ typedef struct ral_gfx_state_create_info
 {
     bool alpha_to_coverage;
     bool alpha_to_one;
+    bool culling;
     bool depth_bias;
     bool depth_bounds_test;
     bool depth_clamp;
@@ -1237,7 +1268,8 @@ typedef struct ral_gfx_state_create_info
     ral_front_face     front_face;
     float              line_width;
     uint32_t           n_patch_control_points;
-    ral_polygon_mode   polygon_mode;
+    ral_polygon_mode   polygon_mode_back;
+    ral_polygon_mode   polygon_mode_front;
     ral_primitive_type primitive_type;
 
     uint32_t                              n_vertex_attributes;
@@ -1247,6 +1279,7 @@ typedef struct ral_gfx_state_create_info
     {
         alpha_to_coverage  = false;
         alpha_to_one       = false;
+        culling            = false;
         depth_bias         = false;
         depth_bounds_test  = false;
         depth_clamp        = false;
@@ -1270,7 +1303,8 @@ typedef struct ral_gfx_state_create_info
         min_depth_bounds                  = 0.0f;
         n_vertex_attributes               = 0;
         n_patch_control_points            = 0;
-        polygon_mode                      = RAL_POLYGON_MODE_FILL;
+        polygon_mode_back                 = RAL_POLYGON_MODE_FILL;
+        polygon_mode_front                = RAL_POLYGON_MODE_FILL;
         primitive_type                    = RAL_PRIMITIVE_TYPE_TRIANGLES;
         sample_shading_min_sample_shading = 1.0f;
         vertex_attribute_ptrs             = nullptr;
@@ -1279,9 +1313,9 @@ typedef struct ral_gfx_state_create_info
 
 typedef struct ral_texture_view_create_info
 {
-    ral_texture_format format;
-    ral_texture        texture;
-    ral_texture_type   type;
+    ral_format       format;
+    ral_texture      texture;
+    ral_texture_type type;
 
     uint32_t n_base_layer;
     uint32_t n_base_mip;
@@ -1291,7 +1325,7 @@ typedef struct ral_texture_view_create_info
 
     ral_texture_view_create_info()
     {
-        format       = RAL_TEXTURE_FORMAT_UNKNOWN;
+        format       = RAL_FORMAT_UNKNOWN;
         n_base_layer = -1;
         n_base_mip   = -1;
         n_layers     = 0;

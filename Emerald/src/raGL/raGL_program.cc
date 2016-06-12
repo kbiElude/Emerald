@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -14,6 +14,7 @@
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
+#include "ral/ral_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_event.h"
@@ -85,6 +86,7 @@ typedef struct
     PFNGLLINKPROGRAMPROC                pGLLinkProgram;
     PFNGLPROGRAMBINARYPROC              pGLProgramBinary;
     PFNGLPROGRAMPARAMETERIPROC          pGLProgramParameteri;
+    PFNGLPROGRAMUNIFORM1IPROC           pGLProgramUniform1i;
     PFNGLSHADERSTORAGEBLOCKBINDINGPROC  pGLShaderStorageBlockBinding;
     PFNGLUNIFORMBLOCKBINDINGPROC        pGLUniformBlockBinding;
 
@@ -109,7 +111,7 @@ PRIVATE void _raGL_program_clear_bindings_metadata  (_raGL_program*          pro
 PRIVATE void _raGL_program_create_callback          (ogl_context             context,
                                                     void*                    in_arg);
 PRIVATE void _raGL_program_detach_shader_callback   (ogl_context             context,
-                                                    void*                    in_arg);
+                                                     void*                   in_arg);
 PRIVATE char*_raGL_program_get_binary_blob_file_name(_raGL_program*          program_ptr);
 PRIVATE char*_raGL_program_get_source_code_file_name(_raGL_program*          program_ptr);
 PRIVATE void _raGL_program_link_callback            (ogl_context             context,
@@ -151,13 +153,13 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
 PRIVATE void _raGL_program_clear_bindings_metadata(_raGL_program* program_ptr,
                                                    bool           should_release)
 {
-    if (program_ptr->block_name_to_binding_map != NULL)
+    if (program_ptr->block_name_to_binding_map != nullptr)
     {
         if (should_release)
         {
             system_hash64map_release(program_ptr->block_name_to_binding_map);
 
-            program_ptr->block_name_to_binding_map = NULL;
+            program_ptr->block_name_to_binding_map = nullptr;
         }
         else
         {
@@ -165,18 +167,18 @@ PRIVATE void _raGL_program_clear_bindings_metadata(_raGL_program* program_ptr,
         }
     }
 
-    if (program_ptr->ssb_bindings != NULL)
+    if (program_ptr->ssb_bindings != nullptr)
     {
         delete [] program_ptr->ssb_bindings;
 
-        program_ptr->ssb_bindings = NULL;
+        program_ptr->ssb_bindings = nullptr;
     }
 
-    if (program_ptr->ub_bindings != NULL)
+    if (program_ptr->ub_bindings != nullptr)
     {
         delete [] program_ptr->ub_bindings;
 
-        program_ptr->ub_bindings = NULL;
+        program_ptr->ub_bindings = nullptr;
     }
 
     program_ptr->n_ssb_bindings = 0;
@@ -211,8 +213,8 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
                   n_shader < n_program_shaders;
                 ++n_shader)
     {
-        ral_shader  current_shader         = NULL;
-        raGL_shader current_shader_raGL    = NULL;
+        ral_shader  current_shader         = nullptr;
+        raGL_shader current_shader_raGL    = nullptr;
         GLuint      current_shader_raGL_id = 0;
 
         if (!ral_program_get_attached_shader_at_index(program_ptr->program_ral,
@@ -229,7 +231,7 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
         current_shader_raGL = ral_context_get_shader_gl(program_ptr->context,
                                                         current_shader);
 
-        ASSERT_DEBUG_SYNC(current_shader_raGL != NULL,
+        ASSERT_DEBUG_SYNC(current_shader_raGL != nullptr,
                           "No raGL_shader instance associated with current ral_shader instance.");
 
         raGL_shader_get_property(current_shader_raGL,
@@ -253,8 +255,8 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
                                                       GLenum                  variable_interface_type,
                                                       unsigned int            n_variable)
 {
-    bool                is_temp_variable_defined            = (temp_variable_name_storage != NULL) ? true
-                                                                                                   : false;
+    bool                is_temp_variable_defined            = (temp_variable_name_storage != nullptr) ? true
+                                                                                                      : false;
     GLint               name_length                         = 0;
     static const GLenum piq_property_array_size             = GL_ARRAY_SIZE;
     static const GLenum piq_property_array_stride           = GL_ARRAY_STRIDE;
@@ -268,20 +270,20 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
     static const GLenum piq_property_type                   = GL_TYPE;
     _raGL_program*      program_ptr                         = (_raGL_program*) program;
 
-    if (variable_raGL_ptr != NULL)
+    if (variable_raGL_ptr != nullptr)
     {
         variable_raGL_ptr->block_index = -1;
         variable_raGL_ptr->location    = -1;
     }
 
-    if (variable_ral_ptr != NULL)
+    if (variable_ral_ptr != nullptr)
     {
         variable_ral_ptr->array_stride           = 0;
         variable_ral_ptr->block_offset           = -1;
         variable_ral_ptr->is_row_major_matrix    = false;
         variable_ral_ptr->length                 = 0;
         variable_ral_ptr->matrix_stride          = 0;
-        variable_ral_ptr->name                   = NULL;
+        variable_ral_ptr->name                   = nullptr;
         variable_ral_ptr->size                   = 0;
         variable_ral_ptr->top_level_array_size   = 0;
         variable_ral_ptr->top_level_array_stride = 0;
@@ -297,8 +299,8 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
                                          n_variable,
                                          1, /* propCount */
                                         &piq_property_name_length,
-                                         1,    /* bufSize */
-                                         NULL, /* length  */
+                                         1,       /* bufSize */
+                                         nullptr, /* length  */
                                         &name_length);
 
     if (variable_interface_type == GL_BUFFER_VARIABLE ||
@@ -306,7 +308,7 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
     {
         GLint type_gl = 0;
 
-        if (variable_ral_ptr != NULL)
+        if (variable_ral_ptr != nullptr)
         {
             variable_ral_ptr->length = name_length;
 
@@ -316,86 +318,86 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
                                                  1, /* propCount */
                                                 &piq_property_array_size,
                                                  1, /* bufSize */
-                                                 NULL, /* length */
+                                                 nullptr, /* length */
                                                  &variable_ral_ptr->size);
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_array_stride,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                  (GLint*) &variable_ral_ptr->array_stride);
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_is_row_major,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                 (GLint*) &variable_ral_ptr->is_row_major_matrix);
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_matrix_stride,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                  (GLint*) &variable_ral_ptr->matrix_stride);
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_offset,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                  (GLint*) &variable_ral_ptr->block_offset);
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_type,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                        (GLint*) &type_gl);
 
             variable_ral_ptr->type = raGL_utils_get_ral_program_variable_type_for_ogl_enum(type_gl);
-        } /* if (variable_ral_ptr != NULL) */
+        }
 
-        if (variable_raGL_ptr != NULL)
+        if (variable_raGL_ptr != nullptr)
         {
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_block_index,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                  (GLint*) &variable_raGL_ptr->block_index);
         }
     }
     else
     if (variable_interface_type == GL_BUFFER_VARIABLE)
     {
-        if (variable_ral_ptr != NULL)
+        if (variable_ral_ptr != nullptr)
         {
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_top_level_array_size,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                  (GLint*) &variable_ral_ptr->top_level_array_size);
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  variable_interface_type,
                                                  n_variable,
                                                  1, /* propCount */
                                                 &piq_property_top_level_array_stride,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length  */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                 (GLint*) &variable_ral_ptr->top_level_array_stride);
-        } /* if (variable_ral_ptr != NULL) */
+        }
     }
 
     if (!is_temp_variable_defined)
@@ -419,19 +421,19 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
                                            variable_interface_type,
                                            n_variable,
                                            name_length + 1,
-                                           NULL,
+                                           nullptr,
                                            temp_variable_name_storage);
 
     /* If the member name is prefixed with block name, skip that prefix. */
     char*                     final_variable_name     = temp_variable_name_storage;
-    system_hashed_ansi_string final_variable_name_has = NULL;
+    system_hashed_ansi_string final_variable_name_has = nullptr;
 
     while (true)
     {
         char* tmp = strchr(final_variable_name,
                            '.');
 
-        if (tmp == NULL)
+        if (tmp == nullptr)
         {
             break;
         }
@@ -441,7 +443,7 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
         }
     }
 
-    if (variable_raGL_ptr != NULL)
+    if (variable_raGL_ptr != nullptr)
     {
         if (variable_interface_type == GL_UNIFORM)
         {
@@ -453,7 +455,7 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
         variable_raGL_ptr->name = system_hashed_ansi_string_create(final_variable_name);
     }
 
-    if (variable_ral_ptr != NULL)
+    if (variable_ral_ptr != nullptr)
     {
         variable_ral_ptr->name = system_hashed_ansi_string_create(final_variable_name);
     }
@@ -462,7 +464,7 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
     {
         delete [] temp_variable_name_storage;
 
-        temp_variable_name_storage = NULL;
+        temp_variable_name_storage = nullptr;
     }
 
 end:
@@ -475,7 +477,7 @@ PRIVATE char* _raGL_program_get_binary_blob_file_name(_raGL_program* program_ptr
     /* Form the hash-based file name */
     std::stringstream         file_name_sstream;
     std::string               file_name_string;
-    system_hashed_ansi_string program_name      = NULL;
+    system_hashed_ansi_string program_name      = nullptr;
 
     ral_program_get_property(program_ptr->program_ral,
                              RAL_PROGRAM_PROPERTY_NAME,
@@ -490,7 +492,7 @@ PRIVATE char* _raGL_program_get_binary_blob_file_name(_raGL_program* program_ptr
     char* file_name = new (std::nothrow) char[file_name_string.length() + 1];
 
 
-    if (file_name != NULL)
+    if (file_name != nullptr)
     {
         memcpy(file_name,
                file_name_string.c_str(),
@@ -506,7 +508,7 @@ PRIVATE char* _raGL_program_get_source_code_file_name(_raGL_program* program_ptr
     /* Form the hash-based file name */
     std::stringstream         file_name_sstream;
     std::string               file_name_string;
-    system_hashed_ansi_string program_name      = NULL;
+    system_hashed_ansi_string program_name      = nullptr;
 
     ral_program_get_property(program_ptr->program_ral,
                              RAL_PROGRAM_PROPERTY_NAME,
@@ -540,11 +542,11 @@ end:
 PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_type,
                                                    _raGL_program*         program_ptr)
 {
-    _raGL_program_block_binding* block_bindings_ptr              = NULL;
+    _raGL_program_block_binding* block_bindings_ptr              = nullptr;
     static const GLenum          block_property_buffer_data_size = GL_BUFFER_DATA_SIZE;
     const GLenum                 block_interface_gl              = (block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
                                                                                                                          : GL_UNIFORM_BLOCK;
-    GLchar*                      block_name                      = NULL;
+    GLchar*                      block_name                      = nullptr;
     system_resizable_vector      block_names                     = system_resizable_vector_create(16 /* capacity */);
     GLint                        n_active_blocks                 = 0;
     GLint                        n_active_block_max_length       = 0;
@@ -558,7 +560,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
     {
         block_bindings_ptr = new (std::nothrow) _raGL_program_block_binding[n_active_blocks];
 
-        ASSERT_ALWAYS_SYNC(block_bindings_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(block_bindings_ptr != nullptr,
                            "Out of memory");
     }
 
@@ -566,7 +568,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
     {
         case RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER:
         {
-            ASSERT_DEBUG_SYNC(program_ptr->ssb_bindings == NULL,
+            ASSERT_DEBUG_SYNC(program_ptr->ssb_bindings == nullptr,
                               "");
 
             program_ptr->n_ssb_bindings = n_active_blocks;
@@ -576,7 +578,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
 
         case RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
         {
-            ASSERT_DEBUG_SYNC(program_ptr->ub_bindings  == NULL,
+            ASSERT_DEBUG_SYNC(program_ptr->ub_bindings  == nullptr,
                               "");
 
             program_ptr->n_ub_bindings = n_active_blocks;
@@ -626,20 +628,20 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                                                  n_ub,
                                                  1, /* propCount */
                                                  &piq_property_name_length,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                 &current_block_name_length);
 
             if (current_block_name_length > n_active_block_max_length)
             {
                 n_active_block_max_length = current_block_name_length;
             }
-        } /* for (all active uniform blocks) */
+        }
     }
 
     block_name = new (std::nothrow) GLchar[n_active_block_max_length + 1];
 
-    ASSERT_ALWAYS_SYNC(block_name != NULL,
+    ASSERT_ALWAYS_SYNC(block_name != nullptr,
                        "Could not allocate [%d] bytes for active block name",
                        n_active_block_max_length + 1);
 
@@ -648,7 +650,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
              ++n_active_block)
     {
         /* Register the new block */
-        system_hashed_ansi_string block_name_has = NULL;
+        system_hashed_ansi_string block_name_has = nullptr;
         GLint                     block_size     = 0;
 
         if (n_active_block_max_length != 0)
@@ -657,7 +659,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                                                    block_interface_gl,
                                                    n_active_block,
                                                    n_active_block_max_length + 1,
-                                                   NULL, /* length */
+                                                   nullptr, /* length */
                                                    block_name);
 
             block_name_has = system_hashed_ansi_string_create(block_name);
@@ -672,8 +674,8 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                                              n_active_block,
                                              1, /* propCount */
                                             &block_property_buffer_data_size,
-                                             1,    /* bufSize */
-                                             NULL, /* length */
+                                             1,       /* bufSize */
+                                             nullptr, /* length  */
                                             &block_size);
 
         ral_program_add_block(program_ptr->program_ral,
@@ -689,7 +691,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                n_active_block < n_active_blocks;
              ++n_active_block)
     {
-        system_hashed_ansi_string block_name_has = NULL;
+        system_hashed_ansi_string block_name_has = nullptr;
 
         system_resizable_vector_get_element_at(block_names,
                                                n_active_block,
@@ -698,7 +700,7 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
         /* For UBs, also enumerate members */
         if (block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
         {
-                         GLint* active_variable_indices             = NULL;
+                         GLint* active_variable_indices             = nullptr;
             static const GLenum block_property_active_variables     = GL_ACTIVE_VARIABLES;
             static const GLenum block_property_num_active_variables = GL_NUM_ACTIVE_VARIABLES;
                          GLint  n_active_variables                  = 0;
@@ -710,15 +712,15 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                                                  n_active_block,
                                                  1, /* propCount */
                                                 &block_property_num_active_variables,
-                                                 1,    /* bufSize */
-                                                 NULL, /* length */
+                                                 1,       /* bufSize */
+                                                 nullptr, /* length  */
                                                 &n_active_variables);
 
             if (n_active_variables > 0)
             {
                 active_variable_indices = new (std::nothrow) GLint[n_active_variables];
 
-                ASSERT_ALWAYS_SYNC(active_variable_indices != NULL,
+                ASSERT_ALWAYS_SYNC(active_variable_indices != nullptr,
                                    "Out of memory");
 
                 program_ptr->pGLGetProgramResourceiv(program_ptr->id,
@@ -727,34 +729,34 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                                                      1, /* propCount */
                                                     &block_property_active_variables,
                                                      n_active_variables,
-                                                     NULL, /* length */
+                                                     nullptr, /* length */
                                                      active_variable_indices);
 
                 for (int n_active_variable = 0;
                          n_active_variable < n_active_variables;
                        ++n_active_variable)
                 {
-                    ral_program_variable* variable_ral_ptr = NULL;
+                    ral_program_variable* variable_ral_ptr = nullptr;
 
                     variable_ral_ptr = new (std::nothrow) ral_program_variable();
 
                     raGL_program_get_program_variable_details( (raGL_program) program_ptr,
-                                                              0,    /* temp_variable_name_storage */
-                                                              NULL, /* temp_variable_name */
+                                                              0,       /* temp_variable_name_storage */
+                                                              nullptr, /* temp_variable_name         */
                                                               variable_ral_ptr,
-                                                              NULL,
+                                                              nullptr,
                                                               GL_UNIFORM,
                                                               active_variable_indices[n_active_variable]);
 
                     ral_program_attach_variable_to_block(program_ptr->program_ral,
                                                          block_name_has,
                                                          variable_ral_ptr);
-                } /* for (all active variables) */
+                }
 
                 delete [] active_variable_indices;
-                active_variable_indices = NULL;
-            } /* if (n_active_variable > 0) */
-        } /* if (block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER) */
+                active_variable_indices = nullptr;
+            }
+        }
 
         /* Set up the block binding */
         block_bindings_ptr[n_active_block].block_index = n_active_block;
@@ -770,8 +772,8 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
         system_hash64map_insert(program_ptr->block_name_to_binding_map,
                                 system_hashed_ansi_string_get_hash(block_name_has),
                                &block_bindings_ptr[n_active_block],
-                                NULL,  /* on_removal_callback          */
-                                NULL); /* on_removal_callback_user_arg */
+                                nullptr,  /* on_removal_callback          */
+                                nullptr); /* on_removal_callback_user_arg */
 
         switch (block_type)
         {
@@ -798,20 +800,20 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                 ASSERT_DEBUG_SYNC(false,
                                   "Unsupported block type.");
             }
-        } /* switch (block_type) */
-    } /* for (all blocks of the requested type) */
-
-    if (block_name != NULL)
-    {
-        delete [] block_name;
-        block_name = NULL;
+        }
     }
 
-    if (block_names != NULL)
+    if (block_name != nullptr)
+    {
+        delete [] block_name;
+        block_name = nullptr;
+    }
+
+    if (block_names != nullptr)
     {
         system_resizable_vector_release(block_names);
 
-        block_names = NULL;
+        block_names = nullptr;
     }
 }
 
@@ -819,11 +821,16 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
 PRIVATE void _raGL_program_link_callback(ogl_context context,
                                          void*       in_arg)
 {
-    system_time    end_time            = 0;
-    uint32_t       execution_time_msec = 0;
-    _raGL_program* program_ptr         = (_raGL_program*) in_arg;
-    bool           has_used_binary     = false;
-    system_time    start_time          = system_time_now();
+    system_time                  end_time            = 0;
+    uint32_t                     execution_time_msec = 0;
+    const ogl_context_gl_limits* limits_ptr          = nullptr;
+    _raGL_program*               program_ptr         = (_raGL_program*) in_arg;
+    bool                         has_used_binary     = false;
+    system_time                  start_time          = system_time_now();
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
 
     /* Clear metadata before proceeding .. */
     program_ptr->link_thread_id = system_threads_get_thread_id();
@@ -855,6 +862,9 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     program_ptr->link_status = (link_status == 1);
     if (program_ptr->link_status)
     {
+        uint32_t n_image_units_assigned   = 0;
+        uint32_t n_texture_units_assigned = 0;
+
         if (!has_used_binary)
         {
             /* Stash the binary to local storage! */
@@ -895,15 +905,15 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
         GLchar* attribute_name = new (std::nothrow) GLchar[n_active_attribute_max_length + 1];
         GLchar* uniform_name   = new (std::nothrow) GLchar[uniform_name_length];
 
-        ASSERT_ALWAYS_SYNC(attribute_name != NULL,
+        ASSERT_ALWAYS_SYNC(attribute_name != nullptr,
                            "Could not allocate [%d] bytes for active attribute name",
                            n_active_attribute_max_length + 1);
-        ASSERT_ALWAYS_SYNC(uniform_name!= NULL,
+        ASSERT_ALWAYS_SYNC(uniform_name!= nullptr,
                            "Could not allocate [%d] bytes for active uniform name",
                            n_active_uniform_max_length + 1);
 
-        if (attribute_name     != NULL &&
-            uniform_name       != NULL)
+        if (attribute_name     != nullptr &&
+            uniform_name       != nullptr)
         {
             /* Focus on attributes for a minute */
             for (GLint n_active_attribute = 0;
@@ -913,12 +923,12 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
                 _raGL_program_attribute* new_attribute_raGL_ptr = new _raGL_program_attribute;
                 ral_program_attribute*   new_attribute_ral_ptr  = new ral_program_attribute;
 
-                ASSERT_ALWAYS_SYNC(new_attribute_raGL_ptr != NULL &&
-                                   new_attribute_ral_ptr  != NULL,
+                ASSERT_ALWAYS_SYNC(new_attribute_raGL_ptr != nullptr &&
+                                   new_attribute_ral_ptr  != nullptr,
                                    "Out of memory while allocating space for vertex attribute descriptors.");
 
                 new_attribute_ral_ptr->length = 0;
-                new_attribute_ral_ptr->name   = NULL;
+                new_attribute_ral_ptr->name   = nullptr;
                 new_attribute_ral_ptr->size   = 0;
                 new_attribute_ral_ptr->type   = RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
 
@@ -944,7 +954,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 
                 system_resizable_vector_push(program_ptr->active_attributes_raGL,
                                              new_attribute_raGL_ptr);
-            } /* for (all active attributes) */
+            }
 
             /* Continue with uniform blocks. */
             _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
@@ -980,8 +990,8 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
                     _raGL_program_variable* new_uniform_raGL_ptr = new (std::nothrow) _raGL_program_variable(temp_raGL);
                     ral_program_variable*   new_uniform_ral_ptr  = new (std::nothrow) ral_program_variable  (temp_ral);
 
-                    ASSERT_ALWAYS_SYNC(new_uniform_raGL_ptr != NULL &&
-                                       new_uniform_ral_ptr  != NULL,
+                    ASSERT_ALWAYS_SYNC(new_uniform_raGL_ptr != nullptr &&
+                                       new_uniform_ral_ptr  != nullptr,
                                        "Out of memory while allocating space for uniform descriptors.");
 
                     system_resizable_vector_push(program_ptr->active_uniforms_raGL,
@@ -990,23 +1000,54 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
                     ral_program_attach_variable_to_block(program_ptr->program_ral,
                                                          system_hashed_ansi_string_create(""),
                                                          new_uniform_ral_ptr);
+
+                    /* If this is an image or a sampler, assign a unique texture unit & store it */
+                    ral_program_variable_type_class variable_type_class;
+
+                    ral_utils_get_ral_program_variable_type_property(temp_ral.type,
+                                                                     RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
+                                                                     (void**) &variable_type_class);
+
+                    if (variable_type_class == RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE)
+                    {
+                        new_uniform_raGL_ptr->image_unit = n_image_units_assigned++;
+
+                        ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->image_unit < static_cast<uint32_t>(limits_ptr->max_image_units),
+                                          "Too many images declared in the shader.");
+
+                        program_ptr->pGLProgramUniform1i(program_ptr->id,
+                                                         temp_raGL.location,
+                                                         new_uniform_raGL_ptr->image_unit);
+                    }
+                    else
+                    if (variable_type_class == RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER)
+                    {
+                        new_uniform_raGL_ptr->texture_unit = n_texture_units_assigned++;
+
+                        ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->image_unit < static_cast<uint32_t>(limits_ptr->max_combined_texture_image_units),
+                                          "Too many samplers declared in the shader.");
+
+                        program_ptr->pGLProgramUniform1i(program_ptr->id,
+                                                         temp_raGL.location,
+                                                         new_uniform_raGL_ptr->texture_unit);
+                    }
                 }
             }
-        } /* if (attribute_name != NULL && uniform_name != NULL) */
+        }
 
         /* Free the buffers. */
-        if (attribute_name != NULL)
+        if (attribute_name != nullptr)
         {
             delete [] attribute_name;
-            attribute_name = NULL;
+            attribute_name = nullptr;
         }
 
-        if (uniform_name != NULL)
+        if (uniform_name != nullptr)
         {
             delete [] uniform_name;
-            uniform_name = NULL;
+            uniform_name = nullptr;
         }
-    } /* if (program_ptr->link_status) */
+    }
 
     /* Retrieve program info log */
     GLsizei program_info_log_length = 0;
@@ -1019,14 +1060,14 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     {
         GLchar* program_info_log = new (std::nothrow) char[program_info_log_length];
 
-        ASSERT_ALWAYS_SYNC(program_info_log != NULL,
+        ASSERT_ALWAYS_SYNC(program_info_log != nullptr,
                            "Out of memory while allocating buffer for program info log");
 
-        if (program_info_log != NULL)
+        if (program_info_log != nullptr)
         {
             program_ptr->pGLGetProgramInfoLog(program_ptr->id,
                                               program_info_log_length,
-                                              NULL,
+                                              nullptr,
                                               program_info_log);
 
             program_ptr->program_info_log = system_hashed_ansi_string_create(program_info_log);
@@ -1036,7 +1077,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
                      program_info_log);
 
             delete [] program_info_log;
-            program_info_log = NULL;
+            program_info_log = nullptr;
         }
     }
 
@@ -1065,13 +1106,13 @@ PRIVATE bool _raGL_program_load_binary_blob(ogl_context    context,
     char* file_name = _raGL_program_get_binary_blob_file_name(program_ptr);
     bool  result    = false;
 
-    if (file_name != NULL)
+    if (file_name != nullptr)
     {
         /* Open the file for reading */
         FILE* blob_file_handle = ::fopen(file_name,
                                          "rb");
 
-        if (blob_file_handle != NULL)
+        if (blob_file_handle != nullptr)
         {
             /* Read how many shaders are attached to the program */
             uint32_t n_shaders_attached_read = 0;
@@ -1096,7 +1137,7 @@ PRIVATE bool _raGL_program_load_binary_blob(ogl_context    context,
                               n < n_shaders_attached;
                             ++n)
                 {
-                    ral_shader    shader           = NULL;
+                    ral_shader    shader           = nullptr;
                     system_hash64 shader_hash_read = 0;
 
                     ASSERT_ALWAYS_SYNC(::fread(&shader_hash_read,
@@ -1110,7 +1151,7 @@ PRIVATE bool _raGL_program_load_binary_blob(ogl_context    context,
                                                                  n,
                                                                 &shader) )
                     {
-                        system_hashed_ansi_string shader_body = NULL;
+                        system_hashed_ansi_string shader_body = nullptr;
 
                         ral_shader_get_property(shader,
                                                 RAL_SHADER_PROPERTY_GLSL_BODY,
@@ -1118,8 +1159,8 @@ PRIVATE bool _raGL_program_load_binary_blob(ogl_context    context,
 
                         if (system_hashed_ansi_string_get_hash(shader_body) != shader_hash_read)
                         {
-                            system_hashed_ansi_string program_name = NULL;
-                            system_hashed_ansi_string shader_name  = NULL;
+                            system_hashed_ansi_string program_name = nullptr;
+                            system_hashed_ansi_string shader_name  = nullptr;
 
                             ral_program_get_property(program_ptr->program_ral,
                                                      RAL_PROGRAM_PROPERTY_NAME,
@@ -1193,7 +1234,7 @@ PRIVATE bool _raGL_program_load_binary_blob(ogl_context    context,
                         /* Program binary is no longer needed */
                         delete [] program_binary_ptr;
 
-                        program_binary_ptr = NULL;
+                        program_binary_ptr = nullptr;
                     }
                     else
                     {
@@ -1231,7 +1272,7 @@ PRIVATE bool _raGL_program_load_binary_blob(ogl_context    context,
 
         delete [] file_name;
 
-        file_name = NULL;
+        file_name = nullptr;
     }
 
     /* Done */
@@ -1243,10 +1284,10 @@ PRIVATE void _raGL_program_on_shader_compile_callback(const void* callback_data,
                                                       void*       user_arg)
 {
     _raGL_program*            program_ptr  = (_raGL_program*) user_arg;
-    system_hashed_ansi_string program_name = NULL;
+    system_hashed_ansi_string program_name = nullptr;
     raGL_shader               shader       = (raGL_shader)    callback_data;
-    ral_shader                shader_ral   = NULL;
-    system_hashed_ansi_string shader_name  = NULL;
+    ral_shader                shader_ral   = nullptr;
+    system_hashed_ansi_string shader_name  = nullptr;
 
     ral_program_get_property(program_ptr->program_ral,
                              RAL_PROGRAM_PROPERTY_NAME,
@@ -1276,22 +1317,22 @@ PRIVATE void _raGL_program_release(void* program)
                                                      program_ptr);
 
     /* Release resizable vectors */
-    ral_program_attribute* attribute_ptr = NULL;
-    ral_program_variable*  uniform_ptr   = NULL;
+    ral_program_attribute* attribute_ptr = nullptr;
+    ral_program_variable*  uniform_ptr   = nullptr;
 
     _raGL_program_release_active_attributes(program_ptr->active_attributes_raGL);
     _raGL_program_release_active_uniforms  (program_ptr->active_uniforms_raGL);
 
-    if (program_ptr->active_attributes_raGL != NULL)
+    if (program_ptr->active_attributes_raGL != nullptr)
     {
         system_resizable_vector_release(program_ptr->active_attributes_raGL);
-        program_ptr->active_attributes_raGL = NULL;
+        program_ptr->active_attributes_raGL = nullptr;
     }
 
-    if (program_ptr->active_uniforms_raGL != NULL)
+    if (program_ptr->active_uniforms_raGL != nullptr)
     {
         system_resizable_vector_release(program_ptr->active_uniforms_raGL);
-        program_ptr->active_uniforms_raGL = NULL;
+        program_ptr->active_uniforms_raGL = nullptr;
     }
 
     _raGL_program_clear_bindings_metadata(program_ptr,
@@ -1303,7 +1344,7 @@ PRIVATE void _raGL_program_release_active_attributes(system_resizable_vector act
 {
     while (true)
     {
-        ral_program_attribute* program_attribute_ptr = NULL;
+        ral_program_attribute* program_attribute_ptr = nullptr;
         bool                   result_get            = system_resizable_vector_pop(active_attributes,
                                                                                   &program_attribute_ptr);
 
@@ -1321,7 +1362,7 @@ PRIVATE void _raGL_program_release_active_uniforms(system_resizable_vector activ
 {
     while (true)
     {
-        ral_program_variable* program_uniform_ptr = NULL;
+        ral_program_variable* program_uniform_ptr = nullptr;
         bool                  result_get          = system_resizable_vector_pop(active_uniforms,
                                                                                &program_uniform_ptr);
 
@@ -1331,7 +1372,7 @@ PRIVATE void _raGL_program_release_active_uniforms(system_resizable_vector activ
         }
 
         delete program_uniform_ptr;
-        program_uniform_ptr = NULL;
+        program_uniform_ptr = nullptr;
     }
 }
 
@@ -1358,16 +1399,16 @@ PRIVATE void _raGL_program_save_binary_blob(ogl_context   context_ptr,
      */
     char* file_name_src = _raGL_program_get_binary_blob_file_name(program_ptr);
 
-    if (file_name_src != NULL)
+    if (file_name_src != nullptr)
     {
         /* Open the file for writing */
         system_file_serializer blob_file_serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(file_name_src) );
 
-        ASSERT_DEBUG_SYNC(blob_file_serializer != NULL,
+        ASSERT_DEBUG_SYNC(blob_file_serializer != nullptr,
                           "Could not open file [%s] for writing",
                           file_name_src);
 
-        if (blob_file_serializer != NULL)
+        if (blob_file_serializer != nullptr)
         {
             /* Retrieve the blob */
             GLint blob_length = 0;
@@ -1384,15 +1425,15 @@ PRIVATE void _raGL_program_save_binary_blob(ogl_context   context_ptr,
                 char*  blob        = new (std::nothrow) char[blob_length];
                 GLenum blob_format = 0;
 
-                ASSERT_DEBUG_SYNC(blob != NULL,
+                ASSERT_DEBUG_SYNC(blob != nullptr,
                                   "Could not allocate %d bytes for program blob",
                                   blob_length);
 
-                if (blob != NULL)
+                if (blob != nullptr)
                 {
                     program_ptr->pGLGetProgramBinary(program_ptr->id,
                                                      blob_length,
-                                                     NULL,
+                                                     nullptr,
                                                     &blob_format,
                                                     blob);
 
@@ -1411,8 +1452,8 @@ PRIVATE void _raGL_program_save_binary_blob(ogl_context   context_ptr,
                                       n_shader < n_attached_shaders;
                                     ++n_shader)
                     {
-                        ral_shader                shader      = NULL;
-                        system_hashed_ansi_string shader_body = NULL;
+                        ral_shader                shader      = nullptr;
+                        system_hashed_ansi_string shader_body = nullptr;
                         system_hash64             shader_hash = 0;
 
                         ral_program_get_attached_shader_at_index(program_ptr->program_ral,
@@ -1441,20 +1482,20 @@ PRIVATE void _raGL_program_save_binary_blob(ogl_context   context_ptr,
 
                     /* Cool to release the blob now */
                     delete [] blob;
-                    blob = NULL;
+                    blob = nullptr;
                 }
             }
 
             /* Release the seiralizer */
             system_file_serializer_release(blob_file_serializer);
 
-            blob_file_serializer = NULL;
-        } /* if (blob_file_serializer != NULL) */
+            blob_file_serializer = nullptr;
+        }
 
         /* Safe to release file name buffer now */
         delete [] file_name_src;
-        file_name_src = NULL;
-    } /* if (file_name_src != NULL) */
+        file_name_src = nullptr;
+    }
 }
 
 /** TODO */
@@ -1462,7 +1503,7 @@ PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
 {
     char*                     file_name    = _raGL_program_get_source_code_file_name(program_ptr);
     uint32_t                  n_shaders    = 0;
-    system_hashed_ansi_string program_name = NULL;
+    system_hashed_ansi_string program_name = nullptr;
     system_file_serializer    serializer   = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(file_name) );
 
     ral_program_get_property(program_ptr->program_ral,
@@ -1494,8 +1535,8 @@ PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
                   n_shader < n_shaders;
                 ++n_shader)
     {
-        ral_shader                current_shader = NULL;
-        system_hashed_ansi_string shader_body    = NULL;
+        ral_shader                current_shader = nullptr;
+        system_hashed_ansi_string shader_body    = nullptr;
         ral_shader_type           shader_type    = RAL_SHADER_TYPE_UNKNOWN;
 
         if (!ral_program_get_attached_shader_at_index(program_ptr->program_ral,
@@ -1519,7 +1560,7 @@ PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
         /* Store information about the shader type */
         static const char* marker_pre        = "--- ";
         static const char* marker_post       = " ---\n";
-        static const char* shader_type_string = NULL;
+        static const char* shader_type_string = nullptr;
 
         switch (shader_type)
         {
@@ -1556,7 +1597,7 @@ PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized shader type");
             }
-        } /* switch (shader_type) */
+        }
 
         /* Store the body */
         system_file_serializer_write(serializer,
@@ -1583,17 +1624,17 @@ PRIVATE void _raGL_program_save_shader_sources(_raGL_program* program_ptr)
         system_file_serializer_write(serializer,
                                      1, /* size */
                                      newline);
-    } /* for (all attached shaders) */
+    }
 
-    if (file_name != NULL)
+    if (file_name != nullptr)
     {
         delete [] file_name;
 
-        file_name = NULL;
+        file_name = nullptr;
     }
 
     system_file_serializer_release(serializer);
-    serializer = NULL;
+    serializer = nullptr;
 }
 
 
@@ -1603,12 +1644,12 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
 {
     ogl_context    current_context = ogl_context_get_current_context();
     _raGL_program* program_ptr     = (_raGL_program*) program;
-    ogl_context    program_context = NULL;
+    ogl_context    program_context = nullptr;
     bool           result          = false;
 
-    ASSERT_DEBUG_SYNC(program != NULL,
+    ASSERT_DEBUG_SYNC(program != nullptr,
                       "Program is NULL - crash ahead.");
-    ASSERT_DEBUG_SYNC(shader != NULL,
+    ASSERT_DEBUG_SYNC(shader != nullptr,
                       "Shader is NULL.");
 
     program_context = ral_context_get_gl_context(program_ptr->context);
@@ -1621,8 +1662,8 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
         callback_argument.program_ptr = program_ptr;
         callback_argument.shader      = shader;
 
-        ogl_context_request_callback_from_context_thread((current_context != NULL && current_context != program_context) ? current_context
-                                                                                                                         : program_context,
+        ogl_context_request_callback_from_context_thread((current_context != nullptr && current_context != program_context) ? current_context
+                                                                                                                            : program_context,
                                                          _raGL_program_attach_shader_callback,
                                                         &callback_argument);
 
@@ -1643,10 +1684,10 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
 {
     _raGL_program* new_program_ptr = new (std::nothrow) _raGL_program;
 
-    if (new_program_ptr != NULL)
+    if (new_program_ptr != nullptr)
     {
-        new_program_ptr->active_attributes_raGL    = NULL;
-        new_program_ptr->active_uniforms_raGL      = NULL;
+        new_program_ptr->active_attributes_raGL    = nullptr;
+        new_program_ptr->active_uniforms_raGL      = nullptr;
         new_program_ptr->block_name_to_binding_map = system_hash64map_create(sizeof(_raGL_program_block_binding*) );
         new_program_ptr->context                   = context;
         new_program_ptr->id                        = 0;
@@ -1658,8 +1699,8 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
         new_program_ptr->n_ssb_bindings            = 0;
         new_program_ptr->n_ub_bindings             = 0;
         new_program_ptr->program_ral               = program_ral;
-        new_program_ptr->ssb_bindings              = NULL;
-        new_program_ptr->ub_bindings               = NULL;
+        new_program_ptr->ssb_bindings              = nullptr;
+        new_program_ptr->ub_bindings               = nullptr;
 
         /* Init GL entry-point cache */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -1670,7 +1711,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints* entry_points = NULL;
+            const ogl_context_es_entrypoints* entry_points = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -1694,6 +1735,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLLinkProgram                = entry_points->pGLLinkProgram;
             new_program_ptr->pGLProgramBinary              = entry_points->pGLProgramBinary;
             new_program_ptr->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            new_program_ptr->pGLProgramUniform1i           = entry_points->pGLProgramUniform1i;
             new_program_ptr->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             new_program_ptr->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
@@ -1702,7 +1744,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
-            const ogl_context_gl_entrypoints* entry_points = NULL;
+            const ogl_context_gl_entrypoints* entry_points = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -1726,6 +1768,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
             new_program_ptr->pGLLinkProgram                = entry_points->pGLLinkProgram;
             new_program_ptr->pGLProgramBinary              = entry_points->pGLProgramBinary;
             new_program_ptr->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            new_program_ptr->pGLProgramUniform1i           = entry_points->pGLProgramUniform1i;
             new_program_ptr->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             new_program_ptr->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
@@ -1748,9 +1791,9 @@ PUBLIC void raGL_program_get_block_property(raGL_program                program,
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
 
-    if (program == NULL)
+    if (program == nullptr)
     {
-        ASSERT_DEBUG_SYNC(program != NULL,
+        ASSERT_DEBUG_SYNC(program != nullptr,
                           "Input raGL_program instance is NULL");
 
         goto end;
@@ -1820,17 +1863,17 @@ PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
 
-    if (program_ptr == NULL)
+    if (program_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(program_ptr != NULL,
+        ASSERT_DEBUG_SYNC(program_ptr != nullptr,
                           "Input raGL_program instance is NULL");
 
         goto end;
     }
 
-    if (out_result_ptr == NULL)
+    if (out_result_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(out_result_ptr != NULL,
+        ASSERT_DEBUG_SYNC(out_result_ptr != nullptr,
                           "Output variable is NULL");
 
         goto end;
@@ -1869,7 +1912,7 @@ PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized raGL_program_property value.");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }
@@ -1880,18 +1923,18 @@ PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(raGL_program    
                                                                 raGL_program_block_property property,
                                                                 void*                       out_result_ptr)
 {
-    _raGL_program_block_binding* binding_ptr = NULL;
+    _raGL_program_block_binding* binding_ptr = nullptr;
     _raGL_program*               program_ptr = (_raGL_program*) program;
 
-    if (program == NULL)
+    if (program == nullptr)
     {
-        ASSERT_DEBUG_SYNC(program != NULL,
+        ASSERT_DEBUG_SYNC(program != nullptr,
                           "Input raGL_program instance is NULL");
 
         goto end;
     }
 
-    if (block_name                                       == NULL ||
+    if (block_name                                       == nullptr ||
         system_hashed_ansi_string_get_length(block_name) == 0)
     {
         ASSERT_DEBUG_SYNC(false,
@@ -1914,7 +1957,7 @@ PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(raGL_program    
                               system_hashed_ansi_string_get_hash(block_name),
                              &binding_ptr) )
     {
-        system_hashed_ansi_string program_name = NULL;
+        system_hashed_ansi_string program_name = nullptr;
 
         ral_program_get_property(program_ptr->program_ral,
                                  RAL_PROGRAM_PROPERTY_NAME,
@@ -1959,7 +2002,7 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program           
                           n_uniform < n_uniforms;
                         ++n_uniform)
         {
-            _raGL_program_variable* uniform_ptr = NULL;
+            _raGL_program_variable* uniform_ptr = nullptr;
 
             result = system_resizable_vector_get_element_at(program_ptr->active_uniforms_raGL,
                                                             n_uniform,
@@ -2009,7 +2052,7 @@ PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program  
                           n_attribute < n_attributes;
                         ++n_attribute)
         {
-            _raGL_program_attribute* attribute_ptr = NULL;
+            _raGL_program_attribute* attribute_ptr = nullptr;
 
             result = system_resizable_vector_get_element_at(program_ptr->active_attributes_raGL,
                                                             n_attribute,
@@ -2071,8 +2114,8 @@ PUBLIC bool raGL_program_link(raGL_program program)
                           n_shader < n_attached_shaders;
                         ++n_shader)
         {
-            ral_shader  current_shader           = NULL;
-            raGL_shader current_shader_raGL      = NULL;
+            ral_shader  current_shader           = nullptr;
+            raGL_shader current_shader_raGL      = nullptr;
             GLuint      current_shader_raGL_id   = 0;
             bool        is_compiled_successfully = false;
 
@@ -2117,7 +2160,7 @@ PUBLIC bool raGL_program_link(raGL_program program)
                 all_shaders_compiled = false;
                 break;
             }
-        } /* for (all attached shaders) */
+        }
 
         if (all_shaders_compiled)
         {
@@ -2125,14 +2168,14 @@ PUBLIC bool raGL_program_link(raGL_program program)
             ogl_context current_context = ogl_context_get_current_context();
             ogl_context program_context = ral_context_get_gl_context     (program_ptr->context);
 
-            ogl_context_request_callback_from_context_thread( (current_context != NULL && current_context != program_context) ? current_context
-                                                                                                                              : program_context,
+            ogl_context_request_callback_from_context_thread( (current_context != nullptr && current_context != program_context) ? current_context
+                                                                                                                                 : program_context,
                                                              _raGL_program_link_callback,
                                                              program);
 
             result = program_ptr->link_status;
         }
-    } /* if (n_attached_shaders > 0) */
+    }
 
     return result;
 }
@@ -2150,7 +2193,7 @@ PUBLIC void raGL_program_lock(raGL_program program)
 /** Please see header for specification */
 PUBLIC void raGL_program_release(raGL_program program)
 {
-    ogl_context    context_gl  = NULL;
+    ogl_context    context_gl  = nullptr;
     _raGL_program* program_ptr = (_raGL_program*) program;
 
     ral_context_get_property(program_ptr->context,
@@ -2166,10 +2209,10 @@ PUBLIC void raGL_program_release(raGL_program program)
                       "Program locked but about to be destroyed");
 
     system_semaphore_release(program_ptr->link_semaphore);
-    program_ptr->link_semaphore = NULL;
+    program_ptr->link_semaphore = nullptr;
 
     system_event_release(program_ptr->queries_enabled_event);
-    program_ptr->queries_enabled_event = NULL;
+    program_ptr->queries_enabled_event = nullptr;
 
     /* Proceed with actual object destruction */
     delete (_raGL_program*) program;
@@ -2184,9 +2227,9 @@ PUBLIC void raGL_program_set_block_property(raGL_program                program,
 {
     _raGL_program* program_ptr = (_raGL_program*) program;
 
-    if (program == NULL)
+    if (program == nullptr)
     {
-        ASSERT_DEBUG_SYNC(program != NULL,
+        ASSERT_DEBUG_SYNC(program != nullptr,
                           "Input raGL_program instance is NULL");
 
         goto end;
@@ -2243,7 +2286,7 @@ PUBLIC void raGL_program_set_block_property(raGL_program                program,
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported ral_program_block_type argument value specified.");
         }
-    } /* switch (block_type) */
+    }
 end:
     ;
 }
@@ -2254,12 +2297,12 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_
                                                                            raGL_program_block_property property,
                                                                            const void*                 value_ptr)
 {
-    _raGL_program_block_binding* binding_ptr = NULL;
+    _raGL_program_block_binding* binding_ptr = nullptr;
     _raGL_program*               program_ptr = (_raGL_program*) program;
 
-    if (program == NULL)
+    if (program == nullptr)
     {
-        ASSERT_DEBUG_SYNC(program != NULL,
+        ASSERT_DEBUG_SYNC(program != nullptr,
                           "Input raGL_program instance is NULL");
 
         goto end;
@@ -2277,7 +2320,7 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_
                               system_hashed_ansi_string_get_hash(block_name),
                              &binding_ptr) )
     {
-        system_hashed_ansi_string program_name = NULL;
+        system_hashed_ansi_string program_name = nullptr;
 
         ral_program_get_property(program_ptr->program_ral,
                                  RAL_PROGRAM_PROPERTY_NAME,
@@ -2294,7 +2337,7 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_
     if (binding_ptr->indexed_bp != *(uint32_t*) value_ptr)
     {
         ogl_context                 current_context = ogl_context_get_current_context();
-        ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+        ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
 
         binding_ptr->indexed_bp = *(uint32_t*) value_ptr;
 

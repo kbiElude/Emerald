@@ -54,7 +54,7 @@ REFCOUNT_INSERT_DECLARATIONS(gfx_image, gfx_image)
 
 typedef system_hashed_ansi_string (*PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR)(void*                     user_arg,
                                                                               system_hashed_ansi_string decompressed_filename,
-                                                                              ral_texture_format*       out_compressed_texture_format,  /* can be NULL if the result is not a compressed filename */
+                                                                              ral_format*               out_compressed_texture_format,  /* can be NULL if the result is not a compressed filename */
                                                                               system_file_unpacker*     out_file_unpacker);             /* can be NULL if the file does not come from a file unpacker */
 
 /** TODO */
@@ -62,7 +62,7 @@ PUBLIC unsigned int gfx_image_add_mipmap(gfx_image             image,
                                          unsigned int          width,
                                          unsigned int          height,
                                          unsigned int          row_alignment,
-                                         ral_texture_format    format,
+                                         ral_format            format,
                                          bool                  is_compressed,
                                          const unsigned char*  data_ptr,
                                          unsigned int          data_size,
@@ -90,10 +90,10 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
  *
  *  @return Amount of bytes given image configuration needs to store full picture.
  **/
-PUBLIC unsigned int gfx_image_get_data_size(ral_texture_format format,
-                                            unsigned int       width,
-                                            unsigned int       height,
-                                            unsigned int       row_alignment);
+PUBLIC unsigned int gfx_image_get_data_size(ral_format   format,
+                                            unsigned int width,
+                                            unsigned int height,
+                                            unsigned int row_alignment);
 
 /** TODO */
 PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(gfx_image                 image,

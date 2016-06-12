@@ -18,7 +18,6 @@
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
-#include "ral/ral_framebuffer.h"
 #include "ral/ral_rendering_handler.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_utils.h"
@@ -182,20 +181,20 @@ PRIVATE void APIENTRY             _ogl_context_debug_message_gl_callback        
 PRIVATE void                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback      (ogl_context                  context,
                                                                                                       void*                        user_arg);
 PRIVATE bool                      _ogl_context_get_attachment_formats_for_system_pixel_format        (const system_pixel_format    pf,
-                                                                                                      ral_texture_format*          out_color_attachment_internalformat_ptr,
-                                                                                                      ral_texture_format*          out_depth_stencil_attachment_internalformat_ptr);
+                                                                                                      ral_format*                  out_color_attachment_internalformat_ptr,
+                                                                                                      ral_format*                  out_depth_stencil_attachment_internalformat_ptr);
 PRIVATE bool                      _ogl_context_get_color_attachment_format_for_rgba_bits             (unsigned char*               n_rgba_bits,
                                                                                                       bool                         use_srgb_color_space_ptr,
-                                                                                                      ral_texture_format*          out_format_ptr);
+                                                                                                      ral_format*                  out_format_ptr);
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename                               (void*                        user_arg,
                                                                                                       system_hashed_ansi_string    decompressed_filename,
                                                                                                       GLenum*                      out_compressed_gl_enum_ptr,
                                                                                                       system_file_unpacker*        out_file_unpacker_ptr);
 PRIVATE bool                      _ogl_context_get_depth_attachment_format_for_bits                  (unsigned char                n_depth_bits,
-                                                                                                      ral_texture_format*          out_format_ptr);
+                                                                                                      ral_format*                  out_format_ptr);
 PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_format_for_bits          (unsigned char                n_depth_bits,
                                                                                                       unsigned char                n_stencil_bits,
-                                                                                                      ral_texture_format*          out_format_ptr);
+                                                                                                      ral_format*                  out_format_ptr);
 PRIVATE bool                      _ogl_context_get_function_pointers                                 (_ogl_context*                context_ptr,
                                                                                                       const func_ptr_table_entry*  entries,
                                                                                                       uint32_t                     n_entries);
@@ -485,15 +484,15 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
 
 /** TODO */
 PRIVATE bool _ogl_context_get_attachment_formats_for_system_pixel_format(const system_pixel_format pf,
-                                                                         ral_texture_format*       out_color_attachment_internalformat_ptr,
-                                                                         ral_texture_format*       out_depth_stencil_attachment_internalformat_ptr)
+                                                                         ral_format*               out_color_attachment_internalformat_ptr,
+                                                                         ral_format*               out_depth_stencil_attachment_internalformat_ptr)
 {
-    ral_texture_format format_color         = RAL_TEXTURE_FORMAT_UNKNOWN;
-    ral_texture_format format_depth_stencil = RAL_TEXTURE_FORMAT_UNKNOWN;
-    unsigned char      n_color_rgba_bits[4] = {0};
-    unsigned char      n_depth_bits         = 0;
-    unsigned char      n_stencil_bits       = 0;
-    bool               result               = true;
+    ral_format    format_color         = RAL_FORMAT_UNKNOWN;
+    ral_format    format_depth_stencil = RAL_FORMAT_UNKNOWN;
+    unsigned char n_color_rgba_bits[4] = {0};
+    unsigned char n_depth_bits         = 0;
+    unsigned char n_stencil_bits       = 0;
+    bool          result               = true;
 
     /* Retrieve the number of bits for all three attachments */
     system_pixel_format_get_property(pf,
@@ -564,8 +563,8 @@ end:
     }
     else
     {
-        *out_color_attachment_internalformat_ptr         = RAL_TEXTURE_FORMAT_UNKNOWN;
-        *out_depth_stencil_attachment_internalformat_ptr = RAL_TEXTURE_FORMAT_UNKNOWN;
+        *out_color_attachment_internalformat_ptr         = RAL_FORMAT_UNKNOWN;
+        *out_depth_stencil_attachment_internalformat_ptr = RAL_FORMAT_UNKNOWN;
     }
 
     return result;
@@ -746,21 +745,21 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_color_attachment_format_for_rgba_bits(unsigned char*      n_rgba_bits,
-                                                                    bool                use_srgb_color_space,
-                                                                    ral_texture_format* out_format_ptr)
+PRIVATE bool _ogl_context_get_color_attachment_format_for_rgba_bits(unsigned char* n_rgba_bits,
+                                                                    bool           use_srgb_color_space,
+                                                                    ral_format*    out_format_ptr)
 {
     bool result = true;
 
     if (n_rgba_bits[0] == 0 && n_rgba_bits[1] == 0 && n_rgba_bits[2] == 0 && n_rgba_bits[3] == 0)
     {
-        *out_format_ptr = RAL_TEXTURE_FORMAT_UNKNOWN;
+        *out_format_ptr = RAL_FORMAT_UNKNOWN;
     }
     else
     if (use_srgb_color_space)
     {
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format_ptr = RAL_TEXTURE_FORMAT_SRGB8_UNORM; else
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format_ptr = RAL_TEXTURE_FORMAT_SRGBA8_UNORM;else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format_ptr = RAL_FORMAT_SRGB8_UNORM; else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format_ptr = RAL_FORMAT_SRGBA8_UNORM;else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported number of RGBA bits requested");
@@ -770,8 +769,8 @@ PRIVATE bool _ogl_context_get_color_attachment_format_for_rgba_bits(unsigned cha
     }
     else
     {
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format_ptr = RAL_TEXTURE_FORMAT_RGB8_UNORM; else
-        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format_ptr = RAL_TEXTURE_FORMAT_RGBA8_UNORM;else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 0) *out_format_ptr = RAL_FORMAT_RGB8_UNORM; else
+        if (n_rgba_bits[0] == 8 && n_rgba_bits[1] == 8 && n_rgba_bits[2] == 8 && n_rgba_bits[3] == 8) *out_format_ptr = RAL_FORMAT_RGBA8_UNORM;else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported number of RGBA bits requested");
@@ -784,8 +783,8 @@ PRIVATE bool _ogl_context_get_color_attachment_format_for_rgba_bits(unsigned cha
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_depth_attachment_format_for_bits(unsigned char       n_depth_bits,
-                                                               ral_texture_format* out_format_ptr)
+PRIVATE bool _ogl_context_get_depth_attachment_format_for_bits(unsigned char n_depth_bits,
+                                                               ral_format*   out_format_ptr)
 {
     bool result = true;
 
@@ -793,28 +792,28 @@ PRIVATE bool _ogl_context_get_depth_attachment_format_for_bits(unsigned char    
     {
         case 0:
         {
-            *out_format_ptr = RAL_TEXTURE_FORMAT_UNKNOWN;
+            *out_format_ptr = RAL_FORMAT_UNKNOWN;
 
             break;
         }
 
         case 16:
         {
-            *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH16_SNORM;
+            *out_format_ptr = RAL_FORMAT_DEPTH16_SNORM;
 
             break;
         }
 
         case 24:
         {
-            *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH24_SNORM;
+            *out_format_ptr = RAL_FORMAT_DEPTH24_SNORM;
 
             break;
         }
 
         case 32:
         {
-            *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH32_SNORM;
+            *out_format_ptr = RAL_FORMAT_DEPTH32_SNORM;
 
             break;
         }
@@ -832,20 +831,20 @@ PRIVATE bool _ogl_context_get_depth_attachment_format_for_bits(unsigned char    
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_get_depth_stencil_attachment_format_for_bits(unsigned char       n_depth_bits,
-                                                                       unsigned char       n_stencil_bits,
-                                                                       ral_texture_format* out_format_ptr)
+PRIVATE bool _ogl_context_get_depth_stencil_attachment_format_for_bits(unsigned char n_depth_bits,
+                                                                       unsigned char n_stencil_bits,
+                                                                       ral_format*   out_format_ptr)
 {
     bool result = true;
 
     if (n_depth_bits == 24 && n_stencil_bits == 8)
     {
-        *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH24_STENCIL8;
+        *out_format_ptr = RAL_FORMAT_DEPTH24_STENCIL8;
     }
     else
     if (n_depth_bits == 32 && n_stencil_bits == 8)
     {
-        *out_format_ptr = RAL_TEXTURE_FORMAT_DEPTH32F_STENCIL8;
+        *out_format_ptr = RAL_FORMAT_DEPTH32F_STENCIL8;
     }
     else
     {
@@ -1213,8 +1212,8 @@ PRIVATE void _ogl_context_initialize_es_ext_texture_buffer_extension(_ogl_contex
 PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
 {
     GLenum              fbo_completeness_status               = GL_NONE;
-    ral_texture_format  format_color                          = RAL_TEXTURE_FORMAT_UNKNOWN;
-    ral_texture_format  format_depth_stencil                  = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format          format_color                          = RAL_FORMAT_UNKNOWN;
+    ral_format          format_depth_stencil                  = RAL_FORMAT_UNKNOWN;
     bool                format_depth_stencil_includes_stencil = false;
     unsigned int        n_samples                             = 0;
     unsigned int        n_samples_effective                   = 0;
@@ -1290,22 +1289,22 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
         goto end;
     }
 
-    if (format_color         != RAL_TEXTURE_FORMAT_UNKNOWN ||
-        format_depth_stencil != RAL_TEXTURE_FORMAT_UNKNOWN)
+    if (format_color         != RAL_FORMAT_UNKNOWN ||
+        format_depth_stencil != RAL_FORMAT_UNKNOWN)
     {
         ASSERT_DEBUG_SYNC(n_samples >= 1,
                         "Invalid number of samples requested");
 
-        ral_utils_get_texture_format_property(format_depth_stencil,
-                                              RAL_TEXTURE_FORMAT_PROPERTY_HAS_STENCIL_DATA,
-                                             &format_depth_stencil_includes_stencil);
+        ral_utils_get_format_property(format_depth_stencil,
+                                      RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                     &format_depth_stencil_includes_stencil);
 
         /* Generate the GL objects */
         ral_context_create_framebuffers(context_ptr->context,
                                         1, /* n_framebuffers */
                                        &context_ptr->fbo);
 
-        if (format_color != RAL_TEXTURE_FORMAT_UNKNOWN)
+        if (format_color != RAL_FORMAT_UNKNOWN)
         {
             ral_texture_create_info color_to_create_info;
             bool                    color_to_is_rb       = false;
@@ -1338,13 +1337,13 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
 
             raGL_texture_get_property(color_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                     &color_to_is_rb);
+                                      (void**) &color_to_is_rb);
 
             ASSERT_DEBUG_SYNC(color_to_is_rb,
                               "Default FB's color texture is not a RB");
         }
 
-        if (format_depth_stencil != RAL_TEXTURE_FORMAT_UNKNOWN)
+        if (format_depth_stencil != RAL_FORMAT_UNKNOWN)
         {
             ral_texture_create_info depth_stencil_to_create_info;
             bool                    depth_stencil_to_is_rb = false;
@@ -1408,12 +1407,12 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
     const char* format_color_string         = nullptr;
     const char* format_depth_stencil_string = nullptr;
 
-    ral_utils_get_texture_format_property(format_color,
-                                          RAL_TEXTURE_FORMAT_PROPERTY_NAME,
-                                         &format_color_string);
-    ral_utils_get_texture_format_property(format_depth_stencil,
-                                          RAL_TEXTURE_FORMAT_PROPERTY_NAME,
-                                         &format_depth_stencil_string);
+    ral_utils_get_format_property(format_color,
+                                  RAL_FORMAT_PROPERTY_NAME,
+                                 &format_color_string);
+    ral_utils_get_format_property(format_depth_stencil,
+                                  RAL_FORMAT_PROPERTY_NAME,
+                                 &format_depth_stencil_string);
 
     LOG_INFO("Using the following FBO configuration for the rendering context:\n"
              "* Color RBO:         [%s]\n"
@@ -2156,6 +2155,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLBindTexture,                                 "glBindTexture"},
         {&context_ptr->entry_points_gl.pGLBindTransformFeedback,                            "glBindTransformFeedback"},
         {&context_ptr->entry_points_private.pGLBindVertexArray,                             "glBindVertexArray"},
+        {&context_ptr->entry_points_gl.pGLBindVertexBuffer,                                 "glBindVertexBuffer"},
         {&context_ptr->entry_points_private.pGLBlendColor,                                  "glBlendColor"},
         {&context_ptr->entry_points_private.pGLBlendEquation,                               "glBlendEquation"},
         {&context_ptr->entry_points_private.pGLBlendEquationSeparate,                       "glBlendEquationSeparate"},
@@ -2228,6 +2228,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLDrawElements,                                "glDrawElements"},
         {&context_ptr->entry_points_private.pGLDrawElementsInstanced,                       "glDrawElementsInstanced"},
         {&context_ptr->entry_points_private.pGLDrawElementsInstancedBaseInstance,           "glDrawElementsInstancedBaseInstance"},
+        {&context_ptr->entry_points_private.pGLDrawElementsInstancedBaseVertex,             "glDrawElementsInstancedBaseVertex"},
         {&context_ptr->entry_points_private.pGLDrawElementsInstancedBaseVertexBaseInstance, "glDrawElementsInstancedBaseVertexBaseInstance"},
         {&context_ptr->entry_points_private.pGLDrawRangeElements,                           "glDrawRangeElements"},
         {&context_ptr->entry_points_private.pGLDrawTransformFeedback,                       "glDrawTransformFeedback"},
@@ -2349,6 +2350,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLMapBuffer,                                   "glMapBuffer"},
         {&context_ptr->entry_points_private.pGLMapBufferRange,                              "glMapBufferRange"},
         {&context_ptr->entry_points_private.pGLMemoryBarrier,                               "glMemoryBarrier"},
+        {&context_ptr->entry_points_private.pGLMinSampleShading,                            "glMinSampleShading"},
         {&context_ptr->entry_points_private.pGLMultiDrawArrays,                             "glMultiDrawArrays"},
         {&context_ptr->entry_points_private.pGLMultiDrawArraysIndirect,                     "glMultiDrawArraysIndirect"},
         {&context_ptr->entry_points_private.pGLMultiDrawElements,                           "glMultiDrawElements"},
@@ -2356,6 +2358,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLMultiDrawElementsIndirect,                   "glMultiDrawElementsIndirect"},
         {&context_ptr->entry_points_gl.pGLObjectLabel,                                      "glObjectLabel"},
         {&context_ptr->entry_points_gl.pGLObjectPtrLabel,                                   "glObjectPtrLabel"},
+        {&context_ptr->entry_points_gl.pGLPatchParameteri,                                  "glPatchParameteri"},
         {&context_ptr->entry_points_gl.pGLPauseTransformFeedback,                           "glPauseTransformFeedback"},
         {&context_ptr->entry_points_gl.pGLPixelStoref,                                      "glPixelStoref"},
         {&context_ptr->entry_points_gl.pGLPixelStorei,                                      "glPixelStorei"},
@@ -2425,6 +2428,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLSamplerParameteri,                                "glSamplerParameteri"},
         {&context_ptr->entry_points_gl.pGLSamplerParameteriv,                               "glSamplerParameteriv"},
         {&context_ptr->entry_points_private.pGLScissor,                                     "glScissor"},
+        {&context_ptr->entry_points_private.pGLScissorIndexedv,                             "glScissorIndexedv"},
         {&context_ptr->entry_points_private.pGLShaderStorageBlockBinding,                   "glShaderStorageBlockBinding"},
         {&context_ptr->entry_points_gl.pGLShaderSource,                                     "glShaderSource"},
         {&context_ptr->entry_points_gl.pGLStencilFunc,                                      "glStencilFunc"},
@@ -2519,7 +2523,9 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLVertexAttribIPointer,                        "glVertexAttribIPointer"},
         {&context_ptr->entry_points_private.pGLVertexAttribLFormat,                         "glVertexAttribLFormat"},
         {&context_ptr->entry_points_private.pGLVertexAttribPointer,                         "glVertexAttribPointer"},
+        {&context_ptr->entry_points_gl.pGLVertexBindingDivisor,                             "glVertexBindingDivisor"},
         {&context_ptr->entry_points_private.pGLViewport,                                    "glViewport"},
+        {&context_ptr->entry_points_private.pGLViewportIndexedfv,                           "glViewportIndexedfv"},
         {&context_ptr->entry_points_gl.pGLWaitSync,                                         "glWaitSync"}
     };
     const uint32_t n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
@@ -2581,6 +2587,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLDrawElements                                = ogl_context_wrappers_glDrawElements;
     context_ptr->entry_points_gl.pGLDrawElementsInstanced                       = ogl_context_wrappers_glDrawElementsInstanced;
     context_ptr->entry_points_gl.pGLDrawElementsInstancedBaseInstance           = ogl_context_wrappers_glDrawElementsInstancedBaseInstance;
+    context_ptr->entry_points_gl.pGLDrawElementsInstancedBaseVertex             = ogl_context_wrappers_glDrawElementsInstancedBaseVertex;
     context_ptr->entry_points_gl.pGLDrawElementsInstancedBaseVertexBaseInstance = ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseInstance;
     context_ptr->entry_points_gl.pGLDrawRangeElements                           = ogl_context_wrappers_glDrawRangeElements;
     context_ptr->entry_points_gl.pGLDrawTransformFeedback                       = ogl_context_wrappers_glDrawTransformFeedback;
@@ -2637,17 +2644,20 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLMapBuffer                                   = ogl_context_wrappers_glMapBuffer;
     context_ptr->entry_points_gl.pGLMapBufferRange                              = ogl_context_wrappers_glMapBufferRange;
     context_ptr->entry_points_gl.pGLMemoryBarrier                               = ogl_context_wrappers_glMemoryBarrier;
+    context_ptr->entry_points_gl.pGLMinSampleShading                            = ogl_context_wrappers_glMinSampleShading;
     context_ptr->entry_points_gl.pGLMultiDrawArrays                             = ogl_context_wrappers_glMultiDrawArrays;
     context_ptr->entry_points_gl.pGLMultiDrawArraysIndirect                     = ogl_context_wrappers_glMultiDrawArraysIndirect;
     context_ptr->entry_points_gl.pGLMultiDrawElements                           = ogl_context_wrappers_glMultiDrawElements;
     context_ptr->entry_points_gl.pGLMultiDrawElementsBaseVertex                 = ogl_context_wrappers_glMultiDrawElementsBaseVertex;
     context_ptr->entry_points_gl.pGLMultiDrawElementsIndirect                   = ogl_context_wrappers_glMultiDrawElementsIndirect;
+    context_ptr->entry_points_gl.pGLPatchParameteri                             = ogl_context_wrappers_glPatchParameteri;
     context_ptr->entry_points_gl.pGLReadBuffer                                  = ogl_context_wrappers_glReadBuffer;
     context_ptr->entry_points_gl.pGLReadPixels                                  = ogl_context_wrappers_glReadPixels;
     context_ptr->entry_points_gl.pGLRenderbufferStorage                         = ogl_context_wrappers_glRenderbufferStorage;
     context_ptr->entry_points_gl.pGLRenderbufferStorageMultisample              = ogl_context_wrappers_glRenderbufferStorageMultisample;
     context_ptr->entry_points_gl.pGLResumeTransformFeedback                     = ogl_context_wrappers_glResumeTransformFeedback;
     context_ptr->entry_points_gl.pGLScissor                                     = ogl_context_wrappers_glScissor;
+    context_ptr->entry_points_gl.pGLScissorIndexedv                             = ogl_context_wrappers_glScissorIndexedv;
     context_ptr->entry_points_gl.pGLShaderStorageBlockBinding                   = ogl_context_wrappers_glShaderStorageBlockBinding;
     context_ptr->entry_points_gl.pGLTexBuffer                                   = ogl_context_wrappers_glTexBuffer;
     context_ptr->entry_points_gl.pGLTexBufferRange                              = ogl_context_wrappers_glTexBufferRange;
@@ -2670,6 +2680,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLVertexAttribLFormat                         = ogl_context_wrappers_glVertexAttribLFormat;
     context_ptr->entry_points_gl.pGLVertexAttribPointer                         = ogl_context_wrappers_glVertexAttribPointer;
     context_ptr->entry_points_gl.pGLViewport                                    = ogl_context_wrappers_glViewport;
+    context_ptr->entry_points_gl.pGLViewportIndexedfv                           = ogl_context_wrappers_glViewportIndexedfv;
 }
 
 /** TODO */
@@ -2924,6 +2935,8 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
                                                     &context_ptr->limits.max_vertex_atomic_counter_buffers);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATOMIC_COUNTERS,
                                                     &context_ptr->limits.max_vertex_atomic_counters);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATTRIB_BINDINGS,
+                                                    &context_ptr->limits.max_vertex_attrib_bindings);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATTRIBS,
                                                     &context_ptr->limits.max_vertex_attribs);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_OUTPUT_COMPONENTS,
@@ -2936,6 +2949,8 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
                                                     &context_ptr->limits.max_vertex_uniform_blocks);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
                                                     &context_ptr->limits.max_vertex_uniform_components);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VIEWPORTS,
+                                                    &context_ptr->limits.max_viewports);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_MINOR_VERSION,
                                                     &context_ptr->limits.minor_version);
     context_ptr->entry_points_private.pGLGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS,
@@ -3103,8 +3118,8 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
     bool                    consider_color_internalformats         = false;
     bool                    consider_depth_stencil_internalformats = false;
     system_resizable_vector depth_stencil_samples_vector           = nullptr;
-    ral_texture_format      format_color                           = RAL_TEXTURE_FORMAT_UNKNOWN;
-    ral_texture_format      format_depth_stencil                   = RAL_TEXTURE_FORMAT_UNKNOWN;
+    ral_format              format_color                           = RAL_FORMAT_UNKNOWN;
+    ral_format              format_depth_stencil                   = RAL_FORMAT_UNKNOWN;
     bool                    result                                 = true;
     system_resizable_vector result_vector                          = nullptr;
     ral_context             root_context                           = nullptr;
@@ -3138,8 +3153,8 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
     root_context_gl     = ral_context_get_gl_context(root_context);
     root_context_gl_ptr = (_ogl_context*) root_context_gl;
 
-    root_context_gl_ptr->msaa_enumeration_color_internalformat         = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format_color);
-    root_context_gl_ptr->msaa_enumeration_depth_stencil_internalformat = raGL_utils_get_ogl_texture_internalformat_for_ral_texture_format(format_depth_stencil);
+    root_context_gl_ptr->msaa_enumeration_color_internalformat         = raGL_utils_get_ogl_texture_internalformat_for_ral_format(format_color);
+    root_context_gl_ptr->msaa_enumeration_depth_stencil_internalformat = raGL_utils_get_ogl_texture_internalformat_for_ral_format(format_depth_stencil);
 
     ogl_context_request_callback_from_context_thread(root_context_gl,
                                                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback,
