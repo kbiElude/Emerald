@@ -125,6 +125,13 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
             break;
         }
 
+        case RAL_GFX_STATE_PROPERTY_DEPTH_COMPARE_FUNC:
+        {
+            *(ral_compare_op*) out_result_ptr = gfx_state_ptr->create_info.depth_test_compare_op;
+
+            break;
+        }
+
         case RAL_GFX_STATE_PROPERTY_DEPTH_TEST_ENABLED:
         {
             *(bool*) out_result_ptr = gfx_state_ptr->create_info.depth_test;
@@ -219,6 +226,13 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
         case RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_MIN:
         {
             *(float*) out_result_ptr = gfx_state_ptr->create_info.sample_shading_min_sample_shading;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED:
+        {
+            *(bool*) out_result_ptr = gfx_state_ptr->create_info.scissor_test;
 
             break;
         }

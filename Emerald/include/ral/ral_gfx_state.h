@@ -42,6 +42,9 @@ typedef enum
     /* not settable; bool */
     RAL_GFX_STATE_PROPERTY_DEPTH_CLAMP_ENABLED,
 
+    /* not settable; ral_compare_op */
+    RAL_GFX_STATE_PROPERTY_DEPTH_COMPARE_FUNC,
+
     /* not settable; bool */
     RAL_GFX_STATE_PROPERTY_DEPTH_TEST_ENABLED,
 
@@ -86,6 +89,9 @@ typedef enum
 
     /* not settable; float */
     RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_MIN,
+
+    /* not settable; bool */
+    RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,
 
     /* not settable; ral_stencil_op_state */
     RAL_GFX_STATE_PROPERTY_STENCIL_TEST_BACK,

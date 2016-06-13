@@ -240,6 +240,12 @@ typedef struct
 
 typedef struct
 {
+    uint32_t rt_index;
+
+} ral_command_buffer_rendertarget_binding_info;
+
+typedef struct
+{
     ral_sampler      sampler;
     ral_texture_view texture_view;
 
@@ -261,6 +267,7 @@ typedef struct ral_command_buffer_set_binding_command_info
 
     union
     {
+        ral_command_buffer_rendertarget_binding_info  rendertarget_binding;
         ral_command_buffer_sampled_image_binding_info sampled_image_binding;
         ral_command_buffer_buffer_binding_info        storage_buffer_binding;
         ral_command_buffer_storage_image_binding_info storage_image_binding;
@@ -295,12 +302,15 @@ typedef struct ral_command_buffer_set_rendertarget_state_command_info
     ral_blend_factor src_color_blend_factor;
     ral_texture_view texture_view;
 
+    /* NOTE: OpenGL is far more flexible in terms of configuring channel writes, but
+     *       Vulkan's our main API of interest, so need to take its restrictions into
+     *       account here. */
     struct
     {
-        bool channel0 : 1;
-        bool channel1 : 1;
-        bool channel2 : 1;
-        bool channel3 : 1;
+        bool color0  : 1;
+        bool color1  : 1;
+        bool color2  : 1;
+        bool color3  : 1;
     } channel_writes;
 
     static ral_command_buffer_set_rendertarget_state_command_info get_preinitialized_instance()
@@ -314,10 +324,10 @@ typedef struct ral_command_buffer_set_rendertarget_state_command_info
         result.blend_enabled           = false;
         result.blend_op_alpha          = RAL_BLEND_OP_ADD;
         result.blend_op_color          = RAL_BLEND_OP_ADD;
-        result.channel_writes.channel0 = true;
-        result.channel_writes.channel1 = true;
-        result.channel_writes.channel2 = true;
-        result.channel_writes.channel3 = true;
+        result.channel_writes.color0   = true;
+        result.channel_writes.color1   = true;
+        result.channel_writes.color2   = true;
+        result.channel_writes.color3   = true;
         result.dst_alpha_blend_factor  = RAL_BLEND_FACTOR_ONE;
         result.dst_color_blend_factor  = RAL_BLEND_FACTOR_ONE;
         result.rendertarget_index      = -1;

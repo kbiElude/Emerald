@@ -71,6 +71,8 @@ typedef enum
 
 typedef enum
 {
+    /* NOTE: If you need to change this enum, also update raGL_utils_get_ogl_enum_for_ral_blend_factor() */
+
     RAL_BLEND_FACTOR_CONSTANT_ALPHA,
     RAL_BLEND_FACTOR_CONSTANT_COLOR,
     RAL_BLEND_FACTOR_DST_ALPHA,
@@ -90,6 +92,8 @@ typedef enum
 
 typedef enum
 {
+    /* NOTE: If you need to change this enum, also update raGL_utils_get_ogl_enum_for_ral_blend_op(). */
+
     RAL_BLEND_OP_ADD,
     RAL_BLEND_OP_MAX,
     RAL_BLEND_OP_MIN,
@@ -172,6 +176,8 @@ typedef enum
     RAL_COMPARE_OP_NEQUAL,
     RAL_COMPARE_OP_NEVER,
     RAL_COMPARE_OP_GREATER,
+
+    RAL_COMPARE_OP_UNKNOWN
 } ral_compare_op;
 
 typedef enum
@@ -458,6 +464,9 @@ typedef enum
 
 typedef enum
 {
+    /* framebuffer RT index */
+    RAL_BINDING_TYPE_RENDERTARGET,
+
     /* sampler + texture */
     RAL_BINDING_TYPE_SAMPLED_IMAGE,
 
@@ -520,8 +529,15 @@ typedef struct ral_buffer_create_info
     }
 } ral_buffer_create_info;
 
+typedef enum ral_color_data_type
+{
+    RAL_COLOR_DATA_TYPE_FLOAT,
+    RAL_COLOR_DATA_TYPE_SINT,
+    RAL_COLOR_DATA_TYPE_UINT,
+};
+
 /* RAL RGBA color */
-typedef struct
+typedef struct ral_color
 {
     union
     {
@@ -530,13 +546,50 @@ typedef struct
         uint32_t u32[4];
     };
 
-    enum
-    {
-        RAL_COLOR_DATA_TYPE_FLOAT,
-        RAL_COLOR_DATA_TYPE_SINT,
-        RAL_COLOR_DATA_TYPE_UINT,
-    } data_type;
+    ral_color_data_type data_type;
 
+    bool operator==(const ral_color& in) const
+    {
+        if (!in.data_type != data_type)
+        {
+            return false;
+        }
+
+        switch (in.data_type)
+        {
+            case RAL_COLOR_DATA_TYPE_FLOAT:
+            {
+                return fabs(in.f32[0] - f32[0]) < 1e-5f &&
+                       fabs(in.f32[1] - f32[1]) < 1e-5f &&
+                       fabs(in.f32[2] - f32[2]) < 1e-5f &&
+                       fabs(in.f32[3] - f32[3]) < 1e-5f;
+            }
+
+            case RAL_COLOR_DATA_TYPE_SINT:
+            {
+                return in.i32[0] == i32[0] &&
+                       in.i32[1] == i32[1] &&
+                       in.i32[2] == i32[2] &&
+                       in.i32[3] == i32[3];
+            }
+
+            case RAL_COLOR_DATA_TYPE_UINT:
+            {
+                return in.u32[0] == u32[0] &&
+                       in.u32[1] == u32[1] &&
+                       in.u32[2] == u32[2] &&
+                       in.u32[3] == u32[3];
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized RAL color data type");
+            }
+        }
+
+        return false;
+    }
 } ral_color;
 
 typedef struct ral_command_buffer_create_info
@@ -554,23 +607,6 @@ typedef struct ral_command_buffer_create_info
         is_transient                            = false;
     }
 } ral_command_buffer_create_info;
-
-/* RAL compare function */
-typedef enum
-{
-
-    RAL_COMPARE_FUNCTION_ALWAYS,
-    RAL_COMPARE_FUNCTION_EQUAL,
-    RAL_COMPARE_FUNCTION_LEQUAL,
-    RAL_COMPARE_FUNCTION_LESS,
-    RAL_COMPARE_FUNCTION_GEQUAL,
-    RAL_COMPARE_FUNCTION_GREATER,
-    RAL_COMPARE_FUNCTION_NEVER,
-    RAL_COMPARE_FUNCTION_NOTEQUAL,
-
-    RAL_COMPARE_FUNCTION_COUNT,
-    RAL_COMPARE_FUNCTION_UNKNOWN = RAL_COMPARE_FUNCTION_COUNT
-} ral_compare_function;
 
 typedef enum
 {
@@ -1201,6 +1237,8 @@ typedef enum
 {
     RAL_VERTEX_INPUT_RATE_PER_INSTANCE,
     RAL_VERTEX_INPUT_RATE_PER_VERTEX,
+
+    RAL_VERTEX_INPUT_RATE_UNKNOWN
 } ral_vertex_input_rate;
 
 
@@ -1237,6 +1275,7 @@ typedef struct ral_gfx_state_create_info
     bool primitive_restart;
     bool rasterizer_discard;
     bool sample_shading;
+    bool scissor_test;
     bool stencil_test;
 
     /* Depth bias */
@@ -1289,6 +1328,7 @@ typedef struct ral_gfx_state_create_info
         primitive_restart  = false;
         rasterizer_discard = false;
         sample_shading     = false;
+        scissor_test       = false;
         stencil_test       = false;
 
         cull_mode                         = RAL_CULL_MODE_BACK;

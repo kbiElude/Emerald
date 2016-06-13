@@ -14,6 +14,13 @@ PUBLIC ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_format(ral
 /** TODO */
 PUBLIC ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_type(ral_texture_data_type in_data_type);
 
+/** TODO */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_blend_factor(ral_blend_factor blend_factor);
+
+/** TODO */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_blend_op(ral_blend_op blend_op);
+
+/** TODO */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_compare_op(ral_compare_op compare_op);
 
 /** TODO */

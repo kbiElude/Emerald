@@ -27,6 +27,8 @@
 /* Internal limit for the number of vertex attributes which can be used at once.
  *
  * Equal to the min max for GL_MAX_VERTEX_ATTRIBS */
+#define N_MAX_DRAW_BUFFERS      (8)
+#define N_MAX_RENDERTARGETS     (8)
 #define N_MAX_VERTEX_ATTRIBUTES (16)
 
 
@@ -56,6 +58,15 @@ typedef enum
     /* Command args stored in _raGL_command_bind_vertex_array_command_info */
     RAGL_COMMAND_TYPE_BIND_VERTEX_ARRAY,
 
+    /* Command arsg stored in _raGL_command_blend_color_command_info */
+    RAGL_COMMAND_TYPE_BLEND_COLOR,
+
+    /* Command args stored in _raGL_command_blend_equation_separate_command_info */
+    RAGL_COMMAND_TYPE_BLEND_EQUATION_SEPARATE,
+
+    /* Command args stored in _raGL_command_blend_func_separate_command_info */
+    RAGL_COMMAND_TYPE_BLEND_FUNC_SEPARATE,
+
     /* Command args stored in _raGL_command_blit_framebuffer_command_info */
     RAGL_COMMAND_TYPE_BLIT_FRAMEBUFFER,
 
@@ -65,8 +76,17 @@ typedef enum
     /* Command args stored in _raGL_command_cull_face_command_info */
     RAGL_COMMAND_TYPE_CULL_FACE,
 
+    /* Command args stored in _raGL_command_depth_func_command_info */
+    RAGL_COMMAND_TYPE_DEPTH_FUNC,
+
+    /* Command args stored in _raGL_command_depth_mask_command_info */
+    RAGL_COMMAND_TYPE_DEPTH_MASK,
+
     /* Command args stored in _raGL_command_disable_command_info */
     RAGL_COMMAND_TYPE_DISABLE,
+
+    /* Command args stored in _raGL_command_disable_vertex_attrib_array_command_info */
+    RAGL_COMMAND_TYPE_DISABLE_VERTEX_ATTRIB_ARRAY,
 
     /* Command args stored in _raGL_command_draw_arrays_command_info */
     RAGL_COMMAND_TYPE_DRAW_ARRAYS,
@@ -79,6 +99,9 @@ typedef enum
 
     /* Command args stored in _raGL_command_draw_arrays_instanced_base_instance_command_info */
     RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED_BASE_INSTANCE,
+
+    /* Command args stored in _raGL_command_draw_buffers_command_info */
+    RAGL_COMMAND_TYPE_DRAW_BUFFERS,
 
     /* Command args stored in _raGL_command_draw_elements_command_info */
     RAGL_COMMAND_TYPE_DRAW_ELEMENTS,
@@ -103,6 +126,9 @@ typedef enum
 
     /* Command args stored in _raGL_command_enable_command_info */
     RAGL_COMMAND_TYPE_ENABLE,
+
+    /* Command args stored in _raGL_command_enable_vertex_attrib_array_command_info */
+    RAGL_COMMAND_TYPE_ENABLE_VERTEX_ATTRIB_ARRAY,
 
     /* Command args stored in _raGL_command_execute_command_buffer_command_info */
     RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER,
@@ -219,6 +245,28 @@ typedef struct
 
 typedef struct
 {
+    GLfloat rgba[4];
+
+} _raGL_command_blend_color_command_info;
+
+typedef struct
+{
+    GLenum modeRGB;
+    GLenum modeAlpha;
+
+} _raGL_command_blend_equation_separate_command_info;
+
+typedef struct
+{
+    GLenum srcRGB;
+    GLenum dstRGB;
+    GLenum srcAlpha;
+    GLenum dstAlpha;
+
+} _raGL_command_blend_func_separate_command_info;
+
+typedef struct
+{
     GLuint     draw_fbo_id;
     GLint      dst_x0y0x1y1[4];
     GLenum     filter;
@@ -250,9 +298,27 @@ typedef struct
 
 typedef struct
 {
+    GLenum func;
+
+} _raGL_command_depth_func_command_info;
+
+typedef struct
+{
+    GLboolean flag;
+
+} _raGL_command_depth_mask_command_info;
+
+typedef struct
+{
     GLenum capability;
 
 } _raGL_command_disable_command_info;
+
+typedef struct
+{
+    GLuint index;
+
+} _raGL_command_disable_vertex_attrib_array_command_info;
 
 typedef struct
 {
@@ -287,6 +353,13 @@ typedef struct
     GLsizei primcount;
 
 } _raGL_command_draw_arrays_instanced_base_instance_command_info;
+
+typedef struct
+{
+    GLenum  bufs[N_MAX_DRAW_BUFFERS];
+    GLsizei n;
+
+} _raGL_command_draw_buffers_command_info;
 
 typedef struct
 {
@@ -355,6 +428,12 @@ typedef struct
     GLenum capability;
 
 } _raGL_command_enable_command_info;
+
+typedef struct
+{
+    GLuint index;
+
+} _raGL_command_enable_vertex_attrib_array_command_info;
 
 typedef struct
 {
@@ -484,14 +563,21 @@ typedef struct
         _raGL_command_bind_sampler_command_info                                      bind_sampler_command_info;
         _raGL_command_bind_texture_command_info                                      bind_texture_command_info;
         _raGL_command_bind_vertex_array_command_info                                 bind_vertex_array_command_info;
+        _raGL_command_blend_color_command_info                                       blend_color_command_info;
+        _raGL_command_blend_equation_separate_command_info                           blend_equation_separate_command_info;
+        _raGL_command_blend_func_separate_command_info                               blend_func_separate_command_info;
         _raGL_command_blit_framebuffer_command_info                                  blit_framebuffer_command_info;
         _raGL_command_copy_image_sub_data_command_info                               copy_image_sub_data_command_info;
         _raGL_command_cull_face_command_info                                         cull_face_command_info;
+        _raGL_command_depth_func_command_info                                        depth_func_command_info;
+        _raGL_command_depth_mask_command_info                                        depth_mask_command_info;
         _raGL_command_disable_command_info                                           disable_command_info;
+        _raGL_command_disable_vertex_attrib_array_command_info                       disable_vertex_attrib_array_command_info;
         _raGL_command_draw_arrays_command_info                                       draw_arrays_command_info;
         _raGL_command_draw_arrays_indirect_command_info                              draw_arrays_indirect_command_info;
         _raGL_command_draw_arrays_instanced_base_instance_command_info               draw_arrays_instanced_base_instance_command_info;
         _raGL_command_draw_arrays_instanced_command_info                             draw_arrays_instanced_command_info;
+        _raGL_command_draw_buffers_command_info                                      draw_buffers_command_info;
         _raGL_command_draw_elements_base_vertex_command_info                         draw_elements_base_vertex_command_info;
         _raGL_command_draw_elements_command_info                                     draw_elements_command_info;
         _raGL_command_draw_elements_indirect_command_info                            draw_elements_indirect_command_info;
@@ -500,6 +586,7 @@ typedef struct
         _raGL_command_draw_elements_instanced_base_vertex_command_info               draw_elements_instanced_base_vertex_command_info;
         _raGL_command_draw_elements_instanced_command_info                           draw_elements_instanced_command_info;
         _raGL_command_enable_command_info                                            enable_command_info;
+        _raGL_command_enable_vertex_attrib_array_command_info                        enable_vertex_attrib_array_command_info;
         _raGL_command_execute_command_buffer_command_info                            execute_command_buffer_command_info;
         _raGL_command_front_face_command_info                                        front_face_command_info;
         _raGL_command_line_width_command_info                                        line_width_command_info;
@@ -521,12 +608,54 @@ typedef struct
     void deinit();
 } _raGL_command;
 
+typedef struct _raGL_command_buffer_bake_state_rt
+{
+    ral_color        blend_constant;
+    bool             blend_enabled;
+    ral_blend_op     blend_op_alpha;
+    ral_blend_op     blend_op_color;
+    bool             color_writes[4];
+    ral_blend_factor dst_alpha_blend_factor;
+    ral_blend_factor dst_color_blend_factor;
+    ral_blend_factor src_alpha_blend_factor;
+    ral_blend_factor src_color_blend_factor;
+    ral_texture_view texture_view;
+
+    explicit _raGL_command_buffer_bake_state_rt(const ral_command_buffer_set_rendertarget_state_command_info& set_rt_command)
+    {
+        blend_constant         = set_rt_command.blend_constant;
+        blend_enabled          = set_rt_command.blend_enabled;
+        blend_op_alpha         = set_rt_command.blend_op_alpha;
+        blend_op_color         = set_rt_command.blend_op_color;
+        color_writes[0]        = set_rt_command.channel_writes.color0;
+        color_writes[1]        = set_rt_command.channel_writes.color1;
+        color_writes[2]        = set_rt_command.channel_writes.color2;
+        color_writes[3]        = set_rt_command.channel_writes.color3;
+        dst_alpha_blend_factor = set_rt_command.dst_alpha_blend_factor;
+        dst_color_blend_factor = set_rt_command.dst_color_blend_factor;
+        src_alpha_blend_factor = set_rt_command.src_alpha_blend_factor;
+        src_color_blend_factor = set_rt_command.src_color_blend_factor;
+        texture_view           = set_rt_command.texture_view;
+    }
+
+    _raGL_command_buffer_bake_state_rt()
+    {
+        texture_view = nullptr;
+    }
+
+} _raGL_command_buffer_bake_state_rt;
+
 typedef struct
 {
     raGL_program active_program;
 
     ral_gfx_state active_gfx_state;
     bool          active_gfx_state_dirty;
+
+    GLenum                             active_fbo_draw_buffers[N_MAX_DRAW_BUFFERS];
+    bool                               active_fbo_draw_buffers_dirty;
+    _raGL_command_buffer_bake_state_rt active_rt_attachments  [N_MAX_RENDERTARGETS];
+    bool                               active_rt_attachments_dirty;
 
     bool                    vao_dirty;
     raGL_buffer             vao_index_buffer;
@@ -538,11 +667,22 @@ typedef struct
                0,
                sizeof(vbs) );
 
-        active_gfx_state        = nullptr;
-        active_gfx_state_dirty  = false;
-        active_program          = nullptr;
-        vao_dirty               = true; /* GL requires a VAO to be bound at all times */
-        vao_index_buffer        = nullptr;
+        for (uint32_t n_draw_buffer = 0;
+                      n_draw_buffer < N_MAX_DRAW_BUFFERS;
+                    ++n_draw_buffer)
+        {
+            /* As per spec */
+            active_fbo_draw_buffers[n_draw_buffer] = (n_draw_buffer == 0) ? GL_COLOR_ATTACHMENT0
+                                                                          : GL_NONE;
+        }
+
+        active_fbo_draw_buffers_dirty = false;
+        active_gfx_state              = nullptr;
+        active_gfx_state_dirty        = false;
+        active_program                = nullptr;
+        active_rt_attachments_dirty   = true;
+        vao_dirty                     = true; /* GL requires a VAO to be bound at all times */
+        vao_index_buffer              = nullptr;
     }
 } _raGL_command_buffer_bake_state;
 
@@ -573,8 +713,10 @@ typedef struct _raGL_command_buffer
                                 &limits_ptr);
     }
 
+    void bake_and_bind_fbo();
     void bake_and_bind_vao();
     void bake_gfx_state   ();
+    void bake_rt_state    ();
 
     void bake_commands();
     void clear_commands();
@@ -596,6 +738,31 @@ typedef struct _raGL_command_buffer
 PRIVATE system_resource_pool command_buffer_pool = nullptr;
 PRIVATE system_resource_pool command_pool        = nullptr;
 
+
+/** TODO */
+void _raGL_command_buffer::bake_and_bind_fbo()
+{
+    todo;
+
+    /* Update the draw buffers if needed */
+    if (bake_state.active_fbo_draw_buffers_dirty)
+    {
+        _raGL_command* draw_buffers_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        memcpy(draw_buffers_command_ptr->draw_buffers_command_info.bufs,
+               bake_state.active_fbo_draw_buffers,
+               sizeof(bake_state.active_fbo_draw_buffers) );
+
+        draw_buffers_command_ptr->draw_buffers_command_info.n = N_MAX_DRAW_BUFFERS;
+        draw_buffers_command_ptr->type                        = RAGL_COMMAND_TYPE_DRAW_BUFFERS;
+
+        system_resizable_vector_push(commands,
+                                     draw_buffers_command_ptr);
+
+        bake_state.active_fbo_draw_buffers_dirty = false;
+    }
+
+}
 
 /** TODO */
 void _raGL_command_buffer::bake_and_bind_vao()
@@ -804,6 +971,7 @@ void _raGL_command_buffer::bake_gfx_state()
     float                depth_bounds_min            = 0.0f;
     bool                 depth_bounds_test_enabled   = false;
     bool                 depth_clamp_enabled         = false;
+    ral_compare_op       depth_compare_func          = RAL_COMPARE_OP_UNKNOWN;
     bool                 depth_test_enabled          = false;
     bool                 depth_writes_enabled        = false;
     ral_front_face       front_face                  = RAL_FRONT_FACE_UNKNOWN;
@@ -818,6 +986,7 @@ void _raGL_command_buffer::bake_gfx_state()
     bool                 rasterizer_discard_enabled  = false;
     bool                 sample_shading_enabled      = false;
     float                sample_shading_min          = 0.0f;
+    bool                 scissor_test_enabled        = false;
     ral_stencil_op_state stencil_test_back;
     bool                 stencil_test_enabled        = false;
     ral_stencil_op_state stencil_test_front;
@@ -839,6 +1008,7 @@ void _raGL_command_buffer::bake_gfx_state()
         {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_MIN,           &depth_bounds_min},
         {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_TEST_ENABLED,  &depth_bounds_test_enabled},    // <- not available as core func in gl
         {RAL_GFX_STATE_PROPERTY_DEPTH_CLAMP_ENABLED,        &depth_clamp_enabled},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_COMPARE_FUNC,         &depth_compare_func},
         {RAL_GFX_STATE_PROPERTY_DEPTH_TEST_ENABLED,         &depth_test_enabled},
         {RAL_GFX_STATE_PROPERTY_DEPTH_WRITES_ENABLED,       &depth_writes_enabled},
         {RAL_GFX_STATE_PROPERTY_FRONT_FACE,                 &front_face},
@@ -853,6 +1023,7 @@ void _raGL_command_buffer::bake_gfx_state()
         {RAL_GFX_STATE_PROPERTY_RASTERIZER_DISCARD_ENABLED, &rasterizer_discard_enabled},
         {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_ENABLED,     &sample_shading_enabled},
         {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_MIN,         &sample_shading_min},
+        {RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,       &scissor_test_enabled},
         {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_BACK,          &stencil_test_back},
         {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_ENABLED,       &stencil_test_enabled},
         {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_FRONT,         &stencil_test_front}
@@ -888,6 +1059,7 @@ void _raGL_command_buffer::bake_gfx_state()
         {GL_PRIMITIVE_RESTART,        primitive_restart_enabled},
         {GL_RASTERIZER_DISCARD,       rasterizer_discard_enabled},
         {GL_SAMPLE_SHADING,           sample_shading_enabled},
+        {GL_SCISSOR_TEST,             scissor_test_enabled},
         {GL_STENCIL_TEST,             stencil_test_enabled}
     };
     const uint32_t n_mode_states = sizeof(mode_states) / sizeof(mode_states[0]);
@@ -970,6 +1142,35 @@ void _raGL_command_buffer::bake_gfx_state()
         }
     }
 
+    /* Depth writes + depth test related states. */
+    if (depth_writes_enabled)
+    {
+        _raGL_command* depth_func_command_ptr          = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* enable_depth_writes_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        enable_depth_writes_command_ptr->depth_mask_command_info.flag = GL_FALSE;
+        enable_depth_writes_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_MASK;
+
+        depth_func_command_ptr->depth_func_command_info.func = raGL_utils_get_ogl_enum_for_ral_compare_op(depth_compare_func);
+        depth_func_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_FUNC;
+
+        system_resizable_vector_push(commands,
+                                     enable_depth_writes_command_ptr);
+        system_resizable_vector_push(commands,
+                                     depth_func_command_ptr);
+    }
+    else
+    {
+        _raGL_command* disable_depth_writes_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        disable_depth_writes_command_ptr->depth_mask_command_info.flag = GL_FALSE;
+        disable_depth_writes_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_MASK;
+
+        system_resizable_vector_push(commands,
+                                     disable_depth_writes_command_ptr);
+    }
+
+    /* Polygon offsets */
     struct _polygon_offset_mode
     {
         bool   status;
@@ -1223,6 +1424,117 @@ void _raGL_command_buffer::bake_gfx_state()
 }
 
 /** TODO */
+void _raGL_command_buffer::bake_rt_state()
+{
+    /* Bake & bind a FBO */
+
+    /* Configure RT-related states */
+    bool all_rt_attachments_use_identical_blend_settings = true;
+
+    for (uint32_t n_rt = 1;
+                  n_rt < sizeof(bake_state.active_rt_attachments) / sizeof(bake_state.active_rt_attachments[0]) && all_rt_attachments_use_identical_blend_settings;
+                ++n_rt)
+    {
+        const _raGL_command_buffer_bake_state_rt& base_rt    = bake_state.active_rt_attachments[0];
+        const _raGL_command_buffer_bake_state_rt& current_rt = bake_state.active_rt_attachments[n_rt];
+
+        if (current_rt.texture_view == nullptr)
+        {
+            continue;
+        }
+
+        all_rt_attachments_use_identical_blend_settings &= (current_rt.blend_constant         == base_rt.blend_constant) &&
+                                                           (current_rt.blend_enabled          == base_rt.blend_enabled)  &&
+                                                           (current_rt.blend_op_alpha         == base_rt.blend_op_alpha) &&
+                                                           (current_rt.blend_op_color         == base_rt.blend_op_color)         &&
+                                                           (current_rt.dst_alpha_blend_factor == base_rt.dst_alpha_blend_factor) &&
+                                                           (current_rt.dst_color_blend_factor == base_rt.dst_color_blend_factor) &&
+                                                           (current_rt.src_alpha_blend_factor == base_rt.src_alpha_blend_factor) &&
+                                                           (current_rt.src_color_blend_factor == base_rt.src_color_blend_factor);
+    }
+
+    ASSERT_DEBUG_SYNC(all_rt_attachments_use_identical_blend_settings,
+                      "GL back-end does not support per-draw buffer blending settings.");
+
+    /* NOTE: Color/depth/stencil writes are configured at rendertarget binding update time. */
+
+    /* Below we can safely assume all draw buffers are going to use the same blend settings */
+    const _raGL_command_buffer_bake_state_rt& current_rt = bake_state.active_rt_attachments[0];
+
+    if (current_rt.blend_enabled)
+    {
+        _raGL_command* disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        disable_command_ptr->disable_command_info.capability = GL_BLEND;
+        disable_command_ptr->type                            = RAGL_COMMAND_TYPE_DISABLE;
+
+        system_resizable_vector_push(commands,
+                                     disable_command_ptr);
+    }
+    else
+    {
+        {
+            /* Enable blending */
+            _raGL_command* enable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            enable_command_ptr->enable_command_info.capability = GL_BLEND;
+            enable_command_ptr->type                           = RAGL_COMMAND_TYPE_ENABLE;
+
+            system_resizable_vector_push(commands,
+                                         enable_command_ptr);
+        }
+
+        {
+            /* Blend constant */
+            _raGL_command* blend_color_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            ASSERT_DEBUG_SYNC(current_rt.blend_constant.data_type == RAL_COLOR_DATA_TYPE_FLOAT,
+                              "Invalid blend constant color data type");
+
+            static_assert(sizeof(blend_color_command_ptr->blend_color_command_info.rgba) == sizeof(current_rt.blend_constant.f32), "");
+
+            memcpy(blend_color_command_ptr->blend_color_command_info.rgba,
+                   current_rt.blend_constant.f32,
+                   sizeof(blend_color_command_ptr->blend_color_command_info.rgba) );
+
+            blend_color_command_ptr->type = RAGL_COMMAND_TYPE_BLEND_COLOR;
+
+            system_resizable_vector_push(commands,
+                                         blend_color_command_ptr);
+        }
+
+        {
+            /* Blend ops */
+            _raGL_command* blend_equation_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            blend_equation_command_ptr->blend_equation_separate_command_info.modeAlpha = raGL_utils_get_ogl_enum_for_ral_blend_op(current_rt.blend_op_alpha);
+            blend_equation_command_ptr->blend_equation_separate_command_info.modeRGB   = raGL_utils_get_ogl_enum_for_ral_blend_op(current_rt.blend_op_color);
+            blend_equation_command_ptr->type                                           = RAGL_COMMAND_TYPE_BLEND_EQUATION_SEPARATE;
+
+            system_resizable_vector_push(commands,
+                                         blend_equation_command_ptr);
+        }
+
+        {
+            /* Blend functions */
+            _raGL_command* blend_func_separate_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            blend_func_separate_command_ptr->blend_func_separate_command_info.dstAlpha = raGL_utils_get_ogl_enum_for_ral_blend_factor(current_rt.dst_alpha_blend_factor);
+            blend_func_separate_command_ptr->blend_func_separate_command_info.dstRGB   = raGL_utils_get_ogl_enum_for_ral_blend_factor(current_rt.dst_color_blend_factor);
+            blend_func_separate_command_ptr->blend_func_separate_command_info.srcAlpha = raGL_utils_get_ogl_enum_for_ral_blend_factor(current_rt.src_alpha_blend_factor);
+            blend_func_separate_command_ptr->blend_func_separate_command_info.srcRGB   = raGL_utils_get_ogl_enum_for_ral_blend_factor(current_rt.src_color_blend_factor);
+            blend_func_separate_command_ptr->type                                      = RAGL_COMMAND_TYPE_BLEND_FUNC_SEPARATE;
+
+            system_resizable_vector_push(commands,
+                                         blend_func_separate_command_ptr);
+        }
+    }
+
+    /* All done */
+    bake_state.active_rt_attachments_dirty = false;
+}
+
+/** TODO */
 void _raGL_command_buffer::clear_commands()
 {
     _raGL_command* current_command_ptr = nullptr;
@@ -1454,6 +1766,14 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
                             &backend_raGL);
 
     /* Bind the index buffer */
+    raGL_backend_get_buffer(backend_raGL,
+                            command_ral_ptr->index_buffer,
+                            (void**) &index_buffer_raGL);
+
+    raGL_buffer_get_property(index_buffer_raGL,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &index_buffer_raGL_start_offset);
+
     if (index_buffer_raGL != bake_state.vao_index_buffer)
     {
         bake_state.vao_dirty        = true;
@@ -1477,6 +1797,26 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
 
         ASSERT_DEBUG_SYNC(!bake_state.active_gfx_state_dirty,
                           "GFX state still marked as dirty.");
+    }
+
+    /* Update rendertarget-related states as well. */
+    if (bake_state.active_rt_attachments_dirty)
+    {
+        bake_rt_state    ();
+        bake_and_bind_fbo();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_rt_attachments_dirty,
+                          "Rendertarget state still marked as dirty.");
+        ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
+                          "Could not update draw buffer configuration");
+    }
+    else
+    if (bake_state.active_fbo_draw_buffers_dirty)
+    {
+        bake_and_bind_fbo();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
+                          "Could not update draw buffer configuration");
     }
 
     /* Issue the draw call */
@@ -1601,6 +1941,26 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
                           "GFX state still marked as dirty.");
     }
 
+    /* Update rendertarget-related states as well. */
+    if (bake_state.active_rt_attachments_dirty)
+    {
+        bake_rt_state    ();
+        bake_and_bind_fbo();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_rt_attachments_dirty,
+                          "Rendertarget state still marked as dirty.");
+        ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
+                          "Could not update draw buffer configuration");
+    }
+    else
+    if (bake_state.active_fbo_draw_buffers_dirty)
+    {
+        bake_and_bind_fbo();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
+                          "Could not update draw buffer configuration");
+    }
+
     if (command_ral_ptr->index_buffer == nullptr)
     {
         /* Issue the draw call */
@@ -1668,6 +2028,36 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
 
         ASSERT_DEBUG_SYNC(!bake_state.active_gfx_state_dirty,
             "GFX state still marked as dirty.");
+    }
+
+    /* Update rendertarget-related states as well. */
+    if (bake_state.active_rt_attachments_dirty)
+    {
+        bake_rt_state    ();
+        bake_and_bind_fbo();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_rt_attachments_dirty,
+                          "Rendertarget state still marked as dirty.");
+        ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
+                          "Could not update draw buffer configuration");
+    }
+    else
+    if (bake_state.active_fbo_draw_buffers_dirty)
+    {
+        bake_and_bind_fbo();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
+                          "Could not update draw buffer configuration");
+    }
+
+    /* If no VAO is currently bound, or current VAO configuration does not match bake state,
+     * we need to bind a different vertex array object. */
+    if (bake_state.vao_dirty)
+    {
+        bake_and_bind_vao();
+
+        ASSERT_DEBUG_SYNC(!bake_state.vao_dirty,
+                          "VAO state still marked as dirty.");
     }
 
     if (command_ral_ptr->n_instances == 1)
@@ -1750,6 +2140,32 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
     switch (command_ral_ptr->binding_type)
     {
+        case RAL_BINDING_TYPE_RENDERTARGET:
+        {
+            const _raGL_program_variable* variable_ptr = nullptr;
+
+            raGL_program_get_output_variable_by_name(bake_state.active_program,
+                                                     command_ral_ptr->name,
+                                                    &variable_ptr);
+
+            ASSERT_DEBUG_SYNC(variable_ptr != nullptr,
+                              "No _raGL_program_variable instance exposed for output variable [%s]",
+                              system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
+            ASSERT_DEBUG_SYNC(variable_ptr->location < N_MAX_RENDERTARGETS,
+                              "Too many output variables defined in the shader.");
+
+            ASSERT_DEBUG_SYNC(command_ral_ptr->rendertarget_binding.rt_index < N_MAX_RENDERTARGETS,
+                              "Invalid rendertarget index specified");
+
+            if (bake_state.active_fbo_draw_buffers[variable_ptr->location] != (GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index))
+            {
+                bake_state.active_fbo_draw_buffers[variable_ptr->location] = GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index;
+                bake_state.active_fbo_draw_buffers_dirty                   = true;
+            }
+
+            break;
+        }
+
         case RAL_BINDING_TYPE_SAMPLED_IMAGE:
         {
             _raGL_command*                active_texture_command_ptr = nullptr;
@@ -2014,6 +2430,16 @@ void _raGL_command_buffer::process_set_program_command(const ral_command_buffer_
 
     system_resizable_vector_push(commands,
                                  gl_command_ptr);
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_rendertarget_state_command(const ral_command_buffer_set_rendertarget_state_command_info* command_ral_ptr)
+{
+    ASSERT_DEBUG_SYNC(command_ral_ptr->rendertarget_index < N_MAX_RENDERTARGETS,
+                      "Too many rendertargets requested.");
+
+    bake_state.active_rt_attachments[command_ral_ptr->rendertarget_index] = _raGL_command_buffer_bake_state_rt(*command_ral_ptr);
+    bake_state.active_rt_attachments_dirty                                = true;
 }
 
 /** TODO */
@@ -2289,6 +2715,40 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                 break;
             }
 
+            case RAGL_COMMAND_TYPE_BLEND_COLOR:
+            {
+                const _raGL_command_blend_color_command_info& command_args = command_ptr->blend_color_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBlendColor(command_args.rgba[0],
+                                                                   command_args.rgba[1],
+                                                                   command_args.rgba[2],
+                                                                   command_args.rgba[3]);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BLEND_EQUATION_SEPARATE:
+            {
+                const _raGL_command_blend_equation_separate_command_info& command_args = command_ptr->blend_equation_separate_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBlendEquationSeparate(command_args.modeRGB,
+                                                                              command_args.modeAlpha);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BLEND_FUNC_SEPARATE:
+            {
+                const _raGL_command_blend_func_separate_command_info& command_args = command_ptr->blend_func_separate_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBlendFuncSeparate(command_args.srcRGB,
+                                                                          command_args.dstRGB,
+                                                                          command_args.srcAlpha,
+                                                                          command_args.dstAlpha);
+
+                break;
+            }
+
             case RAGL_COMMAND_TYPE_BLIT_FRAMEBUFFER:
             {
                 const _raGL_command_blit_framebuffer_command_info& command_args = command_ptr->blit_framebuffer_command_info;
@@ -2344,11 +2804,38 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                 break;
             }
 
+            case RAGL_COMMAND_TYPE_DEPTH_FUNC:
+            {
+                const _raGL_command_depth_func_command_info& command_args = command_ptr->depth_func_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLDepthFunc(command_args.func);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DEPTH_MASK:
+            {
+                const _raGL_command_depth_mask_command_info& command_args = command_ptr->depth_mask_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLDepthMask(command_args.flag);
+
+                break;
+            }
+
             case RAGL_COMMAND_TYPE_DISABLE:
             {
                 const _raGL_command_disable_command_info& command_args = command_ptr->disable_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLDisable(command_args.capability);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DISABLE_VERTEX_ATTRIB_ARRAY:
+            {
+                const _raGL_command_disable_vertex_attrib_array_command_info& command_args = command_ptr->disable_vertex_attrib_array_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLDisableVertexAttribArray(command_args.index);
 
                 break;
             }
@@ -2415,6 +2902,16 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                                                                                         command_args.count,
                                                                                         command_args.primcount,
                                                                                         command_args.base_instance);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DRAW_BUFFERS:
+            {
+                const _raGL_command_draw_buffers_command_info& command_args = command_ptr->draw_buffers_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLDrawBuffers(command_args.n,
+                                                                    command_args.bufs);
 
                 break;
             }
@@ -2555,6 +3052,15 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                 const _raGL_command_enable_command_info& command_args = command_ptr->enable_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLEnable(command_args.capability);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_ENABLE_VERTEX_ATTRIB_ARRAY:
+            {
+                const _raGL_command_enable_vertex_attrib_array_command_info& command_args = command_ptr->enable_vertex_attrib_array_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLEnableVertexAttribArray(command_args.index);
 
                 break;
             }

@@ -39,7 +39,7 @@ typedef struct _raGL_program_variable
     /* Image uniforms (default uniform block): */
     uint32_t image_unit;
 
-    /* Uniforms (default & regular uniform block): */
+    /* Output variables + uniforms (default & regular uniform block): */
     int32_t location;
 
     /* Common: */
@@ -101,6 +101,11 @@ PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(raGL_program    
                                                                 system_hashed_ansi_string   block_name,
                                                                 raGL_program_block_property property,
                                                                 void*                       out_result_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool raGL_program_get_output_variable_by_name(raGL_program                   program,
+                                                                 system_hashed_ansi_string      name,
+                                                                 const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,

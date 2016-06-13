@@ -14,14 +14,16 @@
 
 typedef struct _raGL_vaos_vao_vertex_attribute
 {
-    bool      is_integer;
-    GLboolean normalized;
-    GLuint    relativeoffset;
-    GLint     size;
-    GLenum    type;
+    ral_vertex_input_rate input_rate;
+    bool                  is_integer;
+    GLboolean             normalized;
+    GLuint                relativeoffset;
+    GLint                 size;
+    GLenum                type;
 
     _raGL_vaos_vao_vertex_attribute()
     {
+        input_rate     = RAL_VERTEX_INPUT_RATE_UNKNOWN;
         is_integer     = false;
         normalized     = GL_FALSE;
         relativeoffset = 0;
@@ -46,6 +48,7 @@ typedef struct _raGL_vaos_vao_vertex_attribute
                                 (format_type == RAL_FORMAT_TYPE_UINT);
         result.normalized     = (format_type == RAL_FORMAT_TYPE_SNORM) ||
                                 (format_type == RAL_FORMAT_TYPE_UNORM);
+        result.input_rate     = attribute.input_rate;
         result.relativeoffset = attribute.offset;
         result.size           = format_n_components;
         result.type           = raGL_utils_get_ogl_data_format_for_ral_format(attribute.format);
@@ -424,6 +427,13 @@ PRIVATE void _raGL_vaos_bake_vao_renderer_thread_callback(ogl_context context,
                                                    current_va_ptr->normalized,
                                                    current_va_ptr->relativeoffset);
         }
+
+        ASSERT_DEBUG_SYNC(current_va_ptr->input_rate != RAL_VERTEX_INPUT_RATE_UNKNOWN,
+                          "Invalid input rate specified for a vertex array");
+
+        entrypoints_ptr->pGLVertexBindingDivisor(n_va,
+                                                 (current_va_ptr->input_rate == RAL_VERTEX_INPUT_RATE_PER_VERTEX) ? 0
+                                                                                                                  : 1);
     }
 
     /* Set up VBs */
@@ -455,8 +465,9 @@ PRIVATE void _raGL_vaos_bake_vao_renderer_thread_callback(ogl_context context,
     {
         const _raGL_vaos_vao_vertex_buffer* current_vb_ptr = vaos_ptr->bake_vbs_ptr + n_vb;
 
-        entrypoints_ptr->pGLVertexAttribBinding(current_vb_ptr->va_index,
-                                                n_vb);
+        entrypoints_ptr->pGLEnableVertexAttribArray(n_vb);
+        entrypoints_ptr->pGLVertexAttribBinding    (current_vb_ptr->va_index,
+                                                    n_vb);
     }
 
     /* All done */

@@ -197,6 +197,52 @@ PUBLIC ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_t
 }
 
 /** Please see header for specification */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_blend_factor(ral_blend_factor blend_factor)
+{
+    static const GLenum results[] =
+    {
+        GL_CONSTANT_ALPHA,
+        GL_CONSTANT_COLOR,
+        GL_DST_ALPHA,
+        GL_DST_COLOR,
+        GL_ONE,
+        GL_ONE_MINUS_CONSTANT_ALPHA,
+        GL_ONE_MINUS_CONSTANT_COLOR,
+        GL_ONE_MINUS_DST_ALPHA,
+        GL_ONE_MINUS_DST_COLOR,
+        GL_ONE_MINUS_SRC_ALPHA,
+        GL_ONE_MINUS_SRC_COLOR,
+        GL_SRC_ALPHA,
+        GL_SRC_ALPHA_SATURATE,
+        GL_SRC_COLOR,
+        GL_ZERO,
+    };
+
+    ASSERT_DEBUG_SYNC(blend_factor < sizeof(results) / sizeof(results[0]),
+                      "Invalid ral_blend_factor value specified.");
+
+    return results[blend_factor];
+}
+
+/** Please see header for specification */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_blend_op(ral_blend_op blend_op)
+{
+    static const GLenum results[] =
+    {
+        GL_FUNC_ADD,
+        GL_MAX,
+        GL_MIN,
+        GL_FUNC_SUBTRACT,
+        GL_FUNC_REVERSE_SUBTRACT,
+    };
+
+    ASSERT_DEBUG_SYNC(blend_op < sizeof(results) / sizeof(results[0]),
+                      "Invalid ral_blend_op value specified.");
+
+    return results[blend_op];
+}
+
+/** Please see header for specification */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_compare_op(ral_compare_op compare_op)
 {
     static const GLenum results[] =
