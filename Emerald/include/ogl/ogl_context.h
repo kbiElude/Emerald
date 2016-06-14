@@ -40,6 +40,9 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
 
+    /* not settable, ral_context */
+    OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+
     /* not settable, ral_framebuffer */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
 

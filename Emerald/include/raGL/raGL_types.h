@@ -25,16 +25,6 @@ typedef enum
     RAGL_BUFFERS_BUFFER_PROPERTY_SIZE,
 } raGL_buffers_buffer_property;
 
-typedef struct
-{
-    ral_texture_aspect_bits aspect;
-    uint32_t                n_base_layer;
-    uint32_t                n_base_mipmap;
-    uint32_t                n_layers;
-    uint32_t                n_mipmaps;
-    raGL_texture            texture;
-} raGL_framebuffer_attachment;
-
 typedef void (*PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context context,
                                                             void*       user_arg);
 

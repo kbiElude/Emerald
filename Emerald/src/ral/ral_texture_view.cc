@@ -1,6 +1,7 @@
 #include "shared.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
+#include "ral/ral_utils.h"
 
 typedef struct _ral_texture_view
 {
@@ -33,13 +34,17 @@ typedef struct _ral_texture_view
 /** Please see header for specification */
 PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_info* create_info_ptr)
 {
-    ral_format         parent_texture_format   = RAL_FORMAT_UNKNOWN;
-    uint32_t           parent_texture_n_layers = 0;
-    uint32_t           parent_texture_n_mips   = 0;
-    ral_texture_type   parent_texture_type     = RAL_TEXTURE_TYPE_UNKNOWN;
-    bool               texture_format_valid    = true;
-    bool               texture_type_valid      = true;
-    _ral_texture_view* texture_view_ptr        = nullptr;
+    ral_format         parent_texture_format         = RAL_FORMAT_UNKNOWN;
+    uint32_t           parent_texture_n_layers       = 0;
+    uint32_t           parent_texture_n_mips         = 0;
+    ral_texture_type   parent_texture_type           = RAL_TEXTURE_TYPE_UNKNOWN;
+    bool               texture_aspect_valid          = true;
+    bool               texture_format_valid          = true;
+    bool               texture_type_valid            = true;
+    _ral_texture_view* texture_view_ptr              = nullptr;
+    bool               view_format_has_color_comps   = false;
+    bool               view_format_has_depth_comps   = false;
+    bool               view_format_has_stencil_comps = false;
 
     /* Sanity checks */
     if (create_info_ptr->texture == nullptr)
@@ -329,6 +334,40 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
         goto end;
     }
 
+    ral_utils_get_format_property(create_info_ptr->format,
+                                  RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                 &view_format_has_color_comps);
+    ral_utils_get_format_property(create_info_ptr->format,
+                                  RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                 &view_format_has_depth_comps);
+    ral_utils_get_format_property(create_info_ptr->format,
+                                  RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                 &view_format_has_stencil_comps);
+
+    if ((create_info_ptr->aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) && !view_format_has_color_comps)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL texture does not hold color data, but the texture view is to expose it.");
+
+        goto end;
+    }
+
+    if ((create_info_ptr->aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) && !view_format_has_depth_comps)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL texture does not hold depth data, but the texture view is to expose it.");
+
+        goto end;
+    }
+
+    if ((create_info_ptr->aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) && !view_format_has_stencil_comps)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL texture does not hold stencil data, but the texture view is to expose it.");
+
+        goto end;
+    }
+
     /* Safe to create the texture view */
     texture_view_ptr = new _ral_texture_view(create_info_ptr);
 
@@ -349,6 +388,13 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
 
     switch (property)
     {
+        case RAL_TEXTURE_VIEW_PROPERTY_ASPECT:
+        {
+            *(ral_texture_aspect*) out_result_ptr = texture_view_ptr->create_info.aspect;
+
+            break;
+        }
+
         case RAL_TEXTURE_VIEW_PROPERTY_CONTEXT:
         {
             *(ral_context*) out_result_ptr = texture_view_ptr->context;

@@ -2613,16 +2613,9 @@ PUBLIC void raGL_backend_get_private_property(raGL_backend                  back
 
     switch (property)
     {
-        case RAGL_BACKEND_PRIVATE_PROPERTY_ACTIVE_PROGRAM:
+        case RAGL_BACKEND_PRIVATE_PROPERTY_FBOS:
         {
-            *(raGL_program*) out_result_ptr = backend_ptr->active_program;
-
-            break;
-        }
-
-        case RAGL_BACKEND_PRIVATE_PROPERTY_GFX_STATE:
-        {
-            *(ral_gfx_state*) out_result_ptr = backend_ptr->bound_gfx_state;
+            *(raGL_framebuffers*) out_result_ptr = backend_ptr->framebuffers;
 
             break;
         }

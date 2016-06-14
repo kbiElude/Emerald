@@ -262,11 +262,15 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
                                                                     uint32_t         n_images,
                                                                     const gfx_image* images,
                                                                     ral_texture*     out_result_textures_ptr);
-/** TODO */
+/** TODO
+ *
+ *  NOTE NOTE NOTE: The texture views should be pre-cached after creation and released at parent texture
+ *                  destruction time
+ */
 PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context                         context,
                                                          uint32_t                            n_texture_views,
                                                          const ral_texture_view_create_info* texture_view_create_info_ptr,
-                                                         ral_texture*                        out_result_texture_views_ptr);
+                                                         ral_texture_view*                   out_result_texture_views_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,

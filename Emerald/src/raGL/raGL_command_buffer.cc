@@ -10,6 +10,7 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_command_buffer.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_framebuffers.h"
 #include "raGL/raGL_program.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_texture.h"
@@ -45,6 +46,9 @@ typedef enum
 
     /* Command args stored in _raGL_command_bind_buffer_range_command_info */
     RAGL_COMMAND_TYPE_BIND_BUFFER_RANGE,
+
+    /* Command args stored in _raGL_command_bind_framebuffer_command_info */
+    RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER,
 
     /* Command args stored in _raGL_command_bind_image_texture_command_info */
     RAGL_COMMAND_TYPE_BIND_IMAGE_TEXTURE,
@@ -210,6 +214,13 @@ typedef struct
     GLenum     target;
 
 } _raGL_command_bind_buffer_range_command_info;
+
+typedef struct
+{
+    GLuint framebuffer;
+    GLenum target;
+
+} _raGL_command_bind_framebuffer_command_info;
 
 typedef struct
 {
@@ -559,6 +570,7 @@ typedef struct
         _raGL_command_bind_buffer_command_info                                       bind_buffer_command_info;
         _raGL_command_bind_buffer_base_command_info                                  bind_buffer_base_command_info;
         _raGL_command_bind_buffer_range_command_info                                 bind_buffer_range_command_info;
+        _raGL_command_bind_framebuffer_command_info                                  bind_framebuffer_command_info;
         _raGL_command_bind_image_texture_command_info                                bind_image_texture_command_info;
         _raGL_command_bind_sampler_command_info                                      bind_sampler_command_info;
         _raGL_command_bind_texture_command_info                                      bind_texture_command_info;
@@ -621,7 +633,7 @@ typedef struct _raGL_command_buffer_bake_state_rt
     ral_blend_factor src_color_blend_factor;
     ral_texture_view texture_view;
 
-    explicit _raGL_command_buffer_bake_state_rt(const ral_command_buffer_set_rendertarget_state_command_info& set_rt_command)
+    explicit _raGL_command_buffer_bake_state_rt(const ral_command_buffer_set_color_rendertarget_command_info& set_rt_command)
     {
         blend_constant         = set_rt_command.blend_constant;
         blend_enabled          = set_rt_command.blend_enabled;
@@ -654,7 +666,8 @@ typedef struct
 
     GLenum                             active_fbo_draw_buffers[N_MAX_DRAW_BUFFERS];
     bool                               active_fbo_draw_buffers_dirty;
-    _raGL_command_buffer_bake_state_rt active_rt_attachments  [N_MAX_RENDERTARGETS];
+    _raGL_command_buffer_bake_state_rt active_rt_color_attachments[N_MAX_RENDERTARGETS];
+    ral_texture_view                   active_rt_ds_attachment;
     bool                               active_rt_attachments_dirty;
 
     bool                    vao_dirty;
@@ -681,6 +694,7 @@ typedef struct
         active_gfx_state_dirty        = false;
         active_program                = nullptr;
         active_rt_attachments_dirty   = true;
+        active_rt_ds_attachment       = nullptr;
         vao_dirty                     = true; /* GL requires a VAO to be bound at all times */
         vao_index_buffer              = nullptr;
     }
@@ -729,7 +743,7 @@ typedef struct _raGL_command_buffer
     void process_set_binding_command            (const ral_command_buffer_set_binding_command_info*             command_ral_ptr);
     void process_set_gfx_state_command          (const ral_command_buffer_set_gfx_state_command_info*           command_ral_ptr);
     void process_set_program_command            (const ral_command_buffer_set_program_command_info*             command_ral_ptr);
-    void process_set_rendertarget_state_command (const ral_command_buffer_set_rendertarget_state_command_info*  command_ral_ptr);
+    void process_set_color_rendertarget_command (const ral_command_buffer_set_color_rendertarget_command_info*  command_ral_ptr);
     void process_set_scissor_box_command        (const ral_command_buffer_set_scissor_box_command_info*         command_ral_ptr);
     void process_set_vertex_buffer_command      (const ral_command_buffer_set_vertex_buffer_command_info*       command_ral_ptr);
     void process_set_viewport_command           (const ral_command_buffer_set_viewport_command_info*            command_ral_ptr);
@@ -742,7 +756,54 @@ PRIVATE system_resource_pool command_pool        = nullptr;
 /** TODO */
 void _raGL_command_buffer::bake_and_bind_fbo()
 {
-    todo;
+    raGL_backend      backend_gl  = nullptr;
+    raGL_framebuffer  fbo_raGL    = nullptr;
+    GLuint            fbo_raGL_id = 0;
+    raGL_framebuffers fbos        = nullptr;
+
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend_gl);
+    raGL_backend_get_private_property(backend_gl,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
+                                     &fbos);
+
+    /* Retrieve a FBO. If none is available, this function will bake one right now,
+     * or return a cached one otherwise. */
+    ral_texture_view color_attachments[N_MAX_RENDERTARGETS];
+    ral_texture_view ds_attachment                          = bake_state.active_rt_ds_attachment;
+
+    for (uint32_t n_color_attachment = 0;
+                  n_color_attachment < N_MAX_RENDERTARGETS;
+                ++n_color_attachment)
+    {
+        color_attachments[n_color_attachment] = bake_state.active_rt_color_attachments[n_color_attachment].texture_view;
+    }
+
+    raGL_framebuffers_get_framebuffer(fbos,
+                                      N_MAX_RENDERTARGETS,
+                                      color_attachments,
+                                      ds_attachment,
+                                     &fbo_raGL);
+
+    ASSERT_DEBUG_SYNC(fbo_raGL != nullptr,
+                      "Could not retrieve a FBO with the specified attachment configuration");
+
+    raGL_framebuffer_get_property(fbo_raGL,
+                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                 &fbo_raGL_id);
+
+    /* Bind the framebuffer */
+    {
+        _raGL_command* bind_fb_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        bind_fb_command_ptr->bind_framebuffer_command_info.framebuffer = fbo_raGL_id;
+        bind_fb_command_ptr->bind_framebuffer_command_info.target      = GL_DRAW_FRAMEBUFFER;
+        bind_fb_command_ptr->type                                      = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
+
+        system_resizable_vector_push(commands,
+                                     bind_fb_command_ptr);
+    }
 
     /* Update the draw buffers if needed */
     if (bake_state.active_fbo_draw_buffers_dirty)
@@ -920,9 +981,9 @@ void _raGL_command_buffer::bake_commands()
                 break;
             }
 
-            case RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE:
+            case RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET:
             {
-                process_set_rendertarget_state_command(reinterpret_cast<const ral_command_buffer_set_rendertarget_state_command_info*>(command_ral_raw_ptr) );
+                process_set_color_rendertarget_command(reinterpret_cast<const ral_command_buffer_set_color_rendertarget_command_info*>(command_ral_raw_ptr) );
 
                 break;
             }
@@ -1432,11 +1493,11 @@ void _raGL_command_buffer::bake_rt_state()
     bool all_rt_attachments_use_identical_blend_settings = true;
 
     for (uint32_t n_rt = 1;
-                  n_rt < sizeof(bake_state.active_rt_attachments) / sizeof(bake_state.active_rt_attachments[0]) && all_rt_attachments_use_identical_blend_settings;
+                  n_rt < sizeof(bake_state.active_rt_color_attachments) / sizeof(bake_state.active_rt_color_attachments[0]) && all_rt_attachments_use_identical_blend_settings;
                 ++n_rt)
     {
-        const _raGL_command_buffer_bake_state_rt& base_rt    = bake_state.active_rt_attachments[0];
-        const _raGL_command_buffer_bake_state_rt& current_rt = bake_state.active_rt_attachments[n_rt];
+        const _raGL_command_buffer_bake_state_rt& base_rt    = bake_state.active_rt_color_attachments[0];
+        const _raGL_command_buffer_bake_state_rt& current_rt = bake_state.active_rt_color_attachments[n_rt];
 
         if (current_rt.texture_view == nullptr)
         {
@@ -1459,7 +1520,7 @@ void _raGL_command_buffer::bake_rt_state()
     /* NOTE: Color/depth/stencil writes are configured at rendertarget binding update time. */
 
     /* Below we can safely assume all draw buffers are going to use the same blend settings */
-    const _raGL_command_buffer_bake_state_rt& current_rt = bake_state.active_rt_attachments[0];
+    const _raGL_command_buffer_bake_state_rt& current_rt = bake_state.active_rt_color_attachments[0];
 
     if (current_rt.blend_enabled)
     {
@@ -1554,7 +1615,9 @@ void _raGL_command_buffer::clear_commands()
 /** TODO */
 void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_command_buffer_copy_texture_to_texture_command_info* command_ral_ptr)
 {
+    raGL_framebuffers  backend_fbos      = nullptr;
     raGL_backend       backend_raGL      = nullptr;
+    ral_context        context_ral       = nullptr;
     ral_format         dst_texture_format_ral;
     GLuint             dst_texture_id    = 0;
     bool               dst_texture_is_rb = false;
@@ -1569,9 +1632,15 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
     ral_texture_type   src_texture_type;
     bool               use_copy_op       = false;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BACKEND,
-                            &backend_raGL);
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_BACKEND,
+                                     &backend_raGL);
+    ogl_context_get_property         (context,
+                                      OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                     &context_ral);
+    raGL_backend_get_private_property(backend_raGL,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
+                                     &backend_fbos);
 
     result &= raGL_backend_get_texture(backend_raGL,
                                        command_ral_ptr->dst_texture,
@@ -1678,35 +1747,49 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
     else
     {
         /* This is a blit op */
-        _raGL_command_blit_framebuffer_command_info& command_args       = new_command_ptr->blit_framebuffer_command_info;
-        raGL_framebuffer_attachment                  draw_fb_attachment;
-        raGL_framebuffer                             draw_fb_raGL       = nullptr;
-        raGL_framebuffer_attachment                  read_fb_attachment;
-        raGL_framebuffer                             read_fb_raGL       = nullptr;
+        _raGL_command_blit_framebuffer_command_info& command_args                      = new_command_ptr->blit_framebuffer_command_info;
+        raGL_framebuffer                             draw_fb_raGL                      = nullptr;
+        raGL_framebuffer                             read_fb_raGL                      = nullptr;
+        ral_texture_view_create_info                 texture_view_create_info_items[2];
+        ral_texture_view                             texture_views                 [2];
 
-        draw_fb_attachment.aspect        = command_ral_ptr->aspect;
-        draw_fb_attachment.n_base_layer  = command_ral_ptr->n_dst_texture_layer;
-        draw_fb_attachment.n_base_mipmap = command_ral_ptr->n_dst_texture_mipmap;
-        draw_fb_attachment.n_layers      = 1;
-        draw_fb_attachment.n_mipmaps     = 1;
-        draw_fb_attachment.texture       = dst_texture_raGL;
+        texture_view_create_info_items[0].aspect       = static_cast<ral_texture_aspect>(command_ral_ptr->aspect);
+        texture_view_create_info_items[0].format       = dst_texture_format_ral;
+        texture_view_create_info_items[0].n_base_layer = command_ral_ptr->n_dst_texture_layer;
+        texture_view_create_info_items[0].n_base_mip   = command_ral_ptr->n_dst_texture_mipmap;
+        texture_view_create_info_items[0].n_layers     = 1;
+        texture_view_create_info_items[0].n_mips       = 1;
+        texture_view_create_info_items[0].texture      = command_ral_ptr->dst_texture;
+        texture_view_create_info_items[0].type         = dst_texture_type;
 
-        read_fb_attachment.aspect        = command_ral_ptr->aspect;
-        read_fb_attachment.n_base_layer  = command_ral_ptr->n_src_texture_layer;
-        read_fb_attachment.n_base_mipmap = command_ral_ptr->n_src_texture_mipmap;
-        read_fb_attachment.n_layers      = 1;
-        read_fb_attachment.n_mipmaps     = 1;
-        read_fb_attachment.texture       = src_texture_raGL;
+        texture_view_create_info_items[1].aspect       = static_cast<ral_texture_aspect>(command_ral_ptr->aspect);
+        texture_view_create_info_items[1].format       = src_texture_format_ral;
+        texture_view_create_info_items[1].n_base_layer = command_ral_ptr->n_src_texture_layer;
+        texture_view_create_info_items[1].n_base_mip   = command_ral_ptr->n_src_texture_mipmap;
+        texture_view_create_info_items[1].n_layers     = 1;
+        texture_view_create_info_items[1].n_mips       = 1;
+        texture_view_create_info_items[1].texture      = command_ral_ptr->src_texture;
+        texture_view_create_info_items[1].type         = src_texture_type;
 
-        raGL_backend_get_framebuffer(backend_raGL,
-                                     1, /* n_attachments */
-                                    &draw_fb_attachment,
-                                    &draw_fb_raGL);
+        /* Note: texture views will automatically be released when parent texture is destroyed. */
+        ral_context_create_texture_views(context_ral,
+                                         sizeof(texture_view_create_info_items) / sizeof(texture_view_create_info_items[0]),
+                                         texture_view_create_info_items,
+                                         texture_views);
 
-        raGL_backend_get_framebuffer(backend_raGL,
-                                     1, /* n_attachments */
-                                    &read_fb_attachment,
-                                    &read_fb_raGL);
+        ASSERT_DEBUG_SYNC(texture_views[0] != nullptr && texture_views[1] != nullptr,
+                          "Could not create RAL texture views");
+
+        raGL_framebuffers_get_framebuffer(backend_fbos,
+                                          1, /* n_attachments */
+                                          texture_views + 0,
+                                          nullptr, /* in_opt_ds_attachment */
+                                         &draw_fb_raGL);
+        raGL_framebuffers_get_framebuffer(backend_fbos,
+                                          1, /* n_attachments */
+                                          texture_views + 1,
+                                          nullptr, /* in_opt_ds_attachment */
+                                         &read_fb_raGL);
 
         raGL_framebuffer_get_property(draw_fb_raGL,
                                       RAGL_FRAMEBUFFER_PROPERTY_ID,
@@ -2433,13 +2516,13 @@ void _raGL_command_buffer::process_set_program_command(const ral_command_buffer_
 }
 
 /** TODO */
-void _raGL_command_buffer::process_set_rendertarget_state_command(const ral_command_buffer_set_rendertarget_state_command_info* command_ral_ptr)
+void _raGL_command_buffer::process_set_color_rendertarget_command(const ral_command_buffer_set_color_rendertarget_command_info* command_ral_ptr)
 {
     ASSERT_DEBUG_SYNC(command_ral_ptr->rendertarget_index < N_MAX_RENDERTARGETS,
                       "Too many rendertargets requested.");
 
-    bake_state.active_rt_attachments[command_ral_ptr->rendertarget_index] = _raGL_command_buffer_bake_state_rt(*command_ral_ptr);
-    bake_state.active_rt_attachments_dirty                                = true;
+    bake_state.active_rt_attachments_dirty                                      = true;
+    bake_state.active_rt_color_attachments[command_ral_ptr->rendertarget_index] = _raGL_command_buffer_bake_state_rt(*command_ral_ptr);
 }
 
 /** TODO */
@@ -2667,6 +2750,16 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                                                                         command_args.bo_id,
                                                                         command_args.offset,
                                                                         command_args.size);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER:
+            {
+                const _raGL_command_bind_framebuffer_command_info& command_args = command_ptr->bind_framebuffer_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLBindFramebuffer(command_args.target,
+                                                                        command_args.framebuffer);
 
                 break;
             }

@@ -9,6 +9,9 @@
 
 typedef enum
 {
+    /* not settable; raGL_framebuffers */
+    RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
+
     /* settable; ogl_context. */
     RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CONTEXT,
 
@@ -59,12 +62,6 @@ PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 
 PUBLIC void raGL_backend_get_command_buffer(raGL_backend         backend,
                                             ral_command_buffer   command_buffer_ral,
                                             raGL_command_buffer* out_command_buffer_raGL_ptr);
-
-/** TODO */
-PUBLIC void raGL_backend_get_framebuffer(raGL_backend                       backend,
-                                         uint32_t                           n_attachments,
-                                         const raGL_framebuffer_attachment* attachments,
-                                         raGL_framebuffer*                  out_framebuffer_ptr);
 
 /** TODO */
 PUBLIC ral_context raGL_backend_get_helper_context(ral_backend_type type);

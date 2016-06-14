@@ -5,6 +5,9 @@
 
 typedef enum
 {
+    /* not settable; ral_texture_aspect */
+    RAL_TEXTURE_VIEW_PROPERTY_ASPECT,
+
     /* not settable; ral_context */
     RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
 

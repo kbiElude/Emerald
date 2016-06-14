@@ -3332,6 +3332,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_CONTEXT_RAL:
+        {
+            *(ral_context*) out_result = context_ptr->context;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO:
         {
             *(ral_framebuffer*) out_result = context_ptr->fbo;

@@ -53,7 +53,7 @@ typedef struct _ral_command
         ral_command_buffer_set_binding_command_info             set_binding_command;
         ral_command_buffer_set_gfx_state_command_info           set_gfx_state_command;
         ral_command_buffer_set_program_command_info             set_program_command;
-        ral_command_buffer_set_rendertarget_state_command_info  set_rendertarget_state_command;
+        ral_command_buffer_set_color_rendertarget_command_info  set_color_rendertarget_command;
         ral_command_buffer_set_scissor_box_command_info         set_scissor_box_command;
         ral_command_buffer_set_vertex_buffer_command_info       set_vertex_buffer_command;
         ral_command_buffer_set_viewport_command_info            set_viewport_command;
@@ -224,17 +224,17 @@ typedef struct _ral_command
                 break;
             }
 
-            case RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE:
+            case RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET:
             {
                 ral_context texture_view_context = nullptr;
 
-                ral_texture_view_get_property(set_rendertarget_state_command.texture_view,
+                ral_texture_view_get_property(set_color_rendertarget_command.texture_view,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &texture_view_context);
                 ral_context_delete_objects   (texture_view_context,
                                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                               1, /* n_objects */
-                                              (const void**) &set_rendertarget_state_command.texture_view);
+                                              (const void**) &set_color_rendertarget_command.texture_view);
 
                 break;
             }
@@ -1133,9 +1133,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_command_buffer_record_set_rendertargets(ral_command_buffer                                            recording_command_buffer,
-                                                        uint32_t                                                      n_rendertargets,
-                                                        const ral_command_buffer_set_rendertarget_state_command_info* rendertarget_ptrs)
+PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer                                            recording_command_buffer,
+                                                              uint32_t                                                      n_rendertargets,
+                                                              const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs)
 {
     _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
     _ral_command*        new_command_ptr    = nullptr;
@@ -1152,7 +1152,7 @@ PUBLIC void ral_command_buffer_record_set_rendertargets(ral_command_buffer      
                   n_rendertarget < n_rendertargets;
                 ++n_rendertarget)
     {
-        const ral_command_buffer_set_rendertarget_state_command_info& src_command = rendertarget_ptrs[n_rendertarget];
+        const ral_command_buffer_set_color_rendertarget_command_info& src_command = rendertarget_ptrs[n_rendertarget];
 
         #ifdef _DEBUG
         {
@@ -1163,12 +1163,12 @@ PUBLIC void ral_command_buffer_record_set_rendertargets(ral_command_buffer      
 
         new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
 
-        new_command_ptr->set_rendertarget_state_command = src_command;
-        new_command_ptr->type                           = RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE;
+        new_command_ptr->set_color_rendertarget_command = src_command;
+        new_command_ptr->type                           = RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET;
 
         ral_context_retain_object(command_buffer_ptr->context,
                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                  new_command_ptr->set_rendertarget_state_command.texture_view);
+                                  new_command_ptr->set_color_rendertarget_command.texture_view);
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);

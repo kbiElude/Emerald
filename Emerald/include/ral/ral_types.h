@@ -1353,9 +1353,10 @@ typedef struct ral_gfx_state_create_info
 
 typedef struct ral_texture_view_create_info
 {
-    ral_format       format;
-    ral_texture      texture;
-    ral_texture_type type;
+    ral_texture_aspect aspect;
+    ral_format         format;
+    ral_texture        texture;
+    ral_texture_type   type;
 
     uint32_t n_base_layer;
     uint32_t n_base_mip;
@@ -1365,6 +1366,7 @@ typedef struct ral_texture_view_create_info
 
     ral_texture_view_create_info()
     {
+        aspect       = static_cast<ral_texture_aspect>(0);
         format       = RAL_FORMAT_UNKNOWN;
         n_base_layer = -1;
         n_base_mip   = -1;

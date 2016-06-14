@@ -289,7 +289,7 @@ typedef struct ral_command_buffer_set_program_command_info
 
 } ral_command_buffer_set_program_command_info;
 
-typedef struct ral_command_buffer_set_rendertarget_state_command_info
+typedef struct ral_command_buffer_set_color_rendertarget_command_info
 {
     ral_color        blend_constant;
     bool             blend_enabled;
@@ -313,9 +313,9 @@ typedef struct ral_command_buffer_set_rendertarget_state_command_info
         bool color3  : 1;
     } channel_writes;
 
-    static ral_command_buffer_set_rendertarget_state_command_info get_preinitialized_instance()
+    static ral_command_buffer_set_color_rendertarget_command_info get_preinitialized_instance()
     {
-        ral_command_buffer_set_rendertarget_state_command_info result;
+        ral_command_buffer_set_color_rendertarget_command_info result;
 
         result.blend_constant.f32[0]   = 0.0f;
         result.blend_constant.f32[1]   = 0.0f;
@@ -337,7 +337,7 @@ typedef struct ral_command_buffer_set_rendertarget_state_command_info
 
         return result;
     }
-} ral_command_buffer_set_rendertarget_state_command_info;
+} ral_command_buffer_set_color_rendertarget_command_info;
 
 typedef struct ral_command_buffer_set_scissor_box_command_info
 {
@@ -378,9 +378,9 @@ typedef enum
     RAL_COMMAND_TYPE_DRAW_CALL_REGULAR,
     RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER,
     RAL_COMMAND_TYPE_SET_BINDING,
+    RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET,
     RAL_COMMAND_TYPE_SET_GFX_STATE,
     RAL_COMMAND_TYPE_SET_PROGRAM,
-    RAL_COMMAND_TYPE_SET_RENDERTARGET_STATE,
     RAL_COMMAND_TYPE_SET_SCISSOR_BOX,
     RAL_COMMAND_TYPE_SET_VERTEX_BUFFER,
     RAL_COMMAND_TYPE_SET_VIEWPORT,
@@ -450,9 +450,9 @@ PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_c
                                                   ral_program        program);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_rendertargets(ral_command_buffer                                            recording_command_buffer,
-                                                        uint32_t                                                      n_rendertargets,
-                                                        const ral_command_buffer_set_rendertarget_state_command_info* rendertarget_ptrs);
+PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer                                                  recording_command_buffer,
+                                                              uint32_t                                                            n_rendertargets,
+                                                              const ral_command_buffer_set_color_rendertarget_state_command_info* rendertarget_ptrs);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
