@@ -13,11 +13,34 @@ typedef void (*PFNRALSCHEDULEREXECUTECOMMANDBUFFERSPROC)(void*               bac
                                                          uint32_t            n_command_buffers,
                                                          ral_command_buffer* command_buffers);
 
+typedef enum
+{
+    /* NOTE: This job type should only be used internally by backends.
+     *       Has a backend-specific behavior.
+     */
+    RAL_SCHEDULER_JOB_TYPE_CALLBACK,
+
+    RAL_SCHEDULER_JOB_TYPE_COMMAND_BUFFER,
+} ral_scheduler_job_type;
 
 typedef struct ral_scheduler_job_info
 {
-    ral_command_buffer command_buffers_to_execute  [RAL_SCHEDULER_N_MAX_COMMAND_BUFFERS];
-    uint32_t           n_command_buffers_to_execute;
+    ral_scheduler_job_type job_type;
+
+    union
+    {
+        struct
+        {
+            PFNRALSCHEDULERCALLBACKPROC pfn_callback_proc;
+            void*                       callback_user_arg;
+        } callback_job_args;
+
+        struct
+        {
+            ral_command_buffer command_buffers_to_execute  [RAL_SCHEDULER_N_MAX_COMMAND_BUFFERS];
+            uint32_t           n_command_buffers_to_execute;
+        } command_buffer_job_args;
+    };
 
     /* Call-back to be issued after pfn_callback_ptr returns, from a thread
      * taken from the engine-wide thread pool.
@@ -42,7 +65,9 @@ typedef struct ral_scheduler_job_info
 
     ral_scheduler_job_info()
     {
-        n_command_buffers_to_execute = 0;
+        job_type = RAL_SCHEDULER_JOB_TYPE_COMMAND_BUFFER;
+
+        command_buffer_job_args.n_command_buffers_to_execute = 0;
 
         callback_when_done_user_arg = nullptr;
         pfn_callback_when_done_ptr  = nullptr;

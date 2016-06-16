@@ -52,7 +52,7 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
     shader_ptr->pGLShaderSource (shader_ptr->id,
                                  1, /* count */
                                 &shader_body_raw_ptr,
-                                 NULL);
+                                 nullptr);
     shader_ptr->pGLCompileShader(shader_ptr->id);
 
     /* Retrieve compile status and shader info log */
@@ -68,7 +68,7 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
 
     shader_ptr->compile_status = (compile_status_result == 1);
 
-    if (shader_ptr->shader_info_log != NULL)
+    if (shader_ptr->shader_info_log != nullptr)
     {
         delete shader_ptr->shader_info_log;
     }
@@ -77,11 +77,11 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
     {
         shader_ptr->shader_info_log = new (std::nothrow) char[shader_info_log_length + 1];
 
-        ASSERT_ALWAYS_SYNC(shader_ptr->shader_info_log != NULL,
+        ASSERT_ALWAYS_SYNC(shader_ptr->shader_info_log != nullptr,
                            "Out of memory while allocating space for shader info log [%d bytes]",
                            shader_info_log_length+1);
 
-        if (shader_ptr->shader_info_log != NULL)
+        if (shader_ptr->shader_info_log != nullptr)
         {
             memset(shader_ptr->shader_info_log,
                    0,
@@ -89,7 +89,7 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
 
             shader_ptr->pGLGetShaderInfoLog(shader_ptr->id,
                                             shader_info_log_length + 1,
-                                            NULL,
+                                            nullptr,
                                             shader_ptr->shader_info_log);
 
             LOG_ERROR("Shader info log for shader [%u] follows: \n>>\n%s\n<<",
@@ -121,7 +121,7 @@ PRIVATE void _raGL_shader_create_callback(ogl_context context,
                       "Only GLSL-sourced shaders are supported by OpenGL backend.");
 
     /* Acquire a new ID */
-    shader_ptr->id = shader_ptr->pGLCreateShader(raGL_utils_get_ogl_shader_type_for_ral_shader_type(shader_type));
+    shader_ptr->id = shader_ptr->pGLCreateShader(raGL_utils_get_ogl_enum_for_ral_shader_type(shader_type));
 
     /* Force other contexts to sync */
     raGL_backend_enqueue_sync();
@@ -145,18 +145,18 @@ PRIVATE void _raGL_shader_release(void* shader)
 {
     _raGL_shader* shader_ptr = (_raGL_shader*) shader;
 
-    if (shader_ptr->callback_manager != NULL)
+    if (shader_ptr->callback_manager != nullptr)
     {
         system_callback_manager_release(shader_ptr->callback_manager);
 
-        shader_ptr->callback_manager = NULL;
+        shader_ptr->callback_manager = nullptr;
     }
 
-    if (shader_ptr->shader_info_log != NULL)
+    if (shader_ptr->shader_info_log != nullptr)
     {
         delete shader_ptr->shader_info_log;
 
-        shader_ptr->shader_info_log = NULL;
+        shader_ptr->shader_info_log = nullptr;
     }
 
     ogl_context_request_callback_from_context_thread(shader_ptr->context,
@@ -169,7 +169,7 @@ PUBLIC bool raGL_shader_compile(raGL_shader shader)
 {
     ogl_context               current_context = ogl_context_get_current_context();
     bool                      result          = false;
-    system_hashed_ansi_string shader_body     = NULL;
+    system_hashed_ansi_string shader_body     = nullptr;
     _raGL_shader*             shader_ptr      = (_raGL_shader*) shader;
 
     ral_shader_get_property(shader_ptr->shader_ral,
@@ -214,33 +214,33 @@ PUBLIC raGL_shader raGL_shader_create(ral_context context_ral,
                                       ogl_context context_ogl,
                                       ral_shader  shader_ral)
 {
-    system_hashed_ansi_string shader_name = NULL;
+    system_hashed_ansi_string shader_name = nullptr;
 
     ral_shader_get_property(shader_ral,
                             RAL_SHADER_PROPERTY_NAME,
                            &shader_name);
 
     ASSERT_DEBUG_SYNC(ral_context_get_shader_by_name(context_ral,
-                                                     shader_name) == NULL,
+                                                     shader_name) == nullptr,
                       "Shader [%s] has already been created!",
                       system_hashed_ansi_string_get_buffer(shader_name) );
 
     /* Carry on and create a new shader instance */
     _raGL_shader* new_shader_ptr = new (std::nothrow) _raGL_shader;
 
-    ASSERT_ALWAYS_SYNC(new_shader_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_shader_ptr != nullptr,
                        "Out of memory");
 
-    if (new_shader_ptr != NULL)
+    if (new_shader_ptr != nullptr)
     {
         new_shader_ptr->callback_manager   = system_callback_manager_create((_callback_id) RAGL_SHADER_CALLBACK_ID_COUNT);
         new_shader_ptr->compile_status     = false;
         new_shader_ptr->context            = context_ogl;
         new_shader_ptr->has_been_compiled  = false;
         new_shader_ptr->id                 = 0;
-        new_shader_ptr->last_compiled_body = NULL;
+        new_shader_ptr->last_compiled_body = nullptr;
         new_shader_ptr->shader_ral         = shader_ral;
-        new_shader_ptr->shader_info_log    = NULL;
+        new_shader_ptr->shader_info_log    = nullptr;
 
         /* Initialize entry-point cache */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -251,7 +251,7 @@ PUBLIC raGL_shader raGL_shader_create(ral_context context_ral,
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints* entry_points_ptr = NULL;
+            const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
 
             ogl_context_get_property(context_ogl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -266,7 +266,7 @@ PUBLIC raGL_shader raGL_shader_create(ral_context context_ral,
         }
         else
         {
-            const ogl_context_gl_entrypoints* entry_points_ptr = NULL;
+            const ogl_context_gl_entrypoints* entry_points_ptr = nullptr;
 
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized backendtype");
@@ -299,9 +299,9 @@ PUBLIC void raGL_shader_get_property(raGL_shader          shader,
 {
     _raGL_shader* shader_ptr = (_raGL_shader*) shader;
 
-    if (shader_ptr == NULL)
+    if (shader_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(shader_ptr != NULL,
+        ASSERT_DEBUG_SYNC(shader_ptr != nullptr,
                           "Input raGL_shader instance is NULL");
 
         goto end;
@@ -352,7 +352,7 @@ PUBLIC void raGL_shader_get_property(raGL_shader          shader,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized raGL_shader_property value.");
         }
-    } /* switch (property) */
+    }
 
 end:
     ;

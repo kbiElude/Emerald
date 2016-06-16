@@ -35,11 +35,11 @@ REFCOUNT_INSERT_IMPLEMENTATION(raGL_sync,
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_sync_release(void* sync)
 {
     ogl_context                       current_context = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     bool                              is_nv_driver    = false;
     _raGL_sync*                       sync_ptr        = (_raGL_sync*) sync;
 
-    ASSERT_DEBUG_SYNC(current_context != NULL,
+    ASSERT_DEBUG_SYNC(current_context != nullptr,
                       "No rendering context bound to the calling thread");
 
     ogl_context_get_property(current_context,
@@ -75,13 +75,13 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sync_release(void* sync)
 PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create()
 {
     ogl_context                       context_gl      = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-    GLsync                            new_handle      = NULL;
-    _raGL_sync*                       new_sync_ptr    = NULL;
-    raGL_backend                      parent_backend  = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
+    GLsync                            new_handle      = nullptr;
+    _raGL_sync*                       new_sync_ptr    = nullptr;
+    raGL_backend                      parent_backend  = nullptr;
 
     /* Spawn a new sync object */
-    ASSERT_DEBUG_SYNC(context_gl != NULL,
+    ASSERT_DEBUG_SYNC(context_gl != nullptr,
                       "No rendering context bound to the calling thread");
 
     ogl_context_get_property(context_gl,
@@ -94,7 +94,7 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create()
     new_handle = entrypoints_ptr->pGLFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,
                                                0 /* flags */);
 
-    ASSERT_DEBUG_SYNC(new_handle != NULL,
+    ASSERT_DEBUG_SYNC(new_handle != nullptr,
                       "GL returned a NULL GLsync object");
 
     entrypoints_ptr->pGLFlush();
@@ -102,13 +102,13 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create()
     new_sync_ptr = new (std::nothrow) _raGL_sync(parent_backend,
                                                  new_handle);
 
-    ASSERT_ALWAYS_SYNC(new_sync_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_sync_ptr != nullptr,
                        "Out of memory");
 
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_sync_ptr,
                                                    _raGL_sync_release,
                                                    OBJECT_TYPE_RAGL_SYNC,
-                                                   NULL);
+                                                   nullptr);
 
     return (raGL_sync) new_sync_ptr;
 }
@@ -148,11 +148,11 @@ PUBLIC void raGL_sync_get_property(raGL_sync          sync,
 PUBLIC RENDERING_CONTEXT_CALL void raGL_sync_wait_gpu(raGL_sync sync)
 {
     ogl_context                       current_context = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     bool                              is_nv_driver    = false;
     _raGL_sync*                       sync_ptr        = (_raGL_sync*) sync;
 
-    ASSERT_DEBUG_SYNC(current_context != NULL,
+    ASSERT_DEBUG_SYNC(current_context != nullptr,
                       "No rendering context bound to the calling thread");
 
     ogl_context_get_property(current_context,

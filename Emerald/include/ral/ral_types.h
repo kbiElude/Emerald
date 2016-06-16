@@ -6,7 +6,6 @@
 DECLARE_HANDLE(ral_buffer);
 DECLARE_HANDLE(ral_command_buffer);
 DECLARE_HANDLE(ral_context);
-DECLARE_HANDLE(ral_framebuffer);
 DECLARE_HANDLE(ral_gfx_state);
 DECLARE_HANDLE(ral_present_job);
 DECLARE_HANDLE(ral_present_task);
@@ -529,12 +528,12 @@ typedef struct ral_buffer_create_info
     }
 } ral_buffer_create_info;
 
-typedef enum ral_color_data_type
+typedef enum
 {
     RAL_COLOR_DATA_TYPE_FLOAT,
     RAL_COLOR_DATA_TYPE_SINT,
     RAL_COLOR_DATA_TYPE_UINT,
-};
+} ral_color_data_type;
 
 /* RAL RGBA color */
 typedef struct ral_color
@@ -824,8 +823,8 @@ typedef enum
 typedef struct ral_sampler_create_info
 {
     ral_color               border_color;
-    ral_compare_function    compare_function;
     bool                    compare_mode_enabled;
+    ral_compare_op          compare_op;
     float                   lod_bias;
     float                   lod_min;
     float                   lod_max;
@@ -839,13 +838,13 @@ typedef struct ral_sampler_create_info
 
     ral_sampler_create_info()
     {
-        border_color.data_type = ral_color::RAL_COLOR_DATA_TYPE_FLOAT;
+        border_color.data_type = RAL_COLOR_DATA_TYPE_FLOAT;
         border_color.f32[0]    = 0.0f;
         border_color.f32[1]    = 0.0f;
         border_color.f32[2]    = 0.0f;
         border_color.f32[3]    = 1.0f;
-        compare_function       = RAL_COMPARE_FUNCTION_ALWAYS;
         compare_mode_enabled   = false;
+        compare_op             = RAL_COMPARE_OP_ALWAYS;
         lod_bias               = 0.0f;
         lod_min                = -1000.0f;
         lod_max                =  1000.0f;

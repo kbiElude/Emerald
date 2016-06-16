@@ -8,11 +8,11 @@ typedef enum
     /* not settable; ral_color */
     RAL_SAMPLER_PROPERTY_BORDER_COLOR,
 
-    /* not settable; ral_compare_function */
-    RAL_SAMPLER_PROPERTY_COMPARE_FUNCTION,
-
     /* not settable, bool */
     RAL_SAMPLER_PROPERTY_COMPARE_MODE_ENABLED,
+
+    /* not settable; ral_compare_op */
+    RAL_SAMPLER_PROPERTY_COMPARE_OP,
 
     /* not settable, ral_context */
     RAL_SAMPLER_PROPERTY_CONTEXT,

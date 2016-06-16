@@ -1974,6 +1974,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     func_ptr_table_entry func_ptr_table[] =
     {
         {&context_ptr->entry_points_private.pGLBindMultiTextureEXT,                                            "glBindMultiTextureEXT"},
+        {&context_ptr->entry_points_private.pGLCheckNamedFramebufferStatusEXT,                                 "glCheckNamedFramebufferStatusEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureImage1DEXT,                                    "glCompressedTextureImage1DEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureImage2DEXT,                                    "glCompressedTextureImage2DEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureImage3DEXT,                                    "glCompressedTextureImage3DEXT"},
@@ -2095,6 +2096,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     }
 
     context_ptr->entry_points_gl_ext_direct_state_access.pGLBindMultiTextureEXT               = ogl_context_wrappers_glBindMultiTextureEXT;
+    context_ptr->entry_points_gl_ext_direct_state_access.pGLCheckNamedFramebufferStatusEXT    = ogl_context_wrappers_glCheckNamedFramebufferStatusEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage1DEXT    = ogl_context_wrappers_glCompressedTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage2DEXT    = ogl_context_wrappers_glCompressedTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage3DEXT    = ogl_context_wrappers_glCompressedTextureSubImage3DEXT;
@@ -2213,6 +2215,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLDepthFunc,                                   "glDepthFunc"},
         {&context_ptr->entry_points_private.pGLDepthMask,                                   "glDepthMask"},
         {&context_ptr->entry_points_gl.pGLDepthRange,                                       "glDepthRange"},
+        {&context_ptr->entry_points_gl.pGLDepthRangeIndexed,                                "glDepthRangeIndexed"},
         {&context_ptr->entry_points_gl.pGLDetachShader,                                     "glDetachShader"},
         {&context_ptr->entry_points_private.pGLDisable,                                     "glDisable"},
         {&context_ptr->entry_points_private.pGLDisablei,                                    "glDisablei"},

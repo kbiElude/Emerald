@@ -390,10 +390,31 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler                      
                 }
             }
 
-            /* Execute the command buffers */
-            pfn_execute_command_buffers_proc(execute_command_buffers_proc_backend_callback_arg,
-                                             job_ptr->n_command_buffers_to_execute,
-                                             job_ptr->command_buffers_to_execute);
+            /* Do the job */
+            switch (job_ptr->job_type)
+            {
+                case RAL_SCHEDULER_JOB_TYPE_CALLBACK:
+                {
+                    job_ptr->callback_job_args.pfn_callback_proc(job_ptr->callback_job_args.callback_user_arg);
+
+                    break;
+                }
+
+                case RAL_SCHEDULER_JOB_TYPE_COMMAND_BUFFER:
+                {
+                    pfn_execute_command_buffers_proc(execute_command_buffers_proc_backend_callback_arg,
+                                                     job_ptr->command_buffer_job_args.n_command_buffers_to_execute,
+                                                     job_ptr->command_buffer_job_args.command_buffers_to_execute);
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized RAL scheduler job type");
+                }
+            }
 
             /* Return the locks */
             system_critical_section_enter(backend_ptr->active_locks_cs);

@@ -630,7 +630,7 @@ PUBLIC GLuint raGL_vaos_get_vao(raGL_vaos                       in_vaos,
                                             in_vertex_attributes,
                                             in_vertex_buffers);
 
-        LOG_INFO("Baked a new VAO with ID [%d]",
+        LOG_INFO("Baked a new VAO with ID [%u]",
                  result_vao_id);
 
         system_resizable_vector_push(vaos_vector,
@@ -641,7 +641,6 @@ PUBLIC GLuint raGL_vaos_get_vao(raGL_vaos                       in_vaos,
     ASSERT_DEBUG_SYNC(result_vao_id != 0,
                       "Zero VAO id about to be returned.");
 
-end:
     return result_vao_id;
 }
 

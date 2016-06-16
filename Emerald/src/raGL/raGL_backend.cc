@@ -632,13 +632,28 @@ _raGL_backend::~_raGL_backend()
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_helper_context_execute_command_buffers_callback(void*               backend_raGL,
+PRIVATE void _raGL_backend_helper_context_execute_command_buffers_callback(void*               backend_raGL_raw,
                                                                            uint32_t            n_command_buffers,
                                                                            ral_command_buffer* command_buffers)
 {
-    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend_raGL);
+    _raGL_backend* backend_ptr  = reinterpret_cast<_raGL_backend*>(backend_raGL_raw);
+    raGL_backend   backend_raGL = reinterpret_cast<raGL_backend>  (backend_raGL_raw);
 
-    todo;
+    for (uint32_t n_command_buffer = 0;
+                  n_command_buffer < n_command_buffers;
+                ++n_command_buffer)
+    {
+        raGL_command_buffer command_buffer_raGL = nullptr;
+
+        raGL_backend_get_command_buffer(backend_raGL,
+                                        command_buffers[n_command_buffer],
+                                       &command_buffer_raGL);
+
+        ASSERT_DEBUG_SYNC(command_buffer_raGL != nullptr,
+                          "Could not retrieve a raGL instance for a RAL command buffer");
+
+        raGL_command_buffer_execute(command_buffer_raGL);
+    }
 }
 
 /** TODO */
@@ -1791,8 +1806,9 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
             job_arg.objects_locked_semaphore = system_semaphore_create(1,  /* semaphore_capacity */
                                                                        0); /* default_value      */
 
-            new_job.callback_user_arg = &job_arg;
-            new_job.pfn_callback_ptr  = _raGL_backend_link_program_handler;
+            new_job.callback_job_args.callback_user_arg = &job_arg;
+            new_job.callback_job_args.pfn_callback_proc = _raGL_backend_link_program_handler;
+            new_job.job_type                            = RAL_SCHEDULER_JOB_TYPE_CALLBACK;
 
             ral_scheduler_schedule_job(scheduler,
                                        _global.backend_type,
@@ -1853,10 +1869,10 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                       n_program < n_programs;
                     ++n_program)
         {
-            bool                                all_shader_stages_set = false;
-            ral_scheduler_job_info              job_info;
-            raGL_program                        program_raGL          = nullptr;
-            ral_program                         program_ral           = nullptr;
+            bool                   all_shader_stages_set = false;
+            ral_scheduler_job_info job_info;
+            raGL_program           program_raGL          = nullptr;
+            ral_program            program_ral           = nullptr;
 
             system_hash64map_get_element_at(backend_ptr->programs_map,
                                             n_program,
@@ -1889,8 +1905,9 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
                                                                        0); /* default_value      */
             job_arg.program                  = program_raGL;
 
-            job_info.pfn_callback_ptr  = _raGL_backend_link_program_handler;
-            job_info.callback_user_arg = &job_arg;
+            job_info.job_type                            = RAL_SCHEDULER_JOB_TYPE_CALLBACK;
+            job_info.callback_job_args.callback_user_arg = &job_arg;
+            job_info.callback_job_args.pfn_callback_proc = _raGL_backend_link_program_handler;
 
             ral_scheduler_schedule_job(scheduler,
                                        _global.backend_type,
@@ -1987,7 +2004,7 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
 
         case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER:
         {
-            todo;
+            raGL_command_buffer_release( (raGL_command_buffer) object_raGL);
 
             break;
         }
@@ -2741,6 +2758,17 @@ PUBLIC bool raGL_backend_get_texture(void*       backend,
     return _raGL_backend_get_object(backend,
                                     RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                     texture_ral,
+                                    out_texture_raGL_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC bool raGL_backend_get_texture_view(void*            backend,
+                                          ral_texture_view texture_view_ral,
+                                          void**           out_texture_raGL_ptr)
+{
+    return _raGL_backend_get_object(backend,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                    texture_view_ral,
                                     out_texture_raGL_ptr);
 }
 

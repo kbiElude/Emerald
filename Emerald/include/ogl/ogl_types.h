@@ -16,42 +16,6 @@
 #endif
 
 
-/* Enumerator describing native GL compare function types. */
-typedef enum
-{
-    OGL_COMPARE_FUNCTION_ALWAYS   = GL_ALWAYS,
-    OGL_COMPARE_FUNCTION_EQUAL    = GL_EQUAL,
-    OGL_COMPARE_FUNCTION_GEQUAL   = GL_GEQUAL,
-    OGL_COMPARE_FUNCTION_GREATER  = GL_GREATER,
-    OGL_COMPARE_FUNCTION_LEQUAL   = GL_LEQUAL,
-    OGL_COMPARE_FUNCTION_LESS     = GL_LESS,
-    OGL_COMPARE_FUNCTION_NEVER    = GL_NEVER,
-    OGL_COMPARE_FUNCTION_NOTEQUAL = GL_NOTEQUAL,
-
-    OGL_COMPARE_FUNCTION_UNDEFINED,
-} ogl_compare_function;
-
-/* Enumerator describing native GL primitive types.
- *
- * NOTE: Client application should always use RAL enums!
- */
-typedef enum
-{
-    OGL_PRIMITIVE_TYPE_LINE_LOOP                = GL_LINE_LOOP,
-    OGL_PRIMITIVE_TYPE_LINE_STRIP               = GL_LINE_STRIP,
-    OGL_PRIMITIVE_TYPE_LINE_STRIP_ADJACENCY     = GL_LINE_STRIP_ADJACENCY,
-    OGL_PRIMITIVE_TYPE_LINES                    = GL_LINES,
-    OGL_PRIMITIVE_TYPE_LINES_ADJACENCY          = GL_LINES_ADJACENCY,
-    OGL_PRIMITIVE_TYPE_POINTS                   = GL_POINTS,
-    OGL_PRIMITIVE_TYPE_TRIANGLE_FAN             = GL_TRIANGLE_FAN,
-    OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP           = GL_TRIANGLE_STRIP,
-    OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP_ADJACENCY = GL_TRIANGLE_STRIP_ADJACENCY,
-    OGL_PRIMITIVE_TYPE_TRIANGLES                = GL_TRIANGLES,
-    OGL_PRIMITIVE_TYPE_TRIANGLES_ADJACENCY      = GL_TRIANGLES_ADJACENCY,
-
-    OGL_PRIMITIVE_TYPE_UNDEFINED
-} ogl_primitive_type;
-
 typedef enum
 {
     OGL_TEXTURE_DATA_FORMAT_DEPTH_STENCIL = GL_DEPTH_STENCIL,
@@ -68,19 +32,6 @@ typedef enum
     OGL_TEXTURE_DATA_FORMAT_UNDEFINED = GL_NONE
 } ogl_texture_data_format;
 
-typedef enum
-{
-    OGL_TEXTURE_DATA_TYPE_FLOAT  = GL_FLOAT,
-    OGL_TEXTURE_DATA_TYPE_SBYTE  = GL_BYTE,
-    OGL_TEXTURE_DATA_TYPE_SINT   = GL_INT,
-    OGL_TEXTURE_DATA_TYPE_SSHORT = GL_SHORT,
-    OGL_TEXTURE_DATA_TYPE_UBYTE  = GL_UNSIGNED_BYTE,
-    OGL_TEXTURE_DATA_TYPE_UINT   = GL_UNSIGNED_INT,
-    OGL_TEXTURE_DATA_TYPE_USHORT = GL_UNSIGNED_SHORT,
-
-    OGL_TEXTURE_DATA_TYPE_UNDEFINED = GL_NONE
-} ogl_texture_data_type;
-
 /* Vertex array object handles */
 DECLARE_HANDLE(ogl_context_vaos);
 DECLARE_HANDLE(ogl_vao);
@@ -90,36 +41,6 @@ typedef void (APIENTRY *PFNGLENABLEVERTEXARRAYATTRIBEXTPROC)       (GLuint vaobj
 typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBIOFFSETEXTPROC)(GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLsizei stride,       GLintptr offset);
 typedef void (APIENTRY *PFNGLVERTEXARRAYVERTEXATTRIBOFFSETEXTPROC) (GLuint vaobj, GLuint buffer, GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, GLintptr offset);
 
-
-/** Enumerator that describes type of a given shader.
- *
- *  NOTE: Client apps should always use RAL shader stage enums! */
-typedef enum
-{
-    OGL_SHADER_TYPE_COMPUTE                 = GL_COMPUTE_SHADER,
-    OGL_SHADER_TYPE_FRAGMENT                = GL_FRAGMENT_SHADER,
-    OGL_SHADER_TYPE_GEOMETRY                = GL_GEOMETRY_SHADER,
-    OGL_SHADER_TYPE_TESSELLATION_CONTROL    = GL_TESS_CONTROL_SHADER,
-    OGL_SHADER_TYPE_TESSELLATION_EVALUATION = GL_TESS_EVALUATION_SHADER,
-    OGL_SHADER_TYPE_VERTEX                  = GL_VERTEX_SHADER,
-
-    /* Always last */
-    OGL_SHADER_TYPE_UNKNOWN
-} ogl_shader_type;
-
-/** Enumerator that describes type of either the magnification or the minification texture filter */
-typedef enum
-{
-    OGL_TEXTURE_FILTER_LINEAR                 = GL_LINEAR,
-    OGL_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR   = GL_LINEAR_MIPMAP_LINEAR,
-    OGL_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST  = GL_LINEAR_MIPMAP_NEAREST,
-    OGL_TEXTURE_FILTER_NEAREST                = GL_NEAREST,
-    OGL_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR  = GL_NEAREST_MIPMAP_LINEAR,
-    OGL_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST = GL_NEAREST_MIPMAP_NEAREST,
-
-    /* Always last */
-    OGL_TEXTURE_FILTER_UNKNOWN
-} ogl_texture_filter;
 
 /** Enumerator that describes supported texture wrap modes */
 typedef enum
@@ -798,6 +719,7 @@ typedef struct
     PFNGLDEPTHFUNCPROC                                   pGLDepthFunc;
     PFNGLDEPTHMASKPROC                                   pGLDepthMask;
     PFNGLDEPTHRANGEPROC                                  pGLDepthRange;
+    PFNGLDEPTHRANGEINDEXEDPROC                           pGLDepthRangeIndexed;
     PFNGLDETACHSHADERPROC                                pGLDetachShader;
     PFNGLDISABLEPROC                                     pGLDisable;
     PFNGLDISABLEIPROC                                    pGLDisablei;
@@ -1261,6 +1183,7 @@ typedef struct
 
     /* DSA */
     PFNGLBINDMULTITEXTUREEXTPROC             pGLBindMultiTextureEXT;
+    PFNGLCHECKNAMEDFRAMEBUFFERSTATUSEXTPROC  pGLCheckNamedFramebufferStatusEXT;
     PFNGLCOMPRESSEDTEXTUREIMAGE3DEXTPROC     pGLCompressedTextureImage3DEXT;
     PFNGLCOMPRESSEDTEXTUREIMAGE2DEXTPROC     pGLCompressedTextureImage2DEXT;
     PFNGLCOMPRESSEDTEXTUREIMAGE1DEXTPROC     pGLCompressedTextureImage1DEXT;
@@ -1364,6 +1287,7 @@ typedef struct
      *       feature-set and carry no vendor-specific dependencies.
      */
     PFNGLBINDMULTITEXTUREEXTPROC                         pGLBindMultiTextureEXT;
+    PFNGLCHECKNAMEDFRAMEBUFFERSTATUSEXTPROC              pGLCheckNamedFramebufferStatusEXT;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE1DEXTPROC              pGLCompressedTextureSubImage1DEXT;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE2DEXTPROC              pGLCompressedTextureSubImage2DEXT;
     PFNGLCOMPRESSEDTEXTURESUBIMAGE3DEXTPROC              pGLCompressedTextureSubImage3DEXT;

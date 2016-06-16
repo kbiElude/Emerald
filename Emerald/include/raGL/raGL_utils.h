@@ -6,13 +6,7 @@
 
 
 /** TODO */
-PUBLIC ogl_compare_function raGL_utils_get_ogl_compare_function_for_ral_compare_function(ral_compare_function in_compare_function);
-
-/** TODO */
 PUBLIC ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_format(ral_format in_format);
-
-/** TODO */
-PUBLIC ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_type(ral_texture_data_type in_data_type);
 
 /** TODO */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_blend_factor(ral_blend_factor blend_factor);
@@ -30,23 +24,26 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_index_type(ral_index_type in_index
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_polygon_mode(ral_polygon_mode polygon_mode);
 
 /** TODO */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_primitive_type(ral_primitive_type in_primitive_type);
+
+/** TODO */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_stencil_op(ral_stencil_op stencil_op);
 
 /** TODO */
-PUBLIC ogl_primitive_type raGL_utils_get_ogl_enum_for_ral_primitive_type(ral_primitive_type in_primitive_type);
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_data_type(ral_texture_data_type in_data_type);
+
+/** TODO */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_filter_mag(ral_texture_filter in_texture_filter);
+
+/** TODO */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_filter_min(ral_texture_filter      in_texture_filter,
+                                                                 ral_texture_mipmap_mode in_mipmap_mode);
 
 /** TODO */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_program_variable_type(ral_program_variable_type in_type);
 
 /** TODO */
-PUBLIC ogl_shader_type raGL_utils_get_ogl_shader_type_for_ral_shader_type(ral_shader_type in_shader_type);
-
-/** TODO */
-PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(ral_texture_filter in_texture_filter);
-
-/** TODO */
-PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_min_texture_filter(ral_texture_filter      in_texture_filter,
-                                                                                       ral_texture_mipmap_mode in_mipmap_mode);
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_shader_type(ral_shader_type in_shader_type);
 
 /** TODO */
 PUBLIC ogl_texture_internalformat raGL_utils_get_ogl_texture_internalformat_for_ral_format(ral_format in_texture_format);

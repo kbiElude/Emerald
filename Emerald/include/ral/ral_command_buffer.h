@@ -359,8 +359,9 @@ typedef struct ral_command_buffer_set_viewport_command_info
 {
     uint32_t index;
 
-    float size[2];
-    float xy  [2];
+    float depth_range[2]; // [0] = near, [1] = far
+    float size       [2];
+    float xy         [2];
 } ral_command_buffer_set_viewport_command_info;
 
 typedef enum
@@ -450,9 +451,9 @@ PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_c
                                                   ral_program        program);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer                                                  recording_command_buffer,
-                                                              uint32_t                                                            n_rendertargets,
-                                                              const ral_command_buffer_set_color_rendertarget_state_command_info* rendertarget_ptrs);
+PUBLIC void ral_command_buffer_record_set_color_rendertarget(ral_command_buffer                                            recording_command_buffer,
+                                                             uint32_t                                                      n_rendertargets,
+                                                             const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,

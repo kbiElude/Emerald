@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -8,96 +8,28 @@
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_texture.h"
-#include "ral/ral_framebuffer.h"
+#include "ral/ral_texture_view.h"
+#include "ral/ral_utils.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
 
 
-typedef struct _raGL_framebuffer_attachment
-{
-    bool dirty;
-
-    /* Are multiple layers bound to the attachment? */
-    bool bound_layered_texture_gl;
-    bool bound_layered_texture_local;
-
-    /* What's the texture bound to the attachment? */
-    ral_texture bound_texture_gl;
-    ral_texture bound_texture_local;
-
-    /* Which layer is bound to the attachment? */
-    GLint n_texture_layer_gl;
-    GLint n_texture_layer_local;
-
-    /* What mipmap level is bound to the attachment? */
-    GLint n_texture_mipmap_level_gl;
-    GLint n_texture_mipmap_level_local;
-
-    /* What texture type is bound to the attachment ? */
-    ral_framebuffer_attachment_texture_type texture_type_gl;
-    ral_framebuffer_attachment_texture_type texture_type_local;
-
-    _raGL_framebuffer_attachment()
-    {
-        bound_layered_texture_gl     = false;
-        bound_layered_texture_local  = false;
-        bound_texture_gl             = NULL;
-        bound_texture_local          = NULL;
-        dirty                        = false;
-        n_texture_layer_gl           = 0;
-        n_texture_layer_local        = 0;
-        n_texture_mipmap_level_gl    = 0;
-        n_texture_mipmap_level_local = 0;
-    }
-} _raGL_framebuffer_attachment;
-
 typedef struct _raGL_framebuffer
 {
-    raGL_backend                  backend;
-    _raGL_framebuffer_attachment* color_attachments;
-    ogl_context                   context; /* NOT owned */
-    _raGL_framebuffer_attachment  depth_stencil_attachment;
-    GLenum*                       draw_buffers;
-    ral_framebuffer               fb;
-    GLint                         id;      /* NOT owned */
-    uint32_t                      max_color_attachments;
-    uint32_t                      max_draw_buffers;
+    /* NOTE: Draw / read buffers are managed externally */
 
-    ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr;
-    ogl_context_gl_entrypoints*                         entrypoints_ptr;
-    ogl_context_gl_limits*                              limits_ptr;
+    GLint id; /* NOT owned */
 
 
-    _raGL_framebuffer(ogl_context     in_context,
-                      GLint           in_fb_id,
-                      ral_framebuffer in_fb)
+    _raGL_framebuffer(ogl_context in_context,
+                      GLint       in_fb_id)
     {
-        color_attachments = NULL;
-        context           = in_context;
-        draw_buffers      = NULL;
-        fb                = in_fb;
-        id                = in_fb_id;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BACKEND,
-                                &backend);
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                &entrypoints_ptr);
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                                &entrypoints_dsa_ptr);
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_LIMITS,
-                                &limits_ptr);
-
-        max_color_attachments = limits_ptr->max_color_attachments;
-        max_draw_buffers      = limits_ptr->max_draw_buffers;
+        id = in_fb_id;
 
         /* NOTE: Only GL is supported at the moment. */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-        ogl_context_get_property(context,
+        ogl_context_get_property(in_context,
                                  OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
                                 &backend_type);
 
@@ -107,245 +39,173 @@ typedef struct _raGL_framebuffer
 
     ~_raGL_framebuffer()
     {
-        if (color_attachments != NULL)
-        {
-            delete [] color_attachments;
-
-            color_attachments = NULL;
-        } /* if (color_attachments != NULL) */
-
-        if (draw_buffers != NULL)
-        {
-            delete [] draw_buffers;
-
-            draw_buffers = NULL;
-        }
-
         /* Do not release the framebuffer. Object life-time is handled by raGL_backend. */
     }
 } _raGL_framebuffer;
 
-
-/* Forward declarations */
-PRIVATE void _raGL_framebuffer_on_color_attachment_configuration_changed        (const void*                     callback_data,
-                                                                                 void*                           user_arg);
-PRIVATE void _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed(const void*                     callback_data,
-                                                                                 void*                           user_arg);
-PRIVATE void _raGL_framebuffer_subscribe_for_notifications                      (_raGL_framebuffer*              fb_ptr,
-                                                                                 bool                            should_subscribe);
-PRIVATE void _raGL_framebuffer_sync_rendering_thread_calback                    (_raGL_framebuffer*              framebuffer_raGL_ptr);
-PRIVATE void _raGL_framebuffer_update_attachment_configuration                  (_raGL_framebuffer*              fb_ptr,
-                                                                                 ral_framebuffer_attachment_type attachment_type,
-                                                                                 uint32_t                        attachment_index);
-
-
-/** TODO */
-PRIVATE bool _raGL_framebuffer_get_attachment(_raGL_framebuffer*              fb_ptr,
-                                              ral_framebuffer_attachment_type attachment_type,
-                                              uint32_t                        attachment_index,
-                                              _raGL_framebuffer_attachment**  out_attachment_ptr)
+typedef struct _raGL_framebuffer_init_rendering_thread_callback_data
 {
-    bool result = false;
+    const ral_texture_view* color_attachments;
+    ral_texture_view        ds_attachment;
+    _raGL_framebuffer*      fbo_ptr;
+    uint32_t                n_color_attachments;
 
-    switch (attachment_type)
+    explicit _raGL_framebuffer_init_rendering_thread_callback_data(const ral_texture_view* in_color_attachments,
+                                                                   ral_texture_view        in_ds_attachment,
+                                                                   _raGL_framebuffer*      in_fbo_ptr,
+                                                                   uint32_t                in_n_color_attachments)
     {
-        case RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR:
-        {
-            if (attachment_index >= fb_ptr->max_color_attachments)
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Invalid color attachment index requested.");
-
-                goto end;
-            } /* if (attachment_index >= fb_ptr->max_color_attachments) */
-
-            *out_attachment_ptr = fb_ptr->color_attachments + attachment_index;
-
-            break;
-        }
-
-        case RAL_FRAMEBUFFER_ATTACHMENT_TYPE_DEPTH_STENCIL:
-        {
-            if (attachment_index > 0)
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Invalid depth/stencil attachment index requested.");
-
-                goto end;
-            }
-
-            *out_attachment_ptr = &fb_ptr->depth_stencil_attachment;
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ral_framebuffer_attachment_type value.");
-
-            goto end;
-        }
-    } /* switch (attachment_type) */
-
-    result = true;
-
-end:
-    return result;
-}
-
-/** TODO */
-PRIVATE void _raGL_framebuffer_on_color_attachment_configuration_changed(const void* callback_data,
-                                                                         void*       user_arg)
-{
-    int                attachment_index = (int) callback_data;
-    _raGL_framebuffer* fb_ptr           = (_raGL_framebuffer*) user_arg;
-
-    ASSERT_DEBUG_SYNC(fb_ptr != NULL,
-                      "Input _raGL_framebuffer instance is NULL");
-
-    /* Update local attachment configuration. DO NOT issue GL calls. We'd need to request a rendering
-     * thread call-back which is costly, and it's also better to wait till the framebuffer is going
-     * to be actually used before updating GL state. */
-    _raGL_framebuffer_update_attachment_configuration(fb_ptr,
-                                                      RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
-                                                      attachment_index);
-}
-
-/** TODO */
-PRIVATE void _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed(const void* callback_data,
-                                                                                 void*       user_arg)
-{
-    int                attachment_index = (int) callback_data;
-    _raGL_framebuffer* fb_ptr           = (_raGL_framebuffer*) user_arg;
-
-    ASSERT_DEBUG_SYNC(fb_ptr != NULL,
-                      "Input _raGL_framebuffer instance is NULL");
-
-    /* See the comment in _on_color_attachment_configuration_changed() for rationale. */
-    _raGL_framebuffer_update_attachment_configuration(fb_ptr,
-                                                      RAL_FRAMEBUFFER_ATTACHMENT_TYPE_DEPTH_STENCIL,
-                                                      0); /* index */
-}
-
-/** TODO */
-PRIVATE void _raGL_framebuffer_subscribe_for_notifications(_raGL_framebuffer* fb_ptr,
-                                                           bool               should_subscribe)
-{
-    system_callback_manager fb_callback_manager = NULL;
-
-    ral_framebuffer_get_property(fb_ptr->fb,
-                                 RAL_FRAMEBUFFER_PROPERTY_CALLBACK_MANAGER,
-                                &fb_callback_manager);
-
-    if (should_subscribe)
-    {
-        system_callback_manager_subscribe_for_callbacks(fb_callback_manager,
-                                                        RAL_FRAMEBUFFER_CALLBACK_ID_COLOR_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _raGL_framebuffer_on_color_attachment_configuration_changed,
-                                                        fb_ptr);
-        system_callback_manager_subscribe_for_callbacks(fb_callback_manager,
-                                                        RAL_FRAMEBUFFER_CALLBACK_ID_DEPTH_STENCIL_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed,
-                                                        fb_ptr);
-    } /* if (should_subscribe) */
-    else
-    {
-        system_callback_manager_unsubscribe_from_callbacks(fb_callback_manager,
-                                                           RAL_FRAMEBUFFER_CALLBACK_ID_COLOR_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                           _raGL_framebuffer_on_color_attachment_configuration_changed,
-                                                           fb_ptr);
-        system_callback_manager_unsubscribe_from_callbacks(fb_callback_manager,
-                                                           RAL_FRAMEBUFFER_CALLBACK_ID_DEPTH_STENCIL_ATTACHMENT_CONFIGURATION_CHANGED,
-                                                           _raGL_framebuffer_on_depth_stencil_attachment_configuration_changed,
-                                                           fb_ptr);
+        color_attachments   = in_color_attachments;
+        ds_attachment       = in_ds_attachment;
+        fbo_ptr             = in_fbo_ptr;
+        n_color_attachments = in_n_color_attachments;
     }
-}
+} _raGL_framebuffer_init_rendering_thread_callback_data;
+
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_sync_rendering_thread_calback(ogl_context context,
+PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context,
                                                                                     void*       user_arg)
 {
-    _raGL_framebuffer* framebuffer_raGL_ptr = (_raGL_framebuffer*) user_arg;
-
-    LOG_ERROR("Performance warning: raGL_framebuffer sync request.");
+    _raGL_framebuffer_init_rendering_thread_callback_data*    args_ptr            = (_raGL_framebuffer_init_rendering_thread_callback_data*) user_arg;
+    raGL_backend                                              backend_gl          = nullptr;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = nullptr;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(framebuffer_raGL_ptr != NULL,
-                      "Input raGL_framebuffer instance is NULL");
+    ASSERT_DEBUG_SYNC(args_ptr          != nullptr &&
+                      args_ptr->fbo_ptr != nullptr,
+                      "Input callback args are NULL.");
 
-    /* Iterate over all attachments and sync the dirty ones. */
+    /* Iterate over all attachments */
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_gl);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &entrypoints_dsa_ptr);
+
     for (uint32_t n_iteration = 0;
                   n_iteration < 2; /* color, & depth/stencil attachment. */
                 ++n_iteration)
     {
-        bool                          any_attachment_synced  = false;
-        _raGL_framebuffer_attachment* attachments            = (n_iteration == 0) ?  framebuffer_raGL_ptr->color_attachments
-                                                                                  : &framebuffer_raGL_ptr->depth_stencil_attachment;
-        const uint32_t                n_attachments          = (n_iteration == 0) ?  framebuffer_raGL_ptr->max_color_attachments
-                                                                                  :  1;
-        uint32_t                      n_max_draw_buffer_used = 0;
+        const ral_texture_view* attachments   = (n_iteration == 0) ?  args_ptr->color_attachments
+                                                                   : (args_ptr->ds_attachment != nullptr) ? &args_ptr->ds_attachment : nullptr;
+        const uint32_t          n_attachments = (n_iteration == 0) ?  args_ptr->n_color_attachments
+                                                                   : (args_ptr->ds_attachment != nullptr) ? 1 : 0;
 
         for (uint32_t n_attachment = 0;
                       n_attachment < n_attachments;
                     ++n_attachment)
         {
-            GLenum                        attachment_gl          = (n_iteration == 0) ? (GL_COLOR_ATTACHMENT0 + n_attachment)
-                                                                                      :  GL_DEPTH_ATTACHMENT;
-            _raGL_framebuffer_attachment* current_attachment_ptr = attachments + n_attachment;
+            GLenum             target_gl;
+            ral_texture_view   texture_view = attachments[n_attachment];
+            ral_texture_aspect texture_view_aspect;
+            ral_format         texture_view_format;
+            uint32_t           texture_view_n_base_layer;
+            uint32_t           texture_view_n_base_mipmap;
+            uint32_t           texture_view_n_layers;
+            raGL_texture       texture_view_raGL       = nullptr;
+            GLuint             texture_view_raGL_id    = 0;
+            bool               texture_view_raGL_is_rb = false;
+            ral_texture_type   texture_view_type;
 
-            framebuffer_raGL_ptr->draw_buffers[n_attachment] = (current_attachment_ptr->texture_type_local != RAL_FRAMEBUFFER_ATTACHMENT_TYPE_UNKNOWN) ? (GL_COLOR_ATTACHMENT0 + n_attachment)
-                                                                                                                                                       :  GL_NONE;
+            /* Configure the attachment */
+            ral_texture_view_get_property(texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_ASPECT,
+                                         &texture_view_aspect);
+            ral_texture_view_get_property(texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                         &texture_view_format);
+            ral_texture_view_get_property(texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER,
+                                         &texture_view_n_base_layer);
+            ral_texture_view_get_property(texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP,
+                                         &texture_view_n_base_mipmap);
+            ral_texture_view_get_property(texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
+                                         &texture_view_n_layers);
+            ral_texture_view_get_property(texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                         &texture_view_type);
 
-            if (!current_attachment_ptr->dirty)
+            raGL_backend_get_texture_view(backend_gl,
+                                          texture_view,
+                                          (void**) &texture_view_raGL);
+            raGL_texture_get_property    (texture_view_raGL,
+                                          RAGL_TEXTURE_PROPERTY_ID,
+                                          (void**) &texture_view_raGL_id);
+            raGL_texture_get_property    (texture_view_raGL,
+                                          RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                          (void**) &texture_view_raGL_is_rb);
+
+            switch (n_iteration)
             {
-                continue;
-            } /* if (current_attachment_ptr->dirty) */
-
-            any_attachment_synced = true;
-
-            /* Update the attachment.. */
-            switch (current_attachment_ptr->texture_type_local)
-            {
-                case RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_2D:
+                /* Color attachment */
+                case 0:
                 {
-                    GLuint       attachment_object_id   = 0;
-                    raGL_texture bound_texture_local_gl = NULL;
-                    bool         is_renderbuffer        = false;
+                    target_gl = GL_COLOR_ATTACHMENT0 + n_attachment;
 
-                    raGL_backend_get_texture(framebuffer_raGL_ptr->backend,
-                                             current_attachment_ptr->bound_texture_local,
-                                   (void**) &bound_texture_local_gl);
+                    break;
+                }
 
-                    if (bound_texture_local_gl != NULL)
+                /* D / DS / S attachment */
+                case 1:
+                {
+                    const bool is_d_attachment = (texture_view_aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT)   != 0;
+                    const bool is_s_attachment = (texture_view_aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0;
+
+                    target_gl = ( is_d_attachment &&  is_s_attachment) ? GL_DEPTH_STENCIL_ATTACHMENT
+                              : ( is_d_attachment && !is_s_attachment) ? GL_DEPTH_ATTACHMENT
+                              : (!is_d_attachment &&  is_s_attachment) ? GL_STENCIL_ATTACHMENT
+                                                                       : GL_NONE;
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Invalid iteration index");
+                }
+            }
+
+            switch (texture_view_type)
+            {
+                case RAL_TEXTURE_TYPE_2D:
+                {
+                    if (texture_view_raGL_is_rb)
                     {
-                        raGL_texture_get_property(bound_texture_local_gl,
-                                                  RAGL_TEXTURE_PROPERTY_ID,
-                                                 &attachment_object_id);
-                        raGL_texture_get_property(bound_texture_local_gl,
-                                                  RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                                 &is_renderbuffer);
-                    }
+                        ASSERT_DEBUG_SYNC(texture_view_n_base_layer == 0,
+                                          "Invalid base layer specified.");
+                        ASSERT_DEBUG_SYNC(texture_view_n_base_mipmap == 0,
+                                          "Invalid base mipmap level specified.");
+                        ASSERT_DEBUG_SYNC(texture_view_n_layers == 1,
+                                          "Invalid number of layers specified.");
 
-                    if (is_renderbuffer)
-                    {
-                        framebuffer_raGL_ptr->entrypoints_dsa_ptr->pGLNamedFramebufferRenderbufferEXT(framebuffer_raGL_ptr->id,
-                                                                                                      attachment_gl,
-                                                                                                      GL_RENDERBUFFER,
-                                                                                                      attachment_object_id);
+                        entrypoints_dsa_ptr->pGLNamedFramebufferRenderbufferEXT(args_ptr->fbo_ptr->id,
+                                                                                target_gl,
+                                                                                GL_RENDERBUFFER,
+                                                                                texture_view_raGL_id);
                     }
                     else
                     {
-                        framebuffer_raGL_ptr->entrypoints_dsa_ptr->pGLNamedFramebufferTexture2DEXT(framebuffer_raGL_ptr->id,
-                                                                                                   attachment_gl,
-                                                                                                   GL_TEXTURE_2D,
-                                                                                                   attachment_object_id,
-                                                                                                   current_attachment_ptr->n_texture_mipmap_level_local);
+                        ASSERT_DEBUG_SYNC(texture_view_n_base_layer == 0,
+                                          "Invalid base layer specified.");
+                        ASSERT_DEBUG_SYNC(texture_view_n_layers == 1,
+                                          "Invalid number of layers specified.");
+
+                        entrypoints_dsa_ptr->pGLNamedFramebufferTexture2DEXT(args_ptr->fbo_ptr->id,
+                                                                             target_gl,
+                                                                             GL_TEXTURE_2D,
+                                                                             texture_view_raGL_id,
+                                                                             texture_view_n_base_mipmap);
                     }
 
-                    current_attachment_ptr->bound_texture_gl = current_attachment_ptr->bound_texture_local;
                     break;
                 }
 
@@ -354,159 +214,42 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_sync_rendering_thread_calb
                     ASSERT_DEBUG_SYNC(false,
                                       "TODO");
                 }
-            } /* switch (current_attachment_ptr->texture_type_local) */
-
-            /* ..and cache as a draw buffer */
-            framebuffer_raGL_ptr->draw_buffers[n_attachment] = GL_COLOR_ATTACHMENT0 + n_attachment;
-            n_max_draw_buffer_used                           = n_attachment;
-
-            current_attachment_ptr->dirty = false;
-        } /* for (all attachments) */
-
-        /* Also update the draw buffer array */
-        if (n_iteration == 0 && any_attachment_synced)
-        {
-            framebuffer_raGL_ptr->entrypoints_dsa_ptr->pGLFramebufferDrawBuffersEXT(framebuffer_raGL_ptr->id,
-                                                                                    n_max_draw_buffer_used + 1,
-                                                                                    framebuffer_raGL_ptr->draw_buffers);
+            }
         }
-    } /* for (both iterations) */
+    }
+
+    /* Make sure the FB is complete */
+    GLenum completeness_status = entrypoints_dsa_ptr->pGLCheckNamedFramebufferStatusEXT(args_ptr->fbo_ptr->id,
+                                                                                        GL_DRAW_FRAMEBUFFER);
+
+    ASSERT_DEBUG_SYNC(completeness_status == GL_FRAMEBUFFER_COMPLETE,
+                      "Incomplete framebuffer reported.");
 }
-
-/** TODO */
-PRIVATE void _raGL_framebuffer_update_attachment_configuration(_raGL_framebuffer*              fb_ptr,
-                                                               ral_framebuffer_attachment_type attachment_type,
-                                                               uint32_t                        attachment_index)
-{
-    ral_texture                             attachment_bound_texture = NULL;
-    uint32_t                                attachment_n_layer       = -1;
-    uint32_t                                attachment_n_mipmap      = -1;
-    _raGL_framebuffer_attachment*           attachment_ptr           = NULL;
-    ral_framebuffer_attachment_texture_type attachment_texture_type  = RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_UNKNOWN;
-    bool                                    dirty                    = false;
-    bool                                    is_n_layer_important     = false;
-    bool                                    is_n_mipmap_important    = false;
-
-    if (!_raGL_framebuffer_get_attachment(fb_ptr,
-                                          attachment_type,
-                                          attachment_index,
-                                         &attachment_ptr) )
-    {
-        goto end;
-    }
-
-    /* Retrieve RAL attachment properties */
-    ral_framebuffer_get_attachment_property(fb_ptr->fb,
-                                            attachment_type,
-                                            attachment_index,
-                                            RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE_RAL,
-                                          &attachment_bound_texture);
-    ral_framebuffer_get_attachment_property(fb_ptr->fb,
-                                            attachment_type,
-                                            attachment_index,
-                                            RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_N_LAYER,
-                                           &attachment_n_layer);
-    ral_framebuffer_get_attachment_property(fb_ptr->fb,
-                                            attachment_type,
-                                            attachment_index,
-                                            RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_N_MIPMAP,
-                                           &attachment_n_mipmap);
-    ral_framebuffer_get_attachment_property(fb_ptr->fb,
-                                            attachment_type,
-                                            attachment_index,
-                                            RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_TEXTURE_TYPE,
-                                           &attachment_texture_type);
-
-    /* Update the attachment descriptor. Raise the 'dirty' flag if any of the local property values
-     * do not match the cached GL state */
-    switch (attachment_texture_type)
-    {
-        case RAL_FRAMEBUFFER_ATTACHMENT_TEXTURE_TYPE_2D:
-        {
-            is_n_layer_important  = false;
-            is_n_mipmap_important = true;
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "TODO");
-        }
-    } /* switch (attachment_texture_type) */
-
-    if (attachment_ptr->bound_texture_gl != attachment_bound_texture)
-    {
-        attachment_ptr->bound_texture_local = attachment_bound_texture;
-        dirty                               = true;
-    }
-
-    if (is_n_layer_important                                             &&
-        attachment_ptr->n_texture_layer_gl != attachment_n_layer)
-    {
-        attachment_ptr->n_texture_layer_local = attachment_n_layer;
-        dirty                                 = true;
-    }
-
-    if (is_n_mipmap_important                                            &&
-        attachment_ptr->n_texture_mipmap_level_gl != attachment_n_mipmap)
-    {
-        attachment_ptr->n_texture_mipmap_level_local = attachment_n_mipmap;
-        dirty                                        = true;
-    }
-
-    if (attachment_ptr->texture_type_gl != attachment_texture_type)
-    {
-        attachment_ptr->texture_type_local = attachment_texture_type;
-        dirty                              = true;
-    }
-
-    attachment_ptr->dirty = dirty;
-
-end:
-    if (attachment_ptr->dirty)
-    {
-        ogl_context_request_callback_from_context_thread(fb_ptr->context,
-                                                         _raGL_framebuffer_sync_rendering_thread_calback,
-                                                         fb_ptr);
-    }
-}
-
 
 /** Please see header for specification */
-PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context     context,
-                                                GLint           fb_id,
-                                                ral_framebuffer fb)
+PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
+                                                GLint                   fb_id,
+                                                uint32_t                n_color_attachments,
+                                                const ral_texture_view* color_attachments,
+                                                ral_texture_view        opt_ds_attachment)
 {
     _raGL_framebuffer* new_fb_ptr = new (std::nothrow) _raGL_framebuffer(context,
-                                                                         fb_id,
-                                                                         fb);
+                                                                         fb_id);
 
-    ASSERT_ALWAYS_SYNC(new_fb_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_fb_ptr != nullptr,
                        "Out of memory");
 
-    if (new_fb_ptr != NULL)
+    if (new_fb_ptr != nullptr)
     {
-        ASSERT_DEBUG_SYNC(new_fb_ptr->max_color_attachments > 0 &&
-                          new_fb_ptr->max_draw_buffers      > 0,
-                          "Invalid GL_MAX_COLOR_ATTACHMENTS and/or GL_MAX_DRAW_BUFFERS constants values reported by the driver");
+        _raGL_framebuffer_init_rendering_thread_callback_data callback_data(color_attachments,
+                                                                            opt_ds_attachment,
+                                                                            new_fb_ptr,
+                                                                            n_color_attachments);
 
-        /* Allocate color attachment descriptor array */
-        new_fb_ptr->color_attachments = new (std::nothrow) _raGL_framebuffer_attachment[new_fb_ptr->max_color_attachments];
-
-        ASSERT_ALWAYS_SYNC(new_fb_ptr->color_attachments != NULL,
-                           "Out of memory");
-
-        /* Allocate draw buffer descriptor array */
-        new_fb_ptr->draw_buffers = new GLenum[new_fb_ptr->max_draw_buffers];
-        ASSERT_ALWAYS_SYNC(new_fb_ptr->draw_buffers != NULL,
-                           "Out of memory");
-
-        /* Sign up for notifications */
-        _raGL_framebuffer_subscribe_for_notifications(new_fb_ptr,
-                                                      true); /* should_subscribe */
-    } /* if (new_fb_ptr != NULL) */
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _raGL_framebuffer_init_rendering_thread_calback,
+                                                        &callback_data);
+    }
 
     return (raGL_framebuffer) new_fb_ptr;
 }
@@ -544,7 +287,7 @@ PUBLIC EMERALD_API void raGL_framebuffer_get_property(raGL_framebuffer          
 
             goto end;
         }
-    } /* switch (property) */
+    }
 
 end:
     ;
@@ -553,12 +296,8 @@ end:
 /** Please see header for specification */
 PUBLIC void raGL_framebuffer_release(raGL_framebuffer fb)
 {
-    ASSERT_DEBUG_SYNC(fb != NULL,
+    ASSERT_DEBUG_SYNC(fb != nullptr,
                       "Input framebuffer is NULL");
-
-    /* Sign out of notifications */
-    _raGL_framebuffer_subscribe_for_notifications( (_raGL_framebuffer*) fb,
-                                                  false); /* should_subscribe */
 
     /* Safe to release the instance at this point */
     delete (_raGL_framebuffer*) fb;

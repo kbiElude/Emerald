@@ -10,27 +10,6 @@
 #include "system/system_log.h"
 
 
-/** Please see header for specification */
-PUBLIC ogl_compare_function raGL_utils_get_ogl_compare_function_for_ral_compare_function(ral_compare_function in_compare_function)
-{
-    static const ogl_compare_function result_array[] =
-    {
-        OGL_COMPARE_FUNCTION_ALWAYS,
-        OGL_COMPARE_FUNCTION_EQUAL,
-        OGL_COMPARE_FUNCTION_LEQUAL,
-        OGL_COMPARE_FUNCTION_LESS,
-        OGL_COMPARE_FUNCTION_GEQUAL,
-        OGL_COMPARE_FUNCTION_GREATER,
-        OGL_COMPARE_FUNCTION_NEVER,
-        OGL_COMPARE_FUNCTION_NOTEQUAL,
-    };
-
-    ASSERT_DEBUG_SYNC(in_compare_function < RAL_COMPARE_FUNCTION_COUNT,
-                      "RAL compare function not supported for OpenGL back-end");
-
-    return result_array[in_compare_function];
-}
-
 /** Please see header for sepcification */
 PUBLIC ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_format(ral_format in_format)
 {
@@ -172,31 +151,6 @@ PUBLIC ogl_texture_data_format raGL_utils_get_ogl_data_format_for_ral_format(ral
 }
 
 /** Please see header for specification */
-PUBLIC ogl_texture_data_type raGL_utils_get_ogl_data_type_for_ral_texture_data_type(ral_texture_data_type in_data_type)
-{
-    ogl_texture_data_type result = OGL_TEXTURE_DATA_TYPE_UNDEFINED;
-
-    switch (in_data_type)
-    {
-        case RAL_TEXTURE_DATA_TYPE_FLOAT:  result = OGL_TEXTURE_DATA_TYPE_FLOAT;  break;
-        case RAL_TEXTURE_DATA_TYPE_SBYTE:  result = OGL_TEXTURE_DATA_TYPE_SBYTE;  break;
-        case RAL_TEXTURE_DATA_TYPE_SINT:   result = OGL_TEXTURE_DATA_TYPE_SINT;   break;
-        case RAL_TEXTURE_DATA_TYPE_SSHORT: result = OGL_TEXTURE_DATA_TYPE_SSHORT; break;
-        case RAL_TEXTURE_DATA_TYPE_UBYTE:  result = OGL_TEXTURE_DATA_TYPE_UBYTE;  break;
-        case RAL_TEXTURE_DATA_TYPE_UINT:   result = OGL_TEXTURE_DATA_TYPE_UINT;   break;
-        case RAL_TEXTURE_DATA_TYPE_USHORT: result = OGL_TEXTURE_DATA_TYPE_USHORT; break;
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized input ral_texture_data_type value.");
-        }
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_blend_factor(ral_blend_factor blend_factor)
 {
     static const GLenum results[] =
@@ -261,23 +215,6 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_compare_op(ral_compare_op compare_
 }
 
 /** Please see header for specification */
-PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_stencil_op(ral_stencil_op stencil_op)
-{
-    static const GLenum results[] =
-    {
-        GL_DECR,
-        GL_DECR_WRAP,
-        GL_INCR,
-        GL_INCR_WRAP,
-        GL_KEEP,
-        GL_REPLACE,
-        GL_ZERO,
-    };
-
-    return results[stencil_op];
-}
-
-/** Please see header for specification */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_index_type(ral_index_type in_index_type)
 {
     static const GLenum results[] =
@@ -312,6 +249,32 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_polygon_mode(ral_polygon_mode poly
     }
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_primitive_type(ral_primitive_type in_primitive_type)
+{
+    static const GLenum result_array[] =
+    {
+        GL_LINE_LOOP,
+        GL_LINE_STRIP,
+        GL_LINE_STRIP_ADJACENCY,
+        GL_LINES,
+        GL_LINES_ADJACENCY,
+        GL_POINTS,
+        GL_TRIANGLE_FAN,
+        GL_TRIANGLE_STRIP,
+        GL_TRIANGLE_STRIP_ADJACENCY,
+        GL_TRIANGLES,
+        GL_TRIANGLES_ADJACENCY
+    };
+
+    static_assert(sizeof(result_array) / sizeof(result_array[0]) == RAL_PRIMITIVE_TYPE_COUNT, "");
+
+    ASSERT_DEBUG_SYNC(in_primitive_type < RAL_PRIMITIVE_TYPE_COUNT,
+                      "RAL primitive type not supported for OpenGL back-end");
+
+    return result_array[in_primitive_type];
 }
 
 /** Please see header for specification */
@@ -422,29 +385,71 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_program_variable_type(ral_program_
 
     static_assert(n_result_array_entries == RAL_PROGRAM_VARIABLE_TYPE_COUNT, "");
 
-    ASSERT_DEBUG_SYNC(in_type < n_result_array_entries,
+    ASSERT_DEBUG_SYNC( static_cast<uint32_t>(in_type) < n_result_array_entries,
                       "Invalid ral_uniform_type value.");
 
     return result_array[in_type];
 };
 
 /** Please see header for specification */
-PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(ral_texture_filter in_texture_filter)
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_stencil_op(ral_stencil_op stencil_op)
 {
-    ogl_texture_filter result = OGL_TEXTURE_FILTER_UNKNOWN;
+    static const GLenum results[] =
+    {
+        GL_DECR,
+        GL_DECR_WRAP,
+        GL_INCR,
+        GL_INCR_WRAP,
+        GL_KEEP,
+        GL_REPLACE,
+        GL_ZERO,
+    };
+
+    return results[stencil_op];
+}
+
+/** Please see header for specification */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_data_type(ral_texture_data_type in_data_type)
+{
+    GLenum result = GL_NONE;
+
+    switch (in_data_type)
+    {
+        case RAL_TEXTURE_DATA_TYPE_FLOAT:  result = GL_FLOAT;          break;
+        case RAL_TEXTURE_DATA_TYPE_SBYTE:  result = GL_BYTE;           break;
+        case RAL_TEXTURE_DATA_TYPE_SINT:   result = GL_INT;            break;
+        case RAL_TEXTURE_DATA_TYPE_SSHORT: result = GL_SHORT;          break;
+        case RAL_TEXTURE_DATA_TYPE_UBYTE:  result = GL_UNSIGNED_BYTE;  break;
+        case RAL_TEXTURE_DATA_TYPE_UINT:   result = GL_UNSIGNED_INT;   break;
+        case RAL_TEXTURE_DATA_TYPE_USHORT: result = GL_UNSIGNED_SHORT; break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized input ral_texture_data_type value.");
+        }
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_filter_mag(ral_texture_filter in_texture_filter)
+{
+    GLenum result = GL_NONE;
 
     switch (in_texture_filter)
     {
         case RAL_TEXTURE_FILTER_LINEAR:
         {
-            result = OGL_TEXTURE_FILTER_LINEAR;
+            result = GL_LINEAR;
 
             break;
         }
 
         case RAL_TEXTURE_FILTER_NEAREST:
         {
-            result = OGL_TEXTURE_FILTER_NEAREST;
+            result = GL_NEAREST;
 
             break;
         }
@@ -460,10 +465,10 @@ PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_
 }
 
 /** Please see header for specification */
-PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_min_texture_filter(ral_texture_filter      in_texture_filter,
-                                                                                       ral_texture_mipmap_mode in_mipmap_mode)
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_filter_min(ral_texture_filter      in_texture_filter,
+                                                                 ral_texture_mipmap_mode in_mipmap_mode)
 {
-    ogl_texture_filter result = OGL_TEXTURE_FILTER_UNKNOWN;
+    GLenum result = GL_NONE;
 
     switch (in_texture_filter)
     {
@@ -471,8 +476,8 @@ PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_min_texture_
         {
             switch (in_mipmap_mode)
             {
-                case RAL_TEXTURE_MIPMAP_MODE_LINEAR:  result = OGL_TEXTURE_FILTER_LINEAR_MIPMAP_LINEAR;  break;
-                case RAL_TEXTURE_MIPMAP_MODE_NEAREST: result = OGL_TEXTURE_FILTER_LINEAR_MIPMAP_NEAREST; break;
+                case RAL_TEXTURE_MIPMAP_MODE_LINEAR:  result = GL_LINEAR_MIPMAP_LINEAR;  break;
+                case RAL_TEXTURE_MIPMAP_MODE_NEAREST: result = GL_LINEAR_MIPMAP_NEAREST; break;
 
                 default:
                 {
@@ -488,8 +493,8 @@ PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_min_texture_
         {
             switch (in_mipmap_mode)
             {
-                case RAL_TEXTURE_MIPMAP_MODE_LINEAR:  result = OGL_TEXTURE_FILTER_NEAREST_MIPMAP_LINEAR;  break;
-                case RAL_TEXTURE_MIPMAP_MODE_NEAREST: result = OGL_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST; break;
+                case RAL_TEXTURE_MIPMAP_MODE_LINEAR:  result = GL_NEAREST_MIPMAP_LINEAR;  break;
+                case RAL_TEXTURE_MIPMAP_MODE_NEAREST: result = GL_NEAREST_MIPMAP_NEAREST; break;
 
                 default:
                 {
@@ -512,41 +517,19 @@ PUBLIC ogl_texture_filter raGL_utils_get_ogl_texture_filter_for_ral_min_texture_
 }
 
 /** Please see header for specification */
-PUBLIC ogl_primitive_type raGL_utils_get_ogl_enum_for_ral_primitive_type(ral_primitive_type in_primitive_type)
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_shader_type(ral_shader_type in_shader_type)
 {
-    static const ogl_primitive_type result_array[] =
+    static const GLenum result_array[] =
     {
-        OGL_PRIMITIVE_TYPE_LINE_LOOP,
-        OGL_PRIMITIVE_TYPE_LINE_STRIP,
-        OGL_PRIMITIVE_TYPE_LINE_STRIP_ADJACENCY,
-        OGL_PRIMITIVE_TYPE_LINES,
-        OGL_PRIMITIVE_TYPE_LINES_ADJACENCY,
-        OGL_PRIMITIVE_TYPE_POINTS,
-        OGL_PRIMITIVE_TYPE_TRIANGLE_FAN,
-        OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP,
-        OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP_ADJACENCY,
-        OGL_PRIMITIVE_TYPE_TRIANGLES,
-        OGL_PRIMITIVE_TYPE_TRIANGLES_ADJACENCY
+        GL_COMPUTE_SHADER,
+        GL_FRAGMENT_SHADER,
+        GL_GEOMETRY_SHADER,
+        GL_TESS_CONTROL_SHADER,
+        GL_TESS_EVALUATION_SHADER,
+        GL_VERTEX_SHADER
     };
 
-    ASSERT_DEBUG_SYNC(in_primitive_type < RAL_PRIMITIVE_TYPE_COUNT,
-                      "RAL primitive type not supported for OpenGL back-end");
-
-    return result_array[in_primitive_type];
-}
-
-/** Please see header for specification */
-PUBLIC ogl_shader_type raGL_utils_get_ogl_shader_type_for_ral_shader_type(ral_shader_type in_shader_type)
-{
-    static const ogl_shader_type result_array[] =
-    {
-        OGL_SHADER_TYPE_COMPUTE,
-        OGL_SHADER_TYPE_FRAGMENT,
-        OGL_SHADER_TYPE_GEOMETRY,
-        OGL_SHADER_TYPE_TESSELLATION_CONTROL,
-        OGL_SHADER_TYPE_TESSELLATION_EVALUATION,
-        OGL_SHADER_TYPE_VERTEX
-    };
+    static_assert(sizeof(result_array) / sizeof(result_array[0]) == RAL_SHADER_TYPE_COUNT, "");
 
     ASSERT_DEBUG_SYNC(in_shader_type < RAL_SHADER_TYPE_COUNT,
                       "RAL shader stage unsupported for OpenGL back-end");

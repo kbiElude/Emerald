@@ -14,9 +14,11 @@ typedef enum
 } raGL_framebuffer_property;
 
 /** TODO */
-PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context     context,
-                                                GLint           fb_id,
-                                                ral_framebuffer fb);
+PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
+                                                GLint                   fb_id,
+                                                uint32_t                n_color_attachments,
+                                                const ral_texture_view* color_attachments,
+                                                ral_texture_view        opt_ds_attachment);
 
 /** TODO */
 PUBLIC EMERALD_API void raGL_framebuffer_get_property(raGL_framebuffer          fb,

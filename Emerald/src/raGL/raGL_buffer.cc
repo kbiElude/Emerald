@@ -478,8 +478,9 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
         callback_arg_ptr->sync_other_contexts = sync_other_contexts;
         callback_arg_ptr->updates             = updates;
 
-        job_info.callback_user_arg = callback_arg_ptr;
-        job_info.pfn_callback_ptr  = _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread;
+        job_info.job_type                            = RAL_SCHEDULER_JOB_TYPE_CALLBACK;
+        job_info.callback_job_args.callback_user_arg = callback_arg_ptr;
+        job_info.callback_job_args.pfn_callback_proc = _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread;
 
         ral_scheduler_schedule_job(scheduler,
                                    backend_type,

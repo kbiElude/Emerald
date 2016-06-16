@@ -86,6 +86,9 @@ typedef enum
     /* Command args stored in _raGL_command_depth_mask_command_info */
     RAGL_COMMAND_TYPE_DEPTH_MASK,
 
+    /* Command args stored in _raGL_command_depth_range_indexed_command_info */
+    RAGL_COMMAND_TYPE_DEPTH_RANGE_INDEXED,
+
     /* Command args stored in _raGL_command_disable_command_info */
     RAGL_COMMAND_TYPE_DISABLE,
 
@@ -318,6 +321,14 @@ typedef struct
     GLboolean flag;
 
 } _raGL_command_depth_mask_command_info;
+
+typedef struct
+{
+    GLuint   index;
+    GLdouble nearVal;
+    GLdouble farVal;
+
+} _raGL_command_depth_range_indexed_command_info;
 
 typedef struct
 {
@@ -583,6 +594,7 @@ typedef struct
         _raGL_command_cull_face_command_info                                         cull_face_command_info;
         _raGL_command_depth_func_command_info                                        depth_func_command_info;
         _raGL_command_depth_mask_command_info                                        depth_mask_command_info;
+        _raGL_command_depth_range_indexed_command_info                               depth_range_indexed_command_info;
         _raGL_command_disable_command_info                                           disable_command_info;
         _raGL_command_disable_vertex_attrib_array_command_info                       disable_vertex_attrib_array_command_info;
         _raGL_command_draw_arrays_command_info                                       draw_arrays_command_info;
@@ -1806,7 +1818,7 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
         command_args.dst_x0y0x1y1[1] = command_ral_ptr->dst_start_xyz[1];
         command_args.dst_x0y0x1y1[2] = command_args.dst_x0y0x1y1[0] + command_ral_ptr->dst_size[0];
         command_args.dst_x0y0x1y1[3] = command_args.dst_x0y0x1y1[1] + command_ral_ptr->dst_size[1];
-        command_args.filter          = raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter(command_ral_ptr->scaling_filter);
+        command_args.filter          = raGL_utils_get_ogl_enum_for_ral_texture_filter_mag(command_ral_ptr->scaling_filter);
         command_args.mask            = ((command_ral_ptr->aspect & RAL_TEXTURE_ASPECT_COLOR_BIT)   ? GL_COLOR_BUFFER_BIT   : 0) |
                                        ((command_ral_ptr->aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT)   ? GL_DEPTH_BUFFER_BIT   : 0) |
                                        ((command_ral_ptr->aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) ? GL_STENCIL_BUFFER_BIT : 0);
@@ -2590,17 +2602,25 @@ void _raGL_command_buffer::process_set_viewport_command(const ral_command_buffer
                       "Invalid viewport index");
 
     /* Enqueue the GL command */
-    _raGL_command* gl_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* depth_range_indexed_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* viewport_indexedfv_command_ptr  = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
 
-    gl_command_ptr->viewport_indexedfv_command_info.index = command_ral_ptr->index;
-    gl_command_ptr->viewport_indexedfv_command_info.v[0]  = command_ral_ptr->xy  [0];
-    gl_command_ptr->viewport_indexedfv_command_info.v[1]  = command_ral_ptr->xy  [1];
-    gl_command_ptr->viewport_indexedfv_command_info.v[2]  = command_ral_ptr->size[0];
-    gl_command_ptr->viewport_indexedfv_command_info.v[3]  = command_ral_ptr->size[1];
-    gl_command_ptr->type                                  = RAGL_COMMAND_TYPE_VIEWPORT_INDEXEDFV;
+    depth_range_indexed_command_ptr->depth_range_indexed_command_info.index   = command_ral_ptr->index;
+    depth_range_indexed_command_ptr->depth_range_indexed_command_info.nearVal = command_ral_ptr->depth_range[0];
+    depth_range_indexed_command_ptr->depth_range_indexed_command_info.farVal  = command_ral_ptr->depth_range[1];
+    depth_range_indexed_command_ptr->type                                     = RAGL_COMMAND_TYPE_DEPTH_RANGE_INDEXED;
+
+    viewport_indexedfv_command_ptr->viewport_indexedfv_command_info.index = command_ral_ptr->index;
+    viewport_indexedfv_command_ptr->viewport_indexedfv_command_info.v[0]  = command_ral_ptr->xy  [0];
+    viewport_indexedfv_command_ptr->viewport_indexedfv_command_info.v[1]  = command_ral_ptr->xy  [1];
+    viewport_indexedfv_command_ptr->viewport_indexedfv_command_info.v[2]  = command_ral_ptr->size[0];
+    viewport_indexedfv_command_ptr->viewport_indexedfv_command_info.v[3]  = command_ral_ptr->size[1];
+    viewport_indexedfv_command_ptr->type                                  = RAGL_COMMAND_TYPE_VIEWPORT_INDEXEDFV;
 
     system_resizable_vector_push(commands,
-                                 gl_command_ptr);
+                                 depth_range_indexed_command_ptr);
+    system_resizable_vector_push(commands,
+                                 viewport_indexedfv_command_ptr);
 }
 
 
@@ -2911,6 +2931,17 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                 const _raGL_command_depth_mask_command_info& command_args = command_ptr->depth_mask_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLDepthMask(command_args.flag);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DEPTH_RANGE_INDEXED:
+            {
+                const _raGL_command_depth_range_indexed_command_info& command_args = command_ptr->depth_range_indexed_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLDepthRangeIndexed(command_args.index,
+                                                                          command_args.nearVal,
+                                                                          command_args.farVal);
 
                 break;
             }

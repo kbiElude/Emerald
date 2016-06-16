@@ -106,6 +106,11 @@ PUBLIC bool raGL_backend_get_texture_by_id(raGL_backend  backend,
                                            GLuint        texture_id,
                                            raGL_texture* out_texture_raGL_ptr);
 
+/** TODO */
+PUBLIC bool raGL_backend_get_texture_view(void*            backend,
+                                          ral_texture_view texture_view_ral,
+                                          void**           out_texture_raGL_ptr);
+
 /** TODO */ 
 PUBLIC void raGL_backend_init(raGL_backend backend);
 

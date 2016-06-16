@@ -217,11 +217,6 @@ PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context          
                                                            ral_command_buffer*                   out_result_command_buffers_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool ral_context_create_framebuffers(ral_context      context,
-                                                        uint32_t         n_framebuffers,
-                                                        ral_framebuffer* out_result_framebuffers_ptr);
-
-/** TODO */
 PUBLIC EMERALD_API bool ral_context_create_gfx_states(ral_context                      context,
                                                       uint32_t                         n_create_info_items,
                                                       const ral_gfx_state_create_info* create_info_ptrs,
@@ -296,12 +291,6 @@ PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_file_name(ral_context 
  *  TEMPORARY. Will be removed during RAL integration */
 PUBLIC EMERALD_API raGL_buffer ral_context_get_buffer_gl(ral_context context,
                                                          ral_buffer  buffer);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC EMERALD_API raGL_framebuffer ral_context_get_framebuffer_gl(ral_context     context,
-                                                                   ral_framebuffer framebuffer);
 
 /** TODO
  *

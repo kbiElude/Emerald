@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -27,8 +27,8 @@ typedef struct _raGL_sampler
                   GLint       in_sampler_id,
                   ral_sampler in_sampler)
     {
-        ogl_context_gl_limits_ext_texture_filter_anisotropic* limits_ext_texture_filter_anisotropic_ptr = NULL;
-        ogl_context_gl_limits*                                limits_ptr                                = NULL;
+        ogl_context_gl_limits_ext_texture_filter_anisotropic* limits_ext_texture_filter_anisotropic_ptr = nullptr;
+        ogl_context_gl_limits*                                limits_ptr                                = nullptr;
 
         context = in_context;
         sampler = in_sampler;
@@ -73,8 +73,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
                                                                                  void*       sampler)
 {
     ral_color               border_color;
-    GLenum                  compare_function_gl     = GL_NONE;
-    ral_compare_function    compare_function_ral    = RAL_COMPARE_FUNCTION_UNKNOWN;
+    GLenum                  compare_op_gl           = GL_NONE;
+    ral_compare_op          compare_op_ral          = RAL_COMPARE_OP_UNKNOWN;
     bool                    compare_mode_enabled    = false;
     bool                    is_anisotropy_supported = false;
     float                   lod_bias;
@@ -101,7 +101,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
                              OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_TEXTURE_FILTER_ANISOTROPIC,
                             &is_anisotropy_supported);
 
-    ASSERT_DEBUG_SYNC (sampler_ptr != NULL,
+    ASSERT_DEBUG_SYNC (sampler_ptr != nullptr,
                        "Input raGL_sampler instance is NULL");
     ASSERT_DEBUG_SYNC (context == sampler_ptr->context,
                        "Rendering context mismatch");
@@ -112,11 +112,11 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
                              RAL_SAMPLER_PROPERTY_BORDER_COLOR,
                             &border_color);
     ral_sampler_get_property(sampler_ptr->sampler,
-                             RAL_SAMPLER_PROPERTY_COMPARE_FUNCTION,
-                            &compare_function_ral);
-    ral_sampler_get_property(sampler_ptr->sampler,
                              RAL_SAMPLER_PROPERTY_COMPARE_MODE_ENABLED,
                             &compare_mode_enabled);
+    ral_sampler_get_property(sampler_ptr->sampler,
+                             RAL_SAMPLER_PROPERTY_COMPARE_OP,
+                            &compare_op_ral);
     ral_sampler_get_property(sampler_ptr->sampler,
                              RAL_SAMPLER_PROPERTY_LOD_BIAS,
                             &lod_bias);
@@ -148,13 +148,13 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
                              RAL_SAMPLER_PROPERTY_WRAP_T,
                             &wrap_t_ral);
 
-    compare_function_gl = raGL_utils_get_ogl_compare_function_for_ral_compare_function  (compare_function_ral);
-    mag_filter_gl       = raGL_utils_get_ogl_texture_filter_for_ral_mag_texture_filter  (mag_filter_ral);
-    min_filter_gl       = raGL_utils_get_ogl_texture_filter_for_ral_min_texture_filter  (min_filter_ral,
-                                                                                         mipmap_mode_ral);
-    wrap_r_gl           = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_r_ral);
-    wrap_s_gl           = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_s_ral);
-    wrap_t_gl           = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_t_ral);
+    compare_op_gl = raGL_utils_get_ogl_enum_for_ral_compare_op                    (compare_op_ral);
+    mag_filter_gl = raGL_utils_get_ogl_enum_for_ral_texture_filter_mag            (mag_filter_ral);
+    min_filter_gl = raGL_utils_get_ogl_enum_for_ral_texture_filter_min            (min_filter_ral,
+                                                                                   mipmap_mode_ral);
+    wrap_r_gl     = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_r_ral);
+    wrap_s_gl     = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_s_ral);
+    wrap_t_gl     = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_t_ral);
 
     if (max_anisotropy > sampler_ptr->max_anisotropy)
     {
@@ -169,7 +169,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
     /* Configure the sampler instance. */
     switch (border_color.data_type)
     {
-        case ral_color::RAL_COLOR_DATA_TYPE_FLOAT:
+        case RAL_COLOR_DATA_TYPE_FLOAT:
         {
             sampler_ptr->entrypoints_ptr->pGLSamplerParameterfv(sampler_ptr->id,
                                                                 GL_TEXTURE_BORDER_COLOR,
@@ -178,7 +178,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
             break;
         }
 
-        case ral_color::RAL_COLOR_DATA_TYPE_SINT:
+        case RAL_COLOR_DATA_TYPE_SINT:
         {
             sampler_ptr->entrypoints_ptr->pGLSamplerParameterIiv(sampler_ptr->id,
                                                                  GL_TEXTURE_BORDER_COLOR,
@@ -187,7 +187,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
             break;
         }
 
-        case ral_color::RAL_COLOR_DATA_TYPE_UINT:
+        case RAL_COLOR_DATA_TYPE_UINT:
         {
             sampler_ptr->entrypoints_ptr->pGLSamplerParameterIuiv(sampler_ptr->id,
                                                                   GL_TEXTURE_BORDER_COLOR,
@@ -201,11 +201,11 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized border color data type");
         }
-    } /* switch (border_color) */
+    }
 
     sampler_ptr->entrypoints_ptr->pGLSamplerParameteri(sampler_ptr->id,
                                                        GL_TEXTURE_COMPARE_FUNC,
-                                                       compare_function_gl);
+                                                       compare_op_gl);
     sampler_ptr->entrypoints_ptr->pGLSamplerParameteri(sampler_ptr->id,
                                                        GL_TEXTURE_COMPARE_MODE,
                                                        compare_mode_enabled ? GL_COMPARE_REF_TO_TEXTURE
@@ -249,16 +249,16 @@ PUBLIC raGL_sampler raGL_sampler_create(ogl_context context,
                                                                       sampler_id,
                                                                       sampler);
 
-    ASSERT_ALWAYS_SYNC(new_sampler_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_sampler_ptr != nullptr,
                        "Out of memory");
 
-    if (new_sampler_ptr != NULL)
+    if (new_sampler_ptr != nullptr)
     {
         /* Request rendering thread call-back to set up the sampler object */
         ogl_context_request_callback_from_context_thread(context,
                                                          _raGL_sampler_init_rendering_thread_callback,
                                                          new_sampler_ptr);
-    } /* if (new_sampler_ptr != NULL) */
+    }
 
     return (raGL_sampler) new_sampler_ptr;
 }
@@ -272,7 +272,7 @@ PUBLIC void raGL_sampler_get_property(raGL_sampler          sampler,
     _raGL_sampler* sampler_ptr = (_raGL_sampler*) sampler;
 
     /* Sanity checks */
-    if (sampler == NULL)
+    if (sampler == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input sampler is NULL");
@@ -302,7 +302,7 @@ PUBLIC void raGL_sampler_get_property(raGL_sampler          sampler,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized raGL_sampler_property value.");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }
@@ -310,7 +310,7 @@ end:
 /** Please see header for specification */
 PUBLIC void raGL_sampler_release(raGL_sampler sampler)
 {
-    ASSERT_DEBUG_SYNC(sampler != NULL,
+    ASSERT_DEBUG_SYNC(sampler != nullptr,
                       "Input sampler is NULL");
 
     delete (_raGL_sampler*) sampler;

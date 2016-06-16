@@ -150,7 +150,7 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
         GLuint texture_layer_gl          = -1;
         GLenum texture_target_gl         = GL_NONE;
 
-        texture_data_type_gl = raGL_utils_get_ogl_data_type_for_ral_texture_data_type(update_info_ptr->data_type);
+        texture_data_type_gl = raGL_utils_get_ogl_enum_for_ral_texture_data_type(update_info_ptr->data_type);
         texture_layer_gl     = update_info_ptr->n_layer;
 
         /* Ensure the row alignment used by OpenGL matches the update request.
@@ -1109,10 +1109,11 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
                                  OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
                                 &backend_type);
 
-        new_job.callback_user_arg = texture;
-        new_job.n_write_locks     = 1;
-        new_job.pfn_callback_ptr  = _raGL_texture_generate_mipmaps_scheduler_callback;
-        new_job.write_locks[0]    = texture;
+        new_job.job_type                            = RAL_SCHEDULER_JOB_TYPE_CALLBACK;
+        new_job.callback_job_args.callback_user_arg = texture;
+        new_job.callback_job_args.pfn_callback_proc = _raGL_texture_generate_mipmaps_scheduler_callback;
+        new_job.n_write_locks                       = 1;
+        new_job.write_locks[0]                      = texture;
 
         ral_scheduler_schedule_job(scheduler,
                                    backend_type,
@@ -1247,10 +1248,11 @@ PUBLIC bool raGL_texture_update_with_client_sourced_data(raGL_texture           
         callback_arg_ptr->texture_ptr = texture_ptr;
         callback_arg_ptr->updates     = updates;
 
-        job_info.callback_user_arg = callback_arg_ptr;
-        job_info.n_read_locks      = 1;
-        job_info.pfn_callback_ptr  = _raGL_texture_client_memory_sourced_update_scheduler_callback;
-        job_info.read_locks[0]     = texture_ptr;
+        job_info.job_type                            = RAL_SCHEDULER_JOB_TYPE_CALLBACK;
+        job_info.callback_job_args.callback_user_arg = callback_arg_ptr;
+        job_info.callback_job_args.pfn_callback_proc = _raGL_texture_client_memory_sourced_update_scheduler_callback;
+        job_info.n_read_locks                        = 1;
+        job_info.read_locks[0]                       = texture_ptr;
 
         ral_scheduler_schedule_job(scheduler,
                                    backend_type,
