@@ -45,6 +45,7 @@ typedef struct _ral_command
 
     union
     {
+        ral_command_buffer_clear_rt_binding_command_info        clear_rt_binding_command;
         ral_command_buffer_copy_texture_to_texture_command_info copy_texture_to_texture_command;
         ral_command_buffer_draw_call_indexed_command_info       draw_call_indexed_command;
         ral_command_buffer_draw_call_indirect_command_info      draw_call_indirect_command;
@@ -255,6 +256,7 @@ typedef struct _ral_command
             }
 
             /* Dummy */
+            case RAL_COMMAND_TYPE_CLEAR_RT_BINDING:
             case RAL_COMMAND_TYPE_DRAW_CALL_REGULAR:
             case RAL_COMMAND_TYPE_SET_SCISSOR_BOX:
             case RAL_COMMAND_TYPE_SET_VIEWPORT:
@@ -511,6 +513,82 @@ PUBLIC void ral_command_buffer_init()
                       "Could not create a command buffer pool");
     ASSERT_DEBUG_SYNC(command_pool != nullptr,
                       "Could not create a command pool");
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buffer                                      recording_command_buffer,
+                                                                 uint32_t                                                n_clear_ops,
+                                                                 const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+
+    if (command_buffer_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer_ptr != nullptr,
+                          "Input command buffer is null");
+
+        goto end;
+    }
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                          "Command buffer not in recording status");
+
+        goto end;
+    }
+
+    for (uint32_t n_clear_op = 0;
+                  n_clear_op < n_clear_ops;
+                ++n_clear_op)
+    {
+        bool                                                    is_command_valid = true;
+        const ral_command_buffer_clear_rt_binding_command_info& src_command      = clear_op_ptrs[n_clear_op];
+
+        if (src_command.n_clear_regions >= N_MAX_CLEAR_REGIONS)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Invalid number of clear regions requested.");
+
+            is_command_valid = false;
+        }
+
+        for (uint32_t n_rendertarget = 0;
+                      n_rendertarget < src_command.n_rendertargets && is_command_valid;
+                    ++n_rendertarget)
+        {
+            const ral_command_buffer_clear_rt_binding_rendertarget& current_rt = src_command.rendertargets[n_rendertarget];
+
+            if (current_rt.rt_index >= N_MAX_CLEAR_RENDERTARGETS)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Invalid rendertarget index specified");
+
+                is_command_valid = false;
+
+                break;
+            }
+        }
+
+        if (is_command_valid)
+        {
+            memcpy(new_command_ptr->clear_rt_binding_command.clear_regions,
+                   src_command.clear_regions,
+                   src_command.n_clear_regions * sizeof(src_command.clear_regions[0]) );
+            memcpy(new_command_ptr->clear_rt_binding_command.rendertargets,
+                   src_command.rendertargets,
+                   src_command.n_rendertargets * sizeof(src_command.rendertargets[0]) );
+
+            new_command_ptr->type = RAL_COMMAND_TYPE_CLEAR_RT_BINDING;
+
+            system_resizable_vector_push(command_buffer_ptr->commands,
+                                         new_command_ptr);
+        }
+    }
+
+end:
+    ;
 }
 
 /** Please see header for specification */

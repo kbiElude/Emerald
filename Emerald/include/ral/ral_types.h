@@ -528,6 +528,20 @@ typedef struct ral_buffer_create_info
     }
 } ral_buffer_create_info;
 
+typedef struct
+{
+    union
+    {
+        float    f32[4];
+        int32_t  i32[4];
+        uint32_t u32[4];
+    } color;
+
+    float    depth;
+    uint32_t stencil;
+
+} ral_clear_value;
+
 typedef enum
 {
     RAL_COLOR_DATA_TYPE_FLOAT,

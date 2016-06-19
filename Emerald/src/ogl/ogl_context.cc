@@ -2178,8 +2178,9 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLClearBufferiv,                                    "glClearBufferiv"},
         {&context_ptr->entry_points_gl.pGLClearBufferuiv,                                   "glClearBufferuiv"},
         {&context_ptr->entry_points_private.pGLClearColor,                                  "glClearColor"},
-        {&context_ptr->entry_points_gl.pGLClearStencil,                                     "glClearStencil"},
         {&context_ptr->entry_points_private.pGLClearDepth,                                  "glClearDepth"},
+        {&context_ptr->entry_points_private.pGLClearDepthf,                                 "glClearDepthf"},
+        {&context_ptr->entry_points_gl.pGLClearStencil,                                     "glClearStencil"},
         {&context_ptr->entry_points_gl.pGLClientWaitSync,                                   "glClientWaitSync"},
         {&context_ptr->entry_points_private.pGLColorMask,                                   "glColorMask"},
         {&context_ptr->entry_points_gl.pGLColorMaski,                                       "glColorMaski"},
@@ -2561,6 +2562,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLClearBufferSubData                          = ogl_context_wrappers_glClearBufferSubData;
     context_ptr->entry_points_gl.pGLClearColor                                  = ogl_context_wrappers_glClearColor;
     context_ptr->entry_points_gl.pGLClearDepth                                  = ogl_context_wrappers_glClearDepth;
+    context_ptr->entry_points_gl.pGLClearDepthf                                 = ogl_context_wrappers_glClearDepthf;
     context_ptr->entry_points_gl.pGLColorMask                                   = ogl_context_wrappers_glColorMask;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage1D                     = ogl_context_wrappers_glCompressedTexSubImage1D;
     context_ptr->entry_points_gl.pGLCompressedTexSubImage2D                     = ogl_context_wrappers_glCompressedTexSubImage2D;

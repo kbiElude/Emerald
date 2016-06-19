@@ -3,8 +3,9 @@
 
 #include "ral/ral_types.h"
 
-
-#define N_MAX_DEPENDENCIES (8)
+#define N_MAX_CLEAR_REGIONS       (8)
+#define N_MAX_CLEAR_RENDERTARGETS (8)
+#define N_MAX_DEPENDENCIES        (8)
 
 
 typedef enum
@@ -143,6 +144,31 @@ typedef struct ral_object_access
         return instance;
     }
 } ral_object_access;
+
+typedef struct ral_command_buffer_clear_rt_binding_clear_region
+{
+    uint32_t n_base_layer;
+    uint32_t n_layers;
+
+    uint32_t size[2];
+    uint32_t xy  [2];
+} ral_command_buffer_clear_rt_binding_clear_region;
+
+typedef struct ral_command_buffer_clear_rt_binding_rendertarget
+{
+    ral_texture_aspect aspect;
+    ral_clear_value    clear_value;
+    uint32_t           rt_index;
+} ral_command_buffer_clear_rt_binding_rendertarget;
+
+typedef struct ral_command_buffer_clear_rt_binding_command_info
+{
+    ral_command_buffer_clear_rt_binding_clear_region clear_regions[N_MAX_CLEAR_REGIONS];
+    uint32_t                                         n_clear_regions;
+
+    ral_command_buffer_clear_rt_binding_rendertarget rendertargets[N_MAX_CLEAR_RENDERTARGETS];
+    uint32_t                                         n_rendertargets;
+} ral_command_buffer_clear_rt_binding_command_info;
 
 typedef struct ral_command_buffer_draw_call_indexed_command_info
 {
@@ -373,6 +399,7 @@ typedef enum
 
 typedef enum
 {
+    RAL_COMMAND_TYPE_CLEAR_RT_BINDING,
     RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE,
     RAL_COMMAND_TYPE_DRAW_CALL_INDEXED,
     RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT,
@@ -410,6 +437,11 @@ PUBLIC bool ral_command_buffer_get_recorded_command(ral_command_buffer command_b
 
 /** TODO */
 PUBLIC void ral_command_buffer_init();
+
+/** TODO */
+PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buffer                                      recording_command_buffer,
+                                                                 uint32_t                                                n_clear_ops,
+                                                                 const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer                                             recording_command_buffer,

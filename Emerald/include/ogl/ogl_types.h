@@ -684,6 +684,7 @@ typedef struct
     PFNGLCLEARBUFFERUIVPROC                              pGLClearBufferuiv;
     PFNGLCLEARCOLORPROC                                  pGLClearColor;
     PFNGLCLEARDEPTHPROC                                  pGLClearDepth;
+    PFNGLCLEARDEPTHFPROC                                 pGLClearDepthf;
     PFNGLCLEARSTENCILPROC                                pGLClearStencil;
     PFNGLCLIENTWAITSYNCPROC                              pGLClientWaitSync;
     PFNGLCOLORMASKPROC                                   pGLColorMask;

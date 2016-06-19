@@ -232,8 +232,8 @@ PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_h
 
     /* Reset callback data */
     rendering_handler_ptr->callback_request_needs_buffer_swap = false;
-    rendering_handler_ptr->callback_request_user_arg          = NULL;
-    rendering_handler_ptr->pfn_callback_proc                  = NULL;
+    rendering_handler_ptr->callback_request_user_arg          = nullptr;
+    rendering_handler_ptr->pfn_callback_proc                  = nullptr;
 
     /* Set ack event */
     system_event_set(rendering_handler_ptr->callback_request_ack_event);
@@ -364,7 +364,7 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
 
     if (rendering_handler_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
-        const ogl_context_es_entrypoints* entrypoints_ptr = NULL;
+        const ogl_context_es_entrypoints* entrypoints_ptr = nullptr;
 
         ogl_context_get_property(rendering_handler_ptr->context_gl,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -382,7 +382,7 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
     }
     else
     {
-        const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+        const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
 
         ASSERT_DEBUG_SYNC(rendering_handler_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                           "Unrecognized backend type");
@@ -482,8 +482,8 @@ PUBLIC void raGL_rendering_handler_pre_draw_frame(void* rendering_handler_raBack
     /* Bind the context's default FBO and call the user app's call-back */
     if (!rendering_handler_ptr->default_fb_id_set)
     {
-        ral_framebuffer  default_fb         = NULL;
-        raGL_framebuffer default_fb_raGL    = NULL;
+        ral_framebuffer  default_fb         = nullptr;
+        raGL_framebuffer default_fb_raGL    = nullptr;
 
         ogl_context_get_property(rendering_handler_ptr->context_gl,
                                  OGL_CONTEXT_PROPERTY_DEFAULT_FBO,

@@ -25,12 +25,10 @@
 #include "system/system_resource_pool.h"
 #include "system/system_resizable_vector.h"
 
-/* Internal limit for the number of vertex attributes which can be used at once.
- *
- * Equal to the min max for GL_MAX_VERTEX_ATTRIBS */
 #define N_MAX_DRAW_BUFFERS      (8)
 #define N_MAX_RENDERTARGETS     (8)
 #define N_MAX_VERTEX_ATTRIBUTES (16)
+#define N_MAX_VIEWPORTS         (8)
 
 
 typedef enum
@@ -73,6 +71,18 @@ typedef enum
 
     /* Command args stored in _raGL_command_blit_framebuffer_command_info */
     RAGL_COMMAND_TYPE_BLIT_FRAMEBUFFER,
+
+    /* Command args stored in _raGL_command_clear_command_info */
+    RAGL_COMMAND_TYPE_CLEAR,
+
+    /* Command args stored in _raGL_command_clear_color_command_info */
+    RAGL_COMMAND_TYPE_CLEAR_COLOR,
+
+    /* Command args stored in _raGL_command_clear_depthf_command_info */
+    RAGL_COMMAND_TYPE_CLEAR_DEPTHF,
+
+    /* Command args stored in _raGL_command_clear_stencil_command_info */
+    RAGL_COMMAND_TYPE_CLEAR_STENCIL,
 
     /* Command args stored in _raGL_command_copy_image_sub_data_command_info */
     RAGL_COMMAND_TYPE_COPY_IMAGE_SUB_DATA,
@@ -289,6 +299,30 @@ typedef struct
     GLint      src_x0y0x1y1[4];
 
 } _raGL_command_blit_framebuffer_command_info;
+
+typedef struct
+{
+    GLbitfield mask;
+
+} _raGL_command_clear_command_info;
+
+typedef struct
+{
+    GLfloat rgba[4];
+
+} _raGL_command_clear_color_command_info;
+
+typedef struct
+{
+    GLfloat depth;
+
+} _raGL_command_clear_depthf_command_info;
+
+typedef struct
+{
+    GLint stencil;
+
+} _raGL_command_clear_stencil_command_info;
 
 typedef struct
 {
@@ -590,6 +624,10 @@ typedef struct
         _raGL_command_blend_equation_separate_command_info                           blend_equation_separate_command_info;
         _raGL_command_blend_func_separate_command_info                               blend_func_separate_command_info;
         _raGL_command_blit_framebuffer_command_info                                  blit_framebuffer_command_info;
+        _raGL_command_clear_command_info                                             clear_command_info;
+        _raGL_command_clear_color_command_info                                       clear_color_command_info;
+        _raGL_command_clear_depthf_command_info                                      clear_depthf_command_info;
+        _raGL_command_clear_stencil_command_info                                     clear_stencil_command_info;
         _raGL_command_copy_image_sub_data_command_info                               copy_image_sub_data_command_info;
         _raGL_command_cull_face_command_info                                         cull_face_command_info;
         _raGL_command_depth_func_command_info                                        depth_func_command_info;
@@ -669,6 +707,33 @@ typedef struct _raGL_command_buffer_bake_state_rt
 
 } _raGL_command_buffer_bake_state_rt;
 
+typedef struct _raGL_command_buffer_bake_state_scissor_box
+{
+    GLsizei size[2];
+    GLint   xy[2];
+
+    explicit _raGL_command_buffer_bake_state_scissor_box(const GLsizei* in_size,
+                                                         const GLint*   in_xy)
+    {
+        memcpy(size,
+               in_size,
+               sizeof(size) );
+        memcpy(xy,
+               in_xy,
+               sizeof(xy) );
+    }
+
+    _raGL_command_buffer_bake_state_scissor_box()
+    {
+        memset(size,
+               0,
+               sizeof(size) );
+        memset(xy,
+               0,
+               sizeof(xy) );
+    }
+} _raGL_command_buffer_bake_state_scissor_box;
+
 typedef struct
 {
     raGL_program active_program;
@@ -676,11 +741,12 @@ typedef struct
     ral_gfx_state active_gfx_state;
     bool          active_gfx_state_dirty;
 
-    GLenum                             active_fbo_draw_buffers[N_MAX_DRAW_BUFFERS];
-    bool                               active_fbo_draw_buffers_dirty;
-    _raGL_command_buffer_bake_state_rt active_rt_color_attachments[N_MAX_RENDERTARGETS];
-    ral_texture_view                   active_rt_ds_attachment;
-    bool                               active_rt_attachments_dirty;
+    GLenum                                      active_fbo_draw_buffers[N_MAX_DRAW_BUFFERS];
+    bool                                        active_fbo_draw_buffers_dirty;
+    bool                                        active_rt_attachments_dirty;
+    _raGL_command_buffer_bake_state_rt          active_rt_color_attachments[N_MAX_RENDERTARGETS];
+    ral_texture_view                            active_rt_ds_attachment;
+    _raGL_command_buffer_bake_state_scissor_box active_scissor_boxes[N_MAX_VIEWPORTS];
 
     bool                    vao_dirty;
     raGL_buffer             vao_index_buffer;
@@ -747,6 +813,7 @@ typedef struct _raGL_command_buffer
     void bake_commands();
     void clear_commands();
 
+    void process_clear_rt_binding_command       (const ral_command_buffer_clear_rt_binding_command_info*        command_ral_ptr);
     void process_copy_texture_to_texture_command(const ral_command_buffer_copy_texture_to_texture_command_info* command_ral_ptr);
     void process_draw_call_indexed_command      (const ral_command_buffer_draw_call_indexed_command_info*       command_ral_ptr);
     void process_draw_call_indirect_command     (const ral_command_buffer_draw_call_indirect_command_info*      command_ral_ptr);
@@ -937,6 +1004,13 @@ void _raGL_command_buffer::bake_commands()
 
         switch (command_ral_type)
         {
+            case RAL_COMMAND_TYPE_CLEAR_RT_BINDING:
+            {
+                process_clear_rt_binding_command(reinterpret_cast<const ral_command_buffer_clear_rt_binding_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
             case RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE:
             {
                 process_copy_texture_to_texture_command(reinterpret_cast<const ral_command_buffer_copy_texture_to_texture_command_info*>(command_ral_raw_ptr) );
@@ -1622,6 +1696,368 @@ void _raGL_command_buffer::clear_commands()
     }
 
     bake_state.reset();
+}
+
+/** TODO */
+void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_buffer_clear_rt_binding_command_info* command_ral_ptr)
+{
+    raGL_backend backend_raGL = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    bool scissor_test_pre_enabled          = false;
+    bool should_restore_draw_buffers       = false;
+    bool should_restore_scissor_test_state = false;
+
+    if ( bake_state.active_gfx_state != nullptr &&
+        !bake_state.active_gfx_state_dirty)
+    {
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,
+                                  &scissor_test_pre_enabled);
+
+        should_restore_scissor_test_state = true;
+    }
+    else
+    {
+        should_restore_scissor_test_state = false;
+    }
+
+    {
+        /* In OpenGL, clear regions can be controlled with a scissor test. Enable one now. */
+        _raGL_command* enable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        enable_command_ptr->enable_command_info.capability = GL_SCISSOR_TEST;
+        enable_command_ptr->type                           = RAGL_COMMAND_TYPE_ENABLE;
+
+        system_resizable_vector_push(commands,
+                                     enable_command_ptr);
+    }
+
+    for (uint32_t n_rt = 0;
+                  n_rt < command_ral_ptr->n_rendertargets;
+                ++n_rt)
+    {
+        const ral_command_buffer_clear_rt_binding_rendertarget& current_rt        = command_ral_ptr->rendertargets[n_rt];
+        const _raGL_command_buffer_bake_state_rt&               current_rt_raGL   = bake_state.active_rt_color_attachments[current_rt.rt_index];
+
+        uint32_t        current_rt_depth;
+        ral_format      current_rt_format;
+        bool            current_rt_format_has_color_comps;
+        bool            current_rt_format_has_depth_comps;
+        bool            current_rt_format_has_stencil_comps;
+        ral_format_type current_rt_format_type;
+        uint32_t        current_rt_height;
+        uint32_t        current_rt_n_base_layer;
+        uint32_t        current_rt_n_base_mip;
+        uint32_t        current_rt_n_layers;
+        uint32_t        current_rt_n_mips;
+        ral_texture     current_rt_parent_texture;
+        uint32_t        current_rt_width;
+
+        if (current_rt_raGL.texture_view == nullptr)
+        {
+            ASSERT_DEBUG_SYNC(current_rt_raGL.texture_view != nullptr,
+                              "No texture view assigned to the specified rendertarget");
+
+            continue;
+        }
+
+        ral_texture_view_get_property(current_rt_raGL.texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                     &current_rt_format);
+        ral_texture_view_get_property(current_rt_raGL.texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER,
+                                     &current_rt_n_base_layer);
+        ral_texture_view_get_property(current_rt_raGL.texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP,
+                                     &current_rt_n_base_mip);
+        ral_texture_view_get_property(current_rt_raGL.texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
+                                     &current_rt_n_layers);
+        ral_texture_view_get_property(current_rt_raGL.texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                     &current_rt_n_mips);
+        ral_texture_view_get_property(current_rt_raGL.texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &current_rt_parent_texture);
+
+        ral_utils_get_format_property(current_rt_format,
+                                      RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                     &current_rt_format_has_color_comps);
+        ral_utils_get_format_property(current_rt_format,
+                                      RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                     &current_rt_format_has_depth_comps);
+        ral_utils_get_format_property(current_rt_format,
+                                      RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                     &current_rt_format_has_stencil_comps);
+        ral_utils_get_format_property(current_rt_format,
+                                      RAL_FORMAT_PROPERTY_FORMAT_TYPE,
+                                     &current_rt_format_type);
+
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0 && !current_rt_format_has_color_comps)
+        {
+            ASSERT_DEBUG_SYNC(!((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0 && !current_rt_format_has_color_comps),
+                              "Cannot clear color channel of a a non-color rendertarget");
+
+            continue;
+        }
+        else
+        {
+            /* Color attachment-specific checks */
+            if (current_rt.rt_index >= N_MAX_RENDERTARGETS)
+            {
+                ASSERT_DEBUG_SYNC(current_rt.rt_index < N_MAX_RENDERTARGETS,
+                                  "Invalid rendertarget index specified.");
+
+                continue;
+            }
+        }
+
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0 && !current_rt_format_has_depth_comps)
+        {
+            ASSERT_DEBUG_SYNC(!((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0 && !current_rt_format_has_depth_comps),
+                              "Cannot clear depth channel of a a non-depth rendertarget");
+
+            continue;
+        }
+        else
+        {
+            ral_texture_aspect ds_aspect;
+
+            if (bake_state.active_rt_ds_attachment == nullptr)
+            {
+                ASSERT_DEBUG_SYNC(bake_state.active_rt_ds_attachment != nullptr,
+                                  "Cannot clear depth attachment - no depth/stencil attachment is defined.");
+
+                continue;
+            }
+
+            ral_texture_view_get_property(bake_state.active_rt_ds_attachment,
+                                          RAL_TEXTURE_VIEW_PROPERTY_ASPECT,
+                                         &ds_aspect);
+
+            if ((ds_aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) == 0)
+            {
+                ASSERT_DEBUG_SYNC((ds_aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0,
+                                  "Cannot clear depth attachment - current DS attachment does not hold depth data.");
+
+                continue;
+            }
+        }
+
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0 && !current_rt_format_has_stencil_comps)
+        {
+            ASSERT_DEBUG_SYNC(!((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0 && !current_rt_format_has_stencil_comps),
+                              "Cannot clear stencil channel of a a non-stencil rendertarget");
+
+            continue;
+        }
+        else
+        {
+            /* Stencil attachment-specific checks */
+            ral_texture_aspect ds_aspect;
+
+            if (bake_state.active_rt_ds_attachment == nullptr)
+            {
+                ASSERT_DEBUG_SYNC(bake_state.active_rt_ds_attachment != nullptr,
+                                  "Cannot clear stencil attachment - no depth/stencil attachment is defined.");
+
+                continue;
+            }
+
+            ral_texture_view_get_property(bake_state.active_rt_ds_attachment,
+                                          RAL_TEXTURE_VIEW_PROPERTY_ASPECT,
+                                         &ds_aspect);
+
+            if ((ds_aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) == 0)
+            {
+                ASSERT_DEBUG_SYNC((ds_aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0,
+                                  "Cannot clear depth attachment - current DS attachment does not hold depth data.");
+
+                continue;
+            }
+        }
+
+        if (current_rt_n_mips != 1)
+        {
+            ASSERT_DEBUG_SYNC(current_rt_n_mips == 1,
+                              "Rendertarget must not be assigned more than one mip");
+
+            continue;
+        }
+
+        ral_texture_get_mipmap_property(current_rt_parent_texture,
+                                        current_rt_n_base_layer,
+                                        current_rt_n_base_mip,
+                                        RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+                                       &current_rt_depth);
+        ral_texture_get_mipmap_property(current_rt_parent_texture,
+                                        current_rt_n_base_layer,
+                                        current_rt_n_base_mip,
+                                        RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                       &current_rt_height);
+        ral_texture_get_mipmap_property(current_rt_parent_texture,
+                                        current_rt_n_base_layer,
+                                        current_rt_n_base_mip,
+                                        RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                       &current_rt_width);
+
+        /* Adjust the draw buffer configuration, so that subsequent clear ops only modify contents of the specified
+         * rendertarget */
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0)
+        {
+            _raGL_command* draw_buffers_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            draw_buffers_command_ptr->draw_buffers_command_info.bufs[0] = GL_COLOR_ATTACHMENT0 + current_rt.rt_index;
+            draw_buffers_command_ptr->type                              = RAGL_COMMAND_TYPE_DRAW_BUFFERS;
+
+            should_restore_draw_buffers = true;
+
+            system_resizable_vector_push(commands,
+                                         draw_buffers_command_ptr);
+        }
+
+        /* Adjust clear color values */
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0)
+        {
+            _raGL_command* clear_color_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            /* TODO: We should handle sint/uint clear requests differently */
+            ASSERT_DEBUG_SYNC(current_rt_format_type == RAL_FORMAT_TYPE_SFLOAT ||
+                              current_rt_format_type == RAL_FORMAT_TYPE_UFLOAT,
+                             "TODO: Clear support for int/sint attachments");
+
+            static_assert(sizeof(clear_color_command_ptr->clear_color_command_info.rgba) == sizeof(current_rt.clear_value.color.f32), "");
+
+            memcpy(clear_color_command_ptr->clear_color_command_info.rgba,
+                   current_rt.clear_value.color.f32,
+                   sizeof(clear_color_command_ptr->clear_color_command_info.rgba) );
+
+            clear_color_command_ptr->type = RAGL_COMMAND_TYPE_CLEAR_COLOR;
+
+            system_resizable_vector_push(commands,
+                                         clear_color_command_ptr);
+        }
+
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0)
+        {
+            _raGL_command* clear_depth_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            clear_depth_command_ptr->clear_depthf_command_info.depth = current_rt.clear_value.depth;
+            clear_depth_command_ptr->type                            = RAGL_COMMAND_TYPE_CLEAR_DEPTHF;
+
+            system_resizable_vector_push(commands,
+                                         clear_depth_command_ptr);
+        }
+
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0)
+        {
+            _raGL_command* clear_stencil_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            clear_stencil_command_ptr->clear_stencil_command_info.stencil = current_rt.clear_value.stencil;
+            clear_stencil_command_ptr->type                               = RAGL_COMMAND_TYPE_CLEAR_STENCIL;
+
+            system_resizable_vector_push(commands,
+                                         clear_stencil_command_ptr);
+        }
+
+        for (uint32_t n_region = 0;
+                      n_region < command_ral_ptr->n_clear_regions;
+                    ++n_region)
+        {
+            _raGL_command*                                          clear_command_ptr;
+            const ral_command_buffer_clear_rt_binding_clear_region& current_region = command_ral_ptr->clear_regions[n_region];
+            _raGL_command*                                          scissor_command_ptr;
+
+            if (current_region.n_base_layer + current_region.n_layers > current_rt_n_layers)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Invalid layers specified.");
+
+                continue;
+            }
+
+            if (current_region.xy[0] + current_region.size[0] > current_rt_width ||
+                current_region.xy[1] + current_region.size[1] > current_rt_height)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Invalid clear region specified");
+
+                continue;
+            }
+
+            /* Adjust the scissor box */
+            scissor_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            scissor_command_ptr->scissor_indexedv_command_info.index = 0;
+            scissor_command_ptr->scissor_indexedv_command_info.v[0]  = current_region.xy  [0];
+            scissor_command_ptr->scissor_indexedv_command_info.v[1]  = current_region.xy  [1];
+            scissor_command_ptr->scissor_indexedv_command_info.v[2]  = current_region.size[0];
+            scissor_command_ptr->scissor_indexedv_command_info.v[3]  = current_region.size[1];
+            scissor_command_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
+
+            system_resizable_vector_push(commands,
+                                         scissor_command_ptr);
+
+            /* Enqueue clear command */
+            clear_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            clear_command_ptr->clear_command_info.mask = (((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT)   != 0) ? GL_COLOR_BUFFER_BIT   : 0) |
+                                                         (((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT)   != 0) ? GL_DEPTH_BUFFER_BIT   : 0) |
+                                                         (((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0) ? GL_STENCIL_BUFFER_BIT : 0);
+            clear_command_ptr->type                    = RAGL_COMMAND_TYPE_CLEAR;
+
+            system_resizable_vector_push(commands,
+                                         clear_command_ptr);
+        }
+    }
+
+    if (should_restore_draw_buffers)
+    {
+        _raGL_command* draw_buffers_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        static_assert(sizeof(draw_buffers_command_ptr->draw_buffers_command_info.bufs) == sizeof(bake_state.active_fbo_draw_buffers), "");
+
+        memcpy(draw_buffers_command_ptr->draw_buffers_command_info.bufs,
+               bake_state.active_fbo_draw_buffers,
+               sizeof(bake_state.active_fbo_draw_buffers) );
+
+        draw_buffers_command_ptr->draw_buffers_command_info.n = N_MAX_DRAW_BUFFERS;
+        draw_buffers_command_ptr->type                        = RAGL_COMMAND_TYPE_DRAW_BUFFERS;
+
+        system_resizable_vector_push(commands,
+                                     draw_buffers_command_ptr);
+    }
+
+    if (should_restore_scissor_test_state)
+    {
+        _raGL_command* scissor_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        scissor_command_ptr->scissor_indexedv_command_info.index = 0;
+        scissor_command_ptr->scissor_indexedv_command_info.v[0]  = bake_state.active_scissor_boxes[0].xy  [0];
+        scissor_command_ptr->scissor_indexedv_command_info.v[1]  = bake_state.active_scissor_boxes[0].xy  [1];
+        scissor_command_ptr->scissor_indexedv_command_info.v[2]  = bake_state.active_scissor_boxes[0].size[0];
+        scissor_command_ptr->scissor_indexedv_command_info.v[3]  = bake_state.active_scissor_boxes[0].size[1];
+        scissor_command_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
+
+        system_resizable_vector_push(commands,
+                                     scissor_command_ptr);
+
+
+        if (!scissor_test_pre_enabled)
+        {
+            _raGL_command* disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            disable_command_ptr->enable_command_info.capability = GL_SCISSOR_TEST;
+            disable_command_ptr->type                           = RAGL_COMMAND_TYPE_DISABLE;
+
+            system_resizable_vector_push(commands,
+                                         disable_command_ptr);
+        }
+    }
 }
 
 /** TODO */
@@ -2554,6 +2990,13 @@ void _raGL_command_buffer::process_set_scissor_box_command(const ral_command_buf
     gl_command_ptr->scissor_indexedv_command_info.v[2]  = command_ral_ptr->size[0];
     gl_command_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
 
+    memcpy(bake_state.active_scissor_boxes[command_ral_ptr->index].size,
+           command_ral_ptr->size,
+           sizeof(bake_state.active_scissor_boxes[command_ral_ptr->index].size) );
+    memcpy(bake_state.active_scissor_boxes[command_ral_ptr->index].xy,
+           command_ral_ptr->xy,
+           sizeof(bake_state.active_scissor_boxes[command_ral_ptr->index].xy) );
+
     system_resizable_vector_push(commands,
                                  gl_command_ptr);
 }
@@ -2881,6 +3324,45 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                                                                         command_args.dst_x0y0x1y1[3],
                                                                         command_args.mask,
                                                                         command_args.filter);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_CLEAR:
+            {
+                const _raGL_command_clear_command_info& command_args = command_ptr->clear_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLClear(command_args.mask);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_CLEAR_COLOR:
+            {
+                const _raGL_command_clear_color_command_info& command_args = command_ptr->clear_color_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLClearColor(command_args.rgba[0],
+                                                                   command_args.rgba[1],
+                                                                   command_args.rgba[2],
+                                                                   command_args.rgba[3]);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_CLEAR_DEPTHF:
+            {
+                const _raGL_command_clear_depthf_command_info& command_args = command_ptr->clear_depthf_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLClearDepthf(command_args.depth);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_CLEAR_STENCIL:
+            {
+                const _raGL_command_clear_stencil_command_info& command_args = command_ptr->clear_stencil_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLClearStencil(command_args.stencil);
 
                 break;
             }
