@@ -963,7 +963,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 
         /* Proceed with output variables */
         for (uint32_t n_output_variable = 0;
-                      n_output_variable < n_output_variables;
+                      n_output_variable < static_cast<uint32_t>(n_output_variables);
                     ++n_output_variable)
         {
             static const GLenum location_piq             = GL_LOCATION;
@@ -1007,8 +1007,8 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
             new_variable_ral_ptr->name     = system_hashed_ansi_string_create                     (output_variable_name);
             new_variable_ral_ptr->type     = raGL_utils_get_ral_program_variable_type_for_ogl_enum(output_variable_type);
 
-            ral_program_attach_output_attribute(program_ptr->program_ral,
-                                                new_variable_ral_ptr);
+            ral_program_attach_output_variable(program_ptr->program_ral,
+                                               new_variable_ral_ptr);
         }
 
         /* Continue with uniform blocks. */

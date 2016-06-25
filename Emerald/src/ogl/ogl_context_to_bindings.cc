@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -88,18 +88,18 @@ typedef struct _ogl_context_to_bindings
 
     _ogl_context_to_bindings()
     {
-        context                            = NULL;
-        entrypoints_private_ptr            = NULL;
+        context                            = nullptr;
+        entrypoints_private_ptr            = nullptr;
         gl_max_texture_image_units_value   = 0;
         is_arb_multi_bind_supported        = false;
-        sync_data_textures                 = NULL;
-        texture_id_to_texture_metadata_map = NULL;
-        texture_units                      = NULL;
+        sync_data_textures                 = nullptr;
+        texture_id_to_texture_metadata_map = nullptr;
+        texture_units                      = nullptr;
     }
 
     ~_ogl_context_to_bindings()
     {
-        if (texture_id_to_texture_metadata_map != NULL)
+        if (texture_id_to_texture_metadata_map != nullptr)
         {
             uint32_t n_map_items = 0;
 
@@ -112,7 +112,7 @@ typedef struct _ogl_context_to_bindings
                         ++n_map_item)
             {
                 system_hash64                              item_hash            = 0;
-                _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = NULL;
+                _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = nullptr;
 
                 if (!system_hash64map_get_element_at(texture_id_to_texture_metadata_map,
                                                      n_map_item,
@@ -123,11 +123,11 @@ typedef struct _ogl_context_to_bindings
                 }
 
                 delete texture_metadata_ptr;
-                texture_metadata_ptr = NULL;
+                texture_metadata_ptr = nullptr;
             }
 
             system_hash64map_release(texture_id_to_texture_metadata_map);
-            texture_id_to_texture_metadata_map = NULL;
+            texture_id_to_texture_metadata_map = nullptr;
         }
     }
 } _ogl_context_to_bindings;
@@ -157,7 +157,7 @@ PRIVATE GLenum _ogl_context_to_bindings_get_glenum_from_ogl_context_to_binding_t
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized texture binding target");
         }
-    } /* switch (gl_target) */
+    }
 
     return result;
 }
@@ -186,7 +186,7 @@ PRIVATE _ogl_context_to_binding_target _ogl_context_to_bindings_get_ogl_context_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized texture target");
         }
-    } /* switch (gl_target) */
+    }
 
     return result;
 }
@@ -239,12 +239,12 @@ PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(ogl_context_to_bin
 
                     bindings_ptr->sync_data_textures[n_texture_unit_count] = binding_ptr->texture_local;
                     binding_ptr->texture_context                           = binding_ptr->texture_local;
-                }/* if (binding does not match on client & server side */
+                }
 
                 /* Mark the binding targets of this texture unit as no longer dirty */
                 texture_unit_ptr->dirty[binding_target] = false;
-            } /* if (texture_unit_ptr->dirty) */
-        } /* /* for (texture units) */
+            }
+        }
 
         /* We can now use multi-bind functionality if necessary */
         if (n_texture_unit_first != 0xFFFFFFFF)
@@ -253,7 +253,7 @@ PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(ogl_context_to_bin
                                                                    n_texture_unit_count + 1,
                                                                    bindings_ptr->sync_data_textures);
         }
-    } /* for (all texture targets) */
+    }
 }
 
 /** TODO */
@@ -297,13 +297,13 @@ PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(ogl_context_to
 
                     /* Update internal representation */
                     binding_ptr->texture_context = binding_ptr->texture_local;
-                }/* if (binding does not match on client & server side */
+                }
 
                 /* Mark the binding targets of this texture unit as no longer dirty */
                 texture_unit_ptr->dirty[binding_target] = false;
-            } /* if (texture_unit_ptr->dirty) */
-        } /* /* for (texture units) */
-    } /* for (all texture targets) */
+            }
+        }
+    }
 }
 
 /** Please see header for spec */
@@ -311,14 +311,14 @@ PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(ogl_context contex
 {
     _ogl_context_to_bindings* new_bindings = new (std::nothrow) _ogl_context_to_bindings;
 
-    ASSERT_ALWAYS_SYNC(new_bindings != NULL,
+    ASSERT_ALWAYS_SYNC(new_bindings != nullptr,
                        "Out of memory");
 
-    if (new_bindings != NULL)
+    if (new_bindings != nullptr)
     {
         new_bindings->context                            = context;
         new_bindings->texture_id_to_texture_metadata_map = system_hash64map_create(sizeof(_ogl_context_to_bindings_texture_metadata*) );
-    } /* if (new_bindings != NULL) */
+    }
 
     return (ogl_context_to_bindings) new_bindings;
 }
@@ -404,7 +404,7 @@ PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized texture binding target");
         }
-    } /* switch (binding_target) */
+    }
 
     return result;
 }
@@ -414,7 +414,7 @@ PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                
                                          const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_to_bindings*    bindings_ptr = (_ogl_context_to_bindings*) bindings;
-    const ogl_context_gl_limits* limits_ptr   = NULL;
+    const ogl_context_gl_limits* limits_ptr   = nullptr;
 
     ogl_context_get_property(bindings_ptr->context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
@@ -434,13 +434,13 @@ PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                
 
     bindings_ptr->texture_units = new (std::nothrow) _ogl_context_to_bindings_texture_unit[limits_ptr->max_texture_image_units];
 
-    ASSERT_ALWAYS_SYNC(bindings_ptr->texture_units != NULL,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->texture_units != nullptr,
                        "Out of memory");
 
     /* Allocate arrays used by sync() */
     bindings_ptr->sync_data_textures = new (std::nothrow) GLuint[limits_ptr->max_texture_image_units];
 
-    ASSERT_ALWAYS_SYNC(bindings_ptr->sync_data_textures != NULL,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->sync_data_textures != nullptr,
                        "Out of memory");
 }
 
@@ -455,7 +455,7 @@ PUBLIC void ogl_context_to_bindings_on_textures_created(ogl_context_to_bindings 
                   n_texture_id < n_texture_ids;
                 ++n_texture_id)
     {
-        _ogl_context_to_bindings_texture_metadata* new_metadata_ptr = NULL;
+        _ogl_context_to_bindings_texture_metadata* new_metadata_ptr = nullptr;
 
         ASSERT_DEBUG_SYNC(!system_hash64map_contains(to_bindings_ptr->texture_id_to_texture_metadata_map,
                                                      (system_hash64) texture_ids[n_texture_id]),
@@ -463,15 +463,15 @@ PUBLIC void ogl_context_to_bindings_on_textures_created(ogl_context_to_bindings 
 
         new_metadata_ptr = new (std::nothrow) _ogl_context_to_bindings_texture_metadata;
 
-        ASSERT_ALWAYS_SYNC(new_metadata_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(new_metadata_ptr != nullptr,
                            "Out of memory");
 
         system_hash64map_insert(to_bindings_ptr->texture_id_to_texture_metadata_map,
                                 (system_hash64) texture_ids[n_texture_id],
                                 new_metadata_ptr,
-                                NULL, /* callback */
-                                NULL  /* callback_argument */);
-    } /* for (all specified texture IDs) */
+                                nullptr, /* callback */
+                                nullptr  /* callback_argument */);
+    }
 }
 
 /** Please see header for spec */
@@ -485,7 +485,7 @@ PUBLIC void ogl_context_to_bindings_on_textures_deleted(ogl_context_to_bindings 
                   n_texture_id < n_texture_ids;
                 ++n_texture_id)
     {
-        _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = NULL;
+        _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = nullptr;
 
         if (texture_ids[n_texture_id] == 0)
         {
@@ -511,8 +511,8 @@ PUBLIC void ogl_context_to_bindings_on_textures_deleted(ogl_context_to_bindings 
                                 (system_hash64) texture_ids[n_texture_id]);
 
         delete texture_metadata_ptr;
-        texture_metadata_ptr = NULL;
-    } /* for (all specified texture IDs) */
+        texture_metadata_ptr = nullptr;
+    }
 }
 
 /** Please see header for spec */
@@ -521,25 +521,25 @@ PUBLIC void ogl_context_to_bindings_release(ogl_context_to_bindings bindings)
     _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
 
     /* Release binding storage */
-    if (bindings_ptr->texture_units != NULL)
+    if (bindings_ptr->texture_units != nullptr)
     {
         delete [] bindings_ptr->texture_units;
 
-        bindings_ptr->texture_units = NULL;
+        bindings_ptr->texture_units = nullptr;
     }
 
     /* Release helper buffers */
-    if (bindings_ptr->sync_data_textures != NULL)
+    if (bindings_ptr->sync_data_textures != nullptr)
     {
         delete [] bindings_ptr->sync_data_textures;
 
-        bindings_ptr->sync_data_textures = NULL;
+        bindings_ptr->sync_data_textures = nullptr;
     }
 
     /* Done */
     delete bindings_ptr;
 
-    bindings_ptr = NULL;
+    bindings_ptr = nullptr;
 }
 
 /** Please see header for spec */
@@ -547,6 +547,9 @@ PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(ogl_cont
                                                                         uint32_t                texture_unit)
 {
     _ogl_context_to_bindings* to_bindings_ptr = (_ogl_context_to_bindings*) to_bindings;
+
+    ASSERT_DEBUG_SYNC(to_bindings_ptr != nullptr,
+                     "Specified ogl_context_to_bindings instance is null.");
 
     ASSERT_DEBUG_SYNC(texture_unit < to_bindings_ptr->gl_max_texture_image_units_value,
                       "Invalid texture unit index");
@@ -557,10 +560,10 @@ PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(ogl_cont
                           n_target < BINDING_TARGET_COUNT;
                         ++n_target)
         {
-            to_bindings_ptr->texture_units[texture_unit].bindings[n_target].texture_context = NULL;
-            to_bindings_ptr->texture_units[texture_unit].bindings[n_target].texture_local   = NULL;
+            to_bindings_ptr->texture_units[texture_unit].bindings[n_target].texture_context = 0;
+            to_bindings_ptr->texture_units[texture_unit].bindings[n_target].texture_local   = 0;
             to_bindings_ptr->texture_units[texture_unit].dirty[n_target]                    = false;
-        } /* for (all texture targets) */
+        }
     }
 }
 
@@ -589,9 +592,9 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
              *       not been configured. Verify the object has been bound to a texture target - if not,
              *       bind it *now*
              */
-            if (texture != NULL)
+            if (texture != 0)
             {
-                _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = NULL;
+                _ogl_context_to_bindings_texture_metadata* texture_metadata_ptr = nullptr;
 
                 if (!system_hash64map_get(bindings_ptr->texture_id_to_texture_metadata_map,
                                           (system_hash64) texture,
@@ -602,8 +605,8 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
                     system_hash64map_insert(bindings_ptr->texture_id_to_texture_metadata_map,
                                             (system_hash64) texture,
                                             texture_metadata_ptr,
-                                            NULL,  /* callback          */
-                                            NULL); /* callback_argument */
+                                            nullptr,  /* callback          */
+                                            nullptr); /* callback_argument */
                 }
 
                 if (!texture_metadata_ptr->has_been_bound)
@@ -614,11 +617,10 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
 
                     texture_metadata_ptr->has_been_bound = true;
                 }
-            } /* if (texture != NULL) */
-        } /* if (binding_info_ptr->texture_local != texture) */
-    } /* if (texture_unit < bindings_ptr->gl_max_texture_image_units_value) */
+            }
+        }
+    }
 
-end:
     ;
 }
 
@@ -627,7 +629,7 @@ PUBLIC void ogl_context_to_bindings_sync(ogl_context_to_bindings          bindin
                                          ogl_context_to_bindings_sync_bit sync_bits)
 {
     /* NOTE: bindings is NULL during rendering context initialization */
-    if (bindings != NULL)
+    if (bindings != nullptr)
     {
         _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
 
@@ -641,5 +643,5 @@ PUBLIC void ogl_context_to_bindings_sync(ogl_context_to_bindings          bindin
             _ogl_context_to_bindings_sync_non_multi_bind_process(bindings,
                                                                  sync_bits);
         }
-    } /* if (bindings != NULL) */
+    }
 }

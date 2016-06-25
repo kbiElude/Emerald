@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2013-2015)
+ * Emerald (kbi/elude @2013-2016)
  *
  */
 #include "shared.h"
@@ -25,9 +25,9 @@
 
 
 #ifdef _WIN32
-    __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
+    __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = nullptr;
 #else
-    __thread ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
+    __thread ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = nullptr;
 #endif
 
 
@@ -211,7 +211,7 @@ PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_s
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized property value");
         }
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -219,7 +219,7 @@ PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_s
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glActiveTexture(GLenum texture)
 {
-    ogl_context_state_cache cache              = NULL;
+    ogl_context_state_cache cache              = nullptr;
     GLuint                  texture_unit_index = texture - GL_TEXTURE0;
 
     ogl_context_get_property(ogl_context_get_current_context(),
@@ -235,8 +235,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glActiveTexture(GLenum texture)
 PUBLIC void APIENTRY ogl_context_wrappers_glBeginTransformFeedback(GLenum primitiveMode)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -265,7 +265,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindBuffer(GLenum target,
 {
     ogl_context context = ogl_context_get_current_context();
 
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -282,7 +282,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindBufferBase(GLenum target,
                                                            GLuint buffer)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -302,7 +302,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindBufferRange(GLenum     target,
                                                             GLsizeiptr size)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -323,7 +323,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindBuffersBase(GLenum        target
                                                             const GLuint* buffers)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -349,7 +349,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindBuffersRange(GLenum            t
                                                              const GLsizeiptr* sizes)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -373,7 +373,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindFramebuffer(GLenum target,
                                                             GLuint fbo_id)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -416,7 +416,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindFramebuffer(GLenum target,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 }
 
 /* Please see header for specification */
@@ -424,7 +424,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindMultiTextureEXT(GLenum texunit,
                                                                 GLenum target,
                                                                 GLuint texture)
 {
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(ogl_context_get_current_context(),
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
@@ -442,7 +442,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindRenderbuffer(GLenum target,
                                                              GLuint renderbuffer)
 {
     ogl_context             context     = ogl_context_get_current_context ();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ASSERT_DEBUG_SYNC(target == GL_RENDERBUFFER,
                       "Unsupported renderbuffer target");
@@ -461,7 +461,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindSampler(GLuint unit,
                                                         GLuint sampler)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -478,7 +478,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindSamplers(GLuint        first,
                                                          const GLuint* samplers)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -500,8 +500,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTexture(GLenum target,
 {
     ogl_context             context      = ogl_context_get_current_context();
     GLuint                  texture_unit = -1;
-    ogl_context_state_cache state_cache  = NULL;
-    ogl_context_to_bindings to_bindings  = NULL;
+    ogl_context_state_cache state_cache  = nullptr;
+    ogl_context_to_bindings to_bindings  = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -525,11 +525,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
                                                          GLsizei       count,
                                                          const GLuint* textures)
 {
-    raGL_backend            backend         = NULL;
+    raGL_backend            backend         = nullptr;
     ogl_context             current_context = ogl_context_get_current_context();
-    raGL_texture            texture_raGL    = NULL;
-    ral_texture             texture_ral     = NULL;
-    ogl_context_to_bindings to_bindings     = NULL;
+    raGL_texture            texture_raGL    = nullptr;
+    ral_texture             texture_ral     = nullptr;
+    ogl_context_to_bindings to_bindings     = nullptr;
 
     ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
@@ -557,7 +557,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
                                           &texture_raGL);
             raGL_texture_get_property     (texture_raGL,
                                            RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                                          &texture_ral);
+                                           (void**) &texture_ral);
             ral_texture_get_property      (texture_ral,
                                            RAL_TEXTURE_PROPERTY_TYPE,
                                           &texture_type_ral);
@@ -576,7 +576,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
 PUBLIC void APIENTRY ogl_context_wrappers_glBindVertexArray(GLuint array)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -595,7 +595,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
 {
     const GLfloat           blend_color[] = {red, green, blue, alpha};
     ogl_context             context       = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache   = NULL;
+    ogl_context_state_cache state_cache   = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -610,7 +610,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
 PUBLIC void APIENTRY ogl_context_wrappers_glBlendEquation(GLenum mode)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -629,7 +629,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendEquationSeparate(GLenum modeRGB
                                                                   GLenum modeAlpha)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -648,7 +648,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendFunc(GLenum sfactor,
                                                       GLenum dfactor)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -675,7 +675,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendFuncSeparate(GLenum srcRGB,
                                                               GLenum dstAlpha)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -708,7 +708,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlitFramebuffer(GLint      srcX0,
                                                             GLenum     filter)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -745,7 +745,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferData(GLenum        target,
                                                        GLenum        usage)
 {
     ogl_context             context     = ogl_context_get_current_context ();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -773,7 +773,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferStorage(GLenum        target,
                                                           GLbitfield    flags)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -801,7 +801,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
                                                           const GLvoid* data)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -827,7 +827,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
 {
     int                     clear_mask  = 0;
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -861,7 +861,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearBufferData(GLenum      target,
                                                             const void* data)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -893,7 +893,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearBufferSubData(GLenum      targe
                                                                const void* data)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -925,7 +925,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
 {
     GLfloat                 color[]     = {red, green, blue, alpha};
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -940,7 +940,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
 PUBLIC void APIENTRY ogl_context_wrappers_glClearDepth(GLdouble value)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -959,7 +959,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glColorMask(GLboolean red,
 {
     GLboolean               color_mask[] = {red, green, blue, alpha};
     ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache  = NULL;
+    ogl_context_state_cache state_cache  = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -980,9 +980,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage1D(GLenum      
                                                                     const GLvoid* data)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1028,9 +1028,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage2D(GLenum      
                                                                     const GLvoid* data)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1080,9 +1080,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexSubImage3D(GLenum      
                                                                     const GLvoid* data)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1131,8 +1131,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage1DEXT(GLuin
                                                                            const GLvoid* bits)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1175,8 +1175,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage2DEXT(GLuin
                                                                            const GLvoid* bits)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1223,8 +1223,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureSubImage3DEXT(GLuin
                                                                            const GLvoid* bits)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1266,7 +1266,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyBufferSubData(GLenum     readTar
                                                               GLsizeiptr size)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1298,8 +1298,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage1D(GLenum  target,
                                                               GLsizei width)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1340,8 +1340,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage2D(GLenum  target,
                                                               GLsizei height)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1385,8 +1385,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage3D(GLenum  target,
                                                               GLsizei height)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1429,7 +1429,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage1DEXT(GLuint  tex
                                                                      GLsizei width)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1464,7 +1464,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage2DEXT(GLuint  tex
                                                                      GLsizei height)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1502,7 +1502,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(GLuint  tex
                                                                      GLsizei height)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1532,7 +1532,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(GLuint  tex
 PUBLIC void APIENTRY ogl_context_wrappers_glCullFace(GLenum mode)
 {
     ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache  = NULL;
+    ogl_context_state_cache state_cache  = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1548,7 +1548,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteBuffers(GLsizei       n,
                                                           const GLuint* buffers)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1574,7 +1574,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteRenderbuffers(GLsizei       n,
 {
     ogl_context             context        = ogl_context_get_current_context();
     GLuint                  current_rbo_id = 0;
-    ogl_context_state_cache state_cache    = NULL;
+    ogl_context_state_cache state_cache    = nullptr;
     static const GLuint     zero_rbo_id    = 0;
 
     ogl_context_get_property            (context,
@@ -1585,7 +1585,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteRenderbuffers(GLsizei       n,
                                         &current_rbo_id);
 
     for (unsigned n_renderbuffer = 0;
-                  n_renderbuffer < n;
+                  n_renderbuffer < static_cast<uint32_t>(n);
                 ++n_renderbuffer)
     {
         if (renderbuffers[n] == current_rbo_id)
@@ -1613,7 +1613,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteTextures(GLsizei       n,
                                                            const GLuint* textures)
 {
     ogl_context             context             = ogl_context_get_current_context();
-    ogl_context_to_bindings context_to_bindings = NULL;
+    ogl_context_to_bindings context_to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
@@ -1639,8 +1639,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteVertexArrays(GLsizei       n,
 {
     ogl_context             context     = ogl_context_get_current_context();
     GLuint                  current_vao = 0;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_vaos        vaos        = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_vaos        vaos        = nullptr;
 
     ogl_context_get_property            (context,
                                          OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1667,12 +1667,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteVertexArrays(GLsizei       n,
             ogl_context_state_cache_set_property(state_cache,
                                                  OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
                                                 &zero_vao_id);
-        } /* if (arrays[current_n] == current_vao) */
+        }
 
         /* Remove the VAO from the VAO registry */
         ogl_context_vaos_delete_vao(vaos,
                                     arrays[current_n]);
-    } /* for (all provided VAO IDs) */
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -1685,7 +1685,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDeleteVertexArrays(GLsizei       n,
 PUBLIC void APIENTRY ogl_context_wrappers_glDepthFunc(GLenum func)
 {
     ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache  = NULL;
+    ogl_context_state_cache state_cache  = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1700,7 +1700,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDepthFunc(GLenum func)
 PUBLIC void APIENTRY ogl_context_wrappers_glDepthMask(GLboolean flag)
 {
     ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache  = NULL;
+    ogl_context_state_cache state_cache  = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1717,7 +1717,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDisable(GLenum cap)
     ogl_context_state_cache_property cap_property = _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(cap);
     ogl_context                      context      = ogl_context_get_current_context                                      ();
     const bool                       new_state    = false;
-    ogl_context_state_cache          state_cache  = NULL;
+    ogl_context_state_cache          state_cache  = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1749,9 +1749,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDisableVertexAttribArray(GLuint inde
 {
     ogl_context             context        = ogl_context_get_current_context();
     GLuint                  current_vao_id = -1;
-    ogl_context_state_cache state_cache    = NULL;
+    ogl_context_state_cache state_cache    = nullptr;
     GLboolean               vaa_enabled    = GL_FALSE;
-    ogl_context_vaos        vaos           = NULL;
+    ogl_context_vaos        vaos           = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -1790,11 +1790,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
                                                             GLuint num_groups_y,
                                                             GLuint num_groups_z)
 {
-    ogl_context_bo_bindings      bo_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
     ogl_context                  context          = ogl_context_get_current_context();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1834,11 +1834,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr indirect)
 {
-    ogl_context_bo_bindings      bo_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
     ogl_context                  context          = ogl_context_get_current_context();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1879,10 +1879,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
                                                        GLsizei count)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1934,10 +1934,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysIndirect(GLenum      mode,
                                                                const void* indirect)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -1991,10 +1991,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                                                                 GLsizei primcount)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2050,10 +2050,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
                                                                             GLuint  baseinstance)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2106,7 +2106,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
 PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffer(GLenum mode)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2129,7 +2129,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffers(      GLsizei n,
                                                         const GLenum* bufs)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2154,10 +2154,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
                                                          const GLvoid* indices)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2220,10 +2220,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseInstance(GL
                                                                               GLuint      baseinstance)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2288,10 +2288,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertex(GLen
                                                                             GLint       basevertex)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2357,10 +2357,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseI
                                                                                         GLuint      baseinstance)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2425,10 +2425,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
                                                                   GLsizei       primcount)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2492,10 +2492,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
                                                               const GLvoid* indices)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2556,10 +2556,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
                                                                   GLuint id)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2617,10 +2617,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackInstanced(GLenu
                                                                            GLsizei instancecount)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2680,10 +2680,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackStreamInstanced
                                                                                  GLsizei instancecount)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -2743,7 +2743,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glEnable(GLenum cap)
     ogl_context_state_cache_property cap_property = _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(cap);
     ogl_context                      context      = ogl_context_get_current_context                                      ();
     const bool                       new_state    = true;
-    ogl_context_state_cache          state_cache  = NULL;
+    ogl_context_state_cache          state_cache  = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2775,9 +2775,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glEnableVertexAttribArray(GLuint index
 {
     ogl_context             context        = ogl_context_get_current_context();
     GLuint                  current_vao_id = -1;
-    ogl_context_state_cache state_cache    = NULL;
+    ogl_context_state_cache state_cache    = nullptr;
     GLboolean               vaa_enabled    = GL_FALSE;
-    ogl_context_vaos        vaos           = NULL;
+    ogl_context_vaos        vaos           = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2818,7 +2818,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferParameteri(GLenum target,
                                                                   GLint  param)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2848,7 +2848,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferParameteri(GLenum target,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -2888,7 +2888,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum targe
                                                                     GLuint renderbuffer)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2917,7 +2917,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferRenderbuffer(GLenum targe
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -2944,8 +2944,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum target,
                                                                GLint  level)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -2977,7 +2977,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum target,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
@@ -3008,8 +3008,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture1D(GLenum target,
                                                                  GLint  level)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3041,7 +3041,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture1D(GLenum target,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
@@ -3073,8 +3073,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture2D(GLenum target,
                                                                  GLint  level)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3106,7 +3106,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture2D(GLenum target,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
@@ -3139,8 +3139,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture3D(GLenum target,
                                                                  GLint  layer)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3172,7 +3172,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture3D(GLenum target,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
@@ -3204,14 +3204,14 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum fb_ta
                                                                     GLint  level,
                                                                     GLint  layer)
 {
-    raGL_backend            backend          = NULL;
+    raGL_backend            backend          = nullptr;
     ogl_context             current_context  = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache      = NULL;
-    raGL_texture            texture_raGL     = NULL;
-    ral_texture             texture_ral      = NULL;
+    ogl_context_state_cache state_cache      = nullptr;
+    raGL_texture            texture_raGL     = nullptr;
+    ral_texture             texture_ral      = nullptr;
     GLenum                  texture_target   = GL_ZERO;
     ral_texture_type        texture_type_ral = RAL_TEXTURE_TYPE_UNKNOWN;
-    ogl_context_to_bindings to_bindings      = NULL;
+    ogl_context_to_bindings to_bindings      = nullptr;
 
     ogl_context_get_property(current_context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3228,7 +3228,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum fb_ta
                                   &texture_raGL);
     raGL_texture_get_property     (texture_raGL,
                                    RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                                  &texture_ral);
+                                   (void**) &texture_ral);
     ral_texture_get_property      (texture_ral,
                                    RAL_TEXTURE_PROPERTY_TYPE,
                                   &texture_type_ral);
@@ -3258,7 +3258,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum fb_ta
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(texture_target) );
@@ -3286,7 +3286,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum fb_ta
 PUBLIC void APIENTRY ogl_context_wrappers_glFrontFace(GLenum mode)
 {
     ogl_context             context       = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache   = NULL;
+    ogl_context_state_cache state_cache   = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3303,8 +3303,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenerateMipmap(GLenum target)
     ogl_context             context               = ogl_context_get_current_context();
     GLuint                  current_texture_unit = 0;
     const static bool       mipmaps_generated    = true;
-    ogl_context_state_cache state_cache          = NULL;
-    ogl_context_to_bindings to_bindings          = NULL;
+    ogl_context_state_cache state_cache          = nullptr;
+    ogl_context_to_bindings to_bindings          = nullptr;
 
     ogl_context_get_property            (context,
                                          OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3339,7 +3339,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenVertexArrays(GLsizei n,
                                                             GLuint* arrays)
 {
     ogl_context      context = ogl_context_get_current_context();
-    ogl_context_vaos vaos    = NULL;
+    ogl_context_vaos vaos    = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_VAOS,
@@ -3358,7 +3358,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenVertexArrays(GLsizei n,
                                  ogl_vao_create(context,
                                                 arrays[current_n])
                                 );
-    } /* for (all provided VAO IDs) */
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -3373,7 +3373,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenerateTextureMipmapEXT(GLuint text
 {
     ogl_context             context               = ogl_context_get_current_context();
     const static bool       mipmaps_generated    = true;
-    ogl_context_to_bindings to_bindings          = NULL;
+    ogl_context_to_bindings to_bindings          = nullptr;
 
     _private_entrypoints_ptr->pGLGenerateTextureMipmapEXT(texture,
                                                           target);
@@ -3390,7 +3390,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGenTextures(GLsizei n,
                                                         GLuint* textures)
 {
     ogl_context             context             = ogl_context_get_current_context();
-    ogl_context_to_bindings context_to_bindings = NULL;
+    ogl_context_to_bindings context_to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
@@ -3436,10 +3436,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBooleani_v(GLenum     target,
                                                           GLboolean* data)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3480,10 +3480,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBooleanv(GLenum     pname,
                                                         GLboolean* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3529,7 +3529,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferParameteriv(GLenum target,
                                                                  GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context ();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3561,7 +3561,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferParameteri64v(GLenum   targ
                                                                    GLint64* params)
 {
     ogl_context             context     = ogl_context_get_current_context ();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                          OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3593,7 +3593,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferPointerv(GLenum   target,
                                                               GLvoid** params)
 {
     ogl_context             context     = ogl_context_get_current_context ();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3626,7 +3626,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetBufferSubData(GLenum     target,
                                                              GLvoid*    data)
 {
     ogl_context             context     = ogl_context_get_current_context ();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3659,9 +3659,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTexImage(GLenum  target
                                                                   GLvoid* img)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3704,7 +3704,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetCompressedTextureImageEXT(GLuint 
                                                                          GLvoid* img)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3736,7 +3736,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetRenderbufferParameteriv(GLenum ta
                                                                        GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3767,10 +3767,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetDoublev(GLenum    pname,
                                                        GLdouble* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3815,10 +3815,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetFloatv(GLenum   pname,
                                                       GLfloat* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3864,7 +3864,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetFramebufferParameteriv(GLenum tar
                                                                       GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -3894,7 +3894,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetFramebufferParameteriv(GLenum tar
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -3919,10 +3919,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetInteger64i_v(GLenum   target,
                                                             GLint64* data)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -3969,10 +3969,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegeri_v(GLenum target,
                                                           GLint* data)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -4018,10 +4018,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
                                                         GLint* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -4096,7 +4096,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameterfv(GLuint   sampl
                                                                   GLfloat* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -4127,7 +4127,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameterIiv(GLuint sample
                                                                    GLint* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -4158,7 +4158,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameterIuiv(GLuint  samp
                                                                     GLuint* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -4189,7 +4189,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetSamplerParameteriv(GLuint sampler
                                                                   GLint* params)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -4222,9 +4222,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexImage(GLenum  target,
                                                         GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -4269,8 +4269,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexLevelParameterfv(GLenum   targ
                                                                    GLfloat* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4309,8 +4309,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexLevelParameteriv(GLenum target
                                                                    GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4348,8 +4348,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameterfv(GLenum   target,
                                                               GLfloat* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4386,8 +4386,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameteriv(GLenum target,
                                                               GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4424,8 +4424,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameterIiv(GLenum target,
                                                                GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4462,8 +4462,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTexParameterIuiv(GLenum  target,
                                                                 GLuint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4503,7 +4503,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureImageEXT(GLuint  texture,
                                                                GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -4537,7 +4537,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribdv(GLuint    index,
                                                               GLdouble* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4570,7 +4570,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribfv(GLuint   index,
                                                               GLfloat* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4603,7 +4603,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribiv(GLuint index,
                                                               GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4636,7 +4636,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribPointerv(GLuint   ind
                                                                     GLvoid** pointer)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4669,7 +4669,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribIiv(GLuint index,
                                                                GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4702,7 +4702,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribIuiv(GLuint  index,
                                                                 GLuint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4735,7 +4735,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateFramebuffer(GLenum        
                                                                   const GLenum* attachments)
 {
     ogl_context             context        = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache    = NULL;
+    ogl_context_state_cache state_cache    = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4765,7 +4765,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateFramebuffer(GLenum        
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -4794,7 +4794,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateSubFramebuffer(GLenum     
                                                                      GLsizei       height)
 {
     ogl_context             context        = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache    = NULL;
+    ogl_context_state_cache state_cache    = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -4824,7 +4824,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateSubFramebuffer(GLenum     
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized FB BP");
         }
-    } /* switch (target) */
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -4852,8 +4852,8 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBuffer(GLenum target,
                                                          GLenum access)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    GLvoid*                 result      = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    GLvoid*                 result      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -4887,8 +4887,8 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBufferRange(GLenum     target,
                                                               GLbitfield access)
 {
     ogl_context             context     = ogl_context_get_current_context ();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    GLvoid*                 result      = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    GLvoid*                 result      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -4923,8 +4923,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers)
     uint32_t                bo_bindings_sync_bits = 0;
     uint32_t                cache_sync_bits       = 0;
     ogl_context             context               = ogl_context_get_current_context();
-    ogl_context_bo_bindings context_bo_bindings   = NULL;
-    ogl_context_state_cache state_cache           = NULL;
+    ogl_context_bo_bindings context_bo_bindings   = nullptr;
+    ogl_context_state_cache state_cache           = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -4984,10 +4984,10 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
                                                               GLsizei        primcount)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5048,10 +5048,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawArraysIndirect(GLenum      
                                                                     GLsizei     stride)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5113,10 +5113,10 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
                                                                 GLsizei              primcount)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5180,10 +5180,10 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
                                                                           const GLint*         basevertex)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5247,10 +5247,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawElementsIndirect(GLenum    
                                                                       GLsizei     stride)
 {
     ogl_context                  context          = ogl_context_get_current_context ();
-    ogl_context_bo_bindings      bo_bindings      = NULL;
-    ogl_context_sampler_bindings sampler_bindings = NULL;
-    ogl_context_state_cache      state_cache      = NULL;
-    ogl_context_to_bindings      to_bindings      = NULL;
+    ogl_context_bo_bindings      bo_bindings      = nullptr;
+    ogl_context_sampler_bindings sampler_bindings = nullptr;
+    ogl_context_state_cache      state_cache      = nullptr;
+    ogl_context_to_bindings      to_bindings      = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5312,7 +5312,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferDataEXT(GLuint      buffe
                                                                GLenum      usage)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5331,7 +5331,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferStorageEXT(GLuint        
                                                                   GLbitfield    flags)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5353,7 +5353,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferStorageEXT(GLuint        
 PUBLIC void APIENTRY ogl_context_wrappers_glReadBuffer(GLenum mode)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5387,8 +5387,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glReadPixels(GLint   x,
                                                        GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5430,7 +5430,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorage(GLenum  target,
                                                                 GLsizei height)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5465,7 +5465,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorageMultisample(GLenu
                                                                            GLsizei height)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5497,8 +5497,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glRenderbufferStorageMultisample(GLenu
 PUBLIC void APIENTRY ogl_context_wrappers_glResumeTransformFeedback(void)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -5535,7 +5535,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
 {
     ogl_context             context       = ogl_context_get_current_context();
     GLint                   scissor_box[] = {x, y, width, height};
-    ogl_context_state_cache state_cache   = NULL;
+    ogl_context_state_cache state_cache   = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5551,10 +5551,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
                                                                       GLuint shaderStorageBlockIndex,
                                                                       GLuint shaderStorageBlockBinding)
 {
-    raGL_backend              context_backend = NULL;
+    raGL_backend              context_backend = nullptr;
     ogl_context               context         = ogl_context_get_current_context();
-    raGL_program              program_raGL    = NULL;
-    ogl_context_state_cache   state_cache     = NULL;
+    raGL_program              program_raGL    = nullptr;
+    ogl_context_state_cache   state_cache     = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BACKEND,
@@ -5571,10 +5571,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
                                    program,
                                   &program_raGL);
 
-    ASSERT_DEBUG_SYNC(program_raGL != NULL,
+    ASSERT_DEBUG_SYNC(program_raGL != nullptr,
                       "The raGL_program instance for requested PO was not found.");
 
-    if (program_raGL != NULL)
+    if (program_raGL != nullptr)
     {
         GLuint current_indexed_ssb_bp = -1;
 
@@ -5596,8 +5596,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint pro
                                             shaderStorageBlockIndex,
                                             RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
                                            &shaderStorageBlockBinding);
-        } /* if (current_indexed_ssb_bp != shaderStorageBlockBinding) */
-    } /* if (program_raGL != NULL) */
+        }
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -5612,11 +5612,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBuffer(GLenum target,
                                                       GLuint buffer)
 {
     ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
-    ogl_context_state_cache state_cache  = NULL;
+    ogl_context_bo_bindings bo_bindings  = nullptr;
+    ral_format              format_ral   = raGL_utils_get_ral_format_for_ogl_enum(internalformat);
+    ogl_context_state_cache state_cache  = nullptr;
     uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
+    ogl_context_to_bindings to_bindings  = nullptr;
     ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property(context,
@@ -5665,11 +5665,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBufferRange(GLenum     target,
                                                            GLsizeiptr size)
 {
     ogl_context             context      = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings  = NULL;
-    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
-    ogl_context_state_cache state_cache  = NULL;
+    ogl_context_bo_bindings bo_bindings  = nullptr;
+    ral_format              format_ral   = raGL_utils_get_ral_format_for_ogl_enum(internalformat);
+    ogl_context_state_cache state_cache  = nullptr;
     uint32_t                texture_unit = -1;
-    ogl_context_to_bindings to_bindings  = NULL;
+    ogl_context_to_bindings to_bindings  = nullptr;
     ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property(context,
@@ -5718,8 +5718,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterf(GLenum  target,
                                                           GLfloat param)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5756,8 +5756,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterfv(GLenum         target
                                                            const GLfloat* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5794,8 +5794,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameteri(GLenum target,
                                                           GLint  param)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5832,8 +5832,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameteriv(GLenum       target,
                                                            const GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5870,8 +5870,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterIiv(GLenum       target,
                                                             const GLint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5908,8 +5908,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexParameterIuiv(GLenum        targe
                                                              const GLuint* params)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -5950,9 +5950,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage1D(GLenum        target,
                                                           const GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6004,9 +6004,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage2D(GLenum        target,
                                                           const GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6062,9 +6062,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexSubImage3D(GLenum        target,
                                                           const GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ogl_context_state_cache state_cache = NULL;
-    ogl_context_to_bindings to_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ogl_context_state_cache state_cache = nullptr;
+    ogl_context_to_bindings to_bindings = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6115,9 +6115,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferEXT(GLuint texture,
                                                              GLuint buffer)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
-    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum  (target);
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ral_format              format_ral   = raGL_utils_get_ral_format_for_ogl_enum      (internalformat);
+    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6152,9 +6152,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferRangeEXT(GLuint     tex
                                                                   GLsizeiptr size)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
-    ral_texture_format      format_ral   = raGL_utils_get_ral_texture_format_for_ogl_enum(internalformat);
-    ral_texture_type        type_ral     = raGL_utils_get_ral_texture_type_for_ogl_enum  (target);
+    ogl_context_bo_bindings bo_bindings = nullptr;
+    ral_format              format_ral  = raGL_utils_get_ral_format_for_ogl_enum      (internalformat);
+    ral_texture_type        type_ral    = raGL_utils_get_ral_texture_type_for_ogl_enum(target);
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6193,7 +6193,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage1DEXT(GLuint        t
                                                                  const GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6236,7 +6236,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage2DEXT(GLuint        t
                                                                  const GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6283,7 +6283,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureSubImage3DEXT(GLuint        t
                                                                  const GLvoid* pixels)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6322,10 +6322,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                                                 GLuint uniformBlockIndex,
                                                                 GLuint uniformBlockBinding)
 {
-    raGL_backend              context_backend = NULL;
+    raGL_backend              context_backend = nullptr;
     ogl_context               context         = ogl_context_get_current_context();
-    raGL_program              program_raGL    = NULL;
-    ogl_context_state_cache   state_cache     = NULL;
+    raGL_program              program_raGL    = nullptr;
+    ogl_context_state_cache   state_cache     = nullptr;
 
     ogl_context_get_property    (context,
                                  OGL_CONTEXT_PROPERTY_BACKEND,
@@ -6347,10 +6347,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                    program,
                                   &program_raGL);
 
-    ASSERT_DEBUG_SYNC(program_raGL != NULL,
+    ASSERT_DEBUG_SYNC(program_raGL != nullptr,
                       "The raGL_program instance for requested PO was not found.");
 
-    if (program_raGL != NULL)
+    if (program_raGL != nullptr)
     {
         GLuint current_indexed_ssb_bp = -1;
 
@@ -6372,8 +6372,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                             uniformBlockIndex,
                                             RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
                                            &uniformBlockBinding);
-        } /* if (current_indexed_ssb_bp != uniformBlockBinding) */
-    } /* if (program_raGL != NULL) */
+        }
+    }
 
     #ifdef ENABLE_DEBUG_FINISH_CALLS
     {
@@ -6386,7 +6386,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
 PUBLIC GLboolean APIENTRY ogl_context_wrappers_glUnmapBuffer(GLenum target)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
     GLboolean               result      = GL_FALSE;
 
     ogl_context_get_property(context,
@@ -6417,7 +6417,7 @@ PUBLIC GLboolean APIENTRY ogl_context_wrappers_glUnmapBuffer(GLenum target)
 PUBLIC void APIENTRY ogl_context_wrappers_glUseProgram(GLuint program)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -6437,10 +6437,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT(GL
                                                                               GLsizei  stride,
                                                                               GLintptr offset)
 {
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_vao                 vao         = NULL;
-    ogl_context_vaos        vaos        = NULL;
+    ogl_vao                 vao         = nullptr;
+    ogl_context_vaos        vaos        = nullptr;
 
     GLuint   current_vaa_buffer = -1;
     GLintptr current_vaa_offset =  0;
@@ -6541,10 +6541,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT(GLu
                                                                              GLsizei   stride,
                                                                              GLintptr  offset)
 {
-    ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = nullptr;
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_vao                 vao         = NULL;
-    ogl_context_vaos        vaos        = NULL;
+    ogl_vao                 vao         = nullptr;
+    ogl_context_vaos        vaos        = nullptr;
 
     GLuint    current_vaa_buffer     = -1;
     GLboolean current_vaa_normalized = GL_FALSE;
@@ -6683,17 +6683,17 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIPointer(GLuint        i
                                                                  const GLvoid* pointer)
 {
     ogl_context             context                  = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings              = NULL;
+    ogl_context_bo_bindings bo_bindings              = nullptr;
     GLuint                  current_array_buffer     = 0;
     GLuint                  current_vaa_array_buffer = 0;
-    const GLvoid*           current_vaa_pointer      = NULL;
+    const GLvoid*           current_vaa_pointer      = nullptr;
     GLint                   current_vaa_size         = -1;
     GLsizei                 current_vaa_stride       = -1;
     GLenum                  current_vaa_type         = GL_NONE;
-    ogl_vao                 current_vao              = NULL;
+    ogl_vao                 current_vao              = nullptr;
     GLuint                  current_vao_id           = -1;
-    ogl_context_state_cache state_cache              = NULL;
-    ogl_context_vaos        vaos                     = NULL;
+    ogl_context_state_cache state_cache              = nullptr;
+    ogl_context_vaos        vaos                     = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6808,19 +6808,19 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribPointer(GLuint        in
                                                                 GLsizei       stride,
                                                                 const GLvoid* pointer)
 {
-    ogl_context_bo_bindings bo_bindings              = NULL;
+    ogl_context_bo_bindings bo_bindings              = nullptr;
     ogl_context             context                  = ogl_context_get_current_context();
     GLuint                  current_array_buffer     = 0;
     GLuint                  current_vaa_array_buffer = 0;
     GLboolean               current_vaa_normalized   = GL_FALSE;
-    const GLvoid*           current_vaa_pointer      = NULL;
+    const GLvoid*           current_vaa_pointer      = nullptr;
     GLint                   current_vaa_size         = -1;
     GLsizei                 current_vaa_stride       = -1;
     GLenum                  current_vaa_type         = GL_NONE;
-    ogl_vao                 current_vao              = NULL;
+    ogl_vao                 current_vao              = nullptr;
     GLuint                  current_vao_id           = -1;
-    ogl_context_state_cache state_cache              = NULL;
-    ogl_context_vaos        vaos                     = NULL;
+    ogl_context_state_cache state_cache              = nullptr;
+    ogl_context_vaos        vaos                     = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
@@ -6934,7 +6934,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,
                                                      GLsizei height)
 {
     ogl_context             context     = ogl_context_get_current_context();
-    ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache state_cache = nullptr;
     GLint                   viewport[]  = {x, y, width, height};
 
     ogl_context_get_property(context,

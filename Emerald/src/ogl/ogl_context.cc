@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -14,6 +14,8 @@
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
 #include "raGL/raGL_buffers.h"
+#include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_framebuffers.h"
 #include "raGL/raGL_rendering_handler.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
@@ -88,10 +90,10 @@ typedef struct
     GLuint               vao_no_vaas_id;
 
     /* Used for off-screen rendering. */
-    ral_framebuffer fbo;
-    ral_texture     fbo_color_to;
-    ral_texture     fbo_depth_stencil_to;
-    uint32_t        fbo_to_size[2];
+    raGL_framebuffer fbo;
+    ral_texture      fbo_color_to;
+    ral_texture      fbo_depth_stencil_to;
+    uint32_t         fbo_to_size[2];
 
     /* Used by the root window for MSAA enumeration only */
     GLenum msaa_enumeration_color_internalformat;
@@ -931,7 +933,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    ASSERT_DEBUG_SYNC(context_ptr != NULL,
+    ASSERT_DEBUG_SYNC(context_ptr != nullptr,
                       "Input argument is NULL");
 
     memset(&context_ptr->limits,
@@ -1300,9 +1302,11 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                                      &format_depth_stencil_includes_stencil);
 
         /* Generate the GL objects */
-        ral_context_create_framebuffers(context_ptr->context,
-                                        1, /* n_framebuffers */
-                                       &context_ptr->fbo);
+        raGL_framebuffers fbos = nullptr;
+
+        raGL_backend_get_private_property(context_ptr->backend,
+                                          RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
+                                         &fbos);
 
         if (format_color != RAL_FORMAT_UNKNOWN)
         {
@@ -1376,27 +1380,20 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
 
             raGL_texture_get_property(depth_stencil_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                      &depth_stencil_to_is_rb);
+                                      (void**) &depth_stencil_to_is_rb);
 
             ASSERT_DEBUG_SYNC(depth_stencil_to_is_rb,
                               "Default FB's depth/stencil texture is not a RB");
         }
 
-        /* Configure the framebuffer */
-        ral_framebuffer_set_attachment_2D(context_ptr->fbo,
-                                          RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
-                                          0, /* index */
-                                          context_ptr->fbo_color_to,
-                                          0); /* n_mipmap */
-
-        if (context_ptr->fbo_depth_stencil_to != nullptr)
-        {
-            ral_framebuffer_set_attachment_2D(context_ptr->fbo,
-                                              RAL_FRAMEBUFFER_ATTACHMENT_TYPE_DEPTH_STENCIL,
-                                              0, /* index */
-                                              context_ptr->fbo_depth_stencil_to,
-                                              0); /* n_mipmap */
-        }
+        /* Retrieve a framebuffer wrapper whose underlying GL object uses the attachments
+         * as above.
+         */
+        raGL_framebuffers_get_framebuffer(fbos,
+                                          (context_ptr->fbo_color_to != nullptr) ? 1 : 0,
+                                          &context_ptr->fbo_color_to,
+                                           context_ptr->fbo_depth_stencil_to,
+                                          &context_ptr->fbo);
     }
 
     /* Store the framebuffer size */
@@ -1480,11 +1477,9 @@ PRIVATE void _ogl_context_release(void* ptr)
 
     if (context_ptr->fbo != nullptr)
     {
-        ral_context_delete_objects(context_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
-                                   1, /* n_framebuffers */
-                                   (const void**) &context_ptr->fbo);
-
+        /* raGL_framebuffers instance will release the FBO automatically when any of the attachments
+         * is released.
+         */
         context_ptr->fbo = nullptr;
     }
 
@@ -3346,7 +3341,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO:
         {
-            *(ral_framebuffer*) out_result = context_ptr->fbo;
+            *(raGL_framebuffer*) out_result = context_ptr->fbo;
 
             break;
         }

@@ -1061,6 +1061,7 @@ typedef struct
     PFNGLCLEARBUFFERSUBDATAPROC                          pGLClearBufferSubData;
     PFNGLCLEARCOLORPROC                                  pGLClearColor;
     PFNGLCLEARDEPTHPROC                                  pGLClearDepth;
+    PFNGLCLEARDEPTHFPROC                                 pGLClearDepthf;
     PFNGLCOLORMASKPROC                                   pGLColorMask;
     PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC                     pGLCompressedTexSubImage3D;
     PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC                     pGLCompressedTexSubImage2D;

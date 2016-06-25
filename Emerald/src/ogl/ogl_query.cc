@@ -344,6 +344,6 @@ PUBLIC void ogl_query_release(ogl_query query)
     /* Done */
     delete query_ptr;
 
-    query_ptr = NULL;
+    query_ptr = nullptr;
 }
 

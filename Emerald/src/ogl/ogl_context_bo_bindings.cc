@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -127,7 +127,7 @@ PRIVATE GLenum _ogl_context_bo_bindings_get_glenum_from_ogl_context_bo_binding_t
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized buffer object binding target");
         }
-    } /* switch (binding_target) */
+    }
 
     return result;
 }
@@ -159,7 +159,7 @@ PRIVATE _ogl_context_bo_binding_target _ogl_context_bo_bindings_get_ogl_context_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized buffer object binding target");
         }
-    } /* switch (binding_target) */
+    }
 
     return result;
 }
@@ -192,7 +192,7 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(o
 
             dirty_end_index = n_binding;
         }
-    } /* for (all bindings) */
+    }
 
     /* Prepare the arguments */
     GLuint*     sync_data_buffers = bindings_ptr->sync_indiced_bindings_data_buffers;
@@ -217,14 +217,14 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(o
             {
                 sync_data_offsets[n_binding] = local_binding_ptr->offset;
                 sync_data_sizes  [n_binding] = local_binding_ptr->size;
-            } /* if (binding_ptr->is_range_binding) */
+            }
             else
             {
                 /* Retrieve BO size */
                 if (local_binding_ptr->bo_id != 0)
                 {
                     /* Set the arguments */
-                    raGL_backend backend = NULL;
+                    raGL_backend backend = nullptr;
                     uint32_t     bo_size = 0;
 
                     ogl_context_get_property(bindings_ptr->context,
@@ -246,7 +246,7 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(o
                     sync_data_sizes  [n_binding] = 0;
                 }
             }
-        } /* for (all indiced bindings that we need to update) */
+        }
 
         /* Issue the GL call */
         bindings_ptr->entrypoints_private_ptr->pGLBindBuffersRange(gl_target,
@@ -269,7 +269,7 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(o
             local_binding_ptr->dirty = false;
             *context_binding_ptr     = *local_binding_ptr;
         }
-    } /* if (dirty_start_index != 0xFFFFFFFF) */
+    }
 }
 
 /** TODO */
@@ -308,8 +308,8 @@ PRIVATE void _ogl_context_bo_bindings_sync_non_multi_bind_process_indiced_sync_b
             /* Update internal representation */
             local_binding_ptr->dirty = false;
             *context_binding_ptr     = *local_binding_ptr;
-        } /* if (local_binding_ptr->dirty) */
-    } /* for (all bindings) */
+        }
+    }
 }
 
 /** TODO */
@@ -328,7 +328,7 @@ PRIVATE void _ogl_context_bo_bindings_sync_process_general_sync_bit(ogl_context_
 
         /* Update internal representation */
         *context_binding_ptr = *local_binding_ptr;
-    } /* if (local_binding_ptr->bo_id != context_binding_ptr->bo_id) */
+    }
 }
 
 /** Please see header for spec */
@@ -336,17 +336,17 @@ PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(ogl_context contex
 {
     _ogl_context_bo_bindings* new_bindings = new (std::nothrow) _ogl_context_bo_bindings;
 
-    ASSERT_ALWAYS_SYNC(new_bindings != NULL,
+    ASSERT_ALWAYS_SYNC(new_bindings != nullptr,
                        "Out of memory");
 
-    if (new_bindings != NULL)
+    if (new_bindings != nullptr)
     {
         new_bindings->context = context;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &new_bindings->limits_ptr);
-    } /* if (new_bindings != NULL) */
+    }
 
     return (ogl_context_bo_bindings) new_bindings;
 }
@@ -397,7 +397,7 @@ PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized buffer object binding target");
         }
-    } /* switch (binding_target) */
+    }
 
     return result;
 }
@@ -452,10 +452,10 @@ PUBLIC void ogl_context_bo_bindings_init(ogl_context_bo_bindings                
                       n_binding_target < BINDING_TARGET_COUNT_INDICED;
                     ++n_binding_target)
     {
-        ASSERT_ALWAYS_SYNC(bindings_ptr->bindings_indiced_context[n_binding_target] != NULL,
+        ASSERT_ALWAYS_SYNC(bindings_ptr->bindings_indiced_context[n_binding_target] != nullptr,
                            "Out of memory");
 
-        ASSERT_ALWAYS_SYNC(bindings_ptr->bindings_indiced_local[n_binding_target] != NULL,
+        ASSERT_ALWAYS_SYNC(bindings_ptr->bindings_indiced_local[n_binding_target] != nullptr,
                            "Out of memory");
     }
 
@@ -514,9 +514,9 @@ PUBLIC void ogl_context_bo_bindings_init(ogl_context_bo_bindings                
     bindings_ptr->sync_indiced_bindings_data_offsets = new (std::nothrow) GLintptr  [n_indiced_bindings_max];
     bindings_ptr->sync_indiced_bindings_data_sizes   = new (std::nothrow) GLsizeiptr[n_indiced_bindings_max];
 
-    ASSERT_ALWAYS_SYNC(bindings_ptr->sync_indiced_bindings_data_buffers != NULL &&
-                       bindings_ptr->sync_indiced_bindings_data_offsets != NULL &&
-                       bindings_ptr->sync_indiced_bindings_data_sizes   != NULL,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->sync_indiced_bindings_data_buffers != nullptr &&
+                       bindings_ptr->sync_indiced_bindings_data_offsets != nullptr &&
+                       bindings_ptr->sync_indiced_bindings_data_sizes   != nullptr,
                        "Out of memory");
 }
 
@@ -530,47 +530,47 @@ PUBLIC void ogl_context_bo_bindings_release(ogl_context_bo_bindings bindings)
                       n_binding < BINDING_TARGET_COUNT_INDICED;
                     ++n_binding)
     {
-        if (bindings_ptr->bindings_indiced_context[n_binding] != NULL)
+        if (bindings_ptr->bindings_indiced_context[n_binding] != nullptr)
         {
             delete bindings_ptr->bindings_indiced_context[n_binding];
 
-            bindings_ptr->bindings_indiced_context[n_binding] = NULL;
+            bindings_ptr->bindings_indiced_context[n_binding] = nullptr;
         }
 
-        if (bindings_ptr->bindings_indiced_local[n_binding] != NULL)
+        if (bindings_ptr->bindings_indiced_local[n_binding] != nullptr)
         {
             delete bindings_ptr->bindings_indiced_local[n_binding];
 
-            bindings_ptr->bindings_indiced_local[n_binding] = NULL;
+            bindings_ptr->bindings_indiced_local[n_binding] = nullptr;
         }
     }
 
     /* Release helper buffers */
-    if (bindings_ptr->sync_indiced_bindings_data_buffers != NULL)
+    if (bindings_ptr->sync_indiced_bindings_data_buffers != nullptr)
     {
         delete [] bindings_ptr->sync_indiced_bindings_data_buffers;
 
-        bindings_ptr->sync_indiced_bindings_data_buffers = NULL;
+        bindings_ptr->sync_indiced_bindings_data_buffers = nullptr;
     }
 
-    if (bindings_ptr->sync_indiced_bindings_data_offsets != NULL)
+    if (bindings_ptr->sync_indiced_bindings_data_offsets != nullptr)
     {
         delete [] bindings_ptr->sync_indiced_bindings_data_offsets;
 
-        bindings_ptr->sync_indiced_bindings_data_offsets = NULL;
+        bindings_ptr->sync_indiced_bindings_data_offsets = nullptr;
     }
 
-    if (bindings_ptr->sync_indiced_bindings_data_sizes != NULL)
+    if (bindings_ptr->sync_indiced_bindings_data_sizes != nullptr)
     {
         delete [] bindings_ptr->sync_indiced_bindings_data_sizes;
 
-        bindings_ptr->sync_indiced_bindings_data_sizes = NULL;
+        bindings_ptr->sync_indiced_bindings_data_sizes = nullptr;
     }
 
     /* Done */
     delete bindings_ptr;
 
-    bindings_ptr = NULL;
+    bindings_ptr = nullptr;
 }
 
 /** Please see header for spec */
@@ -579,7 +579,7 @@ PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(ogl_context_bo_binding
                                                           GLint                   n)
 {
     _ogl_context_bo_bindings*    bindings_ptr = (_ogl_context_bo_bindings*) bindings;
-    const ogl_context_gl_limits* limits_ptr   = NULL;
+    const ogl_context_gl_limits* limits_ptr   = nullptr;
 
     ogl_context_get_property(bindings_ptr->context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
@@ -629,7 +629,7 @@ PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(ogl_context_bo_binding
                     binding_ptr->bo_id = 0;
                 }
             }
-        } /* for (both general binding descriptor types) */
+        }
 
         /* Iterate over indiced bindings */
         for (unsigned int n_indiced_binding = 0;
@@ -657,10 +657,10 @@ PUBLIC void ogl_context_bo_bindings_reset_buffer_bindings(ogl_context_bo_binding
                         current_binding_ptr[n_binding].bo_id = 0;
                         current_binding_ptr[n_binding].dirty = true;
                     }
-                } /* for (all indiced buffer object bindings) */
-            } /* for (both binding types) */
-        } /* for (all indiced binding descriptors) */
-    } /* for (all input buffer object IDs) */
+                }
+            }
+        }
+    }
 }
 
 /** Please see header for spec */
@@ -677,12 +677,12 @@ PUBLIC void ogl_context_bo_bindings_set_binding(ogl_context_bo_bindings bindings
 
     if (binding_target == BINDING_TARGET_ELEMENT_ARRAY_BUFFER)
     {
-        ogl_vao current_vao    = NULL;
+        ogl_vao current_vao    = nullptr;
         GLuint  current_vao_id = -1;
 
         /* This is a VAO state - update the local binding managed by corresponding ogl_vao instance */
-        ogl_context_state_cache state_cache = NULL;
-        ogl_context_vaos        vaos        = NULL;
+        ogl_context_state_cache state_cache = nullptr;
+        ogl_context_vaos        vaos        = nullptr;
 
         ogl_context_get_property(bindings_ptr->context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -706,7 +706,7 @@ PUBLIC void ogl_context_bo_bindings_set_binding(ogl_context_bo_bindings bindings
     if (binding_target  < BINDING_TARGET_COUNT)
     {
         bindings_ptr->bindings_general_local[binding_target].bo_id = bo_id;
-    } /* if (binding_target != BINDING_TARGET_UNKNOWN) */
+    }
 
 }
 
@@ -741,7 +741,7 @@ PUBLIC void ogl_context_bo_bindings_set_binding_base(ogl_context_bo_bindings bin
         {
             bindings_ptr->bindings_indiced_local[binding_target][binding_index].dirty = false;
         }
-    } /* if (binding_target < BINDING_TARGET_COUNT_INDICED) */
+    }
 }
 
 /** Please see header for spec */
@@ -775,7 +775,7 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
         {
             bindings_ptr->bindings_indiced_local[binding_target][binding_index].dirty = false;
         }
-    } /* if (binding_target < BINDING_TARGET_COUNT_INDICED) */
+    }
 
     #ifdef _DEBUG
     {
@@ -816,7 +816,7 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(ogl_context_bo_bindings bi
 
                 break;
             }
-        } /* switch (binding_point) */
+        }
     }
     #endif
 }
@@ -826,10 +826,10 @@ PUBLIC void ogl_context_bo_bindings_sync(ogl_context_bo_bindings bindings,
                                          uint32_t                sync_bits)
 {
     /* NOTE: bindings is NULL during rendering context initialization */
-    if (bindings != NULL)
+    if (bindings != nullptr)
     {
         _ogl_context_bo_bindings*    bindings_ptr = (_ogl_context_bo_bindings*) bindings;
-        const ogl_context_gl_limits* limits_ptr   = NULL;
+        const ogl_context_gl_limits* limits_ptr   = nullptr;
 
         ogl_context_get_property(bindings_ptr->context,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
@@ -944,10 +944,10 @@ PUBLIC void ogl_context_bo_bindings_sync(ogl_context_bo_bindings bindings,
         if (sync_bits & BO_BINDINGS_SYNC_BIT_ELEMENT_ARRAY_BUFFER)
         {
             /* Indexed binding is a VAO state, so make sure VAO binding is up-to-date before proceeding */
-            ogl_vao                 current_vao    = NULL;
+            ogl_vao                 current_vao    = nullptr;
             GLuint                  current_vao_id = -1;
-            ogl_context_state_cache state_cache    = NULL;
-            ogl_context_vaos        vaos           = NULL;
+            ogl_context_state_cache state_cache    = nullptr;
+            ogl_context_vaos        vaos           = nullptr;
 
             ogl_context_get_property(bindings_ptr->context,
                                      OGL_CONTEXT_PROPERTY_STATE_CACHE,
@@ -985,8 +985,8 @@ PUBLIC void ogl_context_bo_bindings_sync(ogl_context_bo_bindings bindings,
                 ogl_vao_set_property(current_vao,
                                      OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT,
                                     &binding_local);
-            } /* if (binding_context != binding_local) */
-        } /* if (sync_bits & BO_BINDINGS_SYNC_BIT_ELEMENT_ARRAY_BUFFER) */
+            }
+        }
 
         if (sync_bits & BO_BINDINGS_SYNC_BIT_PIXEL_PACK_BUFFER)
         {

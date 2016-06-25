@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -142,13 +142,13 @@ PUBLIC ogl_context_state_cache ogl_context_state_cache_create(ogl_context contex
 {
     _ogl_context_state_cache* new_cache = new (std::nothrow) _ogl_context_state_cache;
 
-    ASSERT_ALWAYS_SYNC(new_cache != NULL,
+    ASSERT_ALWAYS_SYNC(new_cache != nullptr,
                        "Out of memory");
 
-    if (new_cache != NULL)
+    if (new_cache != nullptr)
     {
         new_cache->context = context;
-    } /* if (new_bindings != NULL) */
+    }
 
     return (ogl_context_state_cache) new_cache;
 }
@@ -483,7 +483,7 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ogl_context_state_cache property");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
@@ -491,7 +491,7 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
                                          const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_state_cache*    cache_ptr  = (_ogl_context_state_cache*) cache;
-    const ogl_context_gl_limits* limits_ptr = NULL;
+    const ogl_context_gl_limits* limits_ptr = nullptr;
 
     /* Cache info in private descriptor */
     cache_ptr->entrypoints_private_ptr = entrypoints_private_ptr;
@@ -668,7 +668,7 @@ PUBLIC void ogl_context_state_cache_release(ogl_context_state_cache cache)
     /* Done */
     delete cache_ptr;
 
-    cache_ptr = NULL;
+    cache_ptr = nullptr;
 }
 
 /* Please see header for spec */
@@ -1017,7 +1017,7 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ogl_context_state_cache property");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
@@ -1025,7 +1025,7 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                                          uint32_t                sync_bits)
 {
     /* NOTE: cache is NULL during rendering context initialization */
-    if (cache != NULL)
+    if (cache != nullptr)
     {
         _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
 
@@ -1367,7 +1367,7 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                              cache_ptr->active_rendering_mode_texture_cube_map_seamless_local,
                              GL_TEXTURE_CUBE_MAP_SEAMLESS);
             }
-        } /* if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES) */
+        }
 
         /* Scissor box */
         if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX) &&
@@ -1405,10 +1405,10 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
             cache_ptr->active_vertex_array_object_context = cache_ptr->active_vertex_array_object_local;
 
             /* Make sure the indexed binding is up-to-date */
-            ogl_vao          current_vao             = NULL;
+            ogl_vao          current_vao             = nullptr;
             GLuint           indexed_binding_context = -1;
             GLuint           indexed_binding_local   = -1;
-            ogl_context_vaos vaos                    = NULL;
+            ogl_context_vaos vaos                    = nullptr;
 
             ogl_context_get_property(cache_ptr->context,
                                      OGL_CONTEXT_PROPERTY_VAOS,
@@ -1432,7 +1432,7 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                 ogl_vao_set_property(current_vao,
                                      OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT,
                                     &indexed_binding_local);
-            } /* if (indexed_binding_context != indexed_binding_local) */
+            }
         }
 
         /* Viewport */
@@ -1451,5 +1451,5 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                    cache_ptr->active_viewport_local,
                    sizeof(cache_ptr->active_viewport_local) );
         }
-    } /* if (cache != NULL) */
+    }
 }

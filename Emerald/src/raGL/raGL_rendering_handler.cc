@@ -7,6 +7,7 @@
 #include "demo/demo_timeline.h"
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_backend.h"
+#include "raGL/raGL_dep_tracker.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_rendering_handler.h"
 #include "raGL/raGL_types.h"
@@ -63,6 +64,7 @@ typedef struct _raGL_rendering_handler
     bool             default_fb_has_stencil_attachment;
     bool             default_fb_id_set;
     GLuint           default_fb_raGL_id;
+    raGL_dep_tracker dep_tracker;
     bool             is_helper_context;
     bool             is_multisample_pf;
     bool             is_vsync_enabled;
@@ -74,6 +76,7 @@ typedef struct _raGL_rendering_handler
     PFNGLDISABLEPROC          pGLDisable;
     PFNGLENABLEPROC           pGLEnable;
     PFNGLFINISHPROC           pGLFinish;
+    PFNGLMEMORYBARRIERPROC    pGLMemoryBarrier;
     PFNGLSCISSORPROC          pGLScissor;
     PFNGLVIEWPORTPROC         pGLViewport;
 
@@ -143,6 +146,7 @@ _raGL_rendering_handler::_raGL_rendering_handler(ral_rendering_handler in_render
     default_fb_has_stencil_attachment = false;
     default_fb_id_set                 = false;
     default_fb_raGL_id                = -1;
+    dep_tracker                       = nullptr;
 
     pGLBindFramebuffer = nullptr;
     pGLBlitFramebuffer = nullptr;
@@ -151,6 +155,7 @@ _raGL_rendering_handler::_raGL_rendering_handler(ral_rendering_handler in_render
     pGLDisable         = nullptr;
     pGLEnable          = nullptr;
     pGLFinish          = nullptr;
+    pGLMemoryBarrier   = nullptr;
     pGLScissor         = nullptr;
     pGLViewport        = nullptr;
 
@@ -174,8 +179,13 @@ PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_h
     /* Call-back requested. Sync and handle the request */
     raGL_backend_sync();
 
-    todo_reset_dep_tracker;
+    /* Reset dependency tracker and force full cache flush. Expectation is that each frame's contents
+     * is going to be rendered by submitting a single present job, and that rendering thread callbacks
+     * are exclusive to back-end usage, so this should not hurt performance too much.
+     */
+    raGL_dep_tracker_reset(rendering_handler_ptr->dep_tracker);
 
+    rendering_handler_ptr->pGLMemoryBarrier (GL_ALL_BARRIER_BITS);
     rendering_handler_ptr->pfn_callback_proc(rendering_handler_ptr->context_gl,
                                              rendering_handler_ptr->callback_request_user_arg);
 
@@ -190,15 +200,11 @@ PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_h
         if (rendering_handler_ptr->default_fb_raGL_id == -1)
         {
             ral_context      context_ral     = nullptr;
-            ral_framebuffer  default_fb      = nullptr;
             raGL_framebuffer default_fb_raGL = nullptr;
 
             ogl_context_get_property(rendering_handler_ptr->context_gl,
                                      OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
-                                    &default_fb);
-
-            default_fb_raGL = ral_context_get_framebuffer_gl(rendering_handler_ptr->context_ral,
-                                                             default_fb);
+                                    &default_fb_raGL);
 
             raGL_framebuffer_get_property(default_fb_raGL,
                                           RAGL_FRAMEBUFFER_PROPERTY_ID,
@@ -321,8 +327,14 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
                               RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
                              &rendering_handler_ptr->context_gl);
 
+    raGL_backend_get_private_property(backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
+                                     &rendering_handler_ptr->dep_tracker);
+
     ASSERT_DEBUG_SYNC(rendering_handler_ptr->context_gl != nullptr,
                       "raGL_context instance is NULL");
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->dep_tracker != nullptr,
+                      "NULL dep tracker retrieved.");
 
     rendering_handler_ptr->context_ral = context_ral;
 
@@ -379,6 +391,7 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
         rendering_handler_ptr->pGLDisable         = entrypoints_ptr->pGLDisable;
         rendering_handler_ptr->pGLEnable          = entrypoints_ptr->pGLEnable;
         rendering_handler_ptr->pGLFinish          = entrypoints_ptr->pGLFinish;
+        rendering_handler_ptr->pGLMemoryBarrier   = entrypoints_ptr->pGLMemoryBarrier;
         rendering_handler_ptr->pGLScissor         = entrypoints_ptr->pGLScissor;
         rendering_handler_ptr->pGLViewport        = entrypoints_ptr->pGLViewport;
     }
@@ -400,6 +413,7 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
         rendering_handler_ptr->pGLDisable         = entrypoints_ptr->pGLDisable;
         rendering_handler_ptr->pGLEnable          = entrypoints_ptr->pGLEnable;
         rendering_handler_ptr->pGLFinish          = entrypoints_ptr->pGLFinish;
+        rendering_handler_ptr->pGLMemoryBarrier   = entrypoints_ptr->pGLMemoryBarrier;
         rendering_handler_ptr->pGLScissor         = entrypoints_ptr->pGLScissor;
         rendering_handler_ptr->pGLViewport        = entrypoints_ptr->pGLViewport;
     }
@@ -484,15 +498,11 @@ PUBLIC void raGL_rendering_handler_pre_draw_frame(void* rendering_handler_raBack
     /* Bind the context's default FBO and call the user app's call-back */
     if (!rendering_handler_ptr->default_fb_id_set)
     {
-        ral_framebuffer  default_fb         = nullptr;
-        raGL_framebuffer default_fb_raGL    = nullptr;
+        raGL_framebuffer default_fb_raGL = nullptr;
 
         ogl_context_get_property(rendering_handler_ptr->context_gl,
                                  OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
-                                &default_fb);
-
-        default_fb_raGL = ral_context_get_framebuffer_gl(rendering_handler_ptr->context_ral,
-                                                         default_fb);
+                                &default_fb_raGL);
 
         raGL_framebuffer_get_property(default_fb_raGL,
                                       RAGL_FRAMEBUFFER_PROPERTY_ID,

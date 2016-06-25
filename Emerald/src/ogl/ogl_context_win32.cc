@@ -116,7 +116,7 @@ PRIVATE bool _ogl_context_win32_set_pixel_format_multisampling(_ogl_context_win3
                                     WGL_STENCIL_BITS_ARB,             0,
                                     WGL_DOUBLE_BUFFER_ARB,            GL_TRUE,
                                     WGL_SAMPLE_BUFFERS_ARB,           GL_TRUE,
-                                    WGL_SAMPLES_ARB,                  n_samples,
+                                    WGL_SAMPLES_ARB,                  static_cast<int>(n_samples),
                                     WGL_FRAMEBUFFER_SRGB_CAPABLE_EXT, GL_TRUE,
                                     0,                                0};
         float float_attributes[] = {0.0f, 0.0f};

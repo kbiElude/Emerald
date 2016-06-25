@@ -43,7 +43,7 @@ typedef enum ogl_context_property
     /* not settable, ral_context */
     OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
 
-    /* not settable, ral_framebuffer */
+    /* not settable, raGL_framebuffer */
     OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
 
     /* not settable, ral_texture_format */

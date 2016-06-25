@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -64,7 +64,7 @@ PRIVATE void _ogl_context_sampler_bindings_sync_multi_bind_process(ogl_context_s
 
                 dirty_end_index = n_texture_unit;
             }
-        } /* for (all texture units) */
+        }
 
         /* Prepare the arguments */
         const int n_bindings_to_update = dirty_end_index - dirty_start_index + 1;
@@ -97,7 +97,7 @@ PRIVATE void _ogl_context_sampler_bindings_sync_multi_bind_process(ogl_context_s
 
                 context_binding_ptr->so_id = local_binding_ptr->so_id;
             }
-        } /* if (dirty_start_index != 0xFFFFFFFF) */
+        }
     }
 
     bindings_ptr->dirty = false;
@@ -111,9 +111,9 @@ PRIVATE void _ogl_context_sampler_bindings_sync_non_multi_bind_process(ogl_conte
     /* Determine how many bindings we need to update */
     if (bindings_ptr->dirty)
     {
-        for (int n_texture_unit = 0;
-                 n_texture_unit < bindings_ptr->gl_max_texture_image_units_value;
-               ++n_texture_unit)
+        for (uint32_t n_texture_unit = 0;
+                      n_texture_unit < bindings_ptr->gl_max_texture_image_units_value;
+                    ++n_texture_unit)
         {
             _ogl_context_sampler_bindings_sampler_info* context_binding_ptr = bindings_ptr->bindings_context + n_texture_unit;
             _ogl_context_sampler_bindings_sampler_info* local_binding_ptr   = bindings_ptr->bindings_local   + n_texture_unit;
@@ -125,8 +125,8 @@ PRIVATE void _ogl_context_sampler_bindings_sync_non_multi_bind_process(ogl_conte
 
                 /* Update internal representation */
                 context_binding_ptr->so_id = local_binding_ptr->so_id;
-            } /* if (local_binding_ptr->so_id != context_binding_ptr->so_id) */
-        } /* for (texture units) */
+            }
+        }
 
         bindings_ptr->dirty = false;
     }
@@ -137,13 +137,13 @@ PUBLIC ogl_context_sampler_bindings ogl_context_sampler_bindings_create(ogl_cont
 {
     _ogl_context_sampler_bindings* new_bindings = new (std::nothrow) _ogl_context_sampler_bindings;
 
-    ASSERT_ALWAYS_SYNC(new_bindings != NULL,
+    ASSERT_ALWAYS_SYNC(new_bindings != nullptr,
                        "Out of memory");
 
-    if (new_bindings != NULL)
+    if (new_bindings != nullptr)
     {
         new_bindings->context = context;
-    } /* if (new_bindings != NULL) */
+    }
 
     return (ogl_context_sampler_bindings) new_bindings;
 }
@@ -171,7 +171,7 @@ PUBLIC void ogl_context_sampler_bindings_init(ogl_context_sampler_bindings      
                                               const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
     _ogl_context_sampler_bindings* bindings_ptr = (_ogl_context_sampler_bindings*) bindings;
-    const ogl_context_gl_limits*   limits_ptr   = NULL;
+    const ogl_context_gl_limits*   limits_ptr   = nullptr;
 
     ogl_context_get_property(bindings_ptr->context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
@@ -192,6 +192,10 @@ PUBLIC void ogl_context_sampler_bindings_init(ogl_context_sampler_bindings      
     bindings_ptr->bindings_context = new (std::nothrow) _ogl_context_sampler_bindings_sampler_info[limits_ptr->max_texture_image_units];
     bindings_ptr->bindings_local   = new (std::nothrow) _ogl_context_sampler_bindings_sampler_info[limits_ptr->max_texture_image_units];
 
+    ASSERT_ALWAYS_SYNC(bindings_ptr->bindings_context != nullptr &&
+                       bindings_ptr->bindings_local   != nullptr,
+                       "Out of memory");
+
     /* Set up binding properties */
     for (unsigned int n_binding = 0;
                       n_binding < bindings_ptr->gl_max_texture_image_units_value;
@@ -204,7 +208,7 @@ PUBLIC void ogl_context_sampler_bindings_init(ogl_context_sampler_bindings      
     /* Allocate arrays used by sync() */
     bindings_ptr->sync_data_samplers = new (std::nothrow) GLuint[limits_ptr->max_texture_image_units];
 
-    ASSERT_ALWAYS_SYNC(bindings_ptr->sync_data_samplers != NULL,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->sync_data_samplers != nullptr,
                        "Out of memory");
 }
 
@@ -214,32 +218,32 @@ PUBLIC void ogl_context_sampler_bindings_release(ogl_context_sampler_bindings bi
     _ogl_context_sampler_bindings* bindings_ptr = (_ogl_context_sampler_bindings*) bindings;
 
     /* Release binding storage */
-    if (bindings_ptr->bindings_context != NULL)
+    if (bindings_ptr->bindings_context != nullptr)
     {
         delete [] bindings_ptr->bindings_context;
 
-        bindings_ptr->bindings_context = NULL;
+        bindings_ptr->bindings_context = nullptr;
     }
 
-    if (bindings_ptr->bindings_local != NULL)
+    if (bindings_ptr->bindings_local != nullptr)
     {
         delete [] bindings_ptr->bindings_local;
 
-        bindings_ptr->bindings_local = NULL;
+        bindings_ptr->bindings_local = nullptr;
     }
 
     /* Release helper buffers */
-    if (bindings_ptr->sync_data_samplers != NULL)
+    if (bindings_ptr->sync_data_samplers != nullptr)
     {
         delete [] bindings_ptr->sync_data_samplers;
 
-        bindings_ptr->sync_data_samplers = NULL;
+        bindings_ptr->sync_data_samplers = nullptr;
     }
 
     /* Done */
     delete bindings_ptr;
 
-    bindings_ptr = NULL;
+    bindings_ptr = nullptr;
 }
 
 /** Please see header for spec */
@@ -259,14 +263,14 @@ PUBLIC void ogl_context_sampler_bindings_set_binding(ogl_context_sampler_binding
             bindings_ptr->bindings_local[texture_unit].so_id = sampler;
             bindings_ptr->dirty                              = true;
         }
-    } /* if (binding_target != bindings_ptr->gl_max_texture_image_units_value) */
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void ogl_context_sampler_bindings_sync(ogl_context_sampler_bindings bindings)
 {
     /* NOTE: bindings is NULL during rendering context initialization */
-    if (bindings != NULL)
+    if (bindings != nullptr)
     {
         _ogl_context_sampler_bindings* bindings_ptr = (_ogl_context_sampler_bindings*) bindings;
 
@@ -278,5 +282,5 @@ PUBLIC void ogl_context_sampler_bindings_sync(ogl_context_sampler_bindings bindi
         {
             _ogl_context_sampler_bindings_sync_non_multi_bind_process(bindings);
         }
-    } /* if (bindings != NULL) */
+    }
 }

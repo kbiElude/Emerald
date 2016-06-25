@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2013-2015)
+ * Emerald (kbi/elude @2013-2016)
  *
  */
 #include "shared.h"
@@ -465,7 +465,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                     if (pipeline_stage_step_ptr != nullptr)
                     {
                         int text_y           = START_Y + n * pipeline_ptr->text_y_delta;
-                        int time_position[2] = {text_width_px, text_y};
+                        int time_position[2] = {static_cast<int>(text_width_px), text_y};
 
                         varia_text_renderer_set_text_string_property(pipeline_ptr->text_renderer,
                                                                      pipeline_stage_step_ptr->text_time_index,
@@ -650,7 +650,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
 
         /* Execute one step at a time. Launch a query for every step, so that we can gather execution times
          * after all steps finish running and show the times */
-        _ogl_pipeline_stage_step* step_ptr = NULL;
+        _ogl_pipeline_stage_step* step_ptr = nullptr;
 
         for (size_t n_step = 0;
                     n_step < n_steps;

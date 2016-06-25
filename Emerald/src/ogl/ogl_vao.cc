@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016s)
  *
  */
 #include "shared.h"
@@ -28,7 +28,7 @@ typedef struct _ogl_vao_vaa
         divisor              = 0;
         enabled              = GL_FALSE;
         normalized           = GL_FALSE;
-        pointer              = NULL;
+        pointer              = nullptr;
         size                 = 4;
         stride               = 0;
         type                 = GL_FLOAT;
@@ -58,14 +58,14 @@ typedef struct _ogl_vao
 
         if (backend_type == RAL_BACKEND_TYPE_GL)
         {
-            const ogl_context_gl_limits* limits_ptr = NULL;
+            const ogl_context_gl_limits* limits_ptr = nullptr;
 
             ogl_context_get_property(in_context,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
             n_max_vertex_attribs = limits_ptr->max_vertex_attribs;
-        } /* if (context_type == RAL_BACKEND_TYPE_GL) */
+        }
         else
         {
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES,
@@ -85,14 +85,14 @@ typedef struct _ogl_vao
         n_vaas                       = n_max_vertex_attribs;
         vaas                         = new (std::nothrow) _ogl_vao_vaa[n_vaas];
 
-        ASSERT_DEBUG_SYNC(vaas != NULL,
+        ASSERT_DEBUG_SYNC(vaas != nullptr,
                           "Out of memory");
     }
 
     ~_ogl_vao()
     {
         /* Try to unregister the VAO from the VAO cache */
-        ogl_context_vaos vaos = NULL;
+        ogl_context_vaos vaos = nullptr;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_VAOS,
@@ -102,11 +102,11 @@ typedef struct _ogl_vao
                                     gl_id);
 
         /* Release other stuff */
-        if (vaas != NULL)
+        if (vaas != nullptr)
         {
             delete [] vaas;
 
-            vaas = NULL;
+            vaas = nullptr;
         }
     }
 } _ogl_vao;
@@ -119,7 +119,7 @@ PUBLIC ogl_vao ogl_vao_create(ogl_context  context,
     _ogl_vao* new_instance = new (std::nothrow) _ogl_vao(context,
                                                          gl_id);
 
-    ASSERT_ALWAYS_SYNC(new_instance != NULL,
+    ASSERT_ALWAYS_SYNC(new_instance != nullptr,
                        "Out of memory");
 
     return (ogl_vao) new_instance;
@@ -153,7 +153,7 @@ PUBLIC void ogl_vao_get_property(const ogl_vao    vao,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ogl_vao_property value.");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
@@ -234,8 +234,8 @@ PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized VAO VAA property");
             }
-        } /* switch (property) */
-    } /* if (n_vaa < vao_ptr->n_vaas) */
+        }
+    }
 }
 
 /** Please see header for spec */
@@ -246,7 +246,7 @@ PUBLIC void ogl_vao_release(ogl_vao vao)
     /* Done */
     delete vao_ptr;
 
-    vao_ptr = NULL;
+    vao_ptr = nullptr;
 }
 
 /** Please see header for spec */
@@ -277,7 +277,7 @@ PUBLIC void ogl_vao_set_property(ogl_vao          vao,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ogl_vao_property value.");
         }
-    } /* switch (property) */
+    }
 }
 
 /** TODO */
@@ -358,6 +358,6 @@ PUBLIC void ogl_vao_set_vaa_property(ogl_vao              vao,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized VAO VAA property");
             }
-        } /* switch (property) */
-    } /* if (n_vaa < vao_ptr->n_vaas) */
+        }
+    }
 }
