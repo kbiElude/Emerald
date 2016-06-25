@@ -273,7 +273,6 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
     if (variable_raGL_ptr != nullptr)
     {
         variable_raGL_ptr->block_index = -1;
-        variable_raGL_ptr->location    = -1;
     }
 
     if (variable_ral_ptr != nullptr)
@@ -282,6 +281,7 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
         variable_ral_ptr->block_offset           = -1;
         variable_ral_ptr->is_row_major_matrix    = false;
         variable_ral_ptr->length                 = 0;
+        variable_ral_ptr->location               = -1;
         variable_ral_ptr->matrix_stride          = 0;
         variable_ral_ptr->name                   = nullptr;
         variable_ral_ptr->size                   = 0;
@@ -443,21 +443,19 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program            pr
         }
     }
 
-    if (variable_raGL_ptr != nullptr)
+    if (variable_ral_ptr != nullptr)
     {
         if (variable_interface_type == GL_UNIFORM)
         {
-            variable_raGL_ptr->location = program_ptr->pGLGetProgramResourceLocation(program_ptr->id,
-                                                                                     variable_interface_type,
-                                                                                     temp_variable_name_storage);
+            variable_ral_ptr->location = program_ptr->pGLGetProgramResourceLocation(program_ptr->id,
+                                                                                    variable_interface_type,
+                                                                                    temp_variable_name_storage);
         }
-
-        variable_raGL_ptr->name = system_hashed_ansi_string_create(final_variable_name);
     }
 
-    if (variable_ral_ptr != nullptr)
+    if (variable_raGL_ptr != nullptr)
     {
-        variable_ral_ptr->name = system_hashed_ansi_string_create(final_variable_name);
+        variable_raGL_ptr->name = system_hashed_ansi_string_create(final_variable_name);
     }
 
     if (!is_temp_variable_defined)
@@ -885,6 +883,8 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
         GLint n_active_attribute_max_length     = 0;
         GLint n_active_uniforms                 = 0;
         GLint n_active_uniform_max_length       = 0;
+        GLint n_output_variables                = 0;
+        GLint output_variable_max_length        = 0;
 
         program_ptr->pGLGetProgramiv(program_ptr->id,
                                      GL_ACTIVE_ATTRIBUTES,
@@ -899,138 +899,192 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
                                      GL_ACTIVE_UNIFORM_MAX_LENGTH,
                                     &n_active_uniform_max_length);
 
+        program_ptr->pGLGetProgramInterfaceiv(program_ptr->id,
+                                              GL_PROGRAM_OUTPUT,
+                                              GL_ACTIVE_RESOURCES,
+                                             &n_output_variables);
+        program_ptr->pGLGetProgramInterfaceiv(program_ptr->id,
+                                              GL_PROGRAM_OUTPUT,
+                                              GL_NAME_LENGTH,
+                                             &output_variable_max_length);
+
         /* Allocate temporary name buffers */
         const unsigned int uniform_name_length = n_active_uniform_max_length + 1;
 
-        GLchar* attribute_name = new (std::nothrow) GLchar[n_active_attribute_max_length + 1];
-        GLchar* uniform_name   = new (std::nothrow) GLchar[uniform_name_length];
+        GLchar* attribute_name       = new (std::nothrow) GLchar[n_active_attribute_max_length + 1];
+        GLchar* output_variable_name = new (std::nothrow) GLchar[output_variable_max_length    + 1];
+        GLchar* uniform_name         = new (std::nothrow) GLchar[uniform_name_length];
 
-        ASSERT_ALWAYS_SYNC(attribute_name != nullptr,
-                           "Could not allocate [%d] bytes for active attribute name",
-                           n_active_attribute_max_length + 1);
-        ASSERT_ALWAYS_SYNC(uniform_name!= nullptr,
-                           "Could not allocate [%d] bytes for active uniform name",
-                           n_active_uniform_max_length + 1);
+        ASSERT_ALWAYS_SYNC(attribute_name       != nullptr &&
+                           output_variable_name != nullptr &&
+                           uniform_name         != nullptr,
+                           "Out of memory");
 
-        if (attribute_name     != nullptr &&
-            uniform_name       != nullptr)
+        /* Focus on attributes for a minute */
+        for (GLint n_active_attribute = 0;
+                   n_active_attribute < n_active_attributes;
+                 ++n_active_attribute)
         {
-            /* Focus on attributes for a minute */
-            for (GLint n_active_attribute = 0;
-                       n_active_attribute < n_active_attributes;
-                     ++n_active_attribute)
+            _raGL_program_attribute* new_attribute_raGL_ptr = new _raGL_program_attribute;
+            ral_program_attribute*   new_attribute_ral_ptr  = new ral_program_attribute;
+
+            ASSERT_ALWAYS_SYNC(new_attribute_raGL_ptr != nullptr &&
+                               new_attribute_ral_ptr  != nullptr,
+                               "Out of memory while allocating space for vertex attribute descriptors.");
+
+            new_attribute_ral_ptr->length = 0;
+            new_attribute_ral_ptr->name   = nullptr;
+            new_attribute_ral_ptr->size   = 0;
+            new_attribute_ral_ptr->type   = RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
+
+            memset(attribute_name,
+                   0,
+                   new_attribute_ral_ptr->length + 1);
+
+            program_ptr->pGLGetActiveAttrib(program_ptr->id,
+                                            n_active_attribute,
+                                            n_active_attribute_max_length+1,
+                                            &new_attribute_ral_ptr->length,
+                                            &new_attribute_ral_ptr->size,
+                                            (GLenum*) &new_attribute_ral_ptr->type,
+                                            attribute_name);
+
+            new_attribute_raGL_ptr->name     = system_hashed_ansi_string_create (attribute_name);
+            new_attribute_raGL_ptr->location = program_ptr->pGLGetAttribLocation(program_ptr->id,
+                                                                                 attribute_name);
+            new_attribute_ral_ptr->name      = new_attribute_raGL_ptr->name;
+
+            ral_program_attach_vertex_attribute(program_ptr->program_ral,
+                                                new_attribute_ral_ptr);
+
+            system_resizable_vector_push(program_ptr->active_attributes_raGL,
+                                         new_attribute_raGL_ptr);
+        }
+
+        /* Proceed with output variables */
+        for (uint32_t n_output_variable = 0;
+                      n_output_variable < n_output_variables;
+                    ++n_output_variable)
+        {
+            static const GLenum location_piq             = GL_LOCATION;
+            GLint               output_variable_location = -1;
+            GLint               output_variable_type;
+            static const GLenum type_piq                 = GL_TYPE;
+
+            ral_program_variable* new_variable_ral_ptr = new ral_program_variable;
+
+            ASSERT_ALWAYS_SYNC(new_variable_ral_ptr != nullptr,
+                               "Out of memory");
+
+            memset(output_variable_name,
+                   0,
+                   output_variable_max_length + 1);
+
+            program_ptr->pGLGetProgramResourceiv  (program_ptr->id,
+                                                   GL_PROGRAM_OUTPUT,
+                                                   n_output_variable,
+                                                   1, /* propCount */
+                                                  &location_piq,
+                                                   sizeof(output_variable_location),
+                                                   nullptr, /* length */
+                                                  &output_variable_location);
+            program_ptr->pGLGetProgramResourceiv  (program_ptr->id,
+                                                   GL_PROGRAM_OUTPUT,
+                                                   n_output_variable,
+                                                   1, /* propCount */
+                                                  &type_piq,
+                                                   sizeof(output_variable_type),
+                                                   nullptr, /* length */
+                                                  &output_variable_type);
+            program_ptr->pGLGetProgramResourceName(program_ptr->id,
+                                                   GL_PROGRAM_OUTPUT,
+                                                   n_output_variable,
+                                                   output_variable_max_length + 1,
+                                                   nullptr, /* length */
+                                                   output_variable_name);
+
+            new_variable_ral_ptr->location = location_piq;
+            new_variable_ral_ptr->name     = system_hashed_ansi_string_create                     (output_variable_name);
+            new_variable_ral_ptr->type     = raGL_utils_get_ral_program_variable_type_for_ogl_enum(output_variable_type);
+
+            ral_program_attach_output_attribute(program_ptr->program_ral,
+                                                new_variable_ral_ptr);
+        }
+
+        /* Continue with uniform blocks. */
+        _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                              program_ptr);
+
+        /* Finish with shader storage blocks. */
+        _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER,
+                                              program_ptr);
+
+        /* Now for the uniforms coming from the default uniform block */
+        ral_program_add_block(program_ptr->program_ral,
+                              0, /* block_size */
+                              RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                              system_hashed_ansi_string_create("") );
+
+        for (GLint n_active_uniform = 0;
+                   n_active_uniform < n_active_uniforms;
+                 ++n_active_uniform)
+        {
+            _raGL_program_variable temp_raGL;
+            ral_program_variable   temp_ral;
+
+            raGL_program_get_program_variable_details((raGL_program) program_ptr,
+                                                      uniform_name_length,
+                                                      uniform_name,
+                                                     &temp_ral,
+                                                     &temp_raGL,
+                                                      GL_UNIFORM,
+                                                      n_active_uniform);
+
+            if (temp_ral.block_offset == -1)
             {
-                _raGL_program_attribute* new_attribute_raGL_ptr = new _raGL_program_attribute;
-                ral_program_attribute*   new_attribute_ral_ptr  = new ral_program_attribute;
+                _raGL_program_variable* new_uniform_raGL_ptr = new (std::nothrow) _raGL_program_variable(temp_raGL);
+                ral_program_variable*   new_uniform_ral_ptr  = new (std::nothrow) ral_program_variable  (temp_ral);
 
-                ASSERT_ALWAYS_SYNC(new_attribute_raGL_ptr != nullptr &&
-                                   new_attribute_ral_ptr  != nullptr,
-                                   "Out of memory while allocating space for vertex attribute descriptors.");
+                ASSERT_ALWAYS_SYNC(new_uniform_raGL_ptr != nullptr &&
+                                   new_uniform_ral_ptr  != nullptr,
+                                   "Out of memory while allocating space for uniform descriptors.");
 
-                new_attribute_ral_ptr->length = 0;
-                new_attribute_ral_ptr->name   = nullptr;
-                new_attribute_ral_ptr->size   = 0;
-                new_attribute_ral_ptr->type   = RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
+                system_resizable_vector_push(program_ptr->active_uniforms_raGL,
+                                             new_uniform_raGL_ptr);
 
-                memset(attribute_name,
-                       0,
-                       new_attribute_ral_ptr->length + 1);
+                ral_program_attach_variable_to_block(program_ptr->program_ral,
+                                                     system_hashed_ansi_string_create(""),
+                                                     new_uniform_ral_ptr);
 
-                program_ptr->pGLGetActiveAttrib(program_ptr->id,
-                                                n_active_attribute,
-                                                n_active_attribute_max_length+1,
-                                                &new_attribute_ral_ptr->length,
-                                                &new_attribute_ral_ptr->size,
-                                                (GLenum*) &new_attribute_ral_ptr->type,
-                                                attribute_name);
+                /* If this is an image or a sampler, assign a unique texture unit & store it */
+                ral_program_variable_type_class variable_type_class;
 
-                new_attribute_raGL_ptr->name     = system_hashed_ansi_string_create (attribute_name);
-                new_attribute_raGL_ptr->location = program_ptr->pGLGetAttribLocation(program_ptr->id,
-                                                                                     attribute_name);
-                new_attribute_ral_ptr->name      = new_attribute_raGL_ptr->name;
+                ral_utils_get_ral_program_variable_type_property(temp_ral.type,
+                                                                 RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
+                                                                 (void**) &variable_type_class);
 
-                ral_program_attach_vertex_attribute(program_ptr->program_ral,
-                                                    new_attribute_ral_ptr);
-
-                system_resizable_vector_push(program_ptr->active_attributes_raGL,
-                                             new_attribute_raGL_ptr);
-            }
-
-            /* Continue with uniform blocks. */
-            _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                                  program_ptr);
-
-            /* Finish with shader storage blocks. */
-            _raGL_program_init_blocks_for_context(RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER,
-                                                  program_ptr);
-
-            /* Now for the uniforms coming from the default uniform block */
-            ral_program_add_block(program_ptr->program_ral,
-                                  0, /* block_size */
-                                  RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
-                                  system_hashed_ansi_string_create("") );
-
-            for (GLint n_active_uniform = 0;
-                       n_active_uniform < n_active_uniforms;
-                     ++n_active_uniform)
-            {
-                _raGL_program_variable temp_raGL;
-                ral_program_variable   temp_ral;
-
-                raGL_program_get_program_variable_details((raGL_program) program_ptr,
-                                                          uniform_name_length,
-                                                          uniform_name,
-                                                         &temp_ral,
-                                                         &temp_raGL,
-                                                          GL_UNIFORM,
-                                                          n_active_uniform);
-
-                if (temp_ral.block_offset == -1)
+                if (variable_type_class == RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE)
                 {
-                    _raGL_program_variable* new_uniform_raGL_ptr = new (std::nothrow) _raGL_program_variable(temp_raGL);
-                    ral_program_variable*   new_uniform_ral_ptr  = new (std::nothrow) ral_program_variable  (temp_ral);
+                    new_uniform_raGL_ptr->image_unit = n_image_units_assigned++;
 
-                    ASSERT_ALWAYS_SYNC(new_uniform_raGL_ptr != nullptr &&
-                                       new_uniform_ral_ptr  != nullptr,
-                                       "Out of memory while allocating space for uniform descriptors.");
+                    ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->image_unit < static_cast<uint32_t>(limits_ptr->max_image_units),
+                                      "Too many images declared in the shader.");
 
-                    system_resizable_vector_push(program_ptr->active_uniforms_raGL,
-                                                 new_uniform_raGL_ptr);
+                    program_ptr->pGLProgramUniform1i(program_ptr->id,
+                                                     temp_ral.location,
+                                                     new_uniform_raGL_ptr->image_unit);
+                }
+                else
+                if (variable_type_class == RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER)
+                {
+                    new_uniform_raGL_ptr->texture_unit = n_texture_units_assigned++;
 
-                    ral_program_attach_variable_to_block(program_ptr->program_ral,
-                                                         system_hashed_ansi_string_create(""),
-                                                         new_uniform_ral_ptr);
+                    ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->image_unit < static_cast<uint32_t>(limits_ptr->max_combined_texture_image_units),
+                                      "Too many samplers declared in the shader.");
 
-                    /* If this is an image or a sampler, assign a unique texture unit & store it */
-                    ral_program_variable_type_class variable_type_class;
-
-                    ral_utils_get_ral_program_variable_type_property(temp_ral.type,
-                                                                     RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
-                                                                     (void**) &variable_type_class);
-
-                    if (variable_type_class == RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE)
-                    {
-                        new_uniform_raGL_ptr->image_unit = n_image_units_assigned++;
-
-                        ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->image_unit < static_cast<uint32_t>(limits_ptr->max_image_units),
-                                          "Too many images declared in the shader.");
-
-                        program_ptr->pGLProgramUniform1i(program_ptr->id,
-                                                         temp_raGL.location,
-                                                         new_uniform_raGL_ptr->image_unit);
-                    }
-                    else
-                    if (variable_type_class == RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER)
-                    {
-                        new_uniform_raGL_ptr->texture_unit = n_texture_units_assigned++;
-
-                        ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->image_unit < static_cast<uint32_t>(limits_ptr->max_combined_texture_image_units),
-                                          "Too many samplers declared in the shader.");
-
-                        program_ptr->pGLProgramUniform1i(program_ptr->id,
-                                                         temp_raGL.location,
-                                                         new_uniform_raGL_ptr->texture_unit);
-                    }
+                    program_ptr->pGLProgramUniform1i(program_ptr->id,
+                                                     temp_ral.location,
+                                                     new_uniform_raGL_ptr->texture_unit);
                 }
             }
         }
@@ -1040,6 +1094,12 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
         {
             delete [] attribute_name;
             attribute_name = nullptr;
+        }
+
+        if (output_variable_name != nullptr)
+        {
+            delete [] output_variable_name;
+            output_variable_name = nullptr;
         }
 
         if (uniform_name != nullptr)

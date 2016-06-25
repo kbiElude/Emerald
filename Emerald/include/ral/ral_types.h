@@ -276,7 +276,7 @@ typedef enum
      *
      *       * raGL_utils_get_ogl_enum_for_ral_program_variable_type()
      *       * raGL_utils_get_ral_program_variable_type_for_ogl_enum()
-     *       * ral_utils_get_ral_program_variable_type_property
+     *       * ral_utils_get_ral_program_variable_type_property()
      **/
 
     RAL_PROGRAM_VARIABLE_TYPE_BOOL,
@@ -385,6 +385,10 @@ typedef enum
 
 typedef enum
 {
+    /* NOTE: Make sure to also update ral_utils_get_ral_program_variable_type_class_property() if you adjust
+     *       this enum.
+     */
+
     RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE,
     RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX,
     RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER,
@@ -396,9 +400,17 @@ typedef enum
 
 typedef enum
 {
+    /* system_hashed_ansi_string */
+    RAL_PROGRAM_VARIABLE_TYPE_CLASS_PROPERTY_NAME
+} ral_program_variable_type_class_property;
+
+typedef enum
+{
     /* ral_program_variable_type_class */
     RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
 
+    /* system_hashed_ansi_string */
+    RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_NAME,
 } ral_program_variable_type_property;
 
 /** Structure that describes properties of a program uniform, or a shader storage block member, or the like.
@@ -417,10 +429,15 @@ typedef struct
     uint32_t                      block_offset;
     uint32_t                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
     uint32_t                      matrix_stride;
-    system_hashed_ansi_string     name;
     int32_t                       length;
     int32_t                       size;             /* array size for arrayed uniforms or 1 otherwise */
-    ral_program_variable_type     type;
+
+    /* Output variables + uniforms (default & regular uniform block): */
+    int32_t location;
+
+    /* Common */
+    system_hashed_ansi_string name;
+    ral_program_variable_type type;
 
 } ral_program_variable;
 

@@ -174,6 +174,8 @@ PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_h
     /* Call-back requested. Sync and handle the request */
     raGL_backend_sync();
 
+    todo_reset_dep_tracker;
+
     rendering_handler_ptr->pfn_callback_proc(rendering_handler_ptr->context_gl,
                                              rendering_handler_ptr->callback_request_user_arg);
 

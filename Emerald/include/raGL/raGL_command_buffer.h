@@ -12,7 +12,8 @@ PUBLIC raGL_command_buffer raGL_command_buffer_create(ral_command_buffer command
 PUBLIC void raGL_command_buffer_deinit();
 
 /** TODO */
-PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer);
+PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
+                                        raGL_dep_tracker    dep_tracker);
 
 /** TODO */
 PUBLIC void raGL_command_buffer_init();

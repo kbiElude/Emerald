@@ -20,6 +20,7 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_command_buffer.h"
+#include "raGL/raGL_dep_tracker.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_framebuffers.h"
 #include "raGL/raGL_program.h"
@@ -78,6 +79,7 @@ typedef struct _raGL_backend
     system_read_write_mutex enqueued_syncs_rw_mutex;
 
     raGL_buffers      buffers;
+    raGL_dep_tracker  dep_tracker;
     raGL_framebuffers framebuffers;
     raGL_textures     textures;
     raGL_vaos         vaos;
@@ -337,6 +339,7 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
                                                        backend_ptr->context_gl);
         }
 
+        backend_ptr->dep_tracker  = raGL_dep_tracker_create ();
         backend_ptr->framebuffers = raGL_framebuffers_create(backend_ptr->context_gl);
 
         if (((_raGL_backend*) _global.helper_contexts[0].helper_backend)->textures != nullptr)
@@ -2630,6 +2633,13 @@ PUBLIC void raGL_backend_get_private_property(raGL_backend                  back
 
     switch (property)
     {
+        case RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER:
+        {
+            *(raGL_dep_tracker*) out_result_ptr = backend_ptr->dep_tracker;
+
+            break;
+        }
+
         case RAGL_BACKEND_PRIVATE_PROPERTY_FBOS:
         {
             *(raGL_framebuffers*) out_result_ptr = backend_ptr->framebuffers;
@@ -2929,9 +2939,11 @@ PUBLIC void raGL_backend_release(void* backend)
         system_read_write_mutex_unlock(_global.active_backends_rw_mutex,
                                        ACCESS_WRITE);
 
-        /* Release the framebuffer manager */
+        /* Release context-specific managers */
+        raGL_dep_tracker_release (backend_ptr->dep_tracker);
         raGL_framebuffers_release(backend_ptr->framebuffers);
 
+        backend_ptr->dep_tracker  = nullptr;
         backend_ptr->framebuffers = nullptr;
 
         /* Request a rendering context call-back to release backend's assets */

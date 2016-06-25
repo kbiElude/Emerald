@@ -9,6 +9,9 @@
 
 typedef enum
 {
+    /* not settable; raGL_dep_tracker */
+    RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
+
     /* not settable; raGL_framebuffers */
     RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
 

@@ -57,6 +57,12 @@ typedef enum
     RAL_PROGRAM_BLOCK_PROPERTY_NAME,
 
     /* not settable; uint32_t */
+    RAL_PROGRAM_BLOCK_PROPERTY_N_SAMPLER_VARIABLES,
+
+    /* not settable; uint32_t */
+    RAL_PROGRAM_BLOCK_PROPERTY_N_STORAGE_IMAGE_VARIABLES,
+
+    /* not settable; uint32_t */
     RAL_PROGRAM_BLOCK_PROPERTY_N_VARIABLES,
 
     /* not settable; uint32_t */
@@ -82,7 +88,13 @@ typedef enum
     RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,
 
     /* not settable; uint32_t */
-    RAL_PROGRAM_PROPERTY_N_METADATA_BLOCKS,
+    RAL_PROGRAM_PROPERTY_N_BLOCKS,
+
+    /* not settable; uint32_t */
+    RAL_PROGRAM_PROPERTY_N_STORAGE_BLOCKS,
+
+    /* not settable; uint32_t */
+    RAL_PROGRAM_PROPERTY_N_UNIFORM_BLOCKS,
 
     /* not settable; system_hashed_ansi_string */
     RAL_PROGRAM_PROPERTY_NAME,
@@ -98,6 +110,14 @@ PUBLIC void ral_program_add_block(ral_program               program,
                                   uint32_t                  block_size,
                                   ral_program_block_type    block_type,
                                   system_hashed_ansi_string block_name);
+
+/** TODO
+ *
+ *  NOTE: Should only be called by rendering back-end.
+ *  NOTE: RAL program takes ownership of @param variable_ptr.
+ **/
+PUBLIC void ral_program_attach_output_variable(ral_program           program,
+                                               ral_program_variable* variable_ptr);
 
 /** TODO. **/
 PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
@@ -171,10 +191,23 @@ PUBLIC EMERALD_API bool ral_program_get_block_property_by_index(ral_program     
                                                                 void*                      out_result_ptr);
 
 /** TODO */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_class(ral_program                     program,
+                                                                system_hashed_ansi_string       block_name,
+                                                                ral_program_variable_type_class variable_type_class,
+                                                                uint32_t                        n_variable,
+                                                                const ral_program_variable**    out_variable_ptr_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API bool ral_program_get_block_variable_by_index(ral_program                  program,
                                                                 system_hashed_ansi_string    block_name,
                                                                 uint32_t                     n_variable,
                                                                 const ral_program_variable** out_variable_ptr_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program                  program,
+                                                               system_hashed_ansi_string    block_name,
+                                                               system_hashed_ansi_string    variable_name,
+                                                               const ral_program_variable** out_variable_ptr_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_program_get_block_variable_by_offset(ral_program                 program,
@@ -183,10 +216,9 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_offset(ral_program    
                                                                 const ral_program_variable** out_variable_ptr_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program                  program,
-                                                               system_hashed_ansi_string    block_name,
-                                                               system_hashed_ansi_string    variable_name,
-                                                               const ral_program_variable** out_variable_ptr_ptr);
+PUBLIC EMERALD_API bool ral_program_get_output_variable_by_name(ral_program                  program,
+                                                                system_hashed_ansi_string    output_variable_name,
+                                                                const ral_program_variable** out_variable_ptr_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,

@@ -30,7 +30,6 @@ typedef enum
     RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP
 } raGL_program_block_property;
 
-/* TODO TODO TODO: This should be moved to raGL_program.cc once RAL integration is finished. */
 typedef struct _raGL_program_variable
 {
     /* Buffer variables, uniforms (default & regular uniform block): */
@@ -38,9 +37,6 @@ typedef struct _raGL_program_variable
 
     /* Image uniforms (default uniform block): */
     uint32_t image_unit;
-
-    /* Output variables + uniforms (default & regular uniform block): */
-    int32_t location;
 
     /* Common: */
     system_hashed_ansi_string name;
@@ -53,7 +49,6 @@ typedef struct _raGL_program_variable
     {
         block_index  = -1;
         image_unit   = -1;
-        location     = -1;
         name         = NULL;
         texture_unit = -1;
     }
@@ -103,14 +98,14 @@ PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(raGL_program    
                                                                 void*                       out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_output_variable_by_name(raGL_program                   program,
-                                                                 system_hashed_ansi_string      name,
-                                                                 const _raGL_program_variable** out_uniform_ptr);
-
-/** TODO */
 PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
                                                   raGL_program_property property,
                                                   void*                 out_result_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool raGL_program_get_uniform_by_location(raGL_program                   program,
+                                                             uint32_t                       location,
+                                                             const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program                   program,

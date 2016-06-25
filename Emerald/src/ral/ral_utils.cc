@@ -174,115 +174,148 @@ PUBLIC EMERALD_API bool ral_utils_get_format_property(ral_format          format
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_class_property(ral_program_variable_type_class          variable_type_class,
+                                                                               ral_program_variable_type_class_property property,
+                                                                               void**                                   out_result_ptr)
+{
+    static const struct
+    {
+        system_hashed_ansi_string name;
+    } results[] =
+    {
+        system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE"),
+        system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX"),
+        system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER"),
+        system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR"),
+        system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR"),
+    };
+
+    switch (property)
+    {
+        case RAL_PROGRAM_VARIABLE_TYPE_CLASS_PROPERTY_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result_ptr = results[variable_type_class].name;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_program_variable_type_class_property value requested.");
+        }
+    }
+}
+/** Please see header for specification */
 PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_property(ral_program_variable_type          variable_type,
                                                                          ral_program_variable_type_property property,
                                                                          void**                             out_result_ptr)
 {
     static const struct
     {
-        const char*                     name;
+        system_hashed_ansi_string       name;
         ral_program_variable_type_class type_class;
     } results[] =
     {
-        /* name                                                               | type_class */
-        {"RAL_PROGRAM_VARIABLE_TYPE_BOOL",                                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC2",                                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC3",                                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC4",                                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT",                                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x3",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x4",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x2",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x4",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x2",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x3",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_1D",                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_1D_ARRAY",                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D",                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_ARRAY",                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_MULTISAMPLE",                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_MULTISAMPLE_ARRAY",                RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_RECT",                             RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_3D",                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_BUFFER",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_CUBE",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_IMAGE_CUBE_MAP_ARRAY",                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT",                                       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_1D",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_1D_ARRAY",                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_ARRAY",                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_MULTISAMPLE",                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_MULTISAMPLE_ARRAY",            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_RECT",                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_3D",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_BUFFER",                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_CUBE",                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_CUBE_MAP_ARRAY",                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D",                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D_ARRAY",                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D",                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_ARRAY",                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE",                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE_ARRAY",          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_RECT",                       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_3D",                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_BUFFER",                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_CUBE",                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_VEC2",                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_VEC3",                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_INT_VEC4",                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY",                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY_SHADOW",                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_SHADOW",                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY",                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY_SHADOW",                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE",                    RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE_ARRAY",              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT",                           RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT_SHADOW",                    RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_SHADOW",                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_3D",                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_BUFFER",                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY",                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY_SHADOW",                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_SHADOW",                       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT",                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_1D",                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_1D_ARRAY",               RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D",                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_ARRAY",               RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE",         RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY",   RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_RECT",                RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_3D",                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_BUFFER",                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_CUBE",                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY",         RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D",                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY",             RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D",                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY",             RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE",       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY", RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_RECT",              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_3D",                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_BUFFER",               RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE",                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE_ARRAY",           RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC2",                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC3",                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC4",                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
-        {"RAL_PROGRAM_VARIABLE_TYPE_VOID",                                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_UNKNOWN},
+        /* name                                                                                                 | type_class */
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_BOOL"),                                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC2"),                                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC3"),                                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_BOOL_VEC4"),                                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT"),                                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x3"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT2x4"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x2"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT3x4"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x2"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_MAT4x3"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_MATRIX},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC2"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC3"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_FLOAT_VEC4"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_1D"),                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_1D_ARRAY"),                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D"),                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_ARRAY"),                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_MULTISAMPLE"),                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_MULTISAMPLE_ARRAY"),                RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_2D_RECT"),                             RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_3D"),                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_BUFFER"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_CUBE"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_IMAGE_CUBE_MAP_ARRAY"),                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT"),                                       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_1D"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_1D_ARRAY"),                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_ARRAY"),                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_MULTISAMPLE"),                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_MULTISAMPLE_ARRAY"),            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_2D_RECT"),                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_3D"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_BUFFER"),                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_CUBE"),                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_IMAGE_CUBE_MAP_ARRAY"),                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D"),                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_1D_ARRAY"),                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D"),                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_ARRAY"),                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE"),                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_MULTISAMPLE_ARRAY"),          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_2D_RECT"),                       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_3D"),                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_BUFFER"),                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_SAMPLER_CUBE"),                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_VEC2"),                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_VEC3"),                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_INT_VEC4"),                                  RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY"),                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_ARRAY_SHADOW"),                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_1D_SHADOW"),                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY"),                          RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_ARRAY_SHADOW"),                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE"),                    RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_MULTISAMPLE_ARRAY"),              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT"),                           RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_RECT_SHADOW"),                    RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D_SHADOW"),                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_3D"),                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_BUFFER"),                            RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY"),                        RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_ARRAY_SHADOW"),                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_CUBE_SHADOW"),                       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT"),                              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SCALAR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_1D"),                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_1D_ARRAY"),               RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D"),                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_ARRAY"),               RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE"),         RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY"),   RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_2D_RECT"),                RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_3D"),                     RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_BUFFER"),                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_CUBE"),                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_IMAGE_CUBE_MAP_ARRAY"),         RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D"),                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_1D_ARRAY"),             RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D"),                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_ARRAY"),             RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE"),       RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY"), RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_2D_RECT"),              RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_3D"),                   RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_BUFFER"),               RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE"),                 RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_SAMPLER_CUBE_ARRAY"),           RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC2"),                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC3"),                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_UNSIGNED_INT_VEC4"),                         RAL_PROGRAM_VARIABLE_TYPE_CLASS_VECTOR},
+        {system_hashed_ansi_string_create("RAL_PROGRAM_VARIABLE_TYPE_VOID"),                                      RAL_PROGRAM_VARIABLE_TYPE_CLASS_UNKNOWN},
     };
 
     switch (property)
@@ -290,6 +323,13 @@ PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_property(ral_pro
         case RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS:
         {
             *(ral_program_variable_type_class*) out_result_ptr = results[variable_type].type_class;
+
+            break;
+        }
+
+        case RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result_ptr = results[variable_type].name;
 
             break;
         }

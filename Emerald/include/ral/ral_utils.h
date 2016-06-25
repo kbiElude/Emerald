@@ -64,6 +64,11 @@ PUBLIC EMERALD_API bool ral_utils_get_format_property(ral_format          format
                                                       void*               out_result_ptr);
 
 /** TODO */
+PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_class_property(ral_program_variable_type_class          variable_type_class,
+                                                                               ral_program_variable_type_class_property property,
+                                                                               void**                                   out_result_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_property(ral_program_variable_type          variable_type,
                                                                          ral_program_variable_type_property property,
                                                                          void**                             out_result_ptr);

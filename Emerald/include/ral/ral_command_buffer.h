@@ -51,33 +51,30 @@ typedef struct ral_command_buffer_copy_texture_to_texture_command_info
 
 } ral_command_buffer_copy_texture_to_texture_command_info;
 
-/* Defines any load/store/texel fetch-based buffer/texture access (read or write) a program may perform.
- *
- * You do not need to define binding accesses for:
- *
- * - buffers used for vertex fetches
- * - images used as render-targets
- * - images used as source/destination for copy ops.
- *
- * These dependencies will be automatically recognized when wrapping the command buffer in
- * a RAL present task.
- */
-typedef struct ral_object_access
+typedef enum
+{
+    RAL_DEPENDENCY_TYPE_BUFFER,
+    RAL_DEPENDENCY_TYPE_TEXTURE_VIEW,
+
+} ral_dependency_type;
+
+/* Defines a shader store dependency. */
+typedef struct ral_dependency
 {
     ral_access_bits         accesses;
     ral_pipeline_stage_bits stages;
-
-    ral_buffer       buffer;
-    ral_texture_view texture_view;
+    ral_dependency_type     type;
 
     struct
     {
+        ral_buffer buffer;
+
         /* NOTE: assumed to hold meaningful info if size != 0 */
         uint32_t offset;
 
         /* if known, set to != 0; otherwise, set to 0 */
         uint32_t size;
-    } buffer_access_info;
+    } buffer_dependency_info;
 
     struct
     {
@@ -86,29 +83,33 @@ typedef struct ral_object_access
         uint32_t                n_base_mip;
         uint32_t                n_layers;
         uint32_t                n_mips;
-    } image_access_info;
+
+        ral_texture_view texture_view;
+    } texture_view_dependency_info;
+
 
     /* TODO.
      *
      * NOTE: For buffer object accesses only
      */
-    static ral_object_access get_buffer_instance(ral_buffer              in_buffer,
-                                                 ral_access_bits         in_accesses,
-                                                 ral_pipeline_stage_bits in_stages,
-                                                 uint32_t                in_offset,
-                                                 uint32_t                in_size)
+    static ral_dependency get_buffer_dependency(ral_buffer              in_buffer,
+                                                ral_access_bits         in_accesses,
+                                                ral_pipeline_stage_bits in_stages,
+                                                uint32_t                in_offset,
+                                                uint32_t                in_size)
     {
-        ral_object_access instance;
+        ral_dependency instance;
 
         memset(&instance,
                sizeof(instance),
                0);
 
-        instance.accesses                  = in_accesses;
-        instance.buffer                    = in_buffer;
-        instance.buffer_access_info.offset = in_offset;
-        instance.buffer_access_info.size   = in_size;
-        instance.stages                    = in_stages;
+        instance.accesses                      = in_accesses;
+        instance.buffer_dependency_info.buffer = in_buffer;
+        instance.buffer_dependency_info.offset = in_offset;
+        instance.buffer_dependency_info.size   = in_size;
+        instance.stages                        = in_stages;
+        instance.type                          = RAL_DEPENDENCY_TYPE_BUFFER;
 
         return instance;
     }
@@ -117,33 +118,42 @@ typedef struct ral_object_access
      *
      * NOTE: For texture object accesses only.
      */
-    static ral_object_access get_texture_view_instance(ral_texture_view        in_texture_view,
-                                                       ral_access_bits         in_accesses,
-                                                       ral_pipeline_stage_bits in_stages,
-                                                       ral_texture_aspect_bits in_aspects,
-                                                       uint32_t                in_n_base_layer,
-                                                       uint32_t                in_n_base_mip,
-                                                       uint32_t                in_n_layers,
-                                                       uint32_t                in_n_mips)
+    static ral_dependency get_storage_image_access(ral_texture_view        in_texture_view,
+                                                            ral_access_bits         in_accesses,
+                                                            ral_pipeline_stage_bits in_stages,
+                                                            ral_texture_aspect_bits in_aspects,
+                                                            uint32_t                in_n_base_layer,
+                                                            uint32_t                in_n_base_mip,
+                                                            uint32_t                in_n_layers,
+                                                            uint32_t                in_n_mips)
     {
-        ral_object_access instance;
+        ral_dependency instance;
 
         memset(&instance,
                sizeof(instance),
                0);
 
-        instance.accesses                       = in_accesses;
-        instance.image_access_info.aspects      = in_aspects;
-        instance.image_access_info.n_base_layer = in_n_base_layer;
-        instance.image_access_info.n_base_mip   = in_n_base_mip;
-        instance.image_access_info.n_layers     = in_n_layers;
-        instance.image_access_info.n_mips       = in_n_mips;
-        instance.stages                         = in_stages;
-        instance.texture_view                   = in_texture_view;
+        instance.accesses                                  = in_accesses;
+        instance.texture_view_dependency_info.aspects      = in_aspects;
+        instance.texture_view_dependency_info.n_base_layer = in_n_base_layer;
+        instance.texture_view_dependency_info.n_base_mip   = in_n_base_mip;
+        instance.texture_view_dependency_info.n_layers     = in_n_layers;
+        instance.texture_view_dependency_info.n_mips       = in_n_mips;
+        instance.texture_view_dependency_info.texture_view = in_texture_view;
+        instance.stages                                    = in_stages;
+        instance.type                                      = RAL_DEPENDENCY_TYPE_TEXTURE_VIEW;
 
         return instance;
     }
-} ral_object_access;
+
+private:
+
+    /* Should never be used explicitly */
+    ral_dependency()
+    {
+        /* Stub */
+    }
+} ral_dependency;
 
 typedef struct ral_command_buffer_clear_rt_binding_clear_region
 {
@@ -183,10 +193,15 @@ typedef struct ral_command_buffer_draw_call_indexed_command_info
     uint32_t first_index; /* number of indices to move forward in the index buffer before consuming index data */
     uint32_t base_vertex; /* constant added to each index when choosing elements from vertex arrays */
 
-    ral_object_access read_deps[N_MAX_DEPENDENCIES];
-    ral_object_access write_deps[N_MAX_DEPENDENCIES];
-    uint32_t          n_read_deps;
-    uint32_t          n_write_deps;
+#if defined(ARE_THESE_REALLY_NEEDED)
+    /* NOTE: Only needed to restrict buffer/image barriers. If a read dep is undefined, a full cache flush may
+     *       be inserted. */
+    ral_dependency read_deps [N_MAX_DEPENDENCIES];
+    ral_dependency write_deps[N_MAX_DEPENDENCIES];
+    uint32_t       n_read_deps;
+    uint32_t       n_write_deps;
+#endif
+
 } ral_command_buffer_draw_call_indexed_command_info;
 
 typedef struct ral_command_buffer_draw_call_indirect_command_info
@@ -200,10 +215,14 @@ typedef struct ral_command_buffer_draw_call_indirect_command_info
     /* Ignored if index_buffer == nullptr */
     ral_index_type index_type;
 
-    ral_object_access read_deps [N_MAX_DEPENDENCIES];
-    ral_object_access write_deps[N_MAX_DEPENDENCIES];
-    uint32_t          n_read_deps;
-    uint32_t          n_write_deps;
+    #if defined(ARE_THESE_REALLY_NEEDED)
+        /* NOTE: Only needed to restrict buffer/image barriers. If a read dep is undefined, a full cache flush may
+         *       be inserted. */
+        ral_dependency read_deps [N_MAX_DEPENDENCIES];
+        ral_dependency write_deps[N_MAX_DEPENDENCIES];
+        uint32_t       n_read_deps;
+        uint32_t       n_write_deps;
+    #endif
 } ral_command_buffer_draw_call_indirect_command_info;
 
 typedef struct ral_command_buffer_draw_call_regular_command_info
@@ -214,10 +233,14 @@ typedef struct ral_command_buffer_draw_call_regular_command_info
     uint32_t base_instance;
     uint32_t base_vertex;
 
-    ral_object_access read_deps[N_MAX_DEPENDENCIES];
-    ral_object_access write_deps[N_MAX_DEPENDENCIES];
-    uint32_t          n_read_deps;
-    uint32_t          n_write_deps;
+    #if defined(ARE_THESE_REALLY_NEEDED)
+        /* NOTE: Only needed to restrict buffer/image barriers. If a read dep is undefined, a full cache flush may
+         *       be inserted. */
+        ral_dependency read_deps [N_MAX_DEPENDENCIES];
+        ral_dependency write_deps[N_MAX_DEPENDENCIES];
+        uint32_t       n_read_deps;
+        uint32_t       n_write_deps;
+    #endif
 } ral_command_buffer_draw_call_regular_command_info;
 
 typedef struct ral_command_buffer_execute_command_buffer_command_info
@@ -483,9 +506,9 @@ PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_c
                                                   ral_program        program);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_color_rendertarget(ral_command_buffer                                            recording_command_buffer,
-                                                             uint32_t                                                      n_rendertargets,
-                                                             const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs);
+PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer                                            recording_command_buffer,
+                                                              uint32_t                                                      n_rendertargets,
+                                                              const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,

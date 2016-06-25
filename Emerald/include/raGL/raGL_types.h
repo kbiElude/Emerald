@@ -8,6 +8,7 @@
 DECLARE_HANDLE(raGL_backend);
 DECLARE_HANDLE(raGL_buffer);
 DECLARE_HANDLE(raGL_command_buffer);
+DECLARE_HANDLE(raGL_dep_tracker);
 DECLARE_HANDLE(raGL_framebuffer);
 DECLARE_HANDLE(raGL_framebuffers);
 DECLARE_HANDLE(raGL_program);

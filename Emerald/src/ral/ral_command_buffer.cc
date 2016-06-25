@@ -644,15 +644,35 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
             {
                 ASSERT_DEBUG_SYNC((command_buffer_ptr->compatible_queues & RAL_QUEUE_GRAPHICS_BIT) != 0,
                                   "Scaling texture->texture copy requires a graphics queue command buffer.");
+
+                continue;
             }
 
-            ASSERT_DEBUG_SYNC(src_command.dst_texture != nullptr,
-                              "Destination texture is null");
-            ASSERT_DEBUG_SYNC(src_command.src_texture != nullptr,
-                              "Source texture is null");
-            ASSERT_DEBUG_SYNC(src_command.scaling_filter == RAL_TEXTURE_FILTER_LINEAR ||
-                              src_command.scaling_filter == RAL_TEXTURE_FILTER_NEAREST,
-                              "Unrecognized scaling filter setting value");
+            if (src_command.dst_texture == nullptr)
+            {
+                ASSERT_DEBUG_SYNC(src_command.dst_texture != nullptr,
+                                  "Destination texture is null");
+
+                continue;
+            }
+
+            if (src_command.src_texture == nullptr)
+            {
+                ASSERT_DEBUG_SYNC(src_command.src_texture != nullptr,
+                                  "Source texture is null");
+
+                continue;
+            }
+
+            if (!(src_command.scaling_filter == RAL_TEXTURE_FILTER_LINEAR ||
+                  src_command.scaling_filter == RAL_TEXTURE_FILTER_NEAREST) )
+            {
+                ASSERT_DEBUG_SYNC(src_command.scaling_filter == RAL_TEXTURE_FILTER_LINEAR ||
+                                  src_command.scaling_filter == RAL_TEXTURE_FILTER_NEAREST,
+                                  "Unrecognized scaling filter setting value");
+
+                continue;
+            }
 
             ral_texture_get_property(src_command.dst_texture,
                                      RAL_TEXTURE_PROPERTY_FORMAT,
@@ -673,14 +693,37 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                      RAL_TEXTURE_PROPERTY_N_MIPMAPS,
                                     &src_texture_n_mipmaps);
 
-            ASSERT_DEBUG_SYNC(src_command.n_dst_texture_mipmap < dst_texture_n_mipmaps,
-                              "Invalid texture mipmap requested for the destination texture.");
-            ASSERT_DEBUG_SYNC(src_command.n_dst_texture_layer < dst_texture_n_layers,
-                              "Invalid texture layer requested for the destination texture.");
-            ASSERT_DEBUG_SYNC(src_command.n_src_texture_mipmap < src_texture_n_mipmaps,
-                              "Invalid texture mipmap requested for the source texture.");
-            ASSERT_DEBUG_SYNC(src_command.n_src_texture_layer < src_texture_n_layers,
-                              "Invalid texture layer requested for the source texture.");
+            if (!(src_command.n_dst_texture_mipmap < dst_texture_n_mipmaps) )
+            {
+                ASSERT_DEBUG_SYNC(src_command.n_dst_texture_mipmap < dst_texture_n_mipmaps,
+                                  "Invalid texture mipmap requested for the destination texture.");
+
+                continue;
+            }
+
+            if (!(src_command.n_dst_texture_layer < dst_texture_n_layers) )
+            {
+                ASSERT_DEBUG_SYNC(src_command.n_dst_texture_layer < dst_texture_n_layers,
+                                  "Invalid texture layer requested for the destination texture.");
+
+                continue;
+            }
+
+            if (!(src_command.n_src_texture_mipmap < src_texture_n_mipmaps) )
+            {
+                ASSERT_DEBUG_SYNC(src_command.n_src_texture_mipmap < src_texture_n_mipmaps,
+                                  "Invalid texture mipmap requested for the source texture.");
+
+                continue;
+            }
+
+            if (!(src_command.n_src_texture_layer < src_texture_n_layers) )
+            {
+                ASSERT_DEBUG_SYNC(src_command.n_src_texture_layer < src_texture_n_layers,
+                                  "Invalid texture layer requested for the source texture.");
+
+                continue;
+            }
 
             ral_texture_get_mipmap_property(src_command.dst_texture,
                                             src_command.n_dst_texture_layer,
@@ -714,14 +757,29 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                             RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                             src_mip_size + 2);
 
-            ASSERT_DEBUG_SYNC(src_command.src_start_xyz[0] + src_command.src_size[0] < src_mip_size[0] &&
-                              src_command.src_start_xyz[1] + src_command.src_size[1] < src_mip_size[1] &&
-                              src_command.src_start_xyz[2] + src_command.src_size[2] < src_mip_size[2],
-                              "Source copy region exceeds source texture size");
-            ASSERT_DEBUG_SYNC(src_command.dst_start_xyz[0] + src_command.dst_size[0] < dst_mip_size[0] &&
-                              src_command.dst_start_xyz[1] + src_command.dst_size[1] < dst_mip_size[1] &&
-                              src_command.dst_start_xyz[2] + src_command.dst_size[2] < dst_mip_size[2],
-                              "Target copy region exceeds target texture size");
+            if (!(src_command.src_start_xyz[0] + src_command.src_size[0] < src_mip_size[0] &&
+                  src_command.src_start_xyz[1] + src_command.src_size[1] < src_mip_size[1] &&
+                  src_command.src_start_xyz[2] + src_command.src_size[2] < src_mip_size[2]) )
+            {
+                ASSERT_DEBUG_SYNC(src_command.src_start_xyz[0] + src_command.src_size[0] < src_mip_size[0] &&
+                                  src_command.src_start_xyz[1] + src_command.src_size[1] < src_mip_size[1] &&
+                                  src_command.src_start_xyz[2] + src_command.src_size[2] < src_mip_size[2],
+                                  "Source copy region exceeds source texture size");
+
+                continue;
+            }
+
+            if (!(src_command.dst_start_xyz[0] + src_command.dst_size[0] < dst_mip_size[0] &&
+                  src_command.dst_start_xyz[1] + src_command.dst_size[1] < dst_mip_size[1] &&
+                  src_command.dst_start_xyz[2] + src_command.dst_size[2] < dst_mip_size[2]) )
+            {
+                ASSERT_DEBUG_SYNC(src_command.dst_start_xyz[0] + src_command.dst_size[0] < dst_mip_size[0] &&
+                                  src_command.dst_start_xyz[1] + src_command.dst_size[1] < dst_mip_size[1] &&
+                                  src_command.dst_start_xyz[2] + src_command.dst_size[2] < dst_mip_size[2],
+                                  "Target copy region exceeds target texture size");
+
+                continue;
+            }
 
             if ((src_command.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0)
             {
@@ -735,8 +793,13 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                               RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
                                              &src_texture_has_color_data);
 
-                ASSERT_DEBUG_SYNC(dst_texture_has_color_data && src_texture_has_color_data,
-                                  "Invalid texture->texture copy op requested");
+                if (!(dst_texture_has_color_data && src_texture_has_color_data) )
+                {
+                    ASSERT_DEBUG_SYNC(dst_texture_has_color_data && src_texture_has_color_data,
+                                      "Invalid texture->texture copy op requested");
+
+                    continue;
+                }
             }
 
             if ((src_command.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0)
@@ -751,8 +814,13 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                               RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
                                              &src_texture_has_depth_data);
 
-                ASSERT_DEBUG_SYNC(dst_texture_has_depth_data && src_texture_has_depth_data,
-                                  "Invalid texture->texture copy op requested");
+                if (!(dst_texture_has_depth_data && src_texture_has_depth_data))
+                {
+                    ASSERT_DEBUG_SYNC(dst_texture_has_depth_data && src_texture_has_depth_data,
+                                      "Invalid texture->texture copy op requested");
+
+                    continue;
+                }
             }
 
             if ((src_command.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0)
@@ -767,8 +835,13 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                               RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
                                              &src_texture_has_stencil_data);
 
-                ASSERT_DEBUG_SYNC(dst_texture_has_stencil_data && src_texture_has_stencil_data,
-                                  "Invalid texture->texture copy op requested");
+                if (!(dst_texture_has_stencil_data && src_texture_has_stencil_data) )
+                {
+                    ASSERT_DEBUG_SYNC(dst_texture_has_stencil_data && src_texture_has_stencil_data,
+                                      "Invalid texture->texture copy op requested");
+
+                    continue;
+                }
             }
         }
         #endif

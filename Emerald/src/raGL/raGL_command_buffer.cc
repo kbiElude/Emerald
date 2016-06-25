@@ -9,6 +9,7 @@
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_command_buffer.h"
+#include "raGL/raGL_dep_tracker.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_framebuffers.h"
 #include "raGL/raGL_program.h"
@@ -18,6 +19,7 @@
 #include "raGL/raGL_vaos.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_gfx_state.h"
+#include "ral/ral_program.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "ral/ral_types.h"
@@ -26,7 +28,11 @@
 #include "system/system_resizable_vector.h"
 
 #define N_MAX_DRAW_BUFFERS      (8)
+#define N_MAX_IMAGE_UNITS       (8)
 #define N_MAX_RENDERTARGETS     (8)
+#define N_MAX_SB_BINDINGS       (8)
+#define N_MAX_TEXTURE_UNITS     (32) /* NOTE: GL 4.5 offers a min max of 80 */
+#define N_MAX_UB_BINDINGS       (16)
 #define N_MAX_VERTEX_ATTRIBUTES (16)
 #define N_MAX_VIEWPORTS         (8)
 
@@ -158,6 +164,9 @@ typedef enum
 
     /* Command args stored in _raGL_command_logic_op_command_info */
     RAGL_COMMAND_TYPE_LOGIC_OP,
+
+    /* Command args stored in _raGL_command_memory_barrier_command_info */
+    RAGL_COMMAND_TYPE_MEMORY_BARRIER,
 
     /* Command args stored in _raGL_command_min_sample_shading_command_info */
     RAGL_COMMAND_TYPE_MIN_SAMPLE_SHADING,
@@ -517,6 +526,12 @@ typedef struct
 
 typedef struct
 {
+    GLbitfield barriers;
+
+} _raGL_command_memory_barrier_command_info;
+
+typedef struct
+{
     GLfloat value;
 
 } _raGL_command_min_sample_shading_command_info;
@@ -653,6 +668,7 @@ typedef struct
         _raGL_command_front_face_command_info                                        front_face_command_info;
         _raGL_command_line_width_command_info                                        line_width_command_info;
         _raGL_command_logic_op_command_info                                          logic_op_command_info;
+        _raGL_command_memory_barrier_command_info                                    memory_barriers_command_info;
         _raGL_command_min_sample_shading_command_info                                min_sample_shading_command_info;
         _raGL_command_multi_draw_arrays_indirect_command_info                        multi_draw_arrays_indirect_command_info;
         _raGL_command_multi_draw_elements_indirect_command_info                      multi_draw_elements_indirect_command_info;
@@ -668,7 +684,19 @@ typedef struct
     };
 
     void deinit();
+
 } _raGL_command;
+
+typedef struct _raGL_command_buffer_bake_state_buffer_binding
+{
+    raGL_buffer buffer;
+
+    _raGL_command_buffer_bake_state_buffer_binding()
+    {
+        buffer = nullptr;
+    }
+
+} _raGL_command_buffer_bake_state_buffer_binding;
 
 typedef struct _raGL_command_buffer_bake_state_rt
 {
@@ -741,12 +769,17 @@ typedef struct
     ral_gfx_state active_gfx_state;
     bool          active_gfx_state_dirty;
 
-    GLenum                                      active_fbo_draw_buffers[N_MAX_DRAW_BUFFERS];
-    bool                                        active_fbo_draw_buffers_dirty;
-    bool                                        active_rt_attachments_dirty;
-    _raGL_command_buffer_bake_state_rt          active_rt_color_attachments[N_MAX_RENDERTARGETS];
-    ral_texture_view                            active_rt_ds_attachment;
-    _raGL_command_buffer_bake_state_scissor_box active_scissor_boxes[N_MAX_VIEWPORTS];
+    GLenum                                         active_fbo_draw_buffers[N_MAX_DRAW_BUFFERS];
+    bool                                           active_fbo_draw_buffers_dirty;
+    raGL_framebuffer                               active_fbo_draw;
+    raGL_texture                                   active_image_bindings      [N_MAX_IMAGE_UNITS];
+    bool                                           active_rt_attachments_dirty;
+    _raGL_command_buffer_bake_state_rt             active_rt_color_attachments[N_MAX_RENDERTARGETS];
+    ral_texture_view                               active_rt_ds_attachment;
+    _raGL_command_buffer_bake_state_buffer_binding active_sb_bindings             [N_MAX_SB_BINDINGS];
+    _raGL_command_buffer_bake_state_scissor_box    active_scissor_boxes           [N_MAX_VIEWPORTS];
+    raGL_texture                                   active_texture_sampler_bindings[N_MAX_TEXTURE_UNITS];
+    _raGL_command_buffer_bake_state_buffer_binding active_ub_bindings             [N_MAX_UB_BINDINGS];
 
     bool                    vao_dirty;
     raGL_buffer             vao_index_buffer;
@@ -754,6 +787,18 @@ typedef struct
 
     void reset()
     {
+        memset(active_image_bindings,
+               0,
+               sizeof(active_image_bindings) );
+        memset(active_sb_bindings,
+               0,
+               sizeof(active_sb_bindings) );
+        memset(active_texture_sampler_bindings,
+               0,
+               sizeof(active_texture_sampler_bindings) );
+        memset(active_ub_bindings,
+               0,
+               sizeof(active_ub_bindings) );
         memset(vbs,
                0,
                sizeof(vbs) );
@@ -768,6 +813,7 @@ typedef struct
         }
 
         active_fbo_draw_buffers_dirty = false;
+        active_fbo_draw               = nullptr;
         active_gfx_state              = nullptr;
         active_gfx_state_dirty        = false;
         active_program                = nullptr;
@@ -783,6 +829,7 @@ typedef struct _raGL_command_buffer
     _raGL_command_buffer_bake_state                           bake_state;
     ral_command_buffer                                        command_buffer_ral;
     system_resizable_vector                                   commands;
+    raGL_dep_tracker                                          dep_tracker;
     ogl_context                                               context; /* do NOT release */
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr;
@@ -790,10 +837,15 @@ typedef struct _raGL_command_buffer
 
     explicit _raGL_command_buffer(ogl_context in_context)
     {
+        raGL_backend backend = nullptr;
+
         command_buffer_ral = nullptr;
         commands           = system_resizable_vector_create(32); /* capacity */
         context            = in_context;
 
+        ogl_context_get_property(in_context,
+                                 OGL_CONTEXT_PROPERTY_BACKEND,
+                                &backend);
         ogl_context_get_property(in_context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entrypoints_ptr);
@@ -803,12 +855,17 @@ typedef struct _raGL_command_buffer
         ogl_context_get_property(in_context,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
+
+        raGL_backend_get_private_property(backend,
+                                          RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
+                                         &dep_tracker);
     }
 
-    void bake_and_bind_fbo();
-    void bake_and_bind_vao();
-    void bake_gfx_state   ();
-    void bake_rt_state    ();
+    void bake_and_bind_fbo                 ();
+    void bake_and_bind_vao                 ();
+    void bake_gfx_state                    ();
+    void bake_pre_draw_call_memory_barriers();
+    void bake_rt_state                     ();
 
     void bake_commands();
     void clear_commands();
@@ -867,6 +924,8 @@ void _raGL_command_buffer::bake_and_bind_fbo()
 
     ASSERT_DEBUG_SYNC(fbo_raGL != nullptr,
                       "Could not retrieve a FBO with the specified attachment configuration");
+
+    bake_state.active_fbo_draw = fbo_raGL;
 
     raGL_framebuffer_get_property(fbo_raGL,
                                   RAGL_FRAMEBUFFER_PROPERTY_ID,
@@ -1571,10 +1630,270 @@ void _raGL_command_buffer::bake_gfx_state()
 }
 
 /** TODO */
+void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
+{
+    ral_program active_program_ral = nullptr;
+
+    if (bake_state.active_program == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(bake_state.active_program != nullptr,
+                          "A draw call is about to be executed without an active program.");
+
+        goto end;
+    }
+
+    raGL_program_get_property(bake_state.active_program,
+                              RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
+                             &active_program_ral);
+
+    if (active_program_ral == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(active_program_ral != nullptr,
+                          "No RAL program instance found for active program defined by bake state.");
+
+        goto end;
+    }
+
+    /* If there are any images / storage buffers in use, check their status. If they are marked as dirty,
+     * chances are a relevant memory barrier is needed. Throw it in "just in case".
+     *
+     * TODO: The memory barriers are only needed if the updated image / buffer regions are going to be read
+     *       by the upcoming draw call. We currently do not check this, always assuming the worst-case scenario.
+     */
+    GLenum   memory_barriers_to_schedule = 0;
+    uint32_t n_sampler_variables         = 0;
+    uint32_t n_storage_blocks            = 0;
+    uint32_t n_storage_image_variables   = 0;
+    uint32_t n_uniform_blocks            = 0;
+
+    ral_program_get_property      (active_program_ral,
+                                   RAL_PROGRAM_PROPERTY_N_STORAGE_BLOCKS,
+                                  &n_storage_blocks);
+    ral_program_get_property      (active_program_ral,
+                                   RAL_PROGRAM_PROPERTY_N_UNIFORM_BLOCKS,
+                                  &n_uniform_blocks);
+    ral_program_get_block_property(active_program_ral,
+                                   system_hashed_ansi_string_get_default_empty_string(),
+                                   RAL_PROGRAM_BLOCK_PROPERTY_N_SAMPLER_VARIABLES,
+                                  &n_sampler_variables);
+    ral_program_get_block_property(active_program_ral,
+                                   system_hashed_ansi_string_get_default_empty_string(),
+                                   RAL_PROGRAM_BLOCK_PROPERTY_N_STORAGE_IMAGE_VARIABLES,
+                                  &n_storage_image_variables);
+
+    if (n_storage_blocks > 0)
+    {
+        bool any_sb_dirty = false;
+
+        for (uint32_t n_sb = 0;
+                      n_sb < n_storage_blocks;
+                    ++n_sb)
+        {
+            uint32_t bp = -1;
+
+            raGL_program_get_block_property(bake_state.active_program,
+                                            RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER,
+                                            n_sb,
+                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                           &bp);
+
+            ASSERT_DEBUG_SYNC(bp != -1,
+                              "Could not retrieve storage buffer binding point");
+            ASSERT_DEBUG_SYNC(bp < N_MAX_SB_BINDINGS,
+                              "Invalid storage buffer binding point retrieved.");
+
+            ASSERT_DEBUG_SYNC(bake_state.active_sb_bindings[bp].buffer != nullptr,
+                              "No raGL_buffer instance associated with storage buffer binding point [%d]",
+                              bp);
+
+            any_sb_dirty |= raGL_dep_tracker_is_dirty(dep_tracker,
+                                                      bake_state.active_sb_bindings[bp].buffer,
+                                                      GL_SHADER_STORAGE_BARRIER_BIT);
+
+            /* Since we have no way of determining whether the image is used for writes (at the moment),
+             * assume the worst-case scenario */
+            raGL_dep_tracker_mark_as_dirty(dep_tracker,
+                                           bake_state.active_sb_bindings[bp].buffer);
+        }
+
+        if (any_sb_dirty)
+        {
+            memory_barriers_to_schedule |= GL_SHADER_STORAGE_BARRIER_BIT;
+        }
+    }
+
+    if (n_storage_image_variables > 0)
+    {
+        bool any_si_dirty = false;
+
+        for (uint32_t n_si = 0;
+                      n_si < n_storage_image_variables;
+                    ++n_si)
+        {
+            const ral_program_variable*   si_variable_ptr      = nullptr;
+            const _raGL_program_variable* si_variable_raGL_ptr = nullptr;
+
+            ral_program_get_block_variable_by_class(active_program_ral,
+                                                    system_hashed_ansi_string_get_default_empty_string(),
+                                                    RAL_PROGRAM_VARIABLE_TYPE_CLASS_IMAGE,
+                                                    n_si,
+                                                   &si_variable_ptr);
+
+            ASSERT_DEBUG_SYNC(si_variable_ptr != nullptr,
+                              "No storage image defined at index [%d]",
+                              n_si);
+            ASSERT_DEBUG_SYNC(si_variable_ptr->location != -1,
+                              "Storage image uniform [%s] has a location of -1.",
+                              system_hashed_ansi_string_get_buffer(si_variable_ptr->name) );
+
+            raGL_program_get_uniform_by_location(bake_state.active_program,
+                                                 si_variable_ptr->location,
+                                                &si_variable_raGL_ptr);
+
+            ASSERT_DEBUG_SYNC(si_variable_raGL_ptr != nullptr,
+                              "No raGL variable instance defined for location [%d]",
+                              si_variable_ptr->location);
+            ASSERT_DEBUG_SYNC(si_variable_raGL_ptr->image_unit < N_MAX_IMAGE_UNITS,
+                              "Image unit [%d] exceeds maximum allowed texture image unit index.",
+                              si_variable_raGL_ptr->image_unit);
+
+            ASSERT_DEBUG_SYNC(bake_state.active_image_bindings[si_variable_raGL_ptr->image_unit] != nullptr,
+                              "No texture bound to texture image unit [%d]",
+                              si_variable_raGL_ptr->image_unit);
+
+            any_si_dirty |= raGL_dep_tracker_is_dirty(dep_tracker,
+                                                      bake_state.active_image_bindings[si_variable_raGL_ptr->image_unit],
+                                                      GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+            /* Since we have no way of determining whether the image is used for writes (at the moment),
+             * assume the worst-case scenario */
+            raGL_dep_tracker_mark_as_dirty(dep_tracker,
+                                           bake_state.active_image_bindings[si_variable_raGL_ptr->image_unit]);
+        }
+
+        if (any_si_dirty)
+        {
+            memory_barriers_to_schedule |= GL_SHADER_IMAGE_ACCESS_BARRIER_BIT;
+        }
+    }
+
+    if (n_uniform_blocks > 0)
+    {
+        bool any_ub_dirty = false;
+
+        for (uint32_t n_ub = 0;
+                      n_ub < n_uniform_blocks;
+                    ++n_ub)
+        {
+            uint32_t bp = -1;
+
+            raGL_program_get_block_property(bake_state.active_program,
+                                            RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                            n_ub,
+                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
+                                           &bp);
+
+            ASSERT_DEBUG_SYNC(bp != -1,
+                              "Could not retrieve uniform buffer binding point");
+            ASSERT_DEBUG_SYNC(bp < N_MAX_UB_BINDINGS,
+                              "Invalid uniform buffer binding point retrieved.");
+
+            ASSERT_DEBUG_SYNC(bake_state.active_ub_bindings[bp].buffer != nullptr,
+                              "No raGL_buffer instance associated with uniform buffer binding point [%d]",
+                              bp);
+
+            any_ub_dirty |= raGL_dep_tracker_is_dirty(dep_tracker,
+                                                      bake_state.active_ub_bindings[bp].buffer,
+                                                      GL_UNIFORM_BARRIER_BIT);
+        }
+
+        if (any_ub_dirty)
+        {
+            memory_barriers_to_schedule |= GL_UNIFORM_BARRIER_BIT;
+        }
+    }
+
+    /* Is any of the buffers backing up active VAs dirty? */
+    bool any_vb_dirty = false;
+
+    for (uint32_t n_vb = 0;
+                  n_vb < sizeof(bake_state.vbs) / sizeof(bake_state.vbs[0]);
+                ++n_vb)
+    {
+        any_vb_dirty = raGL_dep_tracker_is_dirty(dep_tracker,
+                                                 bake_state.vbs[n_vb].buffer_raGL,
+                                                 GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT);
+    }
+
+    if (any_vb_dirty)
+    {
+        memory_barriers_to_schedule |= GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+    }
+
+    /* Have any of the textures the shader may attempt to sample from been updated with images ? */
+    bool any_sampler_variable_dirty = false;
+
+    for (uint32_t n_sampler_variable = 0;
+                  n_sampler_variable < n_sampler_variables;
+                ++n_sampler_variable)
+    {
+        const ral_program_variable*   sampler_variable_ptr      = nullptr;
+        const _raGL_program_variable* sampler_variable_raGL_ptr = nullptr;
+
+        ral_program_get_block_variable_by_class(active_program_ral,
+                                                system_hashed_ansi_string_get_default_empty_string(),
+                                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_SAMPLER,
+                                                n_sampler_variable,
+                                               &sampler_variable_ptr);
+
+        ASSERT_DEBUG_SYNC(sampler_variable_ptr != nullptr,
+                          "No sampler defined at index [%d]",
+                          n_sampler_variable);
+        ASSERT_DEBUG_SYNC(sampler_variable_ptr->location != -1,
+                          "Sampler uniform [%s] has a location of -1.",
+                          system_hashed_ansi_string_get_buffer(sampler_variable_ptr->name) );
+
+        raGL_program_get_uniform_by_location(bake_state.active_program,
+                                             sampler_variable_ptr->location,
+                                            &sampler_variable_raGL_ptr);
+
+        ASSERT_DEBUG_SYNC(sampler_variable_raGL_ptr->texture_unit != -1,
+                          "No texture unit assigned to a sampler uniform [%s]",
+                          system_hashed_ansi_string_get_buffer(sampler_variable_ptr->name) );
+        ASSERT_DEBUG_SYNC(sampler_variable_raGL_ptr->texture_unit < N_MAX_TEXTURE_UNITS,
+                          "Texture unit assigned to a sampler uniform [%s] (d) exceeds N_MAX_TEXTURE_UNITS (%d)",
+                          system_hashed_ansi_string_get_buffer(sampler_variable_ptr->name),
+                          sampler_variable_raGL_ptr->texture_unit);
+
+        any_sampler_variable_dirty |= raGL_dep_tracker_is_dirty(dep_tracker,
+                                                                bake_state.active_texture_sampler_bindings[sampler_variable_raGL_ptr->texture_unit],
+                                                                GL_TEXTURE_FETCH_BARRIER_BIT);
+    }
+
+    if (any_sampler_variable_dirty)
+    {
+        memory_barriers_to_schedule |= GL_TEXTURE_FETCH_BARRIER_BIT;
+    }
+
+    /* Schedule the memory barrier command */
+    if (memory_barriers_to_schedule != 0)
+    {
+        _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+        memory_barrier_command_ptr->memory_barriers_command_info.barriers = memory_barriers_to_schedule;
+        memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
+
+        system_resizable_vector_push(commands,
+                                     memory_barrier_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** TODO */
 void _raGL_command_buffer::bake_rt_state()
 {
-    /* Bake & bind a FBO */
-
     /* Configure RT-related states */
     bool all_rt_attachments_use_identical_blend_settings = true;
 
@@ -2166,6 +2485,24 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
         ASSERT_DEBUG_SYNC(dst_texture_format_ral == src_texture_format_ral,
                           "TODO"); /* glCopyImageSubData() will only work for compatible formats. */
 
+        /* Ensure source & destination texture objects are flushed */
+        if (raGL_dep_tracker_is_dirty(dep_tracker,
+                                      src_texture_raGL,
+                                      GL_TEXTURE_UPDATE_BARRIER_BIT) ||
+            raGL_dep_tracker_is_dirty(dep_tracker,
+                                      dst_texture_raGL,
+                                      GL_TEXTURE_UPDATE_BARRIER_BIT) )
+        {
+            _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+            memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_TEXTURE_UPDATE_BARRIER_BIT;
+            memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
+
+            system_resizable_vector_push(commands,
+                                         memory_barrier_command_ptr);
+        }
+
+        /* Issue the command */
         command_args.dst_level     = command_ral_ptr->n_dst_texture_mipmap;
         command_args.dst_object_id = dst_texture_id;
         command_args.dst_target    = (dst_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_texture_target_for_ral_texture_type(dst_texture_type);
@@ -2250,6 +2587,53 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
                           command_ral_ptr->src_start_xyz[2] == 0,
                           "TODO");
 
+        /* Before blitting, ensure both source and destination textures are flushed */
+        if (raGL_dep_tracker_is_dirty(dep_tracker,
+                                      command_ral_ptr->dst_texture,
+                                      GL_FRAMEBUFFER_BARRIER_BIT) ||
+            raGL_dep_tracker_is_dirty(dep_tracker,
+                                      command_ral_ptr->src_texture,
+                                      GL_FRAMEBUFFER_BARRIER_BIT) )
+        {
+            _raGL_command* bind_back_draw_fb_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            _raGL_command* bind_draw_fb_command_ptr      = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            _raGL_command* bind_read_fb_command_ptr      = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            _raGL_command* memory_barrier_command_ptr    = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+            /* Bind the draw & read FBs */
+            bind_draw_fb_command_ptr->bind_framebuffer_command_info.framebuffer = command_args.draw_fbo_id;
+            bind_draw_fb_command_ptr->bind_framebuffer_command_info.target      = GL_DRAW_FRAMEBUFFER;
+            bind_draw_fb_command_ptr->type                                      = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
+
+            bind_read_fb_command_ptr->bind_framebuffer_command_info.framebuffer = command_args.read_fbo_id;
+            bind_read_fb_command_ptr->bind_framebuffer_command_info.target      = GL_READ_FRAMEBUFFER;
+            bind_read_fb_command_ptr->type                                      = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
+
+            system_resizable_vector_push(commands,
+                                         bind_draw_fb_command_ptr);
+            system_resizable_vector_push(commands,
+                                         bind_read_fb_command_ptr);
+
+            /* Issue the memory barrier */
+            memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_FRAMEBUFFER_BARRIER_BIT;
+            memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
+
+            system_resizable_vector_push(commands,
+                                         memory_barrier_command_ptr);
+
+            /* Restore the draw FB. We don't care about the read FBO. */
+            raGL_framebuffer_get_property(bake_state.active_fbo_draw,
+                                          RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                         &bind_back_draw_fb_command_ptr->bind_framebuffer_command_info.framebuffer);
+
+            bind_back_draw_fb_command_ptr->bind_framebuffer_command_info.target = GL_DRAW_FRAMEBUFFER;
+            bind_back_draw_fb_command_ptr->type                                 = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
+
+            system_resizable_vector_push(commands,
+                                         bind_back_draw_fb_command_ptr);
+        }
+
+        /* Carry on with the blit */
         command_args.dst_x0y0x1y1[0] = command_ral_ptr->dst_start_xyz[0];
         command_args.dst_x0y0x1y1[1] = command_ral_ptr->dst_start_xyz[1];
         command_args.dst_x0y0x1y1[2] = command_args.dst_x0y0x1y1[0] + command_ral_ptr->dst_size[0];
@@ -2260,10 +2644,11 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
                                        ((command_ral_ptr->aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) ? GL_STENCIL_BUFFER_BIT : 0);
         command_args.src_x0y0x1y1[0] = command_ral_ptr->src_start_xyz[0];
         command_args.src_x0y0x1y1[1] = command_ral_ptr->src_start_xyz[1];
-        command_args.src_x0y0x1y1[1] = command_args.src_x0y0x1y1[0] + command_ral_ptr->src_size[0];
-        command_args.src_x0y0x1y1[1] = command_args.src_x0y0x1y1[1] + command_ral_ptr->src_size[1];
+        command_args.src_x0y0x1y1[2] = command_args.src_x0y0x1y1[0] + command_ral_ptr->src_size[0];
+        command_args.src_x0y0x1y1[3] = command_args.src_x0y0x1y1[1] + command_ral_ptr->src_size[1];
 
         new_command_ptr->type = RAGL_COMMAND_TYPE_BLIT_FRAMEBUFFER;
+
 
         system_resizable_vector_push(commands,
                                      new_command_ptr);
@@ -2321,6 +2706,20 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
                           "VAO state still marked as dirty.");
     }
 
+    /* If the index buffer is dirty, flush it now */
+    if (raGL_dep_tracker_is_dirty(dep_tracker,
+                                  index_buffer_raGL,
+                                  GL_ELEMENT_ARRAY_BARRIER_BIT) )
+    {
+        _raGL_command* memory_barrier_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_ELEMENT_ARRAY_BARRIER_BIT;
+        memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
+
+        system_resizable_vector_push(commands,
+                                     memory_barrier_command_ptr);
+    }
+
     /* Update context state if a new GFX state has been bound */
     if (bake_state.active_gfx_state_dirty)
     {
@@ -2349,6 +2748,8 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
         ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
                           "Could not update draw buffer configuration");
     }
+
+    bake_pre_draw_call_memory_barriers();
 
     /* Issue the draw call */
     _raGL_command* draw_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
@@ -2461,6 +2862,20 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
         system_resizable_vector_push(commands,
                                      bind_command_ptr);
+
+        /* Flush the indirect buffer if needed */
+        if (raGL_dep_tracker_is_dirty(dep_tracker,
+                                      indirect_buffer_raGL,
+                                      GL_COMMAND_BARRIER_BIT) )
+        {
+            _raGL_command* memory_barrier_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_COMMAND_BARRIER_BIT;
+            memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
+
+            system_resizable_vector_push(commands,
+                                         memory_barrier_command_ptr);
+        }
     }
 
     /* Update context state if a new GFX state has been bound */
@@ -2494,6 +2909,8 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
     if (command_ral_ptr->index_buffer == nullptr)
     {
+        bake_pre_draw_call_memory_barriers();
+
         /* Issue the draw call */
         _raGL_command_multi_draw_arrays_indirect_command_info& command_args = draw_command_ptr->multi_draw_arrays_indirect_command_info;
 
@@ -2530,7 +2947,23 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
                 ASSERT_DEBUG_SYNC(!bake_state.vao_dirty,
                     "VA state still marked as dirty.");
             }
+
+            /* If the index buffer is dirty, flush it now */
+            if (raGL_dep_tracker_is_dirty(dep_tracker,
+                                          index_buffer_raGL,
+                                          GL_ELEMENT_ARRAY_BARRIER_BIT) )
+            {
+                _raGL_command* memory_barrier_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+                memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_ELEMENT_ARRAY_BARRIER_BIT;
+                memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
+
+                system_resizable_vector_push(commands,
+                                             memory_barrier_command_ptr);
+            }
         }
+
+        bake_pre_draw_call_memory_barriers();
 
         /* Issue the draw call */
         _raGL_command_multi_draw_elements_indirect_command_info& command_args = draw_command_ptr->multi_draw_elements_indirect_command_info;
@@ -2590,6 +3023,8 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
         ASSERT_DEBUG_SYNC(!bake_state.vao_dirty,
                           "VAO state still marked as dirty.");
     }
+
+    bake_pre_draw_call_memory_barriers();
 
     if (command_ral_ptr->n_instances == 1)
     {
@@ -2673,25 +3108,30 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
     {
         case RAL_BINDING_TYPE_RENDERTARGET:
         {
-            const _raGL_program_variable* variable_ptr = nullptr;
+            ral_program                 active_program_ral = nullptr;
+            const ral_program_variable* variable_ral_ptr   = nullptr;
 
-            raGL_program_get_output_variable_by_name(bake_state.active_program,
-                                                     command_ral_ptr->name,
-                                                    &variable_ptr);
+            raGL_program_get_property(bake_state.active_program,
+                                      RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
+                                     &active_program_ral);
 
-            ASSERT_DEBUG_SYNC(variable_ptr != nullptr,
-                              "No _raGL_program_variable instance exposed for output variable [%s]",
+            ral_program_get_output_variable_by_name(active_program_ral,
+                                                    command_ral_ptr->name,
+                                                   &variable_ral_ptr);
+
+            ASSERT_DEBUG_SYNC(variable_ral_ptr != nullptr,
+                              "No ral_program_variable instance exposed for output variable [%s]",
                               system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
-            ASSERT_DEBUG_SYNC(variable_ptr->location < N_MAX_RENDERTARGETS,
+            ASSERT_DEBUG_SYNC(variable_ral_ptr->location < N_MAX_RENDERTARGETS,
                               "Too many output variables defined in the shader.");
 
             ASSERT_DEBUG_SYNC(command_ral_ptr->rendertarget_binding.rt_index < N_MAX_RENDERTARGETS,
                               "Invalid rendertarget index specified");
 
-            if (bake_state.active_fbo_draw_buffers[variable_ptr->location] != (GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index))
+            if (bake_state.active_fbo_draw_buffers[variable_ral_ptr->location] != (GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index))
             {
-                bake_state.active_fbo_draw_buffers[variable_ptr->location] = GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index;
-                bake_state.active_fbo_draw_buffers_dirty                   = true;
+                bake_state.active_fbo_draw_buffers[variable_ral_ptr->location] = GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index;
+                bake_state.active_fbo_draw_buffers_dirty                       = true;
             }
 
             break;
@@ -2709,18 +3149,14 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             bool                          texture_raGL_is_rb;
             ral_texture                   texture_ral                = nullptr;
             ral_texture_type              texture_ral_type;
-            const _raGL_program_variable* variable_ptr               = nullptr;
+            const _raGL_program_variable* variable_raGL_ptr          = nullptr;
 
             raGL_program_get_uniform_by_name(bake_state.active_program,
                                              command_ral_ptr->name,
-                                            &variable_ptr);
+                                            &variable_raGL_ptr);
 
-            ASSERT_DEBUG_SYNC(variable_ptr != nullptr,
+            ASSERT_DEBUG_SYNC(variable_raGL_ptr != nullptr,
                               "No _raGL_program_variable instance exposed for uniform [%s]",
-                              system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
-
-            ASSERT_DEBUG_SYNC(variable_ptr->location != -1,
-                              "Location of value -1 assigned to uniform [%s]",
                               system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
 
             ral_texture_view_get_property(command_ral_ptr->sampled_image_binding.texture_view,
@@ -2755,11 +3191,11 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             bind_sampler_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
             bind_texture_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
 
-            active_texture_command_ptr->active_texture_command_info.target = GL_TEXTURE0 + variable_ptr->texture_unit;
+            active_texture_command_ptr->active_texture_command_info.target = GL_TEXTURE0 + variable_raGL_ptr->texture_unit;
             active_texture_command_ptr->type                               = RAGL_COMMAND_TYPE_ACTIVE_TEXTURE;
 
             bind_sampler_command_ptr->bind_sampler_command_info.sampler_id = sampler_raGL_id;
-            bind_sampler_command_ptr->bind_sampler_command_info.unit       = variable_ptr->texture_unit;
+            bind_sampler_command_ptr->bind_sampler_command_info.unit       = variable_raGL_ptr->texture_unit;
             bind_sampler_command_ptr->type                                 = RAGL_COMMAND_TYPE_BIND_SAMPLER;
 
             bind_texture_command_ptr->bind_texture_command_info.target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_ral_type);
@@ -2773,17 +3209,26 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             system_resizable_vector_push(commands,
                                          bind_texture_command_ptr);
 
+            /* Update bake state */
+            ASSERT_DEBUG_SYNC(variable_raGL_ptr->texture_unit < N_MAX_TEXTURE_UNITS,
+                              "Requested texture unit (%d) exceeds N_MAX_TEXTURE_UNITS (%d)",
+                              variable_raGL_ptr->texture_unit,
+                              N_MAX_TEXTURE_UNITS);
+
+            bake_state.active_texture_sampler_bindings[variable_raGL_ptr->texture_unit] = texture_raGL;
+
             break;
         }
 
         case RAL_BINDING_TYPE_STORAGE_BUFFER:
         case RAL_BINDING_TYPE_UNIFORM_BUFFER:
         {
-            const ral_command_buffer_buffer_binding_info& buffer_binding_info   = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? command_ral_ptr->storage_buffer_binding : command_ral_ptr->uniform_buffer_binding;
-            const GLenum                                  buffer_binding_target = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BUFFER                : GL_UNIFORM_BUFFER;
-            raGL_buffer                                   buffer_raGL           = nullptr;
-            GLuint                                        buffer_raGL_id        = 0;
-            GLuint                                        sb_bp                 = -1;
+            GLuint                                          bp                    = -1;
+            const ral_command_buffer_buffer_binding_info&   buffer_binding_info   = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? command_ral_ptr->storage_buffer_binding : command_ral_ptr->uniform_buffer_binding;
+            const GLenum                                    buffer_binding_target = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BUFFER                : GL_UNIFORM_BUFFER;
+            raGL_buffer                                     buffer_raGL           = nullptr;
+            GLuint                                          buffer_raGL_id        = 0;
+            const uint32_t                                  n_bps_supported       = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? N_MAX_SB_BINDINGS : N_MAX_UB_BINDINGS;
 
             raGL_backend_get_buffer(backend_gl,
                                     buffer_binding_info.buffer,
@@ -2798,11 +3243,13 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             raGL_program_get_block_property_by_name(bake_state.active_program,
                                                     command_ral_ptr->name,
                                                     RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                                   &sb_bp);
+                                                   &bp);
 
-            ASSERT_DEBUG_SYNC(sb_bp != -1,
+            ASSERT_DEBUG_SYNC(bp != -1,
                               "Buffer name [%s] was not recognized by raGL_program.",
                               system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
+            ASSERT_DEBUG_SYNC(bp < n_bps_supported,
+                              "Too large binding point was requested.");
 
             /* Enqueue a GL command */
             if (buffer_binding_info.size == 0)
@@ -2813,7 +3260,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                                   "Size must not be 0 for a buffer binding, if non-zero offset has also been requested.");
 
                 bind_command_ptr->bind_buffer_base_command_info.bo_id    = buffer_raGL_id;
-                bind_command_ptr->bind_buffer_base_command_info.bp_index = sb_bp;
+                bind_command_ptr->bind_buffer_base_command_info.bp_index = bp;
                 bind_command_ptr->bind_buffer_base_command_info.target   = buffer_binding_target;
                 bind_command_ptr->type                                   = RAGL_COMMAND_TYPE_BIND_BUFFER_BASE;
 
@@ -2828,7 +3275,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                                   "Zero-sized buffer binding was requested.");
 
                 bind_command_ptr->bind_buffer_range_command_info.bo_id    = buffer_raGL_id;
-                bind_command_ptr->bind_buffer_range_command_info.bp_index = sb_bp;
+                bind_command_ptr->bind_buffer_range_command_info.bp_index = bp;
                 bind_command_ptr->bind_buffer_range_command_info.offset   = buffer_binding_info.offset;
                 bind_command_ptr->bind_buffer_range_command_info.size     = buffer_binding_info.size;
                 bind_command_ptr->bind_buffer_range_command_info.target   = buffer_binding_target;
@@ -2837,6 +3284,12 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                 system_resizable_vector_push(commands,
                                              bind_command_ptr);
             }
+
+            /* Update internal bake state */
+            _raGL_command_buffer_bake_state_buffer_binding& bake_state_bp = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? bake_state.active_sb_bindings[bp]
+                                                                                                                                               : bake_state.active_ub_bindings[bp];
+
+            bake_state_bp.buffer = buffer_raGL;
 
             break;
         }
@@ -2907,6 +3360,9 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
             system_resizable_vector_push(commands,
                                          bind_command_ptr);
+
+            /* Update internal bake state */
+            bake_state.active_image_bindings[variable_ptr->image_unit] = parent_texture_raGL;
         }
 
         default:
@@ -3133,7 +3589,8 @@ PUBLIC void raGL_command_buffer_deinit()
 }
 
 /** Please see header for specification */
-PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
+PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
+                                        raGL_dep_tracker    dep_tracker)
 {
     _raGL_command_buffer* command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
     uint32_t              n_commands         = 0;
@@ -3673,7 +4130,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
 
             case RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
             {
-                raGL_command_buffer_execute(command_ptr->execute_command_buffer_command_info.command_buffer_raGL);
+                raGL_command_buffer_execute(command_ptr->execute_command_buffer_command_info.command_buffer_raGL,
+                                            dep_tracker);
 
                 break;
             }
@@ -3701,6 +4159,15 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer)
                 const _raGL_command_logic_op_command_info& command_args = command_ptr->logic_op_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLLogicOp(command_args.opcode);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_MEMORY_BARRIER:
+            {
+                const _raGL_command_memory_barrier_command_info& command_args = command_ptr->memory_barriers_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLMemoryBarrier(command_args.barriers);
 
                 break;
             }
