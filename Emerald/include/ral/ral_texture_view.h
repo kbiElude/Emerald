@@ -38,6 +38,10 @@ typedef enum
 PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_info* create_info_ptr);
 
 /** TODO */
+PUBLIC EMERALD_API ral_texture_view ral_texture_view_create_from_texture(ral_texture texture);
+
+
+/** TODO */
 PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          texture_view,
                                                       ral_texture_view_property property,
                                                       void*                     out_result_ptr);

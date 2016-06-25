@@ -132,6 +132,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
                                                           const GLvoid* data);
 
 /** TODO */
+PUBLIC GLenum APIENTRY ogl_context_wrappers_glCheckNamedFramebufferStatusEXT(GLuint framebuffer,
+                                                                             GLenum target);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask);
 
 /** TODO */
@@ -158,6 +162,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glClearDepth(GLdouble value);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glClearDepthf(GLfloat d);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glColorMask(GLboolean red,
@@ -387,6 +394,14 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseInstance(GL
                                                                               const void* indices,
                                                                               GLsizei     instancecount,
                                                                               GLuint      baseinstance);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertex(GLenum        mode,
+                                                                            GLsizei       count,
+                                                                            GLenum        type,
+                                                                            const GLvoid *indices,
+                                                                            GLsizei       primcount,
+                                                                            GLint         basevertex);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseInstance(GLenum      mode,
@@ -715,6 +730,9 @@ PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBufferRange(GLenum     target,
 PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glMinSampleShading(GLfloat value);
+
+/** TODO */
 PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mode,
                                                               const GLint*   first,
                                                               const GLsizei* count,
@@ -761,6 +779,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferStorageEXT(GLuint        
                                                                   GLbitfield    flags);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glPatchParameteri(GLenum pname,
+                                                            GLint  value);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glReadBuffer(GLenum mode);
 
 /** TODO */
@@ -793,6 +815,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
                                                     GLint   y,
                                                     GLsizei width,
                                                     GLsizei height);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glScissorIndexedv(GLuint       index,
+                                                            const GLint *v);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glShaderStorageBlockBinding(GLuint program,
@@ -996,6 +1022,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,
                                                      GLint   y,
                                                      GLsizei width,
                                                      GLsizei height);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glViewportIndexedfv(GLuint         index,
+                                                              const GLfloat *v);
 
 
 /** TODO */

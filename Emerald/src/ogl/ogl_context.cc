@@ -91,8 +91,10 @@ typedef struct
 
     /* Used for off-screen rendering. */
     raGL_framebuffer fbo;
-    ral_texture      fbo_color_to;
-    ral_texture      fbo_depth_stencil_to;
+    ral_texture      fbo_color_texture;
+    ral_texture_view fbo_color_texture_view;
+    ral_texture      fbo_ds_texture;
+    ral_texture_view fbo_ds_texture_view;
     uint32_t         fbo_to_size[2];
 
     /* Used by the root window for MSAA enumeration only */
@@ -946,8 +948,10 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->bo_bindings                                = nullptr;
     context_ptr->es_ext_texture_buffer_support              = false;
     context_ptr->fbo                                        = nullptr;
-    context_ptr->fbo_color_to                               = nullptr;
-    context_ptr->fbo_depth_stencil_to                       = nullptr;
+    context_ptr->fbo_color_texture                          = nullptr;
+    context_ptr->fbo_color_texture_view                     = nullptr;
+    context_ptr->fbo_ds_texture                             = nullptr;
+    context_ptr->fbo_ds_texture_view                        = nullptr;
     context_ptr->gl_arb_buffer_storage_support              = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
     context_ptr->gl_arb_sparse_buffer_support               = false;
@@ -1330,14 +1334,14 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             result = ral_context_create_textures(context_ptr->context,
                                                  1, /* n_textures */
                                                 &color_to_create_info,
-                                                &context_ptr->fbo_color_to);
+                                                &context_ptr->fbo_color_texture);
 
             ASSERT_DEBUG_SYNC(result,
                               "Could not create default FBO's color texture");
 
             /* Make sure this is actually a renderbuffer. */
             color_to_raGL = ral_context_get_texture_gl(context_ptr->context,
-                                                       context_ptr->fbo_color_to);
+                                                       context_ptr->fbo_color_texture);
 
             raGL_texture_get_property(color_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
@@ -1369,14 +1373,14 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             result = ral_context_create_textures(context_ptr->context,
                                                  1, /* n_textures */
                                                 &depth_stencil_to_create_info,
-                                                &context_ptr->fbo_depth_stencil_to);
+                                                &context_ptr->fbo_ds_texture);
 
             ASSERT_DEBUG_SYNC(result,
                               "Could not create default FBO's depth+stencil texture");
 
             /* Make sure this is actually a renderbuffer. */
             depth_stencil_to_raGL = ral_context_get_texture_gl(context_ptr->context,
-                                                               context_ptr->fbo_depth_stencil_to);
+                                                               context_ptr->fbo_ds_texture);
 
             raGL_texture_get_property(depth_stencil_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
@@ -1390,9 +1394,9 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
          * as above.
          */
         raGL_framebuffers_get_framebuffer(fbos,
-                                          (context_ptr->fbo_color_to != nullptr) ? 1 : 0,
-                                          &context_ptr->fbo_color_to,
-                                           context_ptr->fbo_depth_stencil_to,
+                                          (context_ptr->fbo_color_texture_view != nullptr) ? 1 : 0,
+                                          &context_ptr->fbo_color_texture_view,
+                                           context_ptr->fbo_ds_texture_view,
                                           &context_ptr->fbo);
     }
 
@@ -1483,23 +1487,33 @@ PRIVATE void _ogl_context_release(void* ptr)
         context_ptr->fbo = nullptr;
     }
 
-    if (context_ptr->fbo_color_to         != nullptr ||
-        context_ptr->fbo_depth_stencil_to != nullptr)
+    if (context_ptr->fbo_color_texture != nullptr ||
+        context_ptr->fbo_ds_texture    != nullptr)
     {
-        ral_texture fbo_tos[] =
+        ral_texture_view fbo_texture_views[] =
         {
-            context_ptr->fbo_color_to,
-            context_ptr->fbo_depth_stencil_to
+            context_ptr->fbo_color_texture_view,
+            context_ptr->fbo_ds_texture_view
         };
-        const uint32_t n_fbo_tos = sizeof(fbo_tos) / sizeof(fbo_tos[0]);
+        ral_texture fbo_textures[] =
+        {
+            context_ptr->fbo_color_texture,
+            context_ptr->fbo_ds_texture
+        };
+        const uint32_t n_fbo_texture_views = sizeof(fbo_texture_views) / sizeof(fbo_texture_views[0]);
+        const uint32_t n_fbo_textures      = sizeof(fbo_textures)      / sizeof(fbo_textures[0]);
 
         ral_context_delete_objects(context_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                   n_fbo_tos,
-                                   (const void**) fbo_tos);
+                                   n_fbo_textures,
+                                   (const void**) fbo_textures);
+        ral_context_delete_objects(context_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   n_fbo_texture_views,
+                                   (const void**) fbo_texture_views);
 
-        context_ptr->fbo_color_to         = nullptr;
-        context_ptr->fbo_depth_stencil_to = nullptr;
+        context_ptr->fbo_color_texture = nullptr;
+        context_ptr->fbo_ds_texture    = nullptr;
     }
 
     if (context_ptr->state_cache != nullptr)
@@ -3348,7 +3362,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
 
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT:
         {
-            ral_texture_get_property(context_ptr->fbo_color_to,
+            ral_texture_get_property(context_ptr->fbo_color_texture,
                                      RAL_TEXTURE_PROPERTY_FORMAT,
                                      out_result);
 
