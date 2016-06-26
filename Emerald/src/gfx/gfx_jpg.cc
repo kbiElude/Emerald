@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -32,7 +32,7 @@
 struct _error_manager
 {
   struct  jpeg_error_mgr pub;
-  jmp_buf setjmp_buffer;
+  jmp_buf                setjmp_buffer;
 };
 
 typedef struct _error_manager* my_error_ptr;
@@ -62,20 +62,20 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
     JSAMPARRAY             buffer;
     jpeg_decompress_struct cinfo;
     int64_t                dataSize    = 0;
-    unsigned char*         file_data   = NULL;
+    unsigned char*         file_data   = nullptr;
     unsigned int           file_size   = 0;
     _error_manager         jerr;
-    gfx_image              result      = NULL;
+    gfx_image              result      = nullptr;
     int                    row_stride  = 0;
-    unsigned char*         temp_buffer = NULL;
+    unsigned char*         temp_buffer = nullptr;
 
     if (should_load_from_file)
     {
         /* Create the file serializer */
-        system_file_serializer serializer                = NULL;
+        system_file_serializer serializer                = nullptr;
         bool                   should_release_serializer = false;
 
-        if (file_unpacker == NULL)
+        if (file_unpacker == nullptr)
         {
             serializer                = system_file_serializer_create_for_reading(file_name,
                                                                                   false); /* async_read */
@@ -103,7 +103,7 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
             should_release_serializer = false; /* file serializer is owned by parent of the file_unpacker */
         }
 
-        if (serializer == NULL)
+        if (serializer == nullptr)
         {
             LOG_FATAL("Could not open file [%s]",
                       system_hashed_ansi_string_get_buffer(file_name) );
@@ -121,11 +121,11 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
 
         file_data = new (std::nothrow) unsigned char[ (unsigned int) file_size];
 
-        ASSERT_ALWAYS_SYNC(file_data != NULL,
+        ASSERT_ALWAYS_SYNC(file_data != nullptr,
                            "Could not allocate memory buffer for file [%s]",
                            system_hashed_ansi_string_get_buffer(file_name) );
 
-        if (file_data == NULL)
+        if (file_data == nullptr)
         {
             LOG_FATAL("Could not allocate memory buffer for file [%s]",
                       system_hashed_ansi_string_get_buffer(file_name) );
@@ -151,12 +151,12 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
         {
             system_file_serializer_release(serializer);
 
-            serializer = NULL;
+            serializer = nullptr;
         }
     }
 
     /* Input data pointer should not be NULL at this point */
-    if (in_data_ptr == NULL)
+    if (in_data_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Cannot load .jpg file for [%s] - data pointer is NULL.",
@@ -197,10 +197,10 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
     /* Allocate space for temporary representation */
     temp_buffer = new unsigned char[cinfo.image_width * cinfo.image_height * 3];
 
-    ASSERT_ALWAYS_SYNC(temp_buffer != NULL,
+    ASSERT_ALWAYS_SYNC(temp_buffer != nullptr,
                        "Out of memory");
 
-    if (temp_buffer == NULL)
+    if (temp_buffer == nullptr)
     {
         goto end;
     }
@@ -222,10 +222,10 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
     /* Create the result object */
     result = gfx_image_create(file_name);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "gfx_image_create() call failed");
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         goto end;
     }
@@ -234,7 +234,7 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
                          cinfo.output_width,
                          cinfo.output_height,
                          1, /* row_alignment */
-                         RAL_TEXTURE_FORMAT_SRGB8_UNORM,
+                         RAL_FORMAT_SRGB8_UNORM,
                          false,
                          temp_buffer,
                          row_stride * cinfo.output_height,
@@ -242,20 +242,21 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(bool                      should_l
                          !should_load_from_file, /* should_cache_data_ptr */
                          should_load_from_file); /* should_release_cached_data */
 
-    if (temp_buffer != NULL)
+end:
+    if (temp_buffer != nullptr)
     {
         delete [] temp_buffer;
 
-        temp_buffer = NULL;
+        temp_buffer = nullptr;
     }
-end:
+
     if (should_load_from_file)
     {
-        if (file_data != NULL)
+        if (file_data != nullptr)
         {
             delete [] file_data;
 
-            file_data = NULL;
+            file_data = nullptr;
         }
     }
 
@@ -266,20 +267,20 @@ end:
 PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_file(system_hashed_ansi_string file_name,
                                                     system_file_unpacker      file_unpacker)
 {
-    ASSERT_DEBUG_SYNC(file_name != NULL,
+    ASSERT_DEBUG_SYNC(file_name != nullptr,
                       "Cannot use NULL file name.");
 
-    if (file_name != NULL)
+    if (file_name != nullptr)
     {
         return gfx_jpg_shared_load_handler(true,          /* should_load_from_file */
                                            file_name,
                                            file_unpacker,
-                                           NULL,          /* in_data_ptr */
+                                           nullptr,       /* in_data_ptr */
                                            0);            /* data_size   */
     }
     else
     {
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -289,7 +290,7 @@ PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_memory(const unsigned char* data_
 {
     return gfx_jpg_shared_load_handler(false,                                                /* should_load_from_file */
                                        system_hashed_ansi_string_get_default_empty_string(),
-                                       NULL,                                                 /* file_unpacker */
+                                       nullptr,                                              /* file_unpacker */
                                        data_ptr,
                                        data_size);
 }

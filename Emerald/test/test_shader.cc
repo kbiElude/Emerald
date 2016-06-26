@@ -215,7 +215,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
               (ral_context) NULL);
 
     ral_context_get_property(window_context,
-                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+                             RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT,
                             &window_context_texture_format);
 
     /* Create the test vertex shader */

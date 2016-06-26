@@ -20,6 +20,7 @@
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_gfx_state.h"
 #include "ral/ral_program.h"
+#include "ral/ral_sampler.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "ral/ral_types.h"
@@ -197,6 +198,9 @@ typedef enum
 
     /* Command args stored in _raGL_command_stencil_op_separate_command_info */
     RAGL_COMMAND_TYPE_STENCIL_OP_SEPARATE,
+
+    /* Command args stored in _raGL_command_texture_parameterfv_command_info */
+    RAGL_COMMAND_TYPE_TEXTURE_PARAMETERFV,
 
     /* Command args stored in _raGL_command_use_program_command_info */
     RAGL_COMMAND_TYPE_USE_PROGRAM,
@@ -609,6 +613,15 @@ typedef struct
 
 typedef struct
 {
+    GLuint  texture;
+    GLenum  target;
+    GLenum  pname;
+    GLfloat value[4];
+
+} _raGL_command_texture_parameterfv_command_info;
+
+typedef struct
+{
     GLuint po_id;
 
 } _raGL_command_use_program_command_info;
@@ -679,6 +692,7 @@ typedef struct
         _raGL_command_stencil_func_separate_command_info                             stencil_func_separate_command_info;
         _raGL_command_stencil_mask_separate_command_info                             stencil_mask_separate_command_info;
         _raGL_command_stencil_op_separate_command_info                               stencil_op_separate_command_info;
+        _raGL_command_texture_parameterfv_command_info                               texture_parameterfv_command_info;
         _raGL_command_use_program_command_info                                       use_program_command_info;
         _raGL_command_viewport_indexedfv_command_info                                viewport_indexedfv_command_info;
     };
@@ -3139,17 +3153,18 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
         case RAL_BINDING_TYPE_SAMPLED_IMAGE:
         {
-            _raGL_command*                active_texture_command_ptr = nullptr;
-            _raGL_command*                bind_sampler_command_ptr   = nullptr;
-            _raGL_command*                bind_texture_command_ptr   = nullptr;
-            raGL_sampler                  sampler_raGL               = nullptr;
-            GLuint                        sampler_raGL_id            = 0;
-            raGL_texture                  texture_raGL               = nullptr;
-            GLuint                        texture_raGL_id            = 0;
+            _raGL_command*                active_texture_command_ptr      = nullptr;
+            _raGL_command*                bind_sampler_command_ptr        = nullptr;
+            _raGL_command*                bind_texture_command_ptr        = nullptr;
+            raGL_sampler                  sampler_raGL                    = nullptr;
+            GLuint                        sampler_raGL_id                 = 0;
+            _raGL_command*                texture_parameterfv_command_ptr = nullptr;
+            raGL_texture                  texture_raGL                    = nullptr;
+            GLuint                        texture_raGL_id                 = 0;
             bool                          texture_raGL_is_rb;
-            ral_texture                   texture_ral                = nullptr;
+            ral_texture                   texture_ral                     = nullptr;
             ral_texture_type              texture_ral_type;
-            const _raGL_program_variable* variable_raGL_ptr          = nullptr;
+            const _raGL_program_variable* variable_raGL_ptr               = nullptr;
 
             raGL_program_get_uniform_by_name(bake_state.active_program,
                                              command_ral_ptr->name,
@@ -3186,10 +3201,22 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             ASSERT_DEBUG_SYNC(!texture_raGL_is_rb,
                               "Cannot use a renderbuffer for sampling purposes");
 
-            /* Configure & enqueue relevant GL commands */
-            active_texture_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            bind_sampler_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            bind_texture_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            /* Configure & enqueue relevant GL commands.
+             *
+             * NOTE: RAL specifies LOD bias as a sampler state, whereas in OpenGL this is a texture state.
+             *       Hence, at binding time, we need to ensure LOD bias is kept up-to-date.
+             **/
+            GLfloat      sampler_lod_bias;
+            const GLenum texture_target_gl = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_ral_type);
+
+            ral_sampler_get_property(command_ral_ptr->sampled_image_binding.sampler,
+                                     RAL_SAMPLER_PROPERTY_LOD_BIAS,
+                                    &sampler_lod_bias);
+
+            active_texture_command_ptr      = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            bind_sampler_command_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            bind_texture_command_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            texture_parameterfv_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
 
             active_texture_command_ptr->active_texture_command_info.target = GL_TEXTURE0 + variable_raGL_ptr->texture_unit;
             active_texture_command_ptr->type                               = RAGL_COMMAND_TYPE_ACTIVE_TEXTURE;
@@ -3198,9 +3225,15 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             bind_sampler_command_ptr->bind_sampler_command_info.unit       = variable_raGL_ptr->texture_unit;
             bind_sampler_command_ptr->type                                 = RAGL_COMMAND_TYPE_BIND_SAMPLER;
 
-            bind_texture_command_ptr->bind_texture_command_info.target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_ral_type);
+            bind_texture_command_ptr->bind_texture_command_info.target = texture_target_gl;
             bind_texture_command_ptr->bind_texture_command_info.to_id  = texture_raGL_id;
             bind_texture_command_ptr->type                             = RAGL_COMMAND_TYPE_BIND_TEXTURE;
+
+            texture_parameterfv_command_ptr->texture_parameterfv_command_info.pname    = GL_TEXTURE_LOD_BIAS;
+            texture_parameterfv_command_ptr->texture_parameterfv_command_info.target   = texture_target_gl;
+            texture_parameterfv_command_ptr->texture_parameterfv_command_info.texture  = texture_raGL_id;
+            texture_parameterfv_command_ptr->texture_parameterfv_command_info.value[0] = sampler_lod_bias;
+            texture_parameterfv_command_ptr->type                                      = RAGL_COMMAND_TYPE_TEXTURE_PARAMETERFV;
 
             system_resizable_vector_push(commands,
                                          active_texture_command_ptr);
@@ -3208,6 +3241,8 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                                          bind_sampler_command_ptr);
             system_resizable_vector_push(commands,
                                          bind_texture_command_ptr);
+            system_resizable_vector_push(commands,
+                                         texture_parameterfv_command_ptr);
 
             /* Update bake state */
             ASSERT_DEBUG_SYNC(variable_raGL_ptr->texture_unit < N_MAX_TEXTURE_UNITS,
@@ -3252,38 +3287,23 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                               "Too large binding point was requested.");
 
             /* Enqueue a GL command */
-            if (buffer_binding_info.size == 0)
-            {
-                _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
 
-                ASSERT_DEBUG_SYNC(buffer_binding_info.offset == 0,
-                                  "Size must not be 0 for a buffer binding, if non-zero offset has also been requested.");
+            ASSERT_DEBUG_SYNC(buffer_binding_info.size != 0,
+                              "Zero-sized buffer binding was requested.");
 
-                bind_command_ptr->bind_buffer_base_command_info.bo_id    = buffer_raGL_id;
-                bind_command_ptr->bind_buffer_base_command_info.bp_index = bp;
-                bind_command_ptr->bind_buffer_base_command_info.target   = buffer_binding_target;
-                bind_command_ptr->type                                   = RAGL_COMMAND_TYPE_BIND_BUFFER_BASE;
+            bind_command_ptr->bind_buffer_range_command_info.bo_id    = buffer_raGL_id;
+            bind_command_ptr->bind_buffer_range_command_info.bp_index = bp;
+            bind_command_ptr->bind_buffer_range_command_info.offset   = buffer_binding_info.offset +
+                                                                        buffer_raGL_start_offset   +
+                                                                        buffer_ral_start_offset;
+            bind_command_ptr->bind_buffer_range_command_info.size     = (buffer_binding_info.size == 0) ? buffer_raGL_size :
+                                                                                                          buffer_binding_info.size;
+            bind_command_ptr->bind_buffer_range_command_info.target   = buffer_binding_target;
+            bind_command_ptr->type                                    = RAGL_COMMAND_TYPE_BIND_BUFFER_RANGE;
 
-                system_resizable_vector_push(commands,
-                                             bind_command_ptr);
-            }
-            else
-            {
-                _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-
-                ASSERT_DEBUG_SYNC(buffer_binding_info.size != 0,
-                                  "Zero-sized buffer binding was requested.");
-
-                bind_command_ptr->bind_buffer_range_command_info.bo_id    = buffer_raGL_id;
-                bind_command_ptr->bind_buffer_range_command_info.bp_index = bp;
-                bind_command_ptr->bind_buffer_range_command_info.offset   = buffer_binding_info.offset;
-                bind_command_ptr->bind_buffer_range_command_info.size     = buffer_binding_info.size;
-                bind_command_ptr->bind_buffer_range_command_info.target   = buffer_binding_target;
-                bind_command_ptr->type                                    = RAGL_COMMAND_TYPE_BIND_BUFFER_RANGE;
-
-                system_resizable_vector_push(commands,
-                                             bind_command_ptr);
-            }
+            system_resizable_vector_push(commands,
+                                         bind_command_ptr);
 
             /* Update internal bake state */
             _raGL_command_buffer_bake_state_buffer_binding& bake_state_bp = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? bake_state.active_sb_bindings[bp]
@@ -4286,6 +4306,18 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
                                                                           command_args.sfail,
                                                                           command_args.dpfail,
                                                                           command_args.dppass);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_TEXTURE_PARAMETERFV:
+            {
+                const _raGL_command_texture_parameterfv_command_info& command_args = command_ptr->texture_parameterfv_command_info;
+
+                command_buffer_ptr->entrypoints_dsa_ptr->pGLTextureParameterfvEXT(command_args.texture,
+                                                                                  command_args.target,
+                                                                                  command_args.pname,
+                                                                                  command_args.value);
 
                 break;
             }

@@ -591,7 +591,7 @@ PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context contex
                              &program_raGL_id);
 
     ral_context_get_property            (text_ptr->context,
-                                         RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE,
+                                         RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE,
                                          fb_resolution);
     ral_context_get_property            (text_ptr->context,
                                          RAL_CONTEXT_PROPERTY_BACKEND,

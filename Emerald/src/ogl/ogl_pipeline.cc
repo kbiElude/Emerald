@@ -92,9 +92,6 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage                       (_ogl_pip
 PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step                  (_ogl_pipeline_stage_step*  step_ptr);
 PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(ogl_context                context,
                                                                         void*                      user_arg);
-PRIVATE void _ogl_pipeline_init_pipeline                               (_ogl_pipeline*             pipeline_ptr,
-                                                                        ral_context                context,
-                                                                        bool                       should_overlay_performance_info);
 PRIVATE void _ogl_pipeline_init_pipeline_stage                         (_ogl_pipeline_stage*       stage_ptr);
 PRIVATE void _ogl_pipeline_init_pipeline_stage_step                    (_ogl_pipeline_stage_step*  step_ptr,
                                                                         system_hashed_ansi_string  name,

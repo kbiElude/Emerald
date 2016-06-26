@@ -1,13 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  * 
  * TODO
  */
 #ifndef POSTPROCESSING_BLUR_GAUSSIAN_H
 #define POSTPROCESSING_BLUR_GAUSSIAN_H
 
-#include "gfx/gfx_types.h"
 #include "postprocessing/postprocessing_types.h"
 #include "ral/ral_types.h"
 
@@ -23,16 +22,16 @@ typedef enum
 
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ral_context               context,
-                                                                                                           system_hashed_ansi_string name,
-                                                                                                           unsigned int              n_min_taps,
-                                                                                                           unsigned int              n_max_taps);
+PUBLIC postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ral_context               context,
+                                                                        system_hashed_ansi_string name,
+                                                                        unsigned int              n_min_taps,
+                                                                        unsigned int              n_max_taps);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(postprocessing_blur_gaussian            blur,
-                                                                                    unsigned int                            n_taps,
-                                                                                    float                                   n_iterations,
-                                                                                    ral_texture                             src_texture,
-                                                                                    postprocessing_blur_gaussian_resolution blur_resolution);
+PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postprocessing_blur_gaussian            blur,
+                                                                         unsigned int                            n_taps,
+                                                                         float                                   n_iterations,
+                                                                         ral_texture_view                        src_texture_view,
+                                                                         postprocessing_blur_gaussian_resolution blur_resolution);
 
 #endif /* POSTPROCESSING_BLUR_GAUSSIAN_H */

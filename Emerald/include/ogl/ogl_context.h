@@ -170,14 +170,6 @@ typedef enum ogl_context_property
     /* not settable, system_window */
     OGL_CONTEXT_PROPERTY_WINDOW,
 
-    /* not settable, GLuint;
-     *
-     * ID of a VAO, for which no VAAS were configured.
-     * Useful for draw calls which do not rely on input variables.
-     * DO NOT MODIFY THE VAO'S CONFIGURATION.
-     */
-    OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
-
     /* not settable, ogl_context_vaos */
     OGL_CONTEXT_PROPERTY_VAOS,
 

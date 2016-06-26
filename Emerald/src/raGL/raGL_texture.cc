@@ -739,18 +739,20 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(ogl_context context,
                                                                               void*       texture)
 {
-    raGL_backend                      backend                   = nullptr;
-    const ogl_context_gl_entrypoints* entrypoints_ptr           = nullptr;
-    uint32_t                          n_texture_view_base_layer = -1;
-    uint32_t                          n_texture_view_base_level = -1;
-    uint32_t                          n_texture_view_layers     = -1;
-    uint32_t                          n_texture_view_levels     = -1;
-    ral_texture                       parent_texture            = nullptr;
-    raGL_texture                      parent_texture_raGL       = nullptr;
-    GLuint                            parent_texture_raGL_id    = -1;
-    _raGL_texture*                    texture_ptr               = (_raGL_texture*) texture;
-    ral_format                        texture_view_format       = RAL_FORMAT_UNKNOWN;
-    ral_texture_type                  texture_view_type         = RAL_TEXTURE_TYPE_UNKNOWN;
+    raGL_backend                                              backend                   = nullptr;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr       = nullptr;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr           = nullptr;
+    uint32_t                                                  n_texture_view_base_layer = -1;
+    uint32_t                                                  n_texture_view_base_level = -1;
+    uint32_t                                                  n_texture_view_layers     = -1;
+    uint32_t                                                  n_texture_view_levels     = -1;
+    ral_texture                                               parent_texture            = nullptr;
+    raGL_texture                                              parent_texture_raGL       = nullptr;
+    GLuint                                                    parent_texture_raGL_id    = -1;
+    _raGL_texture*                                            texture_ptr               = (_raGL_texture*) texture;
+    ral_texture_aspect                                        texture_view_aspect;
+    ral_format                                                texture_view_format       = RAL_FORMAT_UNKNOWN;
+    ral_texture_type                                          texture_view_type         = RAL_TEXTURE_TYPE_UNKNOWN;
 
     /* Extract texture view properties */
     ogl_context_get_property(context,
@@ -759,7 +761,13 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(og
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &entrypoints_dsa_ptr);
 
+    ral_texture_view_get_property(texture_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_ASPECT,
+                                 &texture_view_aspect);
     ral_texture_view_get_property(texture_ptr->texture_view,
                                   RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
                                  &texture_view_format);
@@ -790,14 +798,23 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(og
                               (void**) &parent_texture_raGL_id);
 
     /* Assign a texture view to the ID */
+    const GLenum texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_view_type);
+
     entrypoints_ptr->pGLTextureView(texture_ptr->id,
-                                    raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_view_type),
+                                    texture_target,
                                     parent_texture_raGL_id,
                                     texture_view_format,
                                     n_texture_view_base_level,
                                     n_texture_view_levels,
                                     n_texture_view_base_layer,
                                     n_texture_view_layers);
+
+    /* Configure aspect for the view */
+    entrypoints_dsa_ptr->pGLTextureParameteriEXT(texture_ptr->id,
+                                                 texture_target,
+                                                 GL_DEPTH_STENCIL_TEXTURE_MODE,
+                                                 raGL_utils_get_ogl_enum_for_ral_texture_aspect(texture_view_aspect) );
+
 }
 
 /** TODO */

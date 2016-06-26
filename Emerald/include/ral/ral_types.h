@@ -31,11 +31,11 @@ DECLARE_HANDLE(ral_texture_view);
  *  @param user_arg          TODO
  *
  */
-typedef void (*PFNRALRENDERINGHANDLERRENDERINGCALLBACK)(ral_context context,
-                                                        system_time frame_time,
-                                                        uint32_t    n_frame,
-                                                        const int*  rendering_area_px_topdown,
-                                                        void*       user_arg);
+typedef ral_present_job (*PFNRALRENDERINGHANDLERRENDERINGCALLBACK)(ral_context context,
+                                                                   system_time frame_time,
+                                                                   uint32_t    n_frame,
+                                                                   const int*  rendering_area_px_topdown,
+                                                                   void*       user_arg);
 
 typedef enum
 {
@@ -661,28 +661,48 @@ typedef enum
     /* not settable; system_callback_manager */
     RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
 
-    /* not settable, uint32_t.
-     *
-     * Maximum number of color attachments that can be configured and used at the same time for a single framebuffer.
+    /* not settable; bool
      *
      * NOTE: This query will be passed to the rendering back-end.
-     **/
-    RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS,
+     */
+    RAL_CONTEXT_PROPERTY_IS_INTEL_DRIVER,
+
+    /* not settable; bool
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     */
+    RAL_CONTEXT_PROPERTY_IS_NV_DRIVER,
 
     /* not settable; ral_rendering_handler */
     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+
+    /* not settable, uint32_t.
+     *
+     * Required storage buffer alignment.
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     **/
+    RAL_CONTEXT_PROPERTY_STORAGE_BUFFER_ALIGNMENT,
 
     /* not settable, ral_texture_format
      *
      * NOTE: This query will be passed to the rendering back-end.
      */
-    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT, // todo: rename to BACK_BUFFER_COLOR_FORMAT
+    RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT,
 
     /* not settable, uint32_t[2]
      *
      * NOTE: This query will be passed to the rendering back-end.
      */
-    RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE, // todo: rename to BACK_BUFFER_SIZE
+    RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE,
+
+    /* not settable, uint32_t.
+     *
+     * Required uniform buffer alignment.
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     **/
+    RAL_CONTEXT_PROPERTY_UNIFORM_BUFFER_ALIGNMENT,
 
     /* not settable; demo_window */
     RAL_CONTEXT_PROPERTY_WINDOW_DEMO,

@@ -85,6 +85,9 @@ PUBLIC EMERALD_API bool system_dag_is_connection_defined(system_dag      dag,
                                                          system_dag_node dst);
 
 /** TODO */
+PUBLIC EMERALD_API bool system_dag_is_dirty(system_dag dag);
+
+/** TODO */
 PUBLIC EMERALD_API void system_dag_release(system_dag dag);
 
 /** TODO */

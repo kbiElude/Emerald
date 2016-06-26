@@ -87,8 +87,6 @@ typedef struct
     system_window        window;
     system_window_handle window_handle;
 
-    GLuint               vao_no_vaas_id;
-
     /* Used for off-screen rendering. */
     raGL_framebuffer fbo;
     ral_texture      fbo_color_texture;
@@ -967,7 +965,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->text_renderer                              = nullptr;
     context_ptr->texture_compression                        = nullptr;
     context_ptr->to_bindings                                = nullptr;
-    context_ptr->vao_no_vaas_id                             = 0;
 
     #ifdef _WIN32
     {
@@ -1098,10 +1095,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                             &context_ptr->entry_points_private);
         ogl_context_to_bindings_init        (context_ptr->to_bindings,
                                             &context_ptr->entry_points_private);
-
-        /* Set up the zero-VAA VAO */
-        context_ptr->entry_points_gl.pGLGenVertexArrays(1,
-                                                       &context_ptr->vao_no_vaas_id);
     }
 
     /* Update gfx_image alternative file getter provider so that it can
@@ -3610,13 +3603,6 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
         case OGL_CONTEXT_PROPERTY_WINDOW:
         {
             *((system_window*) out_result) = context_ptr->window;
-
-            break;
-        }
-
-        case OGL_CONTEXT_PROPERTY_VAO_NO_VAAS:
-        {
-            *(GLuint*) out_result = context_ptr->vao_no_vaas_id;
 
             break;
         }

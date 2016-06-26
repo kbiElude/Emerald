@@ -1,3 +1,7 @@
+#if 0
+
+TODO
+
 /**
  *
  * Emerald (kbi/elude @2015-2016)
@@ -172,7 +176,7 @@ PUBLIC bool nodes_video_pass_renderer_get_texture_memory_allocation_details(demo
             ral_format fb_color_format = RAL_FORMAT_UNKNOWN;
 
             ral_context_get_property(node_data_ptr->context,
-                                     RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+                                     RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT,
                                     &fb_color_format);
 
             out_memory_allocation_data_ptr->bound_texture             = node_data_ptr->output_texture;
@@ -235,7 +239,7 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pas
         demo_texture_io_declaration texture_output_info;
 
         ral_context_get_property(new_node_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+                                 RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT,
                                 &fb_color_format);
 
         texture_output_info.name              = system_hashed_ansi_string_create("Output");
@@ -415,3 +419,4 @@ PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timelin
 end:
     ;
 }
+#endif

@@ -2265,9 +2265,12 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
         }
 
         case RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT:
-        case RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS:
-        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT:
-        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE:
+        case RAL_CONTEXT_PROPERTY_IS_INTEL_DRIVER:
+        case RAL_CONTEXT_PROPERTY_IS_NV_DRIVER:
+        case RAL_CONTEXT_PROPERTY_STORAGE_BUFFER_ALIGNMENT:
+        case RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT:
+        case RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE:
+        case RAL_CONTEXT_PROPERTY_UNIFORM_BUFFER_ALIGNMENT:
         {
             context_ptr->pfn_backend_get_property_proc(context_ptr->backend,
                                                        property,

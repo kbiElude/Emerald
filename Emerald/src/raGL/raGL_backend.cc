@@ -655,7 +655,8 @@ PRIVATE void _raGL_backend_helper_context_execute_command_buffers_callback(void*
         ASSERT_DEBUG_SYNC(command_buffer_raGL != nullptr,
                           "Could not retrieve a raGL instance for a RAL command buffer");
 
-        raGL_command_buffer_execute(command_buffer_raGL);
+        raGL_command_buffer_execute(command_buffer_raGL,
+                                    backend_ptr->dep_tracker);
     }
 }
 
@@ -2867,7 +2868,25 @@ PUBLIC void raGL_backend_get_property(void*                backend,
             break;
         }
 
-        case RAL_CONTEXT_PROPERTY_MAX_FRAMEBUFFER_COLOR_ATTACHMENTS:
+        case RAL_CONTEXT_PROPERTY_IS_INTEL_DRIVER:
+        {
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_IS_INTEL_DRIVER,
+                                     out_result_ptr);
+
+            break;
+        }
+
+        case RAL_CONTEXT_PROPERTY_IS_NV_DRIVER:
+        {
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
+                                     out_result_ptr);
+
+            break;
+        }
+
+        case RAL_CONTEXT_PROPERTY_STORAGE_BUFFER_ALIGNMENT:
         {
             const ogl_context_gl_limits* limits_ptr = nullptr;
 
@@ -2875,12 +2894,12 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
-            *(uint32_t*) out_result_ptr = limits_ptr->max_color_attachments;
+            *(uint32_t*) out_result_ptr = limits_ptr->shader_storage_buffer_offset_alignment;
 
             break;
         }
 
-        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT:
+        case RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT:
         {
             ogl_context_get_property(backend_ptr->context_gl,
                                      OGL_CONTEXT_PROPERTY_DEFAULT_FBO_COLOR_TEXTURE_FORMAT,
@@ -2889,11 +2908,24 @@ PUBLIC void raGL_backend_get_property(void*                backend,
             break;
         }
 
-        case RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE:
+        case RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE:
         {
             ogl_context_get_property(backend_ptr->context_gl,
                                      OGL_CONTEXT_PROPERTY_DEFAULT_FBO_SIZE,
                                      out_result_ptr);
+
+            break;
+        }
+
+        case RAL_CONTEXT_PROPERTY_UNIFORM_BUFFER_ALIGNMENT:
+        {
+            const ogl_context_gl_limits* limits_ptr = nullptr;
+
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_LIMITS,
+                                    &limits_ptr);
+
+            *(uint32_t*) out_result_ptr = limits_ptr->uniform_buffer_offset_alignment;
 
             break;
         }

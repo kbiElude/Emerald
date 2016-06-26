@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -17,8 +17,8 @@
 /* Private definitions */
 
 /** TODO */
-__forceinline void _convert_rgbe_to_float(float*         dst_ptr,
-                                          unsigned char* rgbe)
+__forceinline void _gfx_rgbe_rgbe_to_float(float*         dst_ptr,
+                                           unsigned char* rgbe)
 {
     if (rgbe[3])
     {
@@ -45,10 +45,10 @@ PRIVATE bool _gfx_rgbe_load_data_rle(float* dst_ptr,
     bool          result              = true;
     unsigned char rgbe[4]             = {0};
     char*         scanline_buffer_ptr = new (std::nothrow) char[4 * width];
-    char*         traveller_ptr       = NULL;
-    char*         traveller_end_ptr   = NULL;
+    char*         traveller_ptr       = nullptr;
+    char*         traveller_end_ptr   = nullptr;
 
-    if (scanline_buffer_ptr == NULL)
+    if (scanline_buffer_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not allocate space for scanline buffer");
@@ -58,7 +58,7 @@ PRIVATE bool _gfx_rgbe_load_data_rle(float* dst_ptr,
     }
 
     /* If width is outside supported range, call non-RLE loader */
-    if (width < 8 ||
+    if (width < 8     ||
         width > 0x7FFF)
     {
         ASSERT_ALWAYS_SYNC(false,
@@ -157,8 +157,8 @@ PRIVATE bool _gfx_rgbe_load_data_rle(float* dst_ptr,
                         src_ptr       += count;
                     }
                 }
-            } /* while (traveller_ptr < traveller_end_ptr)*/
-        } /* for (int i = 0; i < 4; ++i) */
+            }
+        }
 
         /* Convert scanline data to floats */
         for (int i = 0;
@@ -170,8 +170,8 @@ PRIVATE bool _gfx_rgbe_load_data_rle(float* dst_ptr,
             rgbe[2] = scanline_buffer_ptr[i + 2 * width];
             rgbe[3] = scanline_buffer_ptr[i + 3 * width];
 
-            _convert_rgbe_to_float(dst_ptr,
-                                   rgbe);
+            _gfx_rgbe_rgbe_to_float(dst_ptr,
+                                    rgbe);
 
             dst_ptr += 3;
         }
@@ -179,7 +179,7 @@ PRIVATE bool _gfx_rgbe_load_data_rle(float* dst_ptr,
         height--;
     }
 end:
-    if (scanline_buffer_ptr != NULL)
+    if (scanline_buffer_ptr != nullptr)
     {
         delete [] scanline_buffer_ptr;
     }
@@ -192,17 +192,17 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
                                                 const char*               in_data_ptr)
 {
     /* Open file handle */
-    char*            data_buffer        = NULL;
+    char*            data_buffer        = nullptr;
     uint32_t         data_buffer_size   = 0;
-    unsigned char*   data_ptr           = NULL;
-    char*            data_ptr_traveller = NULL;
+    unsigned char*   data_ptr           = nullptr;
+    char*            data_ptr_traveller = nullptr;
     int              height             = 0;
     const char*      magic_header       = "#?RADIANCE";
-    gfx_image        result             = NULL;
+    gfx_image        result             = nullptr;
     int              width              = 0;
 
     /* Input data pointer should not be NULL at this point */
-    if (in_data_ptr == NULL)
+    if (in_data_ptr == nullptr)
     {
         LOG_FATAL("Input data pointer is NULL - cannot proceed with loading");
 
@@ -243,7 +243,7 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
         {
             data_ptr_traveller += strlen("FORMAT=");
 
-            /* RGBE is only supported */
+            /* 32-bit RLE RGBE is the only compression supported */
             if (memcmp(data_ptr_traveller,
                        "32-bit_rle_rgbe",
                        strlen("32-bit_rle_rgbe") ) != 0)
@@ -335,7 +335,7 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
     data_buffer_size = sizeof(float) * 3 * width * height;
     data_buffer      = new (std::nothrow) char[data_buffer_size];
 
-    if (data_buffer == NULL)
+    if (data_buffer == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not allocate %d bytes for data buffer",
@@ -358,10 +358,10 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
     /* Create the result object */
     result = gfx_image_create(name);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "gfx_image_create() call failed");
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         goto end_with_dealloc;
     }
@@ -371,7 +371,7 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
                          width,
                          height,
                          1,
-                         RAL_TEXTURE_FORMAT_RGB32_FLOAT,
+                         RAL_FORMAT_RGB32_FLOAT,
                          false,
                          (unsigned char*) data_buffer,
                          data_buffer_size,
@@ -381,11 +381,11 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(system_hashed_ansi_string name,
     return result;
 
 end_with_dealloc:
-    if (data_buffer != NULL)
+    if (data_buffer != nullptr)
     {
         delete [] data_buffer;
 
-        data_buffer = NULL;
+        data_buffer = nullptr;
     }
 
     return result;
@@ -395,18 +395,18 @@ end_with_dealloc:
 PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(system_hashed_ansi_string file_name,
                                                      system_file_unpacker      file_unpacker)
 {
-    gfx_image result = NULL;
+    gfx_image result = nullptr;
 
-    ASSERT_DEBUG_SYNC(file_name != NULL,
+    ASSERT_DEBUG_SYNC(file_name != nullptr,
                       "Cannot use NULL file name.");
 
-    if (file_name != NULL)
+    if (file_name != nullptr)
     {
         /* Instantiate a serializer for the file */
-        system_file_serializer serializer                = NULL;
+        system_file_serializer serializer                = nullptr;
         bool                   should_release_serializer = false;
 
-        if (file_unpacker == NULL)
+        if (file_unpacker == nullptr)
         {
             serializer = system_file_serializer_create_for_reading(file_name,
                                                                    false); /* async_read */
@@ -436,7 +436,7 @@ PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(system_hashed_ansi_string f
         }
 
         /* ..and cache its contents */
-        char*        data_ptr  = NULL;
+        char*        data_ptr  = nullptr;
         unsigned int file_size = 0;
 
         system_file_serializer_get_property(serializer,
@@ -448,11 +448,11 @@ PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(system_hashed_ansi_string f
 
         data_ptr = new (std::nothrow) char[ (unsigned int) file_size];
 
-        ASSERT_ALWAYS_SYNC(data_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(data_ptr != nullptr,
                            "Could not allocate memory buffer for file [%s]",
                            system_hashed_ansi_string_get_buffer(file_name) );
 
-        if (data_ptr == NULL)
+        if (data_ptr == nullptr)
         {
             LOG_FATAL("Could not allocate memory buffer for file [%s]",
                       system_hashed_ansi_string_get_buffer(file_name) );
@@ -476,7 +476,7 @@ PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(system_hashed_ansi_string f
                 system_file_serializer_release(serializer);
             }
 
-            serializer = NULL;
+            serializer = nullptr;
 
             /* Store the pointer in in_data_ptr so that we can refer to the same pointer in following shared parts of the code */
             result = _gfx_rgbe_shared_load_handler(file_name,
@@ -485,7 +485,7 @@ PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(system_hashed_ansi_string f
             /* Release the data buffer */
             delete [] data_ptr;
 
-            data_ptr = NULL;
+            data_ptr = nullptr;
         }
     }
 

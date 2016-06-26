@@ -274,6 +274,10 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                                                    const void**            objects);
 
 /** TODO */
+PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context               context,
+                                                               system_hashed_ansi_string name);
+
+/** TODO */
 PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
                                                  ral_context_property property,
                                                  void*                out_result_ptr);
@@ -285,51 +289,6 @@ PUBLIC EMERALD_API ral_shader ral_context_get_shader_by_name(ral_context        
 /** TODO */
 PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_file_name(ral_context               context,
                                                                     system_hashed_ansi_string file_name);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC EMERALD_API raGL_buffer ral_context_get_buffer_gl(ral_context context,
-                                                         ral_buffer  buffer);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context);
-
-/** TODO */
-PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context               context,
-                                                               system_hashed_ansi_string name);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC EMERALD_API raGL_program ral_context_get_program_gl(ral_context context,
-                                                           ral_program program);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC EMERALD_API raGL_sampler ral_context_get_sampler_gl(ral_context context,
-                                                           ral_sampler sampler);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC EMERALD_API raGL_shader ral_context_get_shader_gl(ral_context context,
-                                                         ral_shader  shader);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC EMERALD_API raGL_texture ral_context_get_texture_gl(ral_context context,
-                                                           ral_texture texture);
-
-/** TODO
- *
- *  TEMPORARY. Will be removed during RAL integration */
-PUBLIC GLuint ral_context_get_texture_gl_id(ral_context context,
-                                            ral_texture texture);
 
 /** TODO */
 PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context               context,

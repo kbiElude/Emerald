@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  * Image object implementation.
  */
@@ -88,7 +88,7 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(system_hashed_ansi_strin
  *  @param height        Image height
  *  @param row_alignment Row alignment.
  *
- *  @return Amount of bytes given image configuration needs to store full picture.
+ *  @return Number of bytes given image configuration needs to store full picture.
  **/
 PUBLIC unsigned int gfx_image_get_data_size(ral_format   format,
                                             unsigned int width,

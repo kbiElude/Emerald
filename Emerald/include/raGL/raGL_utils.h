@@ -30,6 +30,9 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_primitive_type(ral_primitive_type 
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_stencil_op(ral_stencil_op stencil_op);
 
 /** TODO */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_aspect(ral_texture_aspect texture_view_aspect);
+
+/** TODO */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_data_type(ral_texture_data_type in_data_type);
 
 /** TODO */

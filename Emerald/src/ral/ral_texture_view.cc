@@ -385,7 +385,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ral_texture_view ral_texture_view_create_from_texture(ral_texture texture)
+PUBLIC ral_texture_view_create_info ral_texture_view_get_create_info_from_texture(ral_texture texture)
 {
     ral_texture_view_create_info create_info;
     ral_format                   texture_format;
@@ -430,7 +430,7 @@ PUBLIC EMERALD_API ral_texture_view ral_texture_view_create_from_texture(ral_tex
     create_info.texture      = texture;
     create_info.type         = texture_type;
 
-    return ral_texture_view_create(&create_info);
+    return create_info;
 }
 
 /** Please see header for specification */

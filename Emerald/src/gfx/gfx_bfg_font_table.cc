@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -57,7 +57,7 @@ PRIVATE gfx_bfg_font_table _gfx_bfg_font_table_create_shared(system_hashed_ansi_
                                                              gfx_image                      bmp_file_data,
                                                              const _gfx_bfg_font_table_dat& dat_file_data)
 {
-    _gfx_bfg_font_table* result = NULL;
+    _gfx_bfg_font_table* result_ptr = nullptr;
 
     /* Do a few sanity checks */
     uint32_t bmp_height = 0;
@@ -95,12 +95,12 @@ PRIVATE gfx_bfg_font_table _gfx_bfg_font_table_create_shared(system_hashed_ansi_
     }
 
     /* Still fine? We can create a object instance, then ! */
-    result = new (std::nothrow) _gfx_bfg_font_table;
+    result_ptr = new (std::nothrow) _gfx_bfg_font_table;
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result_ptr != nullptr,
                       "Out of memory while allocating BFG font table instance!");
 
-    if (result == NULL)
+    if (result_ptr == nullptr)
     {
         LOG_ERROR("Could not allocate memory for BFG font table instance.");
 
@@ -108,17 +108,17 @@ PRIVATE gfx_bfg_font_table _gfx_bfg_font_table_create_shared(system_hashed_ansi_
     }
 
     /* Fill the object. */
-    result->bmp_data = bmp_file_data;
-    result->dat_data = dat_file_data;
+    result_ptr->bmp_data = bmp_file_data;
+    result_ptr->dat_data = dat_file_data;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
                                                    _gfx_bfg_font_table_release,
                                                    OBJECT_TYPE_GFX_BFG_FONT_TABLE,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("\\GFX BFG Font Tables\\",
                                                                                                            system_hashed_ansi_string_get_buffer(font_name_hashed_ansi_string)) );
 
 end:
-    return (gfx_bfg_font_table) result;
+    return (gfx_bfg_font_table) result_ptr;
 }
 
 /** Please see header for specification */
@@ -141,11 +141,11 @@ PRIVATE bool _gfx_bfg_font_table_load_dat_file(system_hashed_ansi_string dat_fil
                            "rb");
     bool  result = false;
 
-    ASSERT_DEBUG_SYNC(file != NULL,
+    ASSERT_DEBUG_SYNC(file != nullptr,
                       "%s could not have been found",
                       system_hashed_ansi_string_get_buffer(dat_file_name) );
 
-    if (file == NULL)
+    if (file == nullptr)
     {
         LOG_ERROR("BFG font table .dat file could not have been found (%s)",
                   system_hashed_ansi_string_get_buffer(dat_file_name) );
@@ -177,11 +177,11 @@ PRIVATE bool _gfx_bfg_font_table_load_dat_file(system_hashed_ansi_string dat_fil
     result = true;
 
 end:
-    if (file != NULL)
+    if (file != nullptr)
     {
         ::fclose(file);
 
-        file = NULL;
+        file = nullptr;
     }
 
     return result;
@@ -190,15 +190,15 @@ end:
 /** Please see header for specification */
 PRIVATE void _gfx_bfg_font_table_release(void* font_table)
 {
-    if (font_table != NULL)
+    if (font_table != nullptr)
     {
         _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
 
-        if (font_table_ptr->bmp_data != NULL)
+        if (font_table_ptr->bmp_data != nullptr)
         {
             gfx_image_release(font_table_ptr->bmp_data);
 
-            font_table_ptr->bmp_data = NULL;
+            font_table_ptr->bmp_data = nullptr;
         }
     }
 }
@@ -206,26 +206,26 @@ PRIVATE void _gfx_bfg_font_table_release(void* font_table)
 /** Please see header for specification */
 PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create(system_hashed_ansi_string font_table_file_name_hashed_ansi_string)
 {
-    gfx_bfg_font_table result = NULL;
+    gfx_bfg_font_table result = nullptr;
 
     /* Form file paths */
     gfx_image                 bmp_file_data;
-    system_hashed_ansi_string bmp_file_name_hashed_ansi_string = NULL;
+    system_hashed_ansi_string bmp_file_name_hashed_ansi_string = nullptr;
     _gfx_bfg_font_table_dat   dat_file_data;
-    system_hashed_ansi_string dat_file_name_hashed_ansi_string = NULL;
+    system_hashed_ansi_string dat_file_name_hashed_ansi_string = nullptr;
     uint32_t                  font_table_file_name_length      = system_hashed_ansi_string_get_length(font_table_file_name_hashed_ansi_string);
     const char*               font_table_file_name             = system_hashed_ansi_string_get_buffer(font_table_file_name_hashed_ansi_string);
     uint32_t                  bmp_dat_file_name_length         = font_table_file_name_length + 4 + 1;
     char*                     bmp_file_name                    = new (std::nothrow) char[bmp_dat_file_name_length];
     char*                     dat_file_name                    = new (std::nothrow) char[bmp_dat_file_name_length];
 
-    ASSERT_DEBUG_SYNC(bmp_file_name != NULL,
+    ASSERT_DEBUG_SYNC(bmp_file_name != nullptr,
                       "Could not allocate memory for .bmp file name.");
-    ASSERT_DEBUG_SYNC(dat_file_name != NULL,
+    ASSERT_DEBUG_SYNC(dat_file_name != nullptr,
                       "Could not allocate memory for .dat file name.");
 
-    if (bmp_file_name == NULL ||
-        dat_file_name == NULL)
+    if (bmp_file_name == nullptr ||
+        dat_file_name == nullptr)
     {
         LOG_ERROR("Could not allocate memory for file name storage for [%s] file.",
                   font_table_file_name);
@@ -263,13 +263,13 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create(system_hashed_an
 
     /* If we're fine, carry on with .bmp file */
     bmp_file_data = gfx_bmp_load_from_file(bmp_file_name_hashed_ansi_string,
-                                           NULL); /* file_unpacker */
+                                           nullptr); /* file_unpacker */
 
-    ASSERT_DEBUG_SYNC(bmp_file_data != NULL,
+    ASSERT_DEBUG_SYNC(bmp_file_data != nullptr,
                       "Could not load .bmp file [%s]",
                       system_hashed_ansi_string_get_buffer(bmp_file_name_hashed_ansi_string) );
 
-    if (bmp_file_data == NULL)
+    if (bmp_file_data == nullptr)
     {
         LOG_ERROR("Could not load BFG .bmp file");
 
@@ -281,13 +281,13 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create(system_hashed_an
                                                dat_file_data);
 
 end:
-    if (result == NULL)
+    if (result == nullptr)
     {
-        if (bmp_file_data != NULL)
+        if (bmp_file_data != nullptr)
         {
             gfx_image_release(bmp_file_data);
 
-            bmp_file_data = NULL;
+            bmp_file_data = nullptr;
         }
     }
 
@@ -299,15 +299,15 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create_from_ptr(system_
                                                                          void*                     bmp_blob,
                                                                          void*                     dat_blob)
 {
-    gfx_bfg_font_table result = NULL;
+    gfx_bfg_font_table result = nullptr;
 
     /* Sanity check */
-    ASSERT_DEBUG_SYNC(bmp_blob != NULL &&
-                      dat_blob != NULL,
+    ASSERT_DEBUG_SYNC(bmp_blob != nullptr &&
+                      dat_blob != nullptr,
                       "Input blob(s) are NULL.");
 
-    if (bmp_blob != NULL &&
-        dat_blob != NULL)
+    if (bmp_blob != nullptr &&
+        dat_blob != nullptr)
     {
         /* Load .dat file */
         _gfx_bfg_font_table_dat dat_blob_data;
@@ -323,10 +323,10 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create_from_ptr(system_
         /* If we're fine, carry on with .bmp file */
         gfx_image bmp_blob_data = gfx_bmp_load_from_memory( (const unsigned char*) bmp_blob);
 
-        ASSERT_DEBUG_SYNC(bmp_blob_data != NULL,
+        ASSERT_DEBUG_SYNC(bmp_blob_data != nullptr,
                           "Could not load .bmp blob");
 
-        if (bmp_blob_data == NULL)
+        if (bmp_blob_data == nullptr)
         {
             LOG_ERROR("Could not load BFG .bmp blob.");
 
@@ -420,7 +420,7 @@ PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_size(gfx_bfg_font_table
 PUBLIC EMERALD_API const unsigned char* gfx_bfg_font_table_get_data_pointer(gfx_bfg_font_table font_table)
 {
     _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
-    const unsigned char* result         = NULL;
+    const unsigned char* result         = nullptr;
 
     gfx_image_get_mipmap_property(font_table_ptr->bmp_data,
                                   0,

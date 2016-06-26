@@ -1537,7 +1537,7 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
                 uint32_t context_fb_size[2] = {0};
 
                 ral_context_get_property(node_ptr->parent_segment_ptr->context,
-                                         RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE,
+                                         RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE,
                                          context_fb_size);
 
                 requested_texture_depth  = 1;
@@ -2111,7 +2111,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
      *
      * TODO: Some postprocessors will want to use HDR color format. We shouldn't be using FB format here. */
     ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+                             RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT,
                              &context_fb_color_format);
 
     /* Create a new instance */

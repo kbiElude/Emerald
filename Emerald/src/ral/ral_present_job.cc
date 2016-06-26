@@ -6,7 +6,9 @@
 #include "shared.h"
 #include "ral/ral_present_job.h"
 #include "ral/ral_present_task.h"
+#include "system/system_dag.h"
 #include "system/system_hash64map.h"
+#include "system/system_resizable_vector.h"
 
 typedef struct _ral_present_job_connection
 {
@@ -28,10 +30,36 @@ typedef struct _ral_present_job_connection
 
 } _ral_present_job_connection;
 
+typedef struct _ral_present_job_task
+{
+    system_dag_node  dag_node;
+    ral_present_task task; 
+
+    explicit _ral_present_job_task(system_dag_node  in_dag_node,
+                                   ral_present_task in_task)
+    {
+        dag_node = in_dag_node;
+        task     = in_task;
+    }
+
+    ~_ral_present_job_task()
+    {
+        if (task != nullptr)
+        {
+            ral_present_task_release(task);
+
+            task = nullptr;
+        }
+    }
+} _ral_present_job_task;
+
 typedef struct _ral_present_job
 {
     system_hash64map connections; /* holds & owns _ral_present_job_connection instances */
-    system_hash64map tasks;       /* holds & owns ral_present_task instances */
+    system_hash64map tasks;       /* holds & owns _ral_present_job_task instances */
+
+    system_dag              dag;
+    system_resizable_vector dag_sorted_nodes;
 
     bool                presentable_output_defined;
     uint32_t            presentable_output_id;
@@ -39,8 +67,10 @@ typedef struct _ral_present_job
 
     _ral_present_job()
     {
-        connections                = system_hash64map_create(sizeof(_ral_present_job_connection*) );
-        tasks                      = system_hash64map_create(sizeof(ral_present_task) );
+        connections                = system_hash64map_create       (sizeof(_ral_present_job_connection*) );
+        dag                        = system_dag_create             ();
+        dag_sorted_nodes           = system_resizable_vector_create(16);
+        tasks                      = system_hash64map_create       (sizeof(_ral_present_job_task*) );
         presentable_output_defined = false;
         presentable_output_id      = ~0;
         presentable_output_task_id = ~0;
@@ -77,6 +107,20 @@ typedef struct _ral_present_job
             connections = nullptr;
         }
 
+        if (dag != nullptr)
+        {
+            system_dag_release(dag);
+
+            dag = nullptr;
+        }
+
+        if (dag_sorted_nodes != nullptr)
+        {
+            system_resizable_vector_release(dag_sorted_nodes);
+
+            dag_sorted_nodes = nullptr;
+        }
+
         if (tasks != nullptr)
         {
             uint32_t n_tasks = 0;
@@ -89,16 +133,18 @@ typedef struct _ral_present_job
                           n_task < n_tasks;
                         ++n_task)
             {
-                ral_present_task task = nullptr;
+                _ral_present_job_task* task_ptr = nullptr;
 
                 system_hash64map_get_element_at(tasks,
                                                 n_task,
-                                               &task,
+                                               &task_ptr,
                                                 nullptr); /* result_hash_ptr */
 
-                if (task != nullptr)
+                if (task_ptr != nullptr)
                 {
-                    ral_present_task_release(task);
+                    delete task_ptr;
+
+                    task_ptr = nullptr;
                 }
             }
 
@@ -115,9 +161,11 @@ PUBLIC bool ral_present_job_add_task(ral_present_job      job,
                                      ral_present_task     task,
                                      ral_present_task_id* out_task_id_ptr)
 {
-    _ral_present_job*   job_ptr     = (_ral_present_job*) job;
-    ral_present_task_id new_task_id = 0;
-    bool                result      = false;
+    _ral_present_job*      job_ptr           = reinterpret_cast<_ral_present_job*>(job);
+    system_dag_node        new_task_dag_node = nullptr;
+    ral_present_task_id    new_task_id       = 0;
+    _ral_present_job_task* new_task_ptr      = nullptr;
+    bool                   result            = false;
 
     /* Sanity checks */
     if (job == nullptr)
@@ -137,6 +185,14 @@ PUBLIC bool ral_present_job_add_task(ral_present_job      job,
     }
 
     /* Store the new task, simultaneously assigning it a new ID */
+    new_task_dag_node = system_dag_add_node      (job_ptr->dag,
+                                                  job_ptr);
+    new_task_ptr      = new _ral_present_job_task(new_task_dag_node,
+                                                  task);
+
+    ASSERT_ALWAYS_SYNC(new_task_ptr != nullptr,
+                       "Out of memory");
+
     system_hash64map_get_property(job_ptr->tasks,
                                   SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
                                  &new_task_id);
@@ -147,8 +203,8 @@ PUBLIC bool ral_present_job_add_task(ral_present_job      job,
                       new_task_id);
 
     system_hash64map_insert(job_ptr->tasks,
-                            (system_hash64) new_task_id,
-                            task,
+                            static_cast<system_hash64>(new_task_id),
+                            new_task_ptr,
                             nullptr,  /* on_removal_callback               */
                             nullptr); /* on_removal_callback_user_argument */
 
@@ -169,13 +225,13 @@ PUBLIC bool ral_present_job_connect_tasks(ral_present_job                job,
                                           uint32_t                       n_dst_task_input,
                                           ral_present_job_connection_id* out_connection_id_ptr)
 {
-    ral_present_task              dst_task             = nullptr;
+    _ral_present_job_task*        dst_task_ptr         = nullptr;
     ral_context_object_type       dst_task_input_type;
-    _ral_present_job*             job_ptr              = (_ral_present_job*) job;
+    _ral_present_job*             job_ptr              = reinterpret_cast<_ral_present_job*>(job);
     ral_present_job_connection_id new_connection_id;
     _ral_present_job_connection*  new_connection_ptr   = nullptr;
     bool                          result               = false;
-    ral_present_task              src_task             = nullptr;
+    _ral_present_job_task*        src_task_ptr         = nullptr;
     ral_context_object_type       src_task_output_type;
 
     /* Sanity checks */
@@ -189,7 +245,7 @@ PUBLIC bool ral_present_job_connect_tasks(ral_present_job                job,
 
     if (!system_hash64map_get(job_ptr->tasks,
                               src_task_id,
-                             &src_task) )
+                             &src_task_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "The specified job does not contain a task with ID [%d] (to be used as a source for a new connection)",
@@ -200,7 +256,7 @@ PUBLIC bool ral_present_job_connect_tasks(ral_present_job                job,
 
     if (!system_hash64map_get(job_ptr->tasks,
                               dst_task_id,
-                             &dst_task) )
+                             &dst_task_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "The specified job does not contain a task with ID [%d] (to be used as a destination for a new connection)",
@@ -209,12 +265,12 @@ PUBLIC bool ral_present_job_connect_tasks(ral_present_job                job,
         goto end;
     }
 
-    ral_present_task_get_io_property(src_task,
+    ral_present_task_get_io_property(src_task_ptr->task,
                                      RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
                                      n_src_task_output,
                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                      (void**) &src_task_output_type);
-    ral_present_task_get_io_property(dst_task,
+    ral_present_task_get_io_property(dst_task_ptr->task,
                                      RAL_PRESENT_TASK_IO_TYPE_INPUT,
                                      n_dst_task_input,
                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
@@ -252,6 +308,11 @@ PUBLIC bool ral_present_job_connect_tasks(ral_present_job                job,
                             nullptr,  /* on_remove_callback          */
                             nullptr); /* on_remove_callback_user_arg */
 
+    /* Update the DAG */
+    system_dag_add_connection(job_ptr->dag,
+                              src_task_ptr->dag_node,
+                              dst_task_ptr->dag_node);
+
     /* All done */
     *out_connection_id_ptr = new_connection_id;
     result                 = true;
@@ -280,7 +341,7 @@ PUBLIC bool ral_present_job_get_connection_id_at_index(ral_present_job          
                                                        uint32_t                       n_connection,
                                                        ral_present_job_connection_id* out_result_ptr)
 {
-    _ral_present_job* job_ptr               = (_ral_present_job*) job;
+    _ral_present_job* job_ptr               = reinterpret_cast<_ral_present_job*>(job);
     uint32_t          n_connections_defined = 0;
     bool              result                = false;
 
@@ -321,7 +382,7 @@ PUBLIC bool ral_present_job_get_connection_property(ral_present_job             
                                                     void*                               out_result_ptr)
 {
     _ral_present_job_connection* connection_ptr = nullptr;
-    _ral_present_job*            job_ptr        = (_ral_present_job*)job;
+    _ral_present_job*            job_ptr        = reinterpret_cast<_ral_present_job*>(job);
     bool                         result         = false;
 
     /* Sanity checks */
@@ -334,7 +395,7 @@ PUBLIC bool ral_present_job_get_connection_property(ral_present_job             
     }
 
     if (!system_hash64map_get(job_ptr->connections,
-                              (system_hash64) connection_id,
+                              static_cast<system_hash64>(connection_id),
                              &connection_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
@@ -393,7 +454,7 @@ PUBLIC void ral_present_job_get_property(ral_present_job          job,
                                          ral_present_job_property property,
                                          void*                    out_result_ptr)
 {
-    _ral_present_job* job_ptr = (_ral_present_job*) job;
+    _ral_present_job* job_ptr = reinterpret_cast<_ral_present_job*>(job);
 
     /* Sanity checks */
     if (job_ptr == nullptr)
@@ -444,6 +505,38 @@ end:
 }
 
 /** Please see header for spec */
+PUBLIC bool ral_present_job_get_sorted_tasks(ral_present_job    present_job,
+                                             uint32_t*          out_n_tasks,
+                                             ral_present_task** out_tasks)
+{
+    _ral_present_job* present_job_ptr = reinterpret_cast<_ral_present_job*>(present_job);
+    bool              result          = false;
+
+    if (system_dag_is_dirty(present_job_ptr->dag) )
+    {
+        result = system_dag_get_topologically_sorted_node_values(present_job_ptr->dag,
+                                                                 present_job_ptr->dag_sorted_nodes);
+    }
+    else
+    {
+        result = true;
+    }
+
+    if (result)
+    {
+        system_resizable_vector_get_property(present_job_ptr->dag_sorted_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             (void*) out_n_tasks);
+
+        system_resizable_vector_get_property(present_job_ptr->dag_sorted_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                             out_tasks);
+    }
+
+    return result;
+}
+
+/** Please see header for spec */
 PUBLIC void ral_present_job_release(ral_present_job job)
 {
     delete (_ral_present_job*) job;
@@ -454,10 +547,10 @@ PUBLIC bool ral_present_job_set_presentable_output(ral_present_job     job,
                                                    ral_present_task_id task_id,
                                                    uint32_t            n_output)
 {
-    _ral_present_job*       job_ptr = (_ral_present_job*) job;
-    bool                    result  = false;
-    ral_present_task        task    = nullptr;
+    _ral_present_job*       job_ptr          = reinterpret_cast<_ral_present_job*>(job);
+    bool                    result           = false;
     ral_context_object_type task_output_type;
+    _ral_present_job_task*  task_ptr         = nullptr;
 
     /* Sanity checks */
     if (job_ptr == nullptr)
@@ -470,7 +563,7 @@ PUBLIC bool ral_present_job_set_presentable_output(ral_present_job     job,
 
     if (!system_hash64map_get(job_ptr->tasks,
                               task_id,
-                             &task) )
+                             &task_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "No RAL present task with ID [%d] found",
@@ -479,7 +572,7 @@ PUBLIC bool ral_present_job_set_presentable_output(ral_present_job     job,
         goto end;
     }
 
-    if (!ral_present_task_get_io_property(task,
+    if (!ral_present_task_get_io_property(task_ptr->task,
                                           RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
                                           n_output,
                                           RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,

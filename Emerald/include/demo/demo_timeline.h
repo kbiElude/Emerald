@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * The timeline is one of the core objects for demo applications. It allows the apps to define
  * what contents should be generated/rendered/transferred between objects for each frame, as well as
@@ -231,6 +231,8 @@ PUBLIC EMERALD_API bool demo_timeline_move_segment(demo_timeline              ti
 
 /** TODO
  *
+ *  Internal usage only.
+ *
  *  @param timeline                       TODO
  *  @param frame_time                     TODO
  *  @param rendering_area_px_topdown [0]: x1 of the rendering area (in pixels)
@@ -240,10 +242,10 @@ PUBLIC EMERALD_API bool demo_timeline_move_segment(demo_timeline              ti
  *
  *  @return TODO 
  */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timeline timeline,
-                                                                    uint32_t      frame_index,
-                                                                    system_time   frame_time,
-                                                                    const int*    rendering_area_px_topdown);
+PUBLIC ral_present_job demo_timeline_render(demo_timeline timeline,
+                                            uint32_t      frame_index,
+                                            system_time   frame_time,
+                                            const int*    rendering_area_px_topdown);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_timeline_resize_segment(demo_timeline              timeline,

@@ -31,6 +31,18 @@ typedef enum
     RAL_COMMAND_BUFFER_CALLBACK_ID_COUNT
 } ral_command_buffer_callback_id;
 
+typedef struct ral_command_buffer_copy_buffer_to_buffer_command_info
+{
+    ral_buffer dst_buffer;
+    ral_buffer src_buffer;
+
+    uint32_t dst_buffer_start_offset;
+    uint32_t src_buffer_start_offset;
+
+    uint32_t size;
+
+} ral_command_buffer_copy_buffer_to_buffer_command_info;
+
 typedef struct ral_command_buffer_copy_texture_to_texture_command_info
 {
     ral_texture_aspect_bits aspect;
@@ -467,9 +479,15 @@ PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buf
                                                                  const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs);
 
 /** TODO */
+PUBLIC void ral_command_buffer_record_copy_buffer_to_buffer(ral_command_buffer                                           recording_command_buffer,
+                                                            uint32_t                                                     n_copy_ops,
+                                                            const ral_command_buffer_copy_buffer_to_buffer_command_info* copy_op_ptrs);
+
+/** TODO */
 PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer                                             recording_command_buffer,
                                                               uint32_t                                                       n_copy_ops,
                                                               const ral_command_buffer_copy_texture_to_texture_command_info* copy_op_ptrs);
+
 /** TODO */
 PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer                                       recording_command_buffer,
                                                         uint32_t                                                 n_draw_calls,

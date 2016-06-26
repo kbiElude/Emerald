@@ -12,7 +12,8 @@ REFCOUNT_INSERT_DECLARATIONS(ral_rendering_handler,
                              ral_rendering_handler)
 
 typedef void* (*PFNRALRENDERINGHANDLERCREATERABACKENDRENDERINGHANDLERPROC)(ral_rendering_handler                   rendering_handler_ral);
-typedef bool  (*PFNRALRENDERINGHANDLERDRAWFRAMECALLBACKPROC)              (void*                                   rendering_handler_raBackend);
+typedef void  (*PFNRALRENDERINGHANDLEREXECUTEPRESENTJOB)                  (void*                                   rendering_handler_raBackend,
+                                                                           ral_present_job                         present_job);
 typedef void  (*PFNRALRENDERINGHANDLERINITRABACKENDRENDERINGHANDLERPROC)  (ral_context                             context,
                                                                            ral_rendering_handler                   rendering_handler_ral,
                                                                            void*                                   rendering_handler_raBackend);
@@ -25,7 +26,6 @@ typedef void  (*PFNRALRENDERINGHANDLERRELEASEBACKENDRENDERINGHANDLERPROC) (void*
 typedef bool  (*PFNRALRENDERINGHANDLERREQUESTRENDERINGCALLBACKPROC)       (void*                                   rendering_handler_raBackend,
                                                                            PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
                                                                            void*                                   user_arg,
-                                                                           bool                                    swap_buffers_afterward,
                                                                            raGL_rendering_handler_execution_mode   execution_mode);
 typedef void  (*PFNRALRENDERINGHANDLERWAITEVENTCALLBACKPROC)              (uint32_t                                id,
                                                                            void*                                   rendering_handler_raBackend);
@@ -158,11 +158,10 @@ PUBLIC bool ral_rendering_handler_is_current_thread_rendering_thread(ral_renderi
 PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
                                        system_time           start_time);
 
-/** NOTE: THIS ENTRY-POINT WILL BE REMOVED SHORTLY. */
+/** TODO */
 PUBLIC EMERALD_API bool ral_rendering_handler_request_rendering_callback(ral_rendering_handler                   rendering_handler,
                                                                          PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
                                                                          void*                                   user_arg,
-                                                                         bool                                    swap_buffers_afterward = false,
                                                                          raGL_rendering_handler_execution_mode   execution_mode         = RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
 
 /** TODO */

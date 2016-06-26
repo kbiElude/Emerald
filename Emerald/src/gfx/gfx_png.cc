@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -45,19 +45,19 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
                                               const unsigned char*      in_data_ptr)
 {
     /* Open file handle */
-    unsigned char*         data_ptr                  = NULL;
+    unsigned char*         data_ptr                  = nullptr;
     _mem_load_helper       mem_load_helper;
     unsigned int           n_components              = 0;
-    png_infop              png_info_ptr              = NULL;
-    png_structp            png_ptr                   = NULL;
-    gfx_image              result                    = NULL;
+    png_infop              png_info_ptr              = nullptr;
+    png_structp            png_ptr                   = nullptr;
+    gfx_image              result                    = nullptr;
     unsigned int           row_size                  = 0;
-    system_file_serializer serializer                = NULL;
+    system_file_serializer serializer                = nullptr;
     bool                   should_release_serializer = false;
 
     if (should_load_from_file)
     {
-        if (file_unpacker == NULL)
+        if (file_unpacker == nullptr)
         {
             serializer                = system_file_serializer_create_for_reading(file_name,
                                                                                   false); /* async_read */
@@ -88,7 +88,7 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
         system_file_serializer_get_property(serializer,
                                             SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
                                            &in_data_ptr);
-    } /* if (should_load_from_file) */
+    }
 
     /* Initialize libpng */
     png_ptr = ::png_create_read_struct(PNG_LIBPNG_VER_STRING,
@@ -96,10 +96,10 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
                                        0,  /* error_fn */
                                        0); /* warn_fn */
 
-    ASSERT_ALWAYS_SYNC(png_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(png_ptr != nullptr,
                        "Could not create png_struct instance.");
 
-    if (png_ptr == 0)
+    if (png_ptr == nullptr)
     {
         LOG_FATAL("Could not create png_struct instance.");
 
@@ -108,10 +108,10 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
 
     png_info_ptr = png_create_info_struct(png_ptr);
 
-    ASSERT_ALWAYS_SYNC(png_info_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(png_info_ptr != nullptr,
                        "Could not create png_info instance.");
 
-    if (png_info_ptr == NULL)
+    if (png_info_ptr == nullptr)
     {
         LOG_FATAL("Could not create png_info instance.");
 
@@ -137,8 +137,8 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
     /* Read the file */
     png_read_png(png_ptr,
                  png_info_ptr,
-                 0,              /* transforms */
-                 png_voidp_NULL);
+                 0, /* transforms */
+                 nullptr);
 
     /* Make sure we support the file */
     ASSERT_ALWAYS_SYNC(png_ptr->bit_depth == 8,
@@ -172,11 +172,11 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
     data_ptr     = new (std::nothrow) unsigned char[n_components * png_info_ptr->width * png_info_ptr->height];
     row_size     = n_components * png_info_ptr->width;
 
-    ASSERT_ALWAYS_SYNC(data_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(data_ptr != nullptr,
                        "Out of memory while allocating space for decompressed content storage of file [%s]",
                        system_hashed_ansi_string_get_buffer(file_name) );
 
-    if (data_ptr == NULL)
+    if (data_ptr == nullptr)
     {
         LOG_FATAL("Out of memory while allocating space for decompressed content storage of file [%s]",
                   system_hashed_ansi_string_get_buffer(file_name) );
@@ -196,10 +196,10 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
     /* Create the result object */
     result = gfx_image_create(file_name);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "gfx_image_create() call failed");
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         goto end;
     }
@@ -208,7 +208,7 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
                          png_info_ptr->width,
                          png_info_ptr->height,
                          1,
-                         RAL_TEXTURE_FORMAT_SRGB8_UNORM,
+                         RAL_FORMAT_SRGB8_UNORM,
                          false,                  /* is_compressed */
                          data_ptr,
                          n_components * png_info_ptr->width * png_info_ptr->height,
@@ -219,13 +219,13 @@ PRIVATE gfx_image gfx_png_shared_load_handler(bool                      should_l
 end:
     png_destroy_read_struct(&png_ptr,
                             &png_info_ptr,
-                             png_infopp_NULL);
+                             nullptr);
 
     if (should_release_serializer)
     {
         system_file_serializer_release(serializer);
 
-        serializer = NULL;
+        serializer = nullptr;
     }
 
     return result;
@@ -235,27 +235,27 @@ end:
 PUBLIC EMERALD_API gfx_image gfx_png_load_from_file(system_hashed_ansi_string file_name,
                                                     system_file_unpacker      file_unpacker)
 {
-    ASSERT_DEBUG_SYNC(file_name != NULL,
+    ASSERT_DEBUG_SYNC(file_name != nullptr,
                       "Cannot use NULL file name.");
 
-    if (file_name != NULL)
+    if (file_name != nullptr)
     {
-        return gfx_png_shared_load_handler(true,          /* should_load_from_file */
+        return gfx_png_shared_load_handler(true, /* should_load_from_file */
                                            file_name,
                                            file_unpacker,
-                                           NULL);
+                                           nullptr);
     }
     else
     {
-        return NULL;
+        return nullptr;
     }
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API gfx_image gfx_png_load_from_memory(const unsigned char* data_ptr)
 {
-    return gfx_png_shared_load_handler(false,                                                /* should_load_from_file */
+    return gfx_png_shared_load_handler(false, /* should_load_from_file */
                                        system_hashed_ansi_string_get_default_empty_string(),
-                                       NULL,                                                 /* file_unpacker */
+                                       nullptr, /* file_unpacker */
                                        data_ptr);
 }

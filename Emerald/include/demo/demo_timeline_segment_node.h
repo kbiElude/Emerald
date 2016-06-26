@@ -1,13 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * This object represents a single segment node which is the smallest functional unit of
  * a postprocessing or a video segment.
  *
  * Each node can take zero or more inputs, and can expose zero or more outputs. The actual
- * functionality is implemented via call-backs. TODO: These are likely to become backend-specific
- * in longer term.
+ * functionality is implemented in command buffers.
  *
  * This functionality is considered internal and should not be used by client apps. External interfaces
  * will call this code directly whenever necessary.

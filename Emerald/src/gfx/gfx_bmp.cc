@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -31,7 +31,7 @@
         int32_t  y_pels_per_meter;
         uint32_t clr_used;
         uint32_t clr_important;
-    } bitmap_info_header;
+    } _gfx_bmp_bitmap_info_header;
 #pragma pack(pop)
 
 /** Please see header for specification */
@@ -41,17 +41,17 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
                                               const unsigned char*      in_data_ptr)
 {
     /* Create or retrieve the file serializer */
-    unsigned char*      data_ptr   = NULL;
-    bitmap_info_header* header_ptr = NULL;
-    gfx_image           result     = NULL;
+    unsigned char*               data_ptr   = nullptr;
+    _gfx_bmp_bitmap_info_header* header_ptr = nullptr;
+    gfx_image                    result     = nullptr;
 
     if (should_load_from_file)
     {
         unsigned int           file_size                 = 0;
-        system_file_serializer serializer                = NULL;
+        system_file_serializer serializer                = nullptr;
         bool                   should_release_serializer = false;
 
-        if (file_unpacker == NULL)
+        if (file_unpacker == nullptr)
         {
             serializer = system_file_serializer_create_for_reading(file_name,
                                                                    false); /* async_read */
@@ -80,7 +80,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
             should_release_serializer = false; /* owned by parent of the file_unpacker */
         }
 
-        if (serializer == NULL)
+        if (serializer == nullptr)
         {
             LOG_FATAL("Could not load file [%s]",
                       system_hashed_ansi_string_get_buffer(file_name) );
@@ -98,11 +98,11 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
 
         data_ptr = new (std::nothrow) unsigned char[ (unsigned int) file_size];
 
-        ASSERT_ALWAYS_SYNC(data_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(data_ptr != nullptr,
                            "Could not allocate memory buffer for file [%s]",
                            system_hashed_ansi_string_get_buffer(file_name) );
 
-        if (data_ptr == NULL)
+        if (data_ptr == nullptr)
         {
             LOG_FATAL("Could not allocate memory buffer for file [%s]",
                       system_hashed_ansi_string_get_buffer(file_name) );
@@ -124,7 +124,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
         {
             system_file_serializer_release(serializer);
 
-            serializer = NULL;
+            serializer = nullptr;
         }
 
         /* Store the pointer in in_data_ptr so that we can refer to the same pointer in following shared parts of the code */
@@ -132,7 +132,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
     }
 
     /* Input data pointer should not be NULL at this point */
-    if (in_data_ptr == NULL)
+    if (in_data_ptr == nullptr)
     {
         LOG_FATAL("Input data pointer is NULL - cannot proceed with loading [%s]",
                   system_hashed_ansi_string_get_buffer(file_name) );
@@ -141,7 +141,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
     }
 
     /* Do a few checks, limiting current bitmap support to raw 24-bits */
-    header_ptr = (bitmap_info_header*) (in_data_ptr + 14 /* sizeof(BITMAPFILEHEADER) */);
+    header_ptr = const_cast<_gfx_bmp_bitmap_info_header*>(reinterpret_cast<const _gfx_bmp_bitmap_info_header*>(in_data_ptr + 14 /* sizeof(BITMAPFILEHEADER) */) );
 
     ASSERT_ALWAYS_SYNC(header_ptr->bit_count == 24,
                        "Only 24-bit .bmp files are supported");
@@ -168,10 +168,10 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
     /* Create the result object */
     result = gfx_image_create(file_name);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "Could not create a gfx_image instance");
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         goto end;
     }
@@ -180,10 +180,10 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
                          header_ptr->width,
                          header_ptr->height,
                          4, /* row_alignment */
-                         RAL_TEXTURE_FORMAT_SRGB8_UNORM,
+                         RAL_FORMAT_SRGB8_UNORM,
                          false,
-                         in_data_ptr + 14 /* sizeof(BITMAPFILEHEADER) */ + sizeof(bitmap_info_header),
-                         gfx_image_get_data_size(RAL_TEXTURE_FORMAT_RGB8_UNORM,
+                         in_data_ptr + 14 /* sizeof(BITMAPFILEHEADER) */ + sizeof(_gfx_bmp_bitmap_info_header),
+                         gfx_image_get_data_size(RAL_FORMAT_RGB8_UNORM,
                                                  header_ptr->width,
                                                  header_ptr->height,
                                                  4),
@@ -194,11 +194,11 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
 end:
     if (should_load_from_file)
     {
-        if (in_data_ptr != NULL)
+        if (in_data_ptr != nullptr)
         {
             delete in_data_ptr;
 
-            in_data_ptr = NULL;
+            in_data_ptr = nullptr;
         }
     }
 
@@ -209,19 +209,19 @@ end:
 PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_file(system_hashed_ansi_string file_name,
                                                     system_file_unpacker      file_unpacker)
 {
-    ASSERT_DEBUG_SYNC(file_name != NULL,
+    ASSERT_DEBUG_SYNC(file_name != nullptr,
                       "Cannot use NULL file name.");
 
-    if (file_name != NULL)
+    if (file_name != nullptr)
     {
         return gfx_bmp_shared_load_handler(true,     /* should_load_from_file */
                                            file_name,
                                            file_unpacker,
-                                           NULL);    /* in_data_ptr */
+                                           nullptr);    /* in_data_ptr */
     }
     else
     {
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -230,6 +230,6 @@ PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_memory(const unsigned char* data_
 {
     return gfx_bmp_shared_load_handler(false, /* should_load_from_file */
                                        system_hashed_ansi_string_get_default_empty_string(),
-                                       NULL, /* file_unpacker */
+                                       nullptr, /* file_unpacker */
                                        data_ptr);
 }

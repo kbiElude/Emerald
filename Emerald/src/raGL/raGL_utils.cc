@@ -409,6 +409,24 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_stencil_op(ral_stencil_op stencil_
 }
 
 /** Please see header for specification */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_aspect(ral_texture_aspect texture_view_aspect)
+{
+    GLenum result = GL_NONE;
+
+    ASSERT_DEBUG_SYNC(texture_view_aspect == RAL_TEXTURE_ASPECT_DEPTH_BIT ||
+                      texture_view_aspect == RAL_TEXTURE_ASPECT_STENCIL_BIT,
+                      "Unsupported ral_texture_aspect value specified.");
+
+    switch (texture_view_aspect)
+    { 
+        case RAL_TEXTURE_ASPECT_DEPTH_BIT:   result = GL_DEPTH_COMPONENT; break;
+        case RAL_TEXTURE_ASPECT_STENCIL_BIT: result = GL_STENCIL_INDEX;   break;
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_data_type(ral_texture_data_type in_data_type)
 {
     GLenum result = GL_NONE;

@@ -30,7 +30,10 @@ typedef enum
     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_OUTPUT_INDEX,
 } ral_present_job_property;
 
-/** TODO */
+/** TODO
+ *
+ *  NOTE: Takes ownership of @param task
+ **/
 PUBLIC bool ral_present_job_add_task(ral_present_job      job,
                                      ral_present_task     task,
                                      ral_present_task_id* out_task_id_ptr);
@@ -61,6 +64,11 @@ PUBLIC bool ral_present_job_get_connection_id_at_index(ral_present_job          
 PUBLIC void ral_present_job_get_property(ral_present_job          job,
                                          ral_present_job_property property,
                                          void*                    out_result_ptr);
+
+/** TODO */
+PUBLIC bool ral_present_job_get_sorted_tasks(ral_present_job    present_job,
+                                             uint32_t*          out_n_tasks,
+                                             ral_present_task** out_tasks);
 
 /** TODO */
 PUBLIC void ral_present_job_release(ral_present_job job);

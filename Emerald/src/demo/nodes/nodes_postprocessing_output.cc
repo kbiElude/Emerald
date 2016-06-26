@@ -3,6 +3,10 @@
  * Emerald (kbi/elude @2015-2016)
  *
  */
+#if 0
+
+TODO
+
 #include "shared.h"
 #include "demo/nodes/nodes_postprocessing_output.h"
 #include "demo/demo_timeline_segment.h"
@@ -171,7 +175,7 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
 
     /* Determine texture format of the system framebuffer's color output. */
     ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+                             RAL_CONTEXT_PROPERTY_SYSTEM_FB_BACK_BUFFER_COLOR_FORMAT,
                             &color_texture_format);
 
     /* Add a new input to the node we own */
@@ -249,7 +253,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool nodes_postprocessing_output_render(demo_timel
                                  &system_fb_raGL_id);
 
     ral_context_get_property(node_ptr->context,
-                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_SIZE,
+                             RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE,
                              fb_size);
 
     /* Blit the data we were provided to the system FB.
@@ -273,3 +277,4 @@ PUBLIC RENDERING_CONTEXT_CALL bool nodes_postprocessing_output_render(demo_timel
 
     return true;
 }
+#endif

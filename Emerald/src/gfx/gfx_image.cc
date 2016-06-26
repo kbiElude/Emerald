@@ -120,9 +120,9 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(system_hashed_ansi_str
                                                           system_file_unpacker      file_unpacker)
 {
 
-    const unsigned char*                                   data                   = nullptr;
-    unsigned int                                           data_total_n_bytes     = 0;
-    size_t                                                 file_size              = 0;
+    const unsigned char*                                   data               = nullptr;
+    unsigned int                                           data_total_n_bytes = 0;
+    size_t                                                 file_size          = 0;
     ogl_context_texture_compression_compressed_blob_header header;
     gfx_image                                              result                    = nullptr;
     const unsigned char*                                   serializer_raw_storage    = nullptr;

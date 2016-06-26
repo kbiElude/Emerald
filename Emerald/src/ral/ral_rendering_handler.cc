@@ -9,6 +9,7 @@
 #include "demo/demo_timeline.h"
 #include "raGL/raGL_rendering_handler.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_job.h"
 #include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -57,6 +58,7 @@ typedef struct
     system_time runtime_time_adjustment_paused_frame_time;
 
     PFNRALRENDERINGHANDLERCREATERABACKENDRENDERINGHANDLERPROC pfn_create_raBackend_rendering_handler_proc;
+    PFNRALRENDERINGHANDLEREXECUTEPRESENTJOB                   pfn_execute_present_job_raBackend_proc;
     PFNRALRENDERINGHANDLERINITRABACKENDRENDERINGHANDLERPROC   pfn_init_raBackend_rendering_handler_proc;
     PFNRALRENDERINGHANDLERPOSTDRAWFRAMECALLBACKPROC           pfn_post_draw_frame_raBackend_proc;
     PFNRALRENDERINGHANDLERPREDRAWFRAMECALLBACKPROC            pfn_pre_draw_frame_raBackend_proc;
@@ -426,14 +428,14 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
     /* Playback in progress - determine frame index and frame time. */
     if (rendering_handler_ptr->playback_status == RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
     {
-        float        aspect_ratio       = 0.0f;
-        system_time  curr_time          = system_time_now();
-        int32_t      frame_index        = 0;
-        bool         has_rendered_frame = false;
-        system_time  new_frame_time     = 0;
-        int          rendering_area[4]  = {0};
-        uint32_t     window_size[2];
-        uint32_t     window_x1y1x2y2[4];
+        float           aspect_ratio      = 0.0f;
+        system_time     curr_time         = system_time_now();
+        int32_t         frame_index       = 0;
+        ral_present_job frame_present_job = nullptr;
+        system_time     new_frame_time    = 0;
+        int             rendering_area[4] = {0};
+        uint32_t        window_size[2];
+        uint32_t        window_x1y1x2y2[4];
 
         system_window_get_property(rendering_handler_ptr->context_window,
                                    SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
@@ -538,34 +540,44 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
             if (rendering_handler_ptr->pfn_rendering_callback != nullptr ||
                 rendering_handler_ptr->timeline               != nullptr)
             {
-                 /* If timeline instance is specified, prefer it over the rendering call-back func ptr */
+                 /* If timeline instance has been specified, prefer it over the rendering call-back func ptr */
                  if (rendering_handler_ptr->timeline != nullptr)
                  {
-                     has_rendered_frame = demo_timeline_render(rendering_handler_ptr->timeline,
-                                                               frame_index,
-                                                               new_frame_time,
-                                                               rendering_area);
+                     frame_present_job = demo_timeline_render(rendering_handler_ptr->timeline,
+                                                              frame_index,
+                                                              new_frame_time,
+                                                              rendering_area);
                  }
                  else
                  {
                      if (rendering_handler_ptr->pfn_rendering_callback != nullptr)
                      {
-                         rendering_handler_ptr->pfn_rendering_callback(rendering_handler_ptr->context,
-                                                                       frame_index,
-                                                                       new_frame_time,
-                                                                       rendering_area,
-                                                                       rendering_handler_ptr->rendering_callback_user_arg);
-
-                         has_rendered_frame = true;
+                         frame_present_job = rendering_handler_ptr->pfn_rendering_callback(rendering_handler_ptr->context,
+                                                                                           frame_index,
+                                                                                           new_frame_time,
+                                                                                           rendering_area,
+                                                                                           rendering_handler_ptr->rendering_callback_user_arg);
                      }
                  }
 
-                rendering_handler_ptr->pfn_post_draw_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
-                                                                          has_rendered_frame);
+                 if (frame_present_job != nullptr)
+                 {
+                     rendering_handler_ptr->pfn_execute_present_job_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
+                                                                                   frame_present_job);
+                 }
+
+                 rendering_handler_ptr->pfn_post_draw_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
+                                                                           (frame_present_job != nullptr) );
             }
 
-            if (has_rendered_frame)
+            if (frame_present_job != nullptr)
             {
+                bool should_swap_buffers = false;
+
+                ral_present_job_get_property(frame_present_job,
+                                             RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
+                                            &should_swap_buffers);
+
                 #if 0
                     todo
 
@@ -578,8 +590,11 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                 rendering_handler_ptr->last_frame_index = frame_index;
                 rendering_handler_ptr->last_frame_time  = new_frame_time;
 
-                rendering_handler_ptr->pfn_present_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
-                                                                        rendering_handler_ptr->rendering_cs);
+                if (should_swap_buffers)
+                {
+                    rendering_handler_ptr->pfn_present_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
+                                                                            rendering_handler_ptr->rendering_cs);
+                }
 
                 if (rendering_handler_ptr->policy == RAL_RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST)
                 {
@@ -588,7 +603,10 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                     system_event_reset(rendering_handler_ptr->playback_in_progress_event);
                     system_event_set  (rendering_handler_ptr->playback_stopped_event);
                 }
+
+                ral_present_job_release(frame_present_job);
             }
+
             system_critical_section_leave(rendering_handler_ptr->rendering_cs);
         }
     }
@@ -938,6 +956,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
         new_handler_ptr->playback_stopped_event                       = system_event_create(true); /* manual_reset */
         new_handler_ptr->playback_waiting_event                       = system_event_create(false); /* manual_reset */
         new_handler_ptr->pfn_create_raBackend_rendering_handler_proc  = nullptr;
+        new_handler_ptr->pfn_execute_present_job_raBackend_proc       = nullptr;
         new_handler_ptr->pfn_init_raBackend_rendering_handler_proc    = nullptr;
         new_handler_ptr->pfn_post_draw_frame_raBackend_proc           = nullptr;
         new_handler_ptr->pfn_pre_draw_frame_raBackend_proc            = nullptr;
@@ -988,6 +1007,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
             {
                 pfn_enumerate_custom_wait_event_handlers_proc                  = raGL_rendering_handler_enumerate_custom_wait_event_handlers;
                 new_handler_ptr->pfn_create_raBackend_rendering_handler_proc   = raGL_rendering_handler_create;
+                new_handler_ptr->pfn_execute_present_job_raBackend_proc        = raGL_rendering_handler_execute_present_job;
                 new_handler_ptr->pfn_init_raBackend_rendering_handler_proc     = raGL_rendering_handler_init_from_rendering_thread;
                 new_handler_ptr->pfn_post_draw_frame_raBackend_proc            = raGL_rendering_handler_post_draw_frame;
                 new_handler_ptr->pfn_pre_draw_frame_raBackend_proc             = raGL_rendering_handler_pre_draw_frame;
@@ -1310,7 +1330,6 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
 PUBLIC EMERALD_API bool ral_rendering_handler_request_rendering_callback(ral_rendering_handler                   rendering_handler,
                                                                          PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
                                                                          void*                                   user_arg,
-                                                                         bool                                    swap_buffers_afterward,
                                                                          raGL_rendering_handler_execution_mode   execution_mode)
 {
     _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
@@ -1318,7 +1337,6 @@ PUBLIC EMERALD_API bool ral_rendering_handler_request_rendering_callback(ral_ren
     return rendering_handler_ptr->pfn_request_rendering_callback_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
                                                                                 pfn_callback_proc,
                                                                                 user_arg,
-                                                                                swap_buffers_afterward,
                                                                                 execution_mode);
 }
 

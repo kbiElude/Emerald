@@ -9,6 +9,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_job.h"
 #include "system/system_atomics.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
@@ -1537,11 +1538,12 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timeline timeline,
-                                                                    uint32_t      frame_index,
-                                                                    system_time   frame_time,
-                                                                    const int*    rendering_area_px_topdown)
+PUBLIC ral_present_job demo_timeline_render(demo_timeline timeline,
+                                            uint32_t      frame_index,
+                                            system_time   frame_time,
+                                            const int*    rendering_area_px_topdown)
 {
+    ral_present_job                 result_present_job        = ral_present_job_create();
     demo_timeline_segment           postprocessing_segment    = nullptr;
     uint32_t                        n_postprocessing_segments = 0;
     bool                            result                    = false;
@@ -1614,6 +1616,9 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
         }
 
         /* Render the segment */
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO");
+
         result = demo_timeline_segment_render(postprocessing_segment,
                                               frame_index,
                                               rendering_pipeline_time,
@@ -1624,7 +1629,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
 end:
     system_critical_section_leave(timeline_ptr->cs);
 
-    return result;
+    return result_present_job;
 }
 
 /** Please see header for spec */
