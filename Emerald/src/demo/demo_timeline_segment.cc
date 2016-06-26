@@ -151,7 +151,7 @@ typedef struct _demo_timeline_segment
                                                                        * item order DOES NOT need to correspond to node ID.
                                                                        * Use node_id_to_node_descriptor_map to find descriptor of nodes with specific IDs */
     _demo_timeline_segment_node_item* output_node_ptr;                /* DO NOT release */
-    ral_texture_format                output_texture_format;
+    ral_format                        output_texture_format;
     demo_timeline_segment_time_mode   time_mode;
     demo_timeline                     timeline;
     demo_timeline_segment_type        type;
@@ -173,7 +173,7 @@ typedef struct _demo_timeline_segment
     explicit _demo_timeline_segment(ral_context                in_context,
                                     system_hashed_ansi_string  in_name,
                                     demo_timeline              in_timeline,
-                                    ral_texture_format         in_output_texture_format,
+                                    ral_format                 in_output_texture_format,
                                     system_time                in_start_time,
                                     system_time                in_end_time,
                                     demo_timeline_segment_type in_type,
@@ -418,8 +418,6 @@ PRIVATE void                      _demo_timeline_segment_on_video_segment_resize
 PRIVATE void                      _demo_timeline_segment_release                                      (void*                             segment);
 PRIVATE void                      _demo_timeline_segment_update_global_subscriptions                  (_demo_timeline_segment*           segment_ptr,
                                                                                                        bool                              should_subscribe);
-PRIVATE void                      _demo_timeline_segment_update_node_input_texture_attachments        (_demo_timeline_segment_node_item* node_ptr);
-PRIVATE void                      _demo_timeline_segment_update_node_output_texture_attachments       (_demo_timeline_segment_node_item* node_ptr);
 PRIVATE void                      _demo_timeline_segment_update_node_subscriptions                    (_demo_timeline_segment*           segment_ptr,
                                                                                                        demo_timeline_segment_node        node,
                                                                                                        bool                              should_subscribe);
@@ -1778,9 +1776,9 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
         output_segment_node_input_info.texture_n_samples      = 1;
         output_segment_node_input_info.texture_type           = RAL_TEXTURE_TYPE_2D;
 
-        ral_utils_get_texture_format_property(segment_ptr->output_texture_format,
-                                              RAL_TEXTURE_FORMAT_PROPERTY_N_COMPONENTS,
-                                             &output_segment_node_input_info.texture_n_components);
+        ral_utils_get_format_property(segment_ptr->output_texture_format,
+                                      RAL_FORMAT_PROPERTY_N_COMPONENTS,
+                                     &output_segment_node_input_info.texture_n_components);
 
         if (!demo_timeline_segment_node_add_texture_input(new_segment_node,
                                                          &output_segment_node_input_info,
@@ -2097,10 +2095,8 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
                                                                          system_time               end_time,
                                                                          demo_timeline_segment_id  id)
 {
-    ral_framebuffer*        context_fbs                     = nullptr;
-    ral_texture             context_fb_color_texture        = nullptr;
-    ral_texture_format      context_fb_color_texture_format = RAL_TEXTURE_FORMAT_UNKNOWN;
-    _demo_timeline_segment* new_segment_ptr                 = nullptr;
+    ral_format              context_fb_color_format = RAL_FORMAT_UNKNOWN;
+    _demo_timeline_segment* new_segment_ptr         = nullptr;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(context != nullptr,
@@ -2111,43 +2107,18 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
                       system_hashed_ansi_string_get_length(name) > 0,
                       "Invalid postprocessing segment name specified");
 
-    /* Retrieve format of the system FB's color attachment */
-    {
-        ral_context_get_property(context,
-                                 RAL_CONTEXT_PROPERTY_N_OF_SYSTEM_FRAMEBUFFERS,
-                                &n_system_fbs);
-
-        ASSERT_DEBUG_SYNC(n_system_fbs > 0,
-                          "Zero system framebuffers reported");
-
-        context_fbs = new (std::nothrow) ral_framebuffer[n_system_fbs];
-
-        ASSERT_ALWAYS_SYNC(context_fbs != nullptr,
-                           "Out of memory");
-
-        ral_context_get_property               (context,
-                                                RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
-                                                context_fbs);
-        ral_framebuffer_get_attachment_property(context_fbs[0],
-                                                RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
-                                                0, /* index */
-                                                RAL_FRAMEBUFFER_ATTACHMENT_PROPERTY_BOUND_TEXTURE_RAL,
-                                               &context_fb_color_texture);
-
-        ral_texture_get_property(context_fb_color_texture,
-                                 RAL_TEXTURE_PROPERTY_FORMAT,
-                                &context_fb_color_texture_format);
-
-        delete [] context_fbs;
-        context_fbs = nullptr;
-    }
+    /* Retrieve format of the system FB's color attachment.
+     *
+     * TODO: Some postprocessors will want to use HDR color format. We shouldn't be using FB format here. */
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFER_COLOR_ATTACHMENT_TEXTURE_FORMAT,
+                             &context_fb_color_format);
 
     /* Create a new instance */
-
     new_segment_ptr = new (std::nothrow) _demo_timeline_segment(context,
                                                                 name,
                                                                 owner_timeline,
-                                                                context_fb_color_texture_format,
+                                                                context_fb_color_format,
                                                                 start_time,
                                                                 end_time,
                                                                 DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,
@@ -2186,7 +2157,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
 /** Please see header for specification */
 PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ral_context               context,
                                                                 demo_timeline             owner_timeline,
-                                                                ral_texture_format        output_texture_format,
+                                                                ral_format                output_texture_format,
                                                                 system_hashed_ansi_string name,
                                                                 system_time               start_time,
                                                                 system_time               end_time,
@@ -2200,7 +2171,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ral_context     
     ASSERT_DEBUG_SYNC(name != nullptr                                &&
                       system_hashed_ansi_string_get_length(name) > 0,
                       "Invalid video segment name specified");
-    ASSERT_DEBUG_SYNC(output_texture_format < RAL_TEXTURE_FORMAT_COUNT,
+    ASSERT_DEBUG_SYNC(output_texture_format < RAL_FORMAT_COUNT,
                       "Invalid output texture format requested.");
     ASSERT_DEBUG_SYNC(start_time < end_time,
                       "Segment's start time does not precede its end time");

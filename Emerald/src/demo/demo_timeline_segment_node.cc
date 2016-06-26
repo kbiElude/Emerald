@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -17,7 +17,7 @@
 
 typedef struct _demo_timeline_segment_node_texture_io
 {
-    ral_texture_format                  format;
+    ral_format                          format;
     uint32_t                            id;
     bool                                is_attachment_required;
     system_hashed_ansi_string           name;
@@ -33,14 +33,14 @@ typedef struct _demo_timeline_segment_node_texture_io
     explicit _demo_timeline_segment_node_texture_io(_demo_timeline_segment_node* in_parent_node_ptr,
                                                     uint32_t                     in_id,
                                                     system_hashed_ansi_string    in_name,
-                                                    ral_texture_format           in_format,
+                                                    ral_format                   in_format,
                                                     unsigned int                 in_n_layers,
                                                     unsigned int                 in_texture_n_components,
                                                     unsigned int                 in_n_samples,
                                                     ral_texture_type             in_type,
                                                     bool                         in_is_attachment_required)
     {
-        bound_texture          = NULL;
+        bound_texture          = nullptr;
         format                 = in_format;
         id                     = in_id;
         is_attachment_required = in_is_attachment_required;
@@ -108,72 +108,72 @@ typedef struct _demo_timeline_segment_node
         texture_input_id_to_texture_io_descriptor_map  = system_hash64map_create(sizeof(_demo_timeline_segment_node_texture_io*)  );
         texture_output_id_to_texture_io_descriptor_map = system_hash64map_create(sizeof(_demo_timeline_segment_node_texture_io*) );
 
-        ASSERT_ALWAYS_SYNC(callback_manager != NULL,
+        ASSERT_ALWAYS_SYNC(callback_manager != nullptr,
                            "Could not spawn the callback manager");
-        ASSERT_ALWAYS_SYNC(texture_inputs != NULL,
+        ASSERT_ALWAYS_SYNC(texture_inputs != nullptr,
                            "Could not spawn the video segment texture inputs vector");
-        ASSERT_ALWAYS_SYNC(texture_input_id_to_texture_io_descriptor_map != NULL,
+        ASSERT_ALWAYS_SYNC(texture_input_id_to_texture_io_descriptor_map != nullptr,
                            "Could not spawn the texture input ID->texture IO descriptor hash map");
-        ASSERT_ALWAYS_SYNC(texture_outputs != NULL,
+        ASSERT_ALWAYS_SYNC(texture_outputs != nullptr,
                            "Could not spawn the video segment texture outputs vector");
-        ASSERT_ALWAYS_SYNC(texture_output_id_to_texture_io_descriptor_map != NULL,
+        ASSERT_ALWAYS_SYNC(texture_output_id_to_texture_io_descriptor_map != nullptr,
                            "Could not spawn the texture output ID->texture IO descriptor hash map");
     }
 
     ~_demo_timeline_segment_node()
     {
         /* Release the owned objects */
-        if (texture_input_id_to_texture_io_descriptor_map != NULL)
+        if (texture_input_id_to_texture_io_descriptor_map != nullptr)
         {
             system_hash64map_release(texture_input_id_to_texture_io_descriptor_map);
 
-            texture_input_id_to_texture_io_descriptor_map = NULL;
-        } /* if (texture_input_id_to_texture_io_descriptor_map != NULL) */
+            texture_input_id_to_texture_io_descriptor_map = nullptr;
+        }
 
-        if (texture_inputs != NULL)
+        if (texture_inputs != nullptr)
         {
-            _demo_timeline_segment_node_texture_io* texture_io_ptr = NULL;
+            _demo_timeline_segment_node_texture_io* texture_io_ptr = nullptr;
 
             while (system_resizable_vector_pop(texture_inputs,
                                               &texture_io_ptr) )
             {
                 delete texture_io_ptr;
-                texture_io_ptr = NULL;
+                texture_io_ptr = nullptr;
             }
 
             system_resizable_vector_release(texture_inputs);
-            texture_inputs = NULL;
-        } /* if (texture_inputs != NULL) */
+            texture_inputs = nullptr;
+        }
 
-        if (texture_output_id_to_texture_io_descriptor_map != NULL)
+        if (texture_output_id_to_texture_io_descriptor_map != nullptr)
         {
             system_hash64map_release(texture_output_id_to_texture_io_descriptor_map);
 
-            texture_output_id_to_texture_io_descriptor_map = NULL;
-        } /* if (texture_output_id_to_texture_io_descriptor_map != NULL) */
+            texture_output_id_to_texture_io_descriptor_map = nullptr;
+        }
 
-        if (texture_outputs != NULL)
+        if (texture_outputs != nullptr)
         {
-            _demo_timeline_segment_node_texture_io* texture_output_ptr = NULL;
+            _demo_timeline_segment_node_texture_io* texture_output_ptr = nullptr;
 
             while (system_resizable_vector_pop(texture_outputs,
                                               &texture_output_ptr) )
             {
                 delete texture_output_ptr;
 
-                texture_output_ptr = NULL;
+                texture_output_ptr = nullptr;
             }
 
             system_resizable_vector_release(texture_outputs);
-            texture_outputs = NULL;
-        } /* if (texture_outputs != NULL) */
+            texture_outputs = nullptr;
+        }
 
-        if (callback_manager != NULL)
+        if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
 
-            callback_manager = NULL;
-        } /* if (callback_manager != NULL) */
+            callback_manager = nullptr;
+        }
     }
 } _demo_timeline_segment_node;
 
@@ -201,7 +201,7 @@ PRIVATE void _demo_timeline_segment_node_get_input_output_ids(demo_timeline_segm
                                                                                 : node_ptr->texture_outputs;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(node != NULL,
+    ASSERT_DEBUG_SYNC(node != nullptr,
                       "Input node is NULL");
 
     /* Determine the number of inputs the specified video segment has to offer */
@@ -209,7 +209,7 @@ PRIVATE void _demo_timeline_segment_node_get_input_output_ids(demo_timeline_segm
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_vector_elements);
 
-    if (out_opt_n_ids_ptr != NULL)
+    if (out_opt_n_ids_ptr != nullptr)
     {
         *out_opt_n_ids_ptr = n_vector_elements;
     }
@@ -227,7 +227,7 @@ PRIVATE void _demo_timeline_segment_node_get_input_output_ids(demo_timeline_segm
                       n_id < n_ids;
                     ++n_id)
         {
-            void* io = NULL;
+            void* io = nullptr;
 
             if (!system_resizable_vector_get_element_at(data_vector,
                                                         n_id,
@@ -241,8 +241,8 @@ PRIVATE void _demo_timeline_segment_node_get_input_output_ids(demo_timeline_segm
             }
 
             out_opt_ids_ptr[n_id] = ((_demo_timeline_segment_node_texture_io*) io)->id;
-        } /* for (all IDs to store) */
-    } /* if (there's space to copy input IDs to) */
+        }
+    }
 }
 
 /** TODO */
@@ -278,7 +278,7 @@ PRIVATE void _demo_timeline_segment_on_textures_deleted(const void* callback_arg
                       n_io < n_texture_ios;
                     ++n_io)
         {
-            _demo_timeline_segment_node_texture_io* current_io_ptr = NULL;
+            _demo_timeline_segment_node_texture_io* current_io_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(current_io_vector,
                                                         n_io,
@@ -297,7 +297,7 @@ PRIVATE void _demo_timeline_segment_on_textures_deleted(const void* callback_arg
             {
                 if (current_io_ptr->bound_texture == callback_arg_ptr->deleted_objects[n_deleted_object])
                 {
-                    system_hashed_ansi_string texture_name = NULL;
+                    system_hashed_ansi_string texture_name = nullptr;
 
                     ral_texture_get_property(current_io_ptr->bound_texture,
                                              RAL_TEXTURE_PROPERTY_NAME,
@@ -307,18 +307,18 @@ PRIVATE void _demo_timeline_segment_on_textures_deleted(const void* callback_arg
                     LOG_INFO("Auto-detached a released texture [%s] from a segment node",
                              system_hashed_ansi_string_get_buffer(texture_name) );
 
-                    current_io_ptr->bound_texture = NULL;
+                    current_io_ptr->bound_texture = nullptr;
                 }
-            } /* for (all deleted objects) */
-        } /* for (all IOs) */
-    } /* for (texture inputs, texture outputs) */
+            }
+        }
+    }
 }
 
 /** TODO */
 PRIVATE void _demo_timeline_segment_node_subscribe_for_notifications(_demo_timeline_segment_node* node_ptr,
                                                                      bool                         should_subscribe)
 {
-    system_callback_manager context_callback_manager = NULL;
+    system_callback_manager context_callback_manager = nullptr;
 
     ral_context_get_property(node_ptr->context,
                              RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
@@ -331,7 +331,7 @@ PRIVATE void _demo_timeline_segment_node_subscribe_for_notifications(_demo_timel
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                        &_demo_timeline_segment_on_textures_deleted,
                                                         node_ptr);
-    } /* if (should_subscribe) */
+    }
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
@@ -351,10 +351,10 @@ PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_n
     bool                         result   = false;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(node != NULL,
+    ASSERT_DEBUG_SYNC(node != nullptr,
                       "Input node is NULL");
 
-    ASSERT_DEBUG_SYNC(new_input_properties_ptr->texture_format != RAL_TEXTURE_FORMAT_UNKNOWN,
+    ASSERT_DEBUG_SYNC(new_input_properties_ptr->texture_format != RAL_FORMAT_UNKNOWN,
                       "Unknown texture format is not allowed");
     ASSERT_DEBUG_SYNC(new_input_properties_ptr->texture_type != RAL_TEXTURE_TYPE_UNKNOWN,
                       "Unknown texture type is not allowed");
@@ -376,7 +376,7 @@ PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_n
 
     /* Create a new texture output instance */
     uint32_t                                new_input_id       = -1;
-    _demo_timeline_segment_node_texture_io* new_texture_io_ptr = NULL;
+    _demo_timeline_segment_node_texture_io* new_texture_io_ptr = nullptr;
 
     system_resizable_vector_get_property(node_ptr->texture_inputs,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -396,13 +396,13 @@ PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_n
                                                                                    new_input_properties_ptr->texture_type,
                                                                                    new_input_properties_ptr->is_attachment_required);
 
-    ASSERT_DEBUG_SYNC(new_texture_io_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_texture_io_ptr != nullptr,
                       "Out of memory");
 
-    if (new_texture_io_ptr != NULL)
+    if (new_texture_io_ptr != nullptr)
     {
         /* Store it */
-        if (out_opt_input_id_ptr != NULL)
+        if (out_opt_input_id_ptr != nullptr)
         {
             *out_opt_input_id_ptr = new_input_id;
         }
@@ -414,14 +414,14 @@ PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_n
         system_hash64map_insert     (node_ptr->texture_input_id_to_texture_io_descriptor_map,
                                      (system_hash64) new_input_id,
                                      new_texture_io_ptr,
-                                     NULL,  /* on_remove_callback */
-                                     NULL); /* callback_argument */
+                                     nullptr,  /* on_remove_callback */
+                                     nullptr); /* callback_argument */
 
         /* Ping the subscribers about the fact a new texture input has arrived */
         system_callback_manager_call_back(node_ptr->callback_manager,
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_INPUT_ADDED,
                                           (void*) new_input_id);
-    } /* if (new_texture_io_ptr != NULL) */
+    }
 
     return result;
 }
@@ -435,10 +435,10 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
     bool                         result   = false;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(node != NULL,
+    ASSERT_DEBUG_SYNC(node != nullptr,
                       "Input node is NULL");
 
-    ASSERT_DEBUG_SYNC(new_output_properties_ptr->texture_format != RAL_TEXTURE_FORMAT_UNKNOWN,
+    ASSERT_DEBUG_SYNC(new_output_properties_ptr->texture_format != RAL_FORMAT_UNKNOWN,
                       "Unknown texture format is not allowed");
     ASSERT_DEBUG_SYNC(new_output_properties_ptr->texture_type != RAL_TEXTURE_TYPE_UNKNOWN,
                       "Unknown texture type is not allowed");
@@ -451,7 +451,7 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
 
     /* Create a new texture output instance */
     uint32_t                                new_output_id          = -1;
-    _demo_timeline_segment_node_texture_io* new_texture_output_ptr = NULL;
+    _demo_timeline_segment_node_texture_io* new_texture_output_ptr = nullptr;
 
     system_resizable_vector_get_property(node_ptr->texture_outputs,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -471,13 +471,13 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
                                                                                        new_output_properties_ptr->texture_type,
                                                                                        false); /* is_attachment_required */
 
-    ASSERT_DEBUG_SYNC(new_texture_output_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_texture_output_ptr != nullptr,
                       "Out of memory");
 
-    if (new_texture_output_ptr != NULL)
+    if (new_texture_output_ptr != nullptr)
     {
         /* Store it */
-        if (out_opt_output_id_ptr != NULL)
+        if (out_opt_output_id_ptr != nullptr)
         {
             *out_opt_output_id_ptr = new_output_id;
         }
@@ -487,8 +487,8 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
         system_hash64map_insert     (node_ptr->texture_output_id_to_texture_io_descriptor_map,
                                      (system_hash64) new_output_id,
                                      new_texture_output_ptr,
-                                     NULL,  /* on_remove_callback */
-                                     NULL); /* callback_argument  */
+                                     nullptr,  /* on_remove_callback */
+                                     nullptr); /* callback_argument  */
 
         system_resizable_vector_push(node_ptr->texture_outputs,
                                      new_texture_output_ptr);
@@ -502,7 +502,7 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
         system_callback_manager_call_back(node_ptr->callback_manager,
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_ADDED,
                                          &callback_arg);
-    } /* if (new_texture_output_ptr != NULL) */
+    }
 
     return result;
 }
@@ -515,9 +515,9 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
 {
     _demo_timeline_segment_node*            node_ptr       = (_demo_timeline_segment_node*) node;
     bool                                    result         = false;
-    _demo_timeline_segment_node_texture_io* texture_io_ptr = NULL;
+    _demo_timeline_segment_node_texture_io* texture_io_ptr = nullptr;
 
-    ASSERT_DEBUG_SYNC(node_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_ptr != nullptr,
                       "Input node is NULL");
 
     system_hash64map io_map = (is_input_id) ? node_ptr->texture_input_id_to_texture_io_descriptor_map
@@ -533,9 +533,9 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                           id);
 
         goto end;
-    } /* if (IO descriptor could not've been retrieved) */
+    }
 
-    if (texture_attachment_ptr != NULL)
+    if (texture_attachment_ptr != nullptr)
     {
         /* Make sure the texture the caller wants to attach is different from the one that's already bound */
         if (texture_attachment_ptr->texture_ral == texture_io_ptr->bound_texture)
@@ -546,12 +546,12 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
         }
 
         /* Make sure the texture can actually be bound to the texture input. */
-        bool               is_arg_texture_layered      = false;
-        ral_texture_format texture_format              = RAL_TEXTURE_FORMAT_UNKNOWN;
-        uint32_t           texture_format_n_components = 0;
-        uint32_t           texture_n_layers            = 0;
-        uint32_t           texture_n_samples           = 0;
-        ral_texture_type   texture_type                = RAL_TEXTURE_TYPE_UNKNOWN;
+        bool             is_arg_texture_layered      = false;
+        ral_format       texture_format              = RAL_FORMAT_UNKNOWN;
+        uint32_t         texture_format_n_components = 0;
+        uint32_t         texture_n_layers            = 0;
+        uint32_t         texture_n_samples           = 0;
+        ral_texture_type texture_type                = RAL_TEXTURE_TYPE_UNKNOWN;
 
         is_arg_texture_layered = ral_utils_is_texture_type_layered(texture_io_ptr->type);
 
@@ -568,9 +568,9 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                                  RAL_TEXTURE_PROPERTY_TYPE,
                                 &texture_type);
 
-        ral_utils_get_texture_format_property(texture_format,
-                                              RAL_TEXTURE_FORMAT_PROPERTY_N_COMPONENTS,
-                                             &texture_format_n_components);
+        ral_utils_get_format_property(texture_format,
+                                      RAL_FORMAT_PROPERTY_N_COMPONENTS,
+                                     &texture_format_n_components);
 
         if (texture_format_n_components != texture_io_ptr->n_components)
         {
@@ -578,7 +578,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                               "Number of components of the texture to be attached does not match the number of components required by the specified segment node's IO");
 
             goto end;
-        } /* if (number of components mismatch) */
+        }
 
         if (texture_io_ptr->format != texture_format)
         {
@@ -586,7 +586,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                               "Format of the texture to be attached does not match the format required by the specified segment node's IO");
 
             goto end;
-        } /* if (format mismatch detected) */
+        }
 
         if (texture_io_ptr->type != texture_type)
         {
@@ -594,7 +594,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                               "Type of the texture to be attached does not match the type required by the specified segment node's IO");
 
             goto end;
-        } /* if (texture type mismatch) */
+        }
 
         if (texture_io_ptr->n_samples != texture_n_samples)
         {
@@ -602,7 +602,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                               "Number of samples of the texture to be attached does not match the number of samples expected by the specified segment node's IO");
 
             goto end;
-        } /* if (n_samples mismatch) */
+        }
 
         if (is_arg_texture_layered)
         {
@@ -613,11 +613,11 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
 
                 goto end;
             }
-        } /* if (is_arg_texture_layered) */
-    } /* if (texture_attachment_ptr != NULL) */
+        }
+    }
 
     /* If there's an existing texture attachment, detach it before continuing */
-    if (texture_io_ptr->bound_texture != NULL)
+    if (texture_io_ptr->bound_texture != nullptr)
     {
         demo_timeline_segment_node_callback_texture_detached_callback_argument callback_arg;
 
@@ -630,14 +630,14 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
                                          &callback_arg);
 
-        texture_io_ptr->bound_texture = NULL;
-    } /* if (texture_io_ptr->bound_texture != NULL) */
+        texture_io_ptr->bound_texture = nullptr;
+    }
 
     /* Looks like this texture can be bound to the specified IO! */
-    texture_io_ptr->bound_texture = (texture_attachment_ptr != NULL) ? texture_attachment_ptr->texture_ral : NULL;
+    texture_io_ptr->bound_texture = (texture_attachment_ptr != nullptr) ? texture_attachment_ptr->texture_ral : nullptr;
 
     /* Notify subscribers */
-    if (texture_io_ptr->bound_texture != NULL)
+    if (texture_io_ptr->bound_texture != nullptr)
     {
         demo_timeline_segment_node_callback_texture_attached_callback_argument callback_arg;
 
@@ -649,7 +649,7 @@ PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timelin
         system_callback_manager_call_back(texture_io_ptr->parent_node_ptr->callback_manager,
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_ATTACHED,
                                          &callback_arg);
-    } /* if (texture_io_ptr->bound_texture != NULL) */
+    }
 
     /* All done */
     result = true;
@@ -684,7 +684,7 @@ PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(ral_context 
                                                                                                pfn_set_texture_memory_allocation_proc,
                                                                                                node_type);
 
-    ASSERT_ALWAYS_SYNC(new_node_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_node_ptr != nullptr,
                        "Out of memory");
 
     /* Sign up for RAL context notifications */
@@ -700,11 +700,11 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_input(demo_timeline_segmen
 {
     _demo_timeline_segment_node*            node_ptr             = (_demo_timeline_segment_node*) node;
     bool                                    result               = false;
-    _demo_timeline_segment_node_texture_io* texture_io_ptr       = NULL;
+    _demo_timeline_segment_node_texture_io* texture_io_ptr       = nullptr;
     size_t                                  texture_io_vec_index = -1;
 
     /* Sanity checks */
-    if (node_ptr == NULL)
+    if (node_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input segment node is NULL");
@@ -748,7 +748,7 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_input(demo_timeline_segmen
     }
 
     /* If there's any texture bound to the input, release it */
-    if (texture_io_ptr->bound_texture != NULL)
+    if (texture_io_ptr->bound_texture != nullptr)
     {
         demo_timeline_segment_node_callback_texture_detached_callback_argument callback_arg;
 
@@ -761,8 +761,8 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_input(demo_timeline_segmen
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
                                           texture_io_ptr->bound_texture);
 
-        texture_io_ptr->bound_texture = NULL;
-    } /* if (texture_input_ptr->bound_texture != NULL) */
+        texture_io_ptr->bound_texture = nullptr;
+    }
 
     /* Release the descriptor. */
     delete texture_io_ptr;
@@ -785,11 +785,11 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_output(demo_timeline_segme
 {
     _demo_timeline_segment_node*            node_ptr             = (_demo_timeline_segment_node*) node;
     bool                                    result               = false;
-    _demo_timeline_segment_node_texture_io* texture_io_ptr       = NULL;
+    _demo_timeline_segment_node_texture_io* texture_io_ptr       = nullptr;
     size_t                                  texture_io_vec_index = -1;
 
     /* Sanity checks */
-    if (node_ptr == NULL)
+    if (node_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input segment node is NULL");
@@ -833,7 +833,7 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_output(demo_timeline_segme
     }
 
     /* If there's any texture bound to the output, release it */
-    if (texture_io_ptr->bound_texture != NULL)
+    if (texture_io_ptr->bound_texture != nullptr)
     {
         demo_timeline_segment_node_callback_texture_detached_callback_argument callback_arg;
 
@@ -846,8 +846,8 @@ PUBLIC bool demo_timeline_segment_node_delete_texture_output(demo_timeline_segme
                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
                                          &callback_arg);
 
-        texture_io_ptr->bound_texture = NULL;
-    } /* if (texture_output_ptr->bound_texture != NULL) */
+        texture_io_ptr->bound_texture = nullptr;
+    }
 
     /* Release the descriptor. */
     delete texture_io_ptr;
@@ -890,10 +890,10 @@ PUBLIC void demo_timeline_segment_node_get_io_property(demo_timeline_segment_nod
                                                        void*                                  out_result_ptr)
 {
     _demo_timeline_segment_node*            node_ptr       = (_demo_timeline_segment_node*) node;
-    _demo_timeline_segment_node_texture_io* texture_io_ptr = NULL;
+    _demo_timeline_segment_node_texture_io* texture_io_ptr = nullptr;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(node_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_ptr != nullptr,
                       "Input node handle is NULL");
 
     /* Retrieve the output's descriptor.
@@ -908,7 +908,7 @@ PUBLIC void demo_timeline_segment_node_get_io_property(demo_timeline_segment_nod
                           "IO ID was not recognized");
 
         goto end;
-    } /* if (IO ID->descriptor hash map does not hold the requested descriptor) */
+    }
 
     switch (property)
     {
@@ -942,7 +942,7 @@ PUBLIC void demo_timeline_segment_node_get_io_property(demo_timeline_segment_nod
 
         case DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_FORMAT:
         {
-            *(ral_texture_format*) out_result_ptr = texture_io_ptr->format;
+            *(ral_format*) out_result_ptr = texture_io_ptr->format;
 
             break;
         }
@@ -987,7 +987,7 @@ PUBLIC void demo_timeline_segment_node_get_io_property(demo_timeline_segment_nod
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized demo_timeline_sement_node_output_property value.");
         }
-    } /* switch (property) */
+    }
 
     /* All done */
 end:
@@ -1014,7 +1014,7 @@ PUBLIC void demo_timeline_segment_node_get_property(demo_timeline_segment_node  
 {
     _demo_timeline_segment_node* node_ptr = (_demo_timeline_segment_node*) node;
 
-    ASSERT_DEBUG_SYNC(node_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_ptr != nullptr,
                       "Input demo_timeline_segment_node instance is NULL");
 
     switch (property)
@@ -1094,7 +1094,7 @@ PUBLIC void demo_timeline_segment_node_get_property(demo_timeline_segment_node  
             ASSERT_DEBUG_SYNC(false,
                               "Input demo_timeline_segment_node_property value was not recognized");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
@@ -1105,27 +1105,27 @@ PUBLIC bool demo_timeline_segment_node_get_texture_attachment(demo_timeline_segm
 {
     _demo_timeline_segment_node*            node_ptr       = (_demo_timeline_segment_node*) node;
     bool                                    result         = false;
-    _demo_timeline_segment_node_texture_io* texture_io_ptr = NULL;
+    _demo_timeline_segment_node_texture_io* texture_io_ptr = nullptr;
 
     system_hash64map item_map = is_input_id ? node_ptr->texture_input_id_to_texture_io_descriptor_map
                                             : node_ptr->texture_output_id_to_texture_io_descriptor_map;
 
     /* Sanity checks */
-    if (out_attached_texture_ptr == NULL)
+    if (out_attached_texture_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input out_attached_texture_ptr argument is NULL");
 
         goto end;
-    } /* if (out_attached_texture_ptr != NULL) */
+    }
 
-    if (node == NULL)
+    if (node == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input segment node is NULL");
 
         goto end;
-    } /* if (segment_ptr == NULL) */
+    }
 
     /* Retrieve the bound texture instance. */
     if (!system_hash64map_get(item_map,
@@ -1138,7 +1138,7 @@ PUBLIC bool demo_timeline_segment_node_get_texture_attachment(demo_timeline_segm
         goto end;
     }
 
-    ASSERT_DEBUG_SYNC(texture_io_ptr != NULL,
+    ASSERT_DEBUG_SYNC(texture_io_ptr != nullptr,
                       "Texture IO descriptor is NULL");
 
     *out_attached_texture_ptr = texture_io_ptr->bound_texture;
@@ -1155,22 +1155,22 @@ PUBLIC bool demo_timeline_segment_node_is_node_output_compatible_with_node_input
                                                                                  demo_timeline_segment_node           dst_node,
                                                                                  demo_timeline_segment_node_input_id  dst_node_input_id)
 {
-    _demo_timeline_segment_node_texture_io* dst_node_input_ptr  = NULL;
+    _demo_timeline_segment_node_texture_io* dst_node_input_ptr  = nullptr;
     _demo_timeline_segment_node*            dst_node_ptr        = (_demo_timeline_segment_node*) dst_node;
     bool                                    result              = false;
-    _demo_timeline_segment_node_texture_io* src_node_output_ptr = NULL;
+    _demo_timeline_segment_node_texture_io* src_node_output_ptr = nullptr;
     _demo_timeline_segment_node*            src_node_ptr        = (_demo_timeline_segment_node*) src_node;
 
     /* Sanity checks */
-    if (dst_node_ptr == NULL)
+    if (dst_node_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Destination node instance is NULL");
 
         goto end;
-    } /* if (dst_node_ptr == NULL) */
+    }
 
-    if (src_node_ptr == NULL)
+    if (src_node_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Source node instance is NULL");
@@ -1239,10 +1239,10 @@ PUBLIC void demo_timeline_segment_node_release(demo_timeline_segment_node node)
 {
     _demo_timeline_segment_node* node_ptr = (_demo_timeline_segment_node*) node;
 
-    ASSERT_DEBUG_SYNC(node != NULL,
+    ASSERT_DEBUG_SYNC(node != nullptr,
                       "Input demo_timeline_segment_node instance is NULL");
 
-    if (node_ptr != NULL)
+    if (node_ptr != nullptr)
     {
         _demo_timeline_segment_node_subscribe_for_notifications(node_ptr,
                                                                 false /* should_subscribe */);

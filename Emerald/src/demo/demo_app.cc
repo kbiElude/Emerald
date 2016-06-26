@@ -37,30 +37,30 @@ typedef struct _demo_app
     {
         system_critical_section_enter(cs);
         {
-            if (callback_manager != NULL)
+            if (callback_manager != nullptr)
             {
                 system_callback_manager_release(callback_manager);
 
-                callback_manager = NULL;
+                callback_manager = nullptr;
             }
 
-            if (materials != NULL)
+            if (materials != nullptr)
             {
                 scene_renderer_materials_release(materials);
 
-                materials = NULL;
+                materials = nullptr;
             }
 
-            if (scheduler != NULL)
+            if (scheduler != nullptr)
             {
                 ral_scheduler_release(scheduler);
 
-                scheduler = NULL;
+                scheduler = nullptr;
             }
 
-            if (window_name_to_window_map != NULL)
+            if (window_name_to_window_map != nullptr)
             {
-                demo_window   dangling_window           = NULL;
+                demo_window   dangling_window           = nullptr;
                 system_hash64 dangling_window_name_hash = 0;
 
                 while (system_hash64map_get_element_at(window_name_to_window_map,
@@ -76,16 +76,16 @@ typedef struct _demo_app
                         /* Sigh. */
                         break;
                     }
-                } /* while (dangling windows remain) */
+                }
 
                 system_hash64map_release(window_name_to_window_map);
-                window_name_to_window_map = NULL;
+                window_name_to_window_map = nullptr;
             }
         }
         system_critical_section_leave(cs);
 
         system_critical_section_release(cs);
-        cs = NULL;
+        cs = nullptr;
     }
 } _demo_app;
 
@@ -107,11 +107,11 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string 
                                                       ral_backend_type               backend_type,
                                                       bool                           use_timeline)
 {
-    demo_window   result           = NULL;
+    demo_window   result           = nullptr;
     system_hash64 window_name_hash = 0;
 
     /* Sanity checks */
-    if (window_name                                       == NULL ||
+    if (window_name                                       == nullptr ||
         system_hashed_ansi_string_get_length(window_name) == 0)
     {
         ASSERT_DEBUG_SYNC(false,
@@ -126,7 +126,7 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string 
                                 backend_type,
                                 use_timeline);
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "demo_window_create() failed.");
@@ -146,8 +146,8 @@ PUBLIC EMERALD_API demo_window demo_app_create_window(system_hashed_ansi_string 
         system_hash64map_insert(app.window_name_to_window_map,
                                 window_name_hash,
                                 result,
-                                NULL,  /* on_removal_callback */
-                                NULL); /* on_removal_callback_user_arg */
+                                nullptr,  /* on_removal_callback */
+                                nullptr); /* on_removal_callback_user_arg */
     }
     system_critical_section_leave(app.cs);
 
@@ -163,11 +163,11 @@ end:
 PUBLIC EMERALD_API bool demo_app_destroy_window(system_hashed_ansi_string window_name)
 {
     bool          result           = false;
-    demo_window   window           = NULL;
+    demo_window   window           = nullptr;
     system_hash64 window_name_hash = 0;
 
     /* Sanity checks */
-    if (window_name                                       == NULL ||
+    if (window_name                                       == nullptr ||
         system_hashed_ansi_string_get_length(window_name) == 0)
     {
         ASSERT_DEBUG_SYNC(false,
@@ -260,10 +260,10 @@ PUBLIC EMERALD_API void demo_app_get_property(demo_app_property property,
 /** Please see header for specification */
 PUBLIC EMERALD_API demo_window demo_app_get_window_by_name(system_hashed_ansi_string window_name)
 {
-    demo_window result = NULL;
+    demo_window result = nullptr;
 
     /* Sanity checks */
-    if (window_name                                       == NULL ||
+    if (window_name                                       == nullptr ||
         system_hashed_ansi_string_get_length(window_name) == 0)
     {
         ASSERT_DEBUG_SYNC(false,
@@ -289,7 +289,7 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API demo_window demo_app_get_window_by_index(uint32_t n_window)
 {
-    demo_window result = NULL;
+    demo_window result = nullptr;
 
     /* Retrieve the window instance */
     system_critical_section_enter(app.cs);

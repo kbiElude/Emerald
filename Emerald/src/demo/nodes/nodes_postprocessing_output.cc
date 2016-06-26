@@ -16,7 +16,6 @@
 
 typedef struct _nodes_postprocessing_output
 {
-    ral_framebuffer                     blit_src_fb;
     demo_timeline_segment_node_input_id color_data_node_input_id;
     ral_context                         context;
     ral_texture                         data_texture;
@@ -28,10 +27,9 @@ typedef struct _nodes_postprocessing_output
                                  demo_timeline_segment_node          in_node,
                                  demo_timeline_segment_node_input_id in_color_data_node_input_id)
     {
-        blit_src_fb              = NULL;
         color_data_node_input_id = in_color_data_node_input_id;
         context                  = in_context;
-        data_texture             = NULL;
+        data_texture             = nullptr;
         node                     = in_node;
         segment                  = in_segment;
     }
@@ -59,9 +57,9 @@ PRIVATE void _nodes_postprocessing_on_texture_attached_callback(const void* call
         callback_data_ptr->node        == node_data_ptr->node)
     {
         /* Cache the texture */
-        ASSERT_DEBUG_SYNC(callback_data_ptr->texture != NULL,
+        ASSERT_DEBUG_SYNC(callback_data_ptr->texture != nullptr,
                           "NULL texture attached to a post-processing output node");
-        ASSERT_DEBUG_SYNC(node_data_ptr->data_texture == NULL,
+        ASSERT_DEBUG_SYNC(node_data_ptr->data_texture == nullptr,
                           "Texture attached to a node input with another texture attachment already defined");
 
         node_data_ptr->data_texture = callback_data_ptr->texture;
@@ -87,16 +85,16 @@ PRIVATE void _nodes_postprocessing_on_texture_detached_callback(const void* call
         callback_data_ptr->node == node_data_ptr->node)
     {
         /* Drop the attachment */
-        ASSERT_DEBUG_SYNC(node_data_ptr->data_texture != NULL,
+        ASSERT_DEBUG_SYNC(node_data_ptr->data_texture != nullptr,
                           "Texture attached to a node input with another texture attachment already defined");
 
-        node_data_ptr->data_texture = NULL;
+        node_data_ptr->data_texture = nullptr;
 
         ral_framebuffer_set_attachment_2D(node_data_ptr->blit_src_fb,
                                           RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
-                                          0,    /* index      */
-                                          NULL, /* texture_2d */
-                                          0     /* n_mipmap   */);
+                                          0,       /* index      */
+                                          nullptr, /* texture_2d */
+                                          0        /* n_mipmap   */);
     }
 }
 
@@ -104,7 +102,7 @@ PRIVATE void _nodes_postprocessing_on_texture_detached_callback(const void* call
 PRIVATE bool _nodes_postprocessing_output_update_subscriptions(_nodes_postprocessing_output* node_ptr,
                                                                bool                          should_subscribe)
 {
-    system_callback_manager segment_callback_manager = NULL;
+    system_callback_manager segment_callback_manager = nullptr;
 
     demo_timeline_segment_get_property(node_ptr->segment,
                                        DEMO_TIMELINE_SEGMENT_PROPERTY_CALLBACK_MANAGER,
@@ -143,7 +141,7 @@ PUBLIC RENDERING_CONTEXT_CALL void nodes_postprocessing_output_deinit(demo_timel
 {
     _nodes_postprocessing_output* node_ptr = (_nodes_postprocessing_output*) node;
 
-    if (node_ptr->blit_src_fb != nullptr
+    if (node_ptr->blit_src_fb != nullptr)
     {
         ral_context_delete_objects(node_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
@@ -165,7 +163,7 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
                                                                                                   demo_timeline_segment_node node,
                                                                                                   ral_context                context)
 {
-    ral_texture_format            color_texture_format;
+    ral_format                    color_texture_format;
     _nodes_postprocessing_output* new_node_data_ptr = nullptr;
     demo_texture_io_declaration   new_node_input_declaration;
     bool                          result;
@@ -184,9 +182,9 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
     new_node_input_declaration.texture_n_samples      = 1;
     new_node_input_declaration.texture_type           = RAL_TEXTURE_TYPE_2D;
 
-    ral_utils_get_texture_format_property(color_texture_format,
-                                          RAL_TEXTURE_FORMAT_PROPERTY_N_COMPONENTS,
-                                         &new_node_input_declaration.texture_n_components);
+    ral_utils_get_format_property(color_texture_format,
+                                  RAL_FORMAT_PROPERTY_N_COMPONENTS,
+                                 &new_node_input_declaration.texture_n_components);
 
     result = demo_timeline_segment_node_add_texture_input(node,
                                                          &new_node_input_declaration,

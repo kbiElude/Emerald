@@ -1,6 +1,6 @@
 /**
  *
- *  Emerald (kbi/elude @ 2015)
+ *  Emerald (kbi/elude @ 2015-2016)
  *
  **/
 #ifndef NODES_VIDEO_PASS_RENDERER_H

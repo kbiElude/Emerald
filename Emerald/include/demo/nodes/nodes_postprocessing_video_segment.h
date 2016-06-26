@@ -1,6 +1,6 @@
 /**
  *
- *  Emerald (kbi/elude @ 2015)
+ *  Emerald (kbi/elude @ 2015-2016)
  *
  **/
 #ifndef NODES_POSTPROCESSING_VIDEO_SEGMENT_H
@@ -15,9 +15,6 @@ enum
     /* settable ONCE; demo_timeline_segment (must be of video segment type) */
     NODES_POSTPROCESSING_VIDEO_SEGMENT_PROPERTY_VIDEO_SEGMENT
 };
-
-/** TODO */
-PUBLIC void nodes_postprocessing_video_segment_alloc(demo_timeline_segment_node_private node);
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL void nodes_postprocessing_video_segment_deinit(demo_timeline_segment_node_private node);

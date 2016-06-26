@@ -255,13 +255,6 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
                                                uint32_t                             n_nodes,
                                                const demo_timeline_segment_node_id* node_ids);
 
-/** TODO */
-PUBLIC bool demo_timeline_segment_disconnect_nodes(demo_timeline_segment                segment,
-                                                   demo_timeline_segment_node_id        src_node_id,
-                                                   demo_timeline_segment_node_output_id src_node_output_id,
-                                                   demo_timeline_segment_node_id        dst_node_id,
-                                                   demo_timeline_segment_node_input_id  dst_node_input_id);
-
 /** TODO
  *
  *  NOTE: The function can only be used for video segment node input or outputs.

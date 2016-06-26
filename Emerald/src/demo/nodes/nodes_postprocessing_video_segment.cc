@@ -1,6 +1,6 @@
 /**
  *
- *  Emerald (kbi/elude @ 2015)
+ *  Emerald (kbi/elude @ 2015-2016)
  *
  *  This node encapsulates a demo_timeline_video_segment instance. It serves a few purposes:
  *
@@ -74,35 +74,35 @@ typedef struct _nodes_postprocessing_video_segment_node_data
                                                            ral_context                in_context)
     {
         callback_manager       = system_callback_manager_create( (_callback_id) DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_COUNT);
-        context                = NULL;
+        context                = nullptr;
         exposed_vs_inputs      = system_resizable_vector_create(4 /* capacity */);
         exposed_vs_outputs     = system_resizable_vector_create(4 /* capacity */);
         node                   = in_node;
         postprocessing_segment = in_postprocessing_segment;
-        video_segment          = NULL;
+        video_segment          = nullptr;
     }
 
     ~_nodes_postprocessing_video_segment_node_data()
     {
-        if (callback_manager != NULL)
+        if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
 
-            callback_manager = NULL;
-        } /* if (callback_manager != NULL) */
+            callback_manager = nullptr;
+        }
 
-        if (exposed_vs_inputs != NULL)
+        if (exposed_vs_inputs != nullptr)
         {
             system_resizable_vector_release(exposed_vs_inputs);
 
-            exposed_vs_inputs = NULL;
+            exposed_vs_inputs = nullptr;
         }
 
-        if (exposed_vs_outputs != NULL)
+        if (exposed_vs_outputs != nullptr)
         {
             system_resizable_vector_release(exposed_vs_outputs);
 
-            exposed_vs_outputs = NULL;
+            exposed_vs_outputs = nullptr;
         }
     }
 } _nodes_postprocessing_video_segment_node_data;
@@ -139,7 +139,7 @@ PRIVATE void _nodes_postprocessing_video_segment_on_input_exposed(const void* un
 {
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node_data;
 
-    ASSERT_DEBUG_SYNC(node_data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_data_ptr != nullptr,
                       "Input node_data instance is NULL");
 
     /* Sync exposed texture inputs with the segment's */
@@ -153,7 +153,7 @@ PRIVATE void _nodes_postprocessing_video_segment_on_input_no_longer_exposed(cons
 {
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node_data;
 
-    ASSERT_DEBUG_SYNC(node_data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_data_ptr != nullptr,
                       "Input node_data instance is NULL");
 
     /* Sync exposed texture inputs with the segment's */
@@ -167,7 +167,7 @@ PRIVATE void _nodes_postprocessing_video_segment_on_output_exposed(const void* u
 {
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node_data;
 
-    ASSERT_DEBUG_SYNC(node_data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_data_ptr != nullptr,
                       "Input node_data instance is NULL");
 
     /* Sync exposed texture inputs with the segment's */
@@ -181,7 +181,7 @@ PRIVATE void _nodes_postprocessing_video_segment_on_output_no_longer_exposed(con
 {
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node_data;
 
-    ASSERT_DEBUG_SYNC(node_data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_data_ptr != nullptr,
                       "Input node_data instance is NULL");
 
     /* Sync exposed texture inputs with the segment's */
@@ -231,7 +231,7 @@ PRIVATE void _nodes_postprocessing_video_segment_on_texture_detached_from_node(c
         _nodes_postprocessing_video_segment_sync_output_attachments(node_data_ptr,
                                                                     node_id,
                                                                     callback_arg_ptr->id,
-                                                                    NULL /* new_texture_attachment */);
+                                                                    nullptr /* new_texture_attachment */);
     }
 }
 
@@ -241,7 +241,7 @@ PRIVATE void _nodes_postprocessing_video_segment_on_video_segment_releasing(cons
 {
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node_data;
 
-    ASSERT_DEBUG_SYNC(node_data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_data_ptr != nullptr,
                       "Input node_data instance is NULL");
 
     /* Since this node is an adapter for the underlying video segment, we need to destroy this node the moment
@@ -264,13 +264,13 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
     uint32_t                       n_precall_node_ios              = 0;
     uint32_t                       n_video_segment_result_node_ios = 0;
     demo_timeline_segment_node_id  node_id                         = -1;
-    demo_timeline_segment_node_io* video_segment_node_ios_ptr      = NULL;
+    demo_timeline_segment_node_io* video_segment_node_ios_ptr      = nullptr;
 
     /* NOTE: Buffers, textures, etc. connected to the inputs of a video segment's output node deliver data,
      *       so we need to expose these as video segment's *outputs*. */
 
     /* Sanity checks */
-    if (node_data_ptr == NULL)
+    if (node_data_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input node data pointer is NULL");
@@ -284,14 +284,14 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
         demo_timeline_segment_node_get_inputs (node_data_ptr->node,
                                                0, /* n_input_ids */
                                               &n_precall_node_ios,
-                                               NULL); /* out_opt_input_ids_ptr */
+                                               nullptr); /* out_opt_input_ids_ptr */
     }
     else
     {
         demo_timeline_segment_node_get_outputs(node_data_ptr->node,
                                                0, /* n_output_ids_ptr */
                                               &n_precall_node_ios,
-                                               NULL); /* out_opt_output_ids_ptr */
+                                               nullptr); /* out_opt_output_ids_ptr */
     }
 
     if (n_precall_node_ios != 0)
@@ -320,11 +320,11 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                   n_video_segment_io < n_video_segment_result_node_ios;
                 ++n_video_segment_io)
     {
-        ral_texture                               io_bound_texture        = NULL;
+        ral_texture                               io_bound_texture        = nullptr;
         demo_timeline_segment_node_interface_type io_interface_type       = DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_UNKNOWN;
         bool                                      io_is_required          = false;
-        system_hashed_ansi_string                 io_name                 = NULL;
-        ral_texture_format                        io_texture_format       = RAL_TEXTURE_FORMAT_UNKNOWN;
+        system_hashed_ansi_string                 io_name                 = nullptr;
+        ral_format                                io_texture_format       = RAL_FORMAT_UNKNOWN;
         uint32_t                                  io_texture_n_components = 0;
         uint32_t                                  io_texture_n_layers     = 0;
         uint32_t                                  io_texture_n_samples    = 0;
@@ -407,7 +407,7 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
         }
 
         /* Attach the currently bound texture to the new IO */
-        if (io_bound_texture != NULL)
+        if (io_bound_texture != nullptr)
         {
             demo_texture_attachment_declaration bound_texture_attachment_declaration;
 
@@ -421,7 +421,7 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not attach the exposed node IO texture to a video segment node IO.");
             }
-        } /* if (io_bound_texture != NULL) */
+        }
 
         /* Store node IO data. */
         demo_timeline_segment_node_get_property(node_data_ptr->node,
@@ -434,21 +434,21 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                                                                   video_segment_node_ios_ptr[n_video_segment_io].is_input,
                                                                   video_segment_node_ios_ptr[n_video_segment_io].node_io_id);
 
-        ASSERT_ALWAYS_SYNC(new_io_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(new_io_ptr != nullptr,
                            "Out of memory");
 
         system_resizable_vector_push( (should_process_inputs) ? node_data_ptr->exposed_vs_inputs
                                                               : node_data_ptr->exposed_vs_outputs,
                                      new_io_ptr);
-    } /* for (all exposed video segment IOs) */
+    }
 
     /* All done */
 end:
-    if (video_segment_node_ios_ptr != NULL)
+    if (video_segment_node_ios_ptr != nullptr)
     {
         demo_timeline_segment_free_exposed_io_result(video_segment_node_ios_ptr);
 
-        video_segment_node_ios_ptr = NULL;
+        video_segment_node_ios_ptr = nullptr;
     }
 }
 
@@ -459,7 +459,7 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments(_nodes_
                                                                          ral_texture                                    new_texture_attachment)
 {
     uint32_t             n_exposed_vs_outputs = 0;
-    _exposed_vs_node_io* ps_vs_node_io_ptr    = NULL;
+    _exposed_vs_node_io* ps_vs_node_io_ptr    = nullptr;
 
     /* Find the _exposed_vs_node_io instance for the specified VS node output */
     system_resizable_vector_get_property(node_data_ptr->exposed_vs_outputs,
@@ -488,11 +488,11 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments(_nodes_
         }
         else
         {
-            ps_vs_node_io_ptr = NULL;
+            ps_vs_node_io_ptr = nullptr;
         }
-    } /* for (all exposed VS outputs) */
+    }
 
-    if (ps_vs_node_io_ptr == NULL)
+    if (ps_vs_node_io_ptr == nullptr)
     {
         /* The notification is coming from an exposed IO this video segment post-processing node
          * does not watch. Ignore.
@@ -518,7 +518,7 @@ end:
 PRIVATE void _nodes_postprocessing_video_segment_update_callbacks(_nodes_postprocessing_video_segment_node_data* node_data_ptr,
                                                                   bool                                           should_subscribe)
 {
-    system_callback_manager video_segment_callback_manager = NULL;
+    system_callback_manager video_segment_callback_manager = nullptr;
 
     demo_timeline_segment_get_property     ( node_data_ptr->video_segment,
                                             DEMO_TIMELINE_SEGMENT_PROPERTY_CALLBACK_MANAGER,
@@ -561,7 +561,7 @@ PRIVATE void _nodes_postprocessing_video_segment_update_callbacks(_nodes_postpro
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _nodes_postprocessing_video_segment_on_texture_detached_from_node,
                                                         node_data_ptr);
-    } /* if (should_subscribe) */
+    }
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(video_segment_callback_manager,
@@ -617,7 +617,7 @@ PUBLIC void nodes_postprocessing_video_segment_get_input_property(demo_timeline_
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(node_data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_data_ptr != nullptr,
                       "Input node instance is NULL");
 
     /* Forward the query to the video segment's node instance */
@@ -637,7 +637,7 @@ PUBLIC void nodes_postprocessing_video_segment_get_output_property(demo_timeline
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(node_data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_data_ptr != nullptr,
                       "Input node instance is NULL");
 
     /* Forward the query to the video segment instance */
@@ -656,14 +656,14 @@ PUBLIC bool nodes_postprocessing_video_segment_get_property(demo_timeline_segmen
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node;
     bool                                           result        = true;
 
-    if (node == NULL)
+    if (node == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input node instance is NULL");
 
         result = false;
         goto end;
-    } /* if (node == NULL) */
+    }
 
     switch (property)
     {
@@ -682,7 +682,7 @@ PUBLIC bool nodes_postprocessing_video_segment_get_property(demo_timeline_segmen
             result = false;
             goto end;
         }
-    } /* switch (property) */
+    }
 
 end:
     return result;
@@ -693,30 +693,30 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
                                                                                                          demo_timeline_segment_node node,
                                                                                                          ral_context                context)
 {
-    demo_timeline_segment_node_private result                   = NULL;
-    system_callback_manager            segment_callback_manager = NULL;
+    demo_timeline_segment_node_private result                   = nullptr;
+    system_callback_manager            segment_callback_manager = nullptr;
 
     /* Sanity checks */
-    if (segment == NULL)
+    if (segment == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input post-processing segment is NULL");
 
         goto end;
-    } /* if (segment == NULL) */
+    }
 
     /* Spawn a new descriptor */
     _nodes_postprocessing_video_segment_node_data* new_node_data_ptr = new (std::nothrow) _nodes_postprocessing_video_segment_node_data(node,
                                                                                                                                         segment,
                                                                                                                                         context);
 
-    if (new_node_data_ptr == NULL)
+    if (new_node_data_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Out of memory");
 
         goto end;
-    } /* if (new_node_data_ptr == NULL) */
+    }
 
     /* All done */
     result = (demo_timeline_segment_node_private) new_node_data_ptr;
@@ -733,7 +733,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool nodes_postprocessing_video_segment_render(dem
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node;
     bool                                           result        = false;
 
-    if (node_data_ptr->video_segment == NULL)
+    if (node_data_ptr->video_segment == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "No video segment assigned to the video segment node.");
@@ -757,7 +757,7 @@ PUBLIC bool nodes_postprocessing_video_segment_set_property(demo_timeline_segmen
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = (_nodes_postprocessing_video_segment_node_data*) node;
     bool                                           result        = true;
 
-    if (node == NULL)
+    if (node == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input node is NULL");
@@ -770,10 +770,10 @@ PUBLIC bool nodes_postprocessing_video_segment_set_property(demo_timeline_segmen
     {
         case NODES_POSTPROCESSING_VIDEO_SEGMENT_PROPERTY_VIDEO_SEGMENT:
         {
-            demo_timeline_segment      new_segment = NULL;
+            demo_timeline_segment      new_segment = nullptr;
             demo_timeline_segment_type new_segment_type;
 
-            if (node_data_ptr->video_segment != NULL)
+            if (node_data_ptr->video_segment != nullptr)
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "A video segment has already been assigned to the video segment node!");
@@ -795,7 +795,7 @@ PUBLIC bool nodes_postprocessing_video_segment_set_property(demo_timeline_segmen
                 ASSERT_DEBUG_SYNC(false,
                                   "Input segment is not a video segment");
 
-                node_data_ptr->video_segment = NULL;
+                node_data_ptr->video_segment = nullptr;
                 break;
             }
 
@@ -819,7 +819,7 @@ PUBLIC bool nodes_postprocessing_video_segment_set_property(demo_timeline_segmen
 
             result = false;
         }
-    } /* switch (property) */
+    }
 
 end:
     return result;

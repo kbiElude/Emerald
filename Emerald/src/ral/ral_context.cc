@@ -7,8 +7,6 @@
 #include "demo/demo_window.h"
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_backend.h"
-#include "raGL/raGL_texture.h" /* TEMP TEMP TEMP */
-#include "raGL/raGL_types.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -66,25 +66,25 @@ typedef struct _demo_flyby
 
     ~_demo_flyby()
     {
-        if (cs != NULL)
+        if (cs != nullptr)
         {
             system_critical_section_release(cs);
 
-            cs = NULL;
+            cs = nullptr;
         }
 
-        if (fake_graph_node != NULL)
+        if (fake_graph_node != nullptr)
         {
             scene_graph_node_release(fake_graph_node);
 
-            fake_graph_node = NULL;
+            fake_graph_node = nullptr;
         }
 
-        if (fake_scene_camera != NULL)
+        if (fake_scene_camera != nullptr)
         {
             scene_camera_release(fake_scene_camera);
 
-            fake_scene_camera = NULL;
+            fake_scene_camera = nullptr;
         }
     }
 } _demo_flyby;
@@ -299,15 +299,15 @@ PRIVATE void _demo_flyby_release(void* arg)
     _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(arg != NULL,
+    ASSERT_DEBUG_SYNC(arg != nullptr,
                       "Input argument is NULL");
 
     /* Release the flyby fields. The destructor will be called by the reference counter impl. */
-    if (flyby_ptr->view_matrix != NULL)
+    if (flyby_ptr->view_matrix != nullptr)
     {
         system_matrix4x4_release(flyby_ptr->view_matrix);
 
-        flyby_ptr->view_matrix = NULL;
+        flyby_ptr->view_matrix = nullptr;
     }
 }
 
@@ -318,10 +318,10 @@ PUBLIC demo_flyby demo_flyby_create(ral_context context)
     /* Instantiate new descriptor */
     _demo_flyby* new_flyby_ptr = new (std::nothrow) _demo_flyby;
 
-    ASSERT_DEBUG_SYNC(new_flyby_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_flyby_ptr != nullptr,
                       "Out of memory");
 
-    if (new_flyby_ptr != NULL)
+    if (new_flyby_ptr != nullptr)
     {
         /* Form the flyby name */
         static int n_flyby = 0;
@@ -341,7 +341,7 @@ PUBLIC demo_flyby demo_flyby_create(ral_context context)
         new_flyby_ptr->context           = context;
         new_flyby_ptr->cs                = system_critical_section_create();
         new_flyby_ptr->fake_scene_camera = scene_camera_create           (system_hashed_ansi_string_create(temp_flyby_camera_name),
-                                                                          NULL /* scene_name */);
+                                                                          nullptr /* scene_name */);
         new_flyby_ptr->is_active         = false;
         new_flyby_ptr->is_lbm_down       = false;
         new_flyby_ptr->key_bits          = (_key_bits) 0;
@@ -378,12 +378,12 @@ PUBLIC demo_flyby demo_flyby_create(ral_context context)
 
         system_matrix4x4_set_to_identity(matrix_identity);
 
-        new_flyby_ptr->fake_graph_node = scene_graph_create_static_matrix4x4_transformation_node(NULL, /* graph */
+        new_flyby_ptr->fake_graph_node = scene_graph_create_static_matrix4x4_transformation_node(nullptr, /* graph */
                                                                                                  matrix_identity,
                                                                                                  SCENE_GRAPH_NODE_TAG_UNDEFINED);
 
         system_matrix4x4_release(matrix_identity);
-        matrix_identity = NULL;
+        matrix_identity = nullptr;
 
         /* Set up fake scene camera */
         const float default_z_far  = DEFAULT_FAKE_SCENE_CAMERA_Z_FAR;
@@ -400,7 +400,7 @@ PUBLIC demo_flyby demo_flyby_create(ral_context context)
                                  &new_flyby_ptr->fake_graph_node);
 
         /* Register for callbacks */
-        system_window context_window = NULL;
+        system_window context_window = nullptr;
 
         ral_context_get_property(context,
                                  RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -448,7 +448,7 @@ PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
     _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(flyby != NULL,
+    ASSERT_DEBUG_SYNC(flyby != nullptr,
                       "Input flyby instance is NULL");
 
     /* Retrieve the result */
@@ -520,7 +520,7 @@ PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized ogl_flyby_property value");
             }
-        } /* switch (property) */
+        }
     }
     system_critical_section_leave(flyby_ptr->cs);
 }
@@ -539,7 +539,7 @@ PUBLIC EMERALD_API void demo_flyby_set_property(demo_flyby          flyby,
     _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(flyby != NULL,
+    ASSERT_DEBUG_SYNC(flyby != nullptr,
                       "Input flyby instance is NULL");
 
     /* Retrieve the result */
@@ -614,7 +614,7 @@ PUBLIC EMERALD_API void demo_flyby_set_property(demo_flyby          flyby,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized demo_flyby_property value");
             }
-        } /* switch (property) */
+        }
     }
     system_critical_section_leave(flyby_ptr->cs);
 }
@@ -631,7 +631,7 @@ PUBLIC EMERALD_API void demo_flyby_update(demo_flyby flyby)
     _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(flyby != NULL,
+    ASSERT_DEBUG_SYNC(flyby != nullptr,
                       "Input demo_flyby instance is NULL");
 
     /* Calculate current time */
@@ -728,8 +728,8 @@ PUBLIC EMERALD_API void demo_flyby_update(demo_flyby flyby)
 
         /* Update the fake scene camera */
         float            camera_ar;
-        system_matrix4x4 node_transformation_matrix = NULL;
-        system_window    window                     = NULL;
+        system_matrix4x4 node_transformation_matrix = nullptr;
+        system_window    window                     = nullptr;
         uint32_t         viewport[2];
 
         ral_context_get_property  (flyby_ptr->context,

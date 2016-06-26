@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef DEMO_FLYBY_H
@@ -62,9 +62,6 @@ REFCOUNT_INSERT_DECLARATIONS(demo_flyby,
  *  Internal usage only.
  */
 PUBLIC demo_flyby demo_flyby_create(ral_context context);
-
-/** TODO */
-PUBLIC EMERALD_API void demo_flyby_deactivate(ral_context context);
 
 /** TODO */
 PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,

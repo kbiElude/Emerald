@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -36,25 +36,25 @@ typedef struct _demo_timeline_segment_item
 
     ~_demo_timeline_segment_item()
     {
-        if (segment != NULL)
+        if (segment != nullptr)
         {
             demo_timeline_segment_release(segment);
 
-            segment = NULL;
-        } /* if (segment != NULL) */
+            segment = nullptr;
+        }
     }
 } _demo_timeline_segment_item;
 
 typedef struct _demo_timeline
 {
-    float                        aspect_ratio;                    /* AR for frame times, for which no video segments are defined */
-    system_callback_manager      callback_manager;
-    ral_context                  context;
-    system_critical_section      cs;
-    system_time                  duration;
-    ogl_pipeline                 rendering_pipeline;
-    system_hash64map             segment_id_to_postprocessing_segment_map; /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
-    system_hash64map             segment_id_to_video_segment_map;          /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
+    float                   aspect_ratio;                    /* AR for frame times, for which no video segments are defined */
+    system_callback_manager callback_manager;
+    ral_context             context;
+    system_critical_section cs;
+    system_time             duration;
+    ogl_pipeline            rendering_pipeline;
+    system_hash64map        segment_id_to_postprocessing_segment_map; /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
+    system_hash64map        segment_id_to_video_segment_map;          /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
 
     unsigned int            postprocessing_segment_id_counter;
     unsigned int            video_segment_id_counter;
@@ -74,7 +74,7 @@ typedef struct _demo_timeline
     explicit _demo_timeline(ral_context   in_context,
                             system_window in_window)
     {
-        ASSERT_DEBUG_SYNC(in_context != NULL,
+        ASSERT_DEBUG_SYNC(in_context != nullptr,
                           "Input rendering context is NULL");
 
         aspect_ratio                             = 1.0f;
@@ -100,7 +100,7 @@ typedef struct _demo_timeline
         postprocessing_segment_id_counter        = 0;
         video_segment_id_counter                 = 0;
 
-        ASSERT_DEBUG_SYNC (rendering_pipeline != NULL,
+        ASSERT_DEBUG_SYNC (rendering_pipeline != nullptr,
                            "Could not spawn a rendering pipeline instance.");
 
         ral_context_retain(in_context);
@@ -108,39 +108,39 @@ typedef struct _demo_timeline
 
     ~_demo_timeline()
     {
-        if (context != NULL)
+        if (context != nullptr)
         {
             ral_context_release(context);
 
-            context = NULL;
+            context = nullptr;
         }
 
-        if (cs != NULL)
+        if (cs != nullptr)
         {
             system_critical_section_release(cs);
 
-            cs = NULL;
+            cs = nullptr;
         }
 
-        if (rendering_pipeline != NULL)
+        if (rendering_pipeline != nullptr)
         {
             ogl_pipeline_release(rendering_pipeline);
 
-            rendering_pipeline = NULL;
+            rendering_pipeline = nullptr;
         }
 
-        if (postprocessing_segments != NULL)
+        if (postprocessing_segments != nullptr)
         {
             system_resizable_vector_release(postprocessing_segments);
 
-            postprocessing_segments = NULL;
-        } /* if (postprocessing_segments != NULL) */
+            postprocessing_segments = nullptr;
+        }
 
-        if (segment_cache_vector != NULL)
+        if (segment_cache_vector != nullptr)
         {
             system_resizable_vector_release(segment_cache_vector);
 
-            segment_cache_vector = NULL;
+            segment_cache_vector = nullptr;
         }
 
         /* Release segment maps .. */
@@ -157,9 +157,9 @@ typedef struct _demo_timeline
         {
             system_hash64map* current_segment_map_ptr = segment_map_ptrs[n_segment_map_ptr];
 
-            if (*current_segment_map_ptr != NULL)
+            if (*current_segment_map_ptr != nullptr)
             {
-                _demo_timeline_segment_item* current_segment_ptr = NULL;
+                _demo_timeline_segment_item* current_segment_ptr = nullptr;
                 unsigned int                 n_segments          = 0;
 
                 system_hash64map_get_property(*current_segment_map_ptr,
@@ -173,7 +173,7 @@ typedef struct _demo_timeline
                     if (!system_hash64map_get_element_at(*current_segment_map_ptr,
                                                          n_segment,
                                                         &current_segment_ptr,
-                                                         NULL) ) /* result_hash */
+                                                         nullptr) ) /* result_hash */
                     {
                         ASSERT_DEBUG_SYNC(false,
                                           "Could not retrieve segment descriptor at index [%d]",
@@ -184,29 +184,29 @@ typedef struct _demo_timeline
 
                     delete current_segment_ptr;
 
-                    current_segment_ptr = NULL;
-                } /* for (all segments) */
+                    current_segment_ptr = nullptr;
+                }
 
                 system_hash64map_release(*current_segment_map_ptr);
-                *current_segment_map_ptr = NULL;
-            } /* if (*current_segment_map_ptr != NULL) */
-        } /* for (all segment hash-maps to release) */
+                *current_segment_map_ptr = nullptr;
+            }
+        }
 
-        if (video_segments != NULL)
+        if (video_segments != nullptr)
         {
             system_resizable_vector_release(video_segments);
 
-            video_segments = NULL;
-        } /* if (video_segments != NULL) */
+            video_segments = nullptr;
+        }
 
 
         /* Callback manager needs to be released at the end */
-        if (callback_manager != NULL)
+        if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
 
-            callback_manager = NULL;
-        } /* if (callback_manager != NULL) */
+            callback_manager = nullptr;
+        }
     }
 } _demo_timeline;
 
@@ -222,7 +222,7 @@ PRIVATE bool _demo_timeline_add_segment                   (demo_timeline        
                                                            system_time                     start_time,
                                                            system_time                     end_time,
                                                            float                           videoonly_aspect_ratio,
-                                                           ral_texture_format              videoonly_output_texture_format,
+                                                           ral_format                      videoonly_output_texture_format,
                                                            demo_timeline_segment_id*       out_opt_segment_id_ptr,
                                                            void*                           out_opt_segment_ptr);
 PRIVATE bool _demo_timeline_change_segment_start_end_times(_demo_timeline*                 timeline_ptr,
@@ -251,27 +251,27 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
                                         system_time                start_time,
                                         system_time                end_time,
                                         float                      videoonly_aspect_ratio,
-                                        ral_texture_format         videoonly_output_texture_format,
+                                        ral_format                 videoonly_output_texture_format,
                                         demo_timeline_segment_id*  out_opt_segment_id_ptr,
                                         void*                      out_opt_segment_ptr)
 {
-    demo_timeline_segment        new_segment            = NULL;
+    demo_timeline_segment        new_segment            = nullptr;
     demo_timeline_segment_id     new_segment_id         = -1;
-    _demo_timeline_segment_item* new_segment_ptr        = NULL;
+    _demo_timeline_segment_item* new_segment_ptr        = nullptr;
     uint32_t                     new_segment_stage_id   = -1;
-    system_hash64map             owning_hash64map       = NULL;
-    system_resizable_vector      owning_vector          = NULL;
+    system_hash64map             owning_hash64map       = nullptr;
+    system_resizable_vector      owning_vector          = nullptr;
     bool                         result                 = false;
-    unsigned int*                segment_id_counter_ptr = NULL;
+    unsigned int*                segment_id_counter_ptr = nullptr;
     _demo_timeline*              timeline_ptr           = (_demo_timeline*) timeline;
 
     ASSERT_DEBUG_SYNC(start_time < end_time,
                       "Segment's start time must be smaller than its end time");
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(timeline_ptr != nullptr,
                       "Timeline instance is NULL");
 
     if (start_time   >= end_time ||
-        timeline_ptr == NULL)
+        timeline_ptr == nullptr)
     {
         goto end;
     }
@@ -288,7 +288,7 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
                                                        type,
                                                        start_time,
                                                        end_time,
-                                                       NULL, /* opt_excluded_segment_id_ptr */
+                                                       nullptr, /* opt_excluded_segment_id_ptr */
                                                        &is_region_free) )
             {
                 ASSERT_DEBUG_SYNC(false,
@@ -303,7 +303,7 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
 
                 goto end;
             }
-        } /* if (type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING) */
+        }
 
         /* Determine which hash map & resizable vector the new descriptor should be stored in */
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
@@ -332,7 +332,7 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
                                                                           end_time,
                                                                           new_segment_id);
 
-                ASSERT_DEBUG_SYNC(new_segment != NULL,
+                ASSERT_DEBUG_SYNC(new_segment != nullptr,
                                   "Could not create a new postprocessing segment instance");
 
                 break;
@@ -349,20 +349,20 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
                                                                  end_time,
                                                                  new_segment_id);
 
-                ASSERT_DEBUG_SYNC(new_segment != NULL,
+                ASSERT_DEBUG_SYNC(new_segment != nullptr,
                                   "Could not create a new video segment instance");
 
                 break;
-            } /* case DEMO_TIMELINE_SEGMENT_TYPE_VIDEO: */
+            }
 
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized segment type requested");
             }
-        } /* switch (type) */
+        }
 
-        ASSERT_ALWAYS_SYNC(new_segment != NULL,
+        ASSERT_ALWAYS_SYNC(new_segment != nullptr,
                            "Could not spawn a new segment descriptor");
 
         /* Spawn a new descriptor */
@@ -371,7 +371,7 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
                                                                          new_segment,
                                                                          type);
 
-        if (new_segment_ptr == NULL)
+        if (new_segment_ptr == nullptr)
         {
             goto end;
         }
@@ -380,8 +380,8 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
         if (!system_hash64map_insert(owning_hash64map,
                                      (system_hash64) new_segment_id,
                                      new_segment_ptr,
-                                     NULL, /* callback */
-                                     NULL) )/* callback_user_arg */
+                                     nullptr, /* callback */
+                                     nullptr) )/* callback_user_arg */
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not store the new segment descriptor in the corresponding hash map.");
@@ -424,15 +424,15 @@ PRIVATE bool _demo_timeline_add_segment(demo_timeline              timeline,
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized timeline segment type");
             }
-        } /* switch (type) */
+        }
 
         /* All done */
-        if (out_opt_segment_id_ptr != NULL)
+        if (out_opt_segment_id_ptr != nullptr)
         {
             *out_opt_segment_id_ptr = new_segment_id;
         }
 
-        if (out_opt_segment_ptr != NULL)
+        if (out_opt_segment_ptr != nullptr)
         {
             *(demo_timeline_segment*) out_opt_segment_ptr = new_segment_ptr->segment;
         }
@@ -445,13 +445,13 @@ end:
 
     if (!result)
     {
-        if (new_segment_ptr != NULL)
+        if (new_segment_ptr != nullptr)
         {
             delete new_segment_ptr;
 
-            new_segment_ptr = NULL;
-        } /* if (new_segment_ptr != NULL) */
-    } /* if (!result) */
+            new_segment_ptr = nullptr;
+        }
+    }
 
     return result;
 }
@@ -543,7 +543,7 @@ PRIVATE bool _demo_timeline_change_segment_start_end_times(_demo_timeline*      
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized timeline segment type");
         }
-    } /* switch (segment_ptr->type) */
+    }
 
     /* All done */
     result = true;
@@ -559,14 +559,14 @@ PRIVATE bool demo_timeline_get_segments_at_time(_demo_timeline*             time
                                                 system_resizable_vector     result_vector)
 {
     /* TODO: Optimize! */
-    _demo_timeline_segment_item* found_segment_ptr = NULL;
+    _demo_timeline_segment_item* found_segment_ptr = nullptr;
     unsigned int                 n_segments        = 0;
     bool                         result            = false;
-    system_resizable_vector      segments          = NULL;
+    system_resizable_vector      segments          = nullptr;
 
-    ASSERT_DEBUG_SYNC(result_vector != NULL,
+    ASSERT_DEBUG_SYNC(result_vector != nullptr,
                       "Result vector is NULL");
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(timeline_ptr != nullptr,
                       "Input timeline instance is NULL");
 
     system_resizable_vector_clear(result_vector);
@@ -575,9 +575,9 @@ PRIVATE bool demo_timeline_get_segments_at_time(_demo_timeline*             time
     {
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    segment_type,
-                                                   NULL, /* out_segment_id_counter_ptr_ptr*/
+                                                   nullptr, /* out_segment_id_counter_ptr_ptr*/
                                                    &segments,
-                                                   NULL) ) /* out_segment_hash64map_ptr */
+                                                   nullptr) ) /* out_segment_hash64map_ptr */
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve resizable vector for the requested segment type");
@@ -632,8 +632,8 @@ PRIVATE bool demo_timeline_get_segments_at_time(_demo_timeline*             time
             }
 
             /* Move on */
-            found_segment_ptr = NULL;
-        } /* for (all segments of the requested type) */
+            found_segment_ptr = nullptr;
+        }
     }
 
 end:
@@ -658,17 +658,17 @@ PRIVATE bool _demo_timeline_get_segment_containers(_demo_timeline*            ti
     {
         case DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING:
         {
-            if (out_segment_hash64map_ptr != NULL)
+            if (out_segment_hash64map_ptr != nullptr)
             {
                 *out_segment_hash64map_ptr = timeline_ptr->segment_id_to_postprocessing_segment_map;
             }
 
-            if (out_segment_id_counter_ptr_ptr != NULL)
+            if (out_segment_id_counter_ptr_ptr != nullptr)
             {
                 *out_segment_id_counter_ptr_ptr = &timeline_ptr->postprocessing_segment_id_counter;
             }
 
-            if (out_segment_vector_ptr != NULL)
+            if (out_segment_vector_ptr != nullptr)
             {
                 *out_segment_vector_ptr = timeline_ptr->postprocessing_segments;
             }
@@ -678,17 +678,17 @@ PRIVATE bool _demo_timeline_get_segment_containers(_demo_timeline*            ti
 
         case DEMO_TIMELINE_SEGMENT_TYPE_VIDEO:
         {
-            if (out_segment_hash64map_ptr != NULL)
+            if (out_segment_hash64map_ptr != nullptr)
             {
                 *out_segment_hash64map_ptr = timeline_ptr->segment_id_to_video_segment_map;
             }
 
-            if (out_segment_id_counter_ptr_ptr != NULL)
+            if (out_segment_id_counter_ptr_ptr != nullptr)
             {
                 *out_segment_id_counter_ptr_ptr = &timeline_ptr->video_segment_id_counter;
             }
 
-            if (out_segment_vector_ptr != NULL)
+            if (out_segment_vector_ptr != nullptr)
             {
                 *out_segment_vector_ptr = timeline_ptr->video_segments;
             }
@@ -703,7 +703,7 @@ PRIVATE bool _demo_timeline_get_segment_containers(_demo_timeline*            ti
 
             result = false;
         }
-    } /* switch (segment_type) */
+    }
 
     return result;
 }
@@ -722,13 +722,13 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
     bool                    overlap_status  = false;
     unsigned int            n_segments      = 0;
     bool                    result          = false;
-    system_resizable_vector segments_vector = NULL;
+    system_resizable_vector segments_vector = nullptr;
 
     if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                segment_type,
-                                               NULL, /* out_segment_id_counter_ptr_ptr */
+                                               nullptr, /* out_segment_id_counter_ptr_ptr */
                                               &segments_vector,
-                                               NULL) )/* out_segment_hash64map_ptr */
+                                               nullptr) )/* out_segment_hash64map_ptr */
     {
         ASSERT_DEBUG_SYNC(false,
                           "Cannot retrieve segments vector for the requested segment type.");
@@ -759,7 +759,7 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
                       n_segment < n_segments;
                     ++n_segment)
     {
-        _demo_timeline_segment_item* current_segment_ptr = NULL;
+        _demo_timeline_segment_item* current_segment_ptr = nullptr;
         bool                         does_not_overlap    = false;
         bool                         does_overlap        = true;
         system_time                  segment_end_time    = 0;
@@ -789,7 +789,7 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
                             segment_end_time   >= end_time);
         does_overlap     = !does_not_overlap;
 
-        if (opt_excluded_segment_id_ptr != NULL)
+        if (opt_excluded_segment_id_ptr != nullptr)
         {
             if (does_overlap                                            &&
                 current_segment_ptr->id == *opt_excluded_segment_id_ptr)
@@ -797,7 +797,7 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
                 /* We were explicitly asked to skip this segment. */
                 continue;
             }
-        } /* if (opt_excluded_segment_id_ptr != NULL) */
+        }
 
         if (does_overlap)
         {
@@ -805,10 +805,10 @@ PRIVATE bool _demo_timeline_is_region_segment_free(_demo_timeline*              
 
             break;
         }
-    } /* for (all segments) */
+    }
 
     /* All done */
-    if (out_result_ptr != NULL)
+    if (out_result_ptr != nullptr)
     {
         *out_result_ptr = !overlap_status;
     }
@@ -839,13 +839,13 @@ PRIVATE bool _demo_timeline_update_duration(_demo_timeline* timeline_ptr)
                            ++(int&) current_segment_type)
     {
         unsigned int            n_segments      = 0;
-        system_resizable_vector segments_vector = NULL;
+        system_resizable_vector segments_vector = nullptr;
 
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    current_segment_type,
-                                                   NULL,   /* out_segment_id_counter_ptr */
+                                                   nullptr,   /* out_segment_id_counter_ptr */
                                                   &segments_vector,
-                                                   NULL) ) /* out_segment_hash64map_ptr */
+                                                   nullptr) ) /* out_segment_hash64map_ptr */
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve segments vector for the requested segment type.");
@@ -863,7 +863,7 @@ PRIVATE bool _demo_timeline_update_duration(_demo_timeline* timeline_ptr)
                         ++n_current_segment)
         {
             system_time                  current_segment_end_time = 0;
-            _demo_timeline_segment_item* current_segment_ptr      = NULL;
+            _demo_timeline_segment_item* current_segment_ptr      = nullptr;
 
             if (!system_resizable_vector_get_element_at(segments_vector,
                                                         n_current_segment,
@@ -884,8 +884,8 @@ PRIVATE bool _demo_timeline_update_duration(_demo_timeline* timeline_ptr)
             {
                 max_segment_end_time = current_segment_end_time;
             }
-        } /* for (all known segments) */
-    } /* for (all known segment types) */
+        }
+    }
 
     timeline_ptr->duration = max_segment_end_time;
 
@@ -910,21 +910,21 @@ PUBLIC EMERALD_API bool demo_timeline_add_postprocessing_segment(demo_timeline  
                                       name,
                                       start_time,
                                       end_time,
-                                      0.0f,                        /* aspect ratio - irrelevant */
-                                      RAL_TEXTURE_FORMAT_UNKNOWN, /* will be determined later */
+                                      0.0f,               /* aspect ratio - irrelevant */
+                                      RAL_FORMAT_UNKNOWN, /* will be determined later */
                                       out_opt_segment_id_ptr,
                                       out_opt_postprocessing_segment_ptr);
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline              timeline,
-                                                        system_hashed_ansi_string  name,
-                                                        system_time                start_time,
-                                                        system_time                end_time,
-                                                        float                      aspect_ratio,
-                                                        ral_texture_format         output_texture_format,
-                                                        demo_timeline_segment_id*  out_opt_segment_id_ptr,
-                                                        demo_timeline_segment*     out_opt_video_segment_ptr)
+PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline             timeline,
+                                                        system_hashed_ansi_string name,
+                                                        system_time               start_time,
+                                                        system_time               end_time,
+                                                        float                     aspect_ratio,
+                                                        ral_format                output_texture_format,
+                                                        demo_timeline_segment_id* out_opt_segment_id_ptr,
+                                                        demo_timeline_segment*    out_opt_video_segment_ptr)
 {
     return _demo_timeline_add_segment(timeline,
                                       DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
@@ -945,10 +945,10 @@ PUBLIC EMERALD_API demo_timeline demo_timeline_create(system_hashed_ansi_string 
     _demo_timeline* timeline_ptr = new (std::nothrow) _demo_timeline(context,
                                                                      window);
 
-    ASSERT_ALWAYS_SYNC(timeline_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(timeline_ptr != nullptr,
                        "Out of memory");
 
-    if (timeline_ptr != NULL)
+    if (timeline_ptr != nullptr)
     {
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(timeline_ptr,
                                                        _demo_timeline_release,
@@ -965,15 +965,15 @@ PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              
                                                      demo_timeline_segment_type segment_type,
                                                      demo_timeline_segment_id   segment_id)
 {
-    system_hash64map             owning_hash64map     = NULL;
-    system_resizable_vector      owning_vector        = NULL;
+    system_hash64map             owning_hash64map     = nullptr;
+    system_resizable_vector      owning_vector        = nullptr;
     bool                         result               = false;
     system_time                  segment_end_time     = 0;
-    _demo_timeline_segment_item* segment_ptr          = NULL;
+    _demo_timeline_segment_item* segment_ptr          = nullptr;
     size_t                       segment_vector_index = ITEM_NOT_FOUND;
     _demo_timeline*              timeline_ptr         = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(timeline_ptr != nullptr,
                       "Input timeline is NULL");
 
     /* Identify segment containers */
@@ -981,7 +981,7 @@ PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              
     {
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    segment_type,
-                                                   NULL, /* out_segment_id_counter_ptr_ptr */
+                                                   nullptr, /* out_segment_id_counter_ptr_ptr */
                                                   &owning_vector,
                                                   &owning_hash64map) )
         {
@@ -1013,7 +1013,7 @@ PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              
         {
             system_resizable_vector_delete_element_at(owning_vector,
                                                       segment_vector_index);
-        } /* if (segment_vector_index != ITEM_NOT_FOUND) */
+        }
 
         /* Update the timeline's duration, if the removed segment's end time matches
          * the current duration */
@@ -1028,11 +1028,11 @@ PUBLIC EMERALD_API bool demo_timeline_delete_segment(demo_timeline              
                 ASSERT_DEBUG_SYNC(false,
                                   "Failed to update timeline duration.");
             }
-        } /* if (timeline_ptr->duration == segment_ptr->end_time) */
+        }
 
         /* Release the descriptor */
         delete segment_ptr;
-        segment_ptr = NULL;
+        segment_ptr = nullptr;
 
         /* All done */
         result = true;
@@ -1054,11 +1054,11 @@ PUBLIC EMERALD_API void demo_timeline_free_segment_ids(demo_timeline_segment_id*
 PUBLIC EMERALD_API float demo_timeline_get_aspect_ratio(demo_timeline timeline,
                                                         system_time   frame_time)
 {
-    demo_timeline_segment postprocessing_segment = NULL;
+    demo_timeline_segment postprocessing_segment = nullptr;
     float                 result                 = 0.0f;
     _demo_timeline*       timeline_ptr           = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline != NULL,
+    ASSERT_DEBUG_SYNC(timeline != nullptr,
                       "Input timeline instance is NULL");
 
     system_resizable_vector_clear(timeline_ptr->segment_cache_vector);
@@ -1093,7 +1093,7 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
     bool            result       = true;
     _demo_timeline* timeline_ptr = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(timeline_ptr != nullptr,
                       "Input timeline instance is NULL");
 
     switch (property)
@@ -1150,7 +1150,7 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeli
 
             result = false;
         }
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -1162,12 +1162,12 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_by_id(demo_timeline           
                                                         demo_timeline_segment*     out_segment_ptr)
 {
     bool                         result           = false;
-    _demo_timeline_segment_item* segment_item_ptr = NULL;
-    system_hash64map             segment_map      = NULL;
+    _demo_timeline_segment_item* segment_item_ptr = nullptr;
+    system_hash64map             segment_map      = nullptr;
     _demo_timeline*              timeline_ptr     = (_demo_timeline*) timeline;
 
     /* Sanity checks */
-    if (out_segment_ptr == NULL)
+    if (out_segment_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Output variable is NULL");
@@ -1175,7 +1175,7 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_by_id(demo_timeline           
         goto end;
     }
 
-    if (timeline == NULL)
+    if (timeline == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Timeline instance is NULL");
@@ -1207,7 +1207,7 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_by_id(demo_timeline           
 
             goto end;
         }
-    } /* switch (segment_type) */
+    }
 
     if (!system_hash64map_get(segment_map,
                               (system_hash64) segment_id,
@@ -1236,23 +1236,23 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_id(demo_timeline              
                                                      demo_timeline_segment_id*  out_segment_id_ptr)
 {
     uint32_t                     n_segments    = 0;
-    system_resizable_vector      owning_vector = NULL;
+    system_resizable_vector      owning_vector = nullptr;
     bool                         result        = false;
-    _demo_timeline_segment_item* segment_ptr   = NULL;
+    _demo_timeline_segment_item* segment_ptr   = nullptr;
     _demo_timeline*              timeline_ptr  = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(out_segment_id_ptr != NULL,
+    ASSERT_DEBUG_SYNC(out_segment_id_ptr != nullptr,
                       "Result segment ID pointer is NULL");
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(timeline_ptr != nullptr,
                       "Input timeline instance is NULL");
 
     system_critical_section_enter(timeline_ptr->cs);
     {
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    segment_type,
-                                                   NULL,  /* out_segment_id_counter_ptr_ptr */
+                                                   nullptr,  /* out_segment_id_counter_ptr_ptr */
                                                   &owning_vector,
-                                                   NULL)) /* out_segment_hash64map_ptr */
+                                                   nullptr)) /* out_segment_hash64map_ptr */
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve owning vector for the requested segment type");
@@ -1289,13 +1289,13 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_ids(demo_timeline             
 {
     uint32_t                  n_segments         = 0;
     bool                      result             = false;
-    demo_timeline_segment_id* result_segment_ids = NULL;
-    system_resizable_vector   segments_vector    = NULL;
+    demo_timeline_segment_id* result_segment_ids = nullptr;
+    system_resizable_vector   segments_vector    = nullptr;
     _demo_timeline*           timeline_ptr       = (_demo_timeline*) timeline;
 
     /* Sanity checks */
-    if (out_n_segment_ids_ptr == NULL ||
-        out_segment_ids_ptr   == NULL)
+    if (out_n_segment_ids_ptr == nullptr ||
+        out_segment_ids_ptr   == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Out arguments are NULL");
@@ -1303,13 +1303,13 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_ids(demo_timeline             
         goto end;
     }
 
-    if (timeline == NULL)
+    if (timeline == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Timeline instance is NULL");
 
         goto end;
-    } /* if (timeline == NULL) */
+    }
 
     /* Retrieve the segment IDs */
     switch (segment_type)
@@ -1335,7 +1335,7 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_ids(demo_timeline             
 
             goto end;
         }
-    } /* switch (segment_type) */
+    }
 
     system_resizable_vector_get_property(segments_vector,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1345,19 +1345,19 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_ids(demo_timeline             
     {
         result_segment_ids = new demo_timeline_segment_id[n_segments];
 
-        if (result_segment_ids == NULL)
+        if (result_segment_ids == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Out of memory");
 
             goto end;
-        } /* if (result_segment_ids == NULL) */
+        }
 
         for (uint32_t n_segment = 0;
                       n_segment < n_segments;
                     ++n_segment)
         {
-            _demo_timeline_segment_item* current_segment_ptr = NULL;
+            _demo_timeline_segment_item* current_segment_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(segments_vector,
                                                         n_segment,
@@ -1373,8 +1373,8 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_ids(demo_timeline             
             demo_timeline_segment_get_property(current_segment_ptr->segment,
                                                DEMO_TIMELINE_SEGMENT_PROPERTY_ID,
                                                result_segment_ids + n_segment);
-        } /* for (all segments) */
-    } /* if (n_segments > 0) */
+        }
+    }
 
     /* All done */
     *out_n_segment_ids_ptr = n_segments;
@@ -1384,13 +1384,13 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_ids(demo_timeline             
 end:
     if (!result)
     {
-        if (result_segment_ids != NULL)
+        if (result_segment_ids != nullptr)
         {
             delete [] result_segment_ids;
 
-            result_segment_ids = NULL;
+            result_segment_ids = nullptr;
         }
-    } /* if (!result) */
+    }
 
     return result;
 }
@@ -1402,20 +1402,20 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_property(demo_timeline        
                                                            demo_timeline_segment_property property,
                                                            void*                          out_result_ptr)
 {
-    system_hash64map             owning_hash64map = NULL;
+    system_hash64map             owning_hash64map = nullptr;
     bool                         result           = false;
-    _demo_timeline_segment_item* segment_ptr      = NULL;
+    _demo_timeline_segment_item* segment_ptr      = nullptr;
     _demo_timeline*              timeline_ptr     = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(timeline_ptr != nullptr,
                       "Input timeline instance is NULL");
 
     system_critical_section_enter(timeline_ptr->cs);
     {
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    segment_type,
-                                                   NULL,  /* out_segment_id_counter_ptr_ptr */
-                                                   NULL,  /* out_segment_vector_ptr */
+                                                   nullptr,  /* out_segment_id_counter_ptr_ptr */
+                                                   nullptr,  /* out_segment_vector_ptr */
                                                   &owning_hash64map))
         {
             ASSERT_DEBUG_SYNC(false,
@@ -1456,7 +1456,7 @@ PUBLIC EMERALD_API bool demo_timeline_get_segment_property(demo_timeline        
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized demo_timeline_segment_property value");
             }
-        } /* switch (property) */
+        }
     }
 
 end:
@@ -1475,20 +1475,20 @@ PUBLIC EMERALD_API bool demo_timeline_move_segment(demo_timeline              ti
     bool                         result                = false;
     system_time                  segment_duration      = 0;
     system_time                  segment_end_time      = 0;
-    system_hash64map             segment_hash64map     = NULL;
-    _demo_timeline_segment_item* segment_ptr           = NULL;
+    system_hash64map             segment_hash64map     = nullptr;
+    _demo_timeline_segment_item* segment_ptr           = nullptr;
     system_time                  segment_start_time    = 0;
     _demo_timeline*              timeline_ptr          = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline != NULL,
+    ASSERT_DEBUG_SYNC(timeline != nullptr,
                       "Input timeline instance is NULL");
 
     system_critical_section_enter(timeline_ptr->cs);
     {
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    segment_type,
-                                                   NULL, /* out_segment_id_counter_ptr_ptr */
-                                                   NULL, /* out_segment_vector_ptr */
+                                                   nullptr, /* out_segment_id_counter_ptr_ptr */
+                                                   nullptr, /* out_segment_vector_ptr */
                                                   &segment_hash64map) )
         {
             ASSERT_DEBUG_SYNC(false,
@@ -1542,7 +1542,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
                                                                     system_time   frame_time,
                                                                     const int*    rendering_area_px_topdown)
 {
-    demo_timeline_segment           postprocessing_segment    = NULL;
+    demo_timeline_segment           postprocessing_segment    = nullptr;
     uint32_t                        n_postprocessing_segments = 0;
     bool                            result                    = false;
     demo_timeline_segment_time_mode time_mode;
@@ -1611,7 +1611,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_render(demo_timelin
                 ASSERT_DEBUG_SYNC(false,
                                    "Unrecognized pipeline time mode.");
             }
-        } /* switch (video_segment_ptr->pipeline_time_mode) */
+        }
 
         /* Render the segment */
         result = demo_timeline_segment_render(postprocessing_segment,
@@ -1634,20 +1634,20 @@ PUBLIC EMERALD_API bool demo_timeline_resize_segment(demo_timeline              
                                                      system_time                new_segment_duration)
 {
     bool                         result             = false;
-    system_hash64map             segment_hash64map  = NULL;
-    _demo_timeline_segment_item* segment_ptr        = NULL;
+    system_hash64map             segment_hash64map  = nullptr;
+    _demo_timeline_segment_item* segment_ptr        = nullptr;
     system_time                  segment_start_time = 0;
     _demo_timeline*              timeline_ptr       = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline != NULL,
+    ASSERT_DEBUG_SYNC(timeline != nullptr,
                       "Input timeline instance is NULL");
 
     system_critical_section_enter(timeline_ptr->cs);
     {
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    segment_type,
-                                                   NULL, /* out_segment_id_counter_ptr_ptr */
-                                                   NULL, /* out_segment_vector_ptr */
+                                                   nullptr, /* out_segment_id_counter_ptr_ptr */
+                                                   nullptr, /* out_segment_vector_ptr */
                                                   &segment_hash64map) )
         {
             ASSERT_DEBUG_SYNC(false,
@@ -1692,7 +1692,7 @@ PUBLIC EMERALD_API bool demo_timeline_set_property(demo_timeline          timeli
     bool            result       = true;
     _demo_timeline* timeline_ptr = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline_ptr != NULL,
+    ASSERT_DEBUG_SYNC(timeline_ptr != nullptr,
                       "Input timeline instance is NULL");
 
     switch (property)
@@ -1714,7 +1714,7 @@ PUBLIC EMERALD_API bool demo_timeline_set_property(demo_timeline          timeli
 
             result = false;
         }
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -1727,19 +1727,19 @@ PUBLIC EMERALD_API bool demo_timeline_set_segment_property(demo_timeline        
                                                            const void*                    data)
 {
     bool                         result            = false;
-    system_hash64map             segment_hash64map = NULL;
-    _demo_timeline_segment_item* segment_ptr       = NULL;
+    system_hash64map             segment_hash64map = nullptr;
+    _demo_timeline_segment_item* segment_ptr       = nullptr;
     _demo_timeline*              timeline_ptr      = (_demo_timeline*) timeline;
 
-    ASSERT_DEBUG_SYNC(timeline != NULL,
+    ASSERT_DEBUG_SYNC(timeline != nullptr,
                       "Input timeline instance is NULL");
 
     system_critical_section_enter(timeline_ptr->cs);
     {
         if (!_demo_timeline_get_segment_containers(timeline_ptr,
                                                    segment_type,
-                                                   NULL, /* out_segment_id_counter_ptr_ptr */
-                                                   NULL, /* out_segment_vector_ptr */
+                                                   nullptr, /* out_segment_id_counter_ptr_ptr */
+                                                   nullptr, /* out_segment_vector_ptr */
                                                   &segment_hash64map) )
         {
             ASSERT_DEBUG_SYNC(false,

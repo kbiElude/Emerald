@@ -77,8 +77,8 @@ typedef struct demo_window_create_info
     demo_window_create_info()
     {
         fullscreen                    = false;
-        loader_callback_func_user_arg = NULL;
-        pfn_loader_callback_func_ptr  = NULL;
+        loader_callback_func_user_arg = nullptr;
+        pfn_loader_callback_func_ptr  = nullptr;
         refresh_rate                  = 60;
         resolution[0]                 = 1280;
         resolution[1]                 = 720;

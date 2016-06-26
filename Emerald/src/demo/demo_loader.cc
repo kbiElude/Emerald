@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -46,22 +46,22 @@ typedef struct _demo_loader_op
                op_ptr,
                sizeof(*op_ptr) );
 
-        if (op_ptr->cs.body != NULL)
+        if (op_ptr->cs.body != nullptr)
         {
-            ASSERT_DEBUG_SYNC(op_ptr->fs.body == NULL &&
-                              op_ptr->gs.body == NULL &&
-                              op_ptr->tc.body == NULL &&
-                              op_ptr->te.body == NULL &&
-                              op_ptr->vs.body == NULL,
+            ASSERT_DEBUG_SYNC(op_ptr->fs.body == nullptr &&
+                              op_ptr->gs.body == nullptr &&
+                              op_ptr->tc.body == nullptr &&
+                              op_ptr->te.body == nullptr &&
+                              op_ptr->vs.body == nullptr,
                               "If compute shader body is defined, bodies for all other shader stages must be NULL");
         }
         else
         {
-            ASSERT_DEBUG_SYNC(op_ptr->fs.body != NULL ||
-                              op_ptr->gs.body != NULL ||
-                              op_ptr->tc.body != NULL ||
-                              op_ptr->te.body != NULL ||
-                              op_ptr->vs.body != NULL,
+            ASSERT_DEBUG_SYNC(op_ptr->fs.body != nullptr ||
+                              op_ptr->gs.body != nullptr ||
+                              op_ptr->tc.body != nullptr ||
+                              op_ptr->te.body != nullptr ||
+                              op_ptr->vs.body != nullptr,
                               "No body defined for any of the shader stages");
         }
 
@@ -146,9 +146,9 @@ typedef struct _demo_loader
 
     ~_demo_loader()
     {
-        if (enqueued_ops != NULL)
+        if (enqueued_ops != nullptr)
         {
-            _demo_loader_op* enqueued_op_ptr = NULL;
+            _demo_loader_op* enqueued_op_ptr = nullptr;
 
             /* Release the operations in reversed order. Each operation can have a teardown func ptr associated.
              * If one is present, we need to call it now so that related assets, objects, etc. can be released.
@@ -160,7 +160,7 @@ typedef struct _demo_loader
                 {
                     case DEMO_LOADER_OP_BUILD_PROGRAM:
                     {
-                        if (enqueued_op_ptr->data.build_program.pfn_teardown_func_ptr != NULL)
+                        if (enqueued_op_ptr->data.build_program.pfn_teardown_func_ptr != nullptr)
                         {
                             enqueued_op_ptr->data.build_program.pfn_teardown_func_ptr(enqueued_op_ptr->data.build_program.teardown_callback_user_arg);
                         }
@@ -170,7 +170,7 @@ typedef struct _demo_loader
 
                     case DEMO_LOADER_OP_LOAD_AUDIO_STREAM:
                     {
-                        if (enqueued_op_ptr->data.load_audio_stream.pfn_teardown_func_ptr != NULL)
+                        if (enqueued_op_ptr->data.load_audio_stream.pfn_teardown_func_ptr != nullptr)
                         {
                             enqueued_op_ptr->data.load_audio_stream.pfn_teardown_func_ptr(enqueued_op_ptr->data.load_audio_stream.teardown_callback_user_arg);
                         }
@@ -188,7 +188,7 @@ typedef struct _demo_loader
 
                     case DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK:
                     {
-                        if (enqueued_op_ptr->data.request_rendering_thread_callback.pfn_teardown_func_ptr != NULL)
+                        if (enqueued_op_ptr->data.request_rendering_thread_callback.pfn_teardown_func_ptr != nullptr)
                         {
                             enqueued_op_ptr->data.request_rendering_thread_callback.pfn_teardown_func_ptr(enqueued_op_ptr->data.request_rendering_thread_callback.teardown_callback_user_arg);
                         }
@@ -204,18 +204,18 @@ typedef struct _demo_loader
                 }
 
                 delete enqueued_op_ptr;
-                enqueued_op_ptr = NULL;
+                enqueued_op_ptr = nullptr;
             }
 
             system_resizable_vector_release(enqueued_ops);
-            enqueued_ops = NULL;
+            enqueued_ops = nullptr;
         }
 
         for (uint32_t object_type_index = 0;
                       object_type_index < DEMO_LOADER_OBJECT_TYPE_COUNT;
                     ++object_type_index)
         {
-            if (loaded_objects[object_type_index] != NULL)
+            if (loaded_objects[object_type_index] != nullptr)
             {
                 uint32_t n_loaded_objects = 0;
 
@@ -233,7 +233,7 @@ typedef struct _demo_loader
                 }
 
                 system_resizable_vector_release(loaded_objects[object_type_index]);
-                loaded_objects[object_type_index] = NULL;
+                loaded_objects[object_type_index] = nullptr;
             }
         }
     }
@@ -245,7 +245,7 @@ PUBLIC demo_loader demo_loader_create(ral_context context)
 {
     _demo_loader* new_loader_ptr = new (std::nothrow) _demo_loader(context);
 
-    ASSERT_DEBUG_SYNC(new_loader_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_loader_ptr != nullptr,
                       "Out of memory");
 
     return (demo_loader) new_loader_ptr;
@@ -257,7 +257,7 @@ PUBLIC EMERALD_API void demo_loader_enqueue_operation(demo_loader    loader,
                                                       void*          operation_arg)
 {
     _demo_loader*    loader_ptr = (_demo_loader*) loader;
-    _demo_loader_op* new_op_ptr = NULL;
+    _demo_loader_op* new_op_ptr = nullptr;
 
     ASSERT_DEBUG_SYNC(!loader_ptr->has_been_launched,
                       "Cannot enqueue ops after the loader has been launched!");
@@ -320,9 +320,9 @@ PUBLIC EMERALD_API void demo_loader_enqueue_operation(demo_loader    loader,
         }
     }
 
-    ASSERT_DEBUG_SYNC(new_op_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_op_ptr != nullptr,
                       "Out of memory");
-    if (new_op_ptr != NULL)
+    if (new_op_ptr != nullptr)
     {
         system_resizable_vector_push(loader_ptr->enqueued_ops,
                                      new_op_ptr);
@@ -383,14 +383,14 @@ PUBLIC void demo_loader_release_object_by_index(demo_loader             loader,
                                                 uint32_t                object_index)
 {
     _demo_loader* loader_ptr  = (_demo_loader*) loader;
-    void*         object      = NULL;
-    const void*   object_null = NULL;
+    void*         object      = nullptr;
+    const void*   object_null = nullptr;
 
     if (system_resizable_vector_get_element_at(loader_ptr->loaded_objects[object_type],
                                                object_index,
                                               &object) )
     {
-        if (object != NULL)
+        if (object != nullptr)
         {
             switch (object_type)
             {
@@ -441,7 +441,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 {
     _demo_loader* loader_ptr     = (_demo_loader*) loader;
     uint32_t      n_enqueued_ops = 0;
-    system_window window_private = NULL;
+    system_window window_private = nullptr;
 
     ASSERT_DEBUG_SYNC(!loader_ptr->has_been_launched,
                       "Loader should not be run more than once");
@@ -463,7 +463,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                   n_enqueued_op < n_enqueued_ops;
                 ++n_enqueued_op)
     {
-        _demo_loader_op* op_ptr = NULL;
+        _demo_loader_op* op_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(loader_ptr->enqueued_ops,
                                                     n_enqueued_op,
@@ -480,17 +480,17 @@ PUBLIC void demo_loader_run(demo_loader   loader,
         {
             case DEMO_LOADER_OP_BUILD_PROGRAM:
             {
-                ral_context context     = NULL;
-                ral_program new_program = NULL;
+                ral_context context     = nullptr;
+                ral_program new_program = nullptr;
 
                 const ral_program_create_info po_create_info =
                 {
-                    ((op_ptr->data.build_program.cs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE         : 0) |
-                    ((op_ptr->data.build_program.fs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT        : 0) |
-                    ((op_ptr->data.build_program.gs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY        : 0) |
-                    ((op_ptr->data.build_program.tc.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL    : 0) |
-                    ((op_ptr->data.build_program.te.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION : 0) |
-                    ((op_ptr->data.build_program.vs.body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX          : 0),
+                    static_cast<ral_program_shader_stage_bits>(((op_ptr->data.build_program.cs.body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_COMPUTE         : 0) |
+                                                               ((op_ptr->data.build_program.fs.body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT        : 0) |
+                                                               ((op_ptr->data.build_program.gs.body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY        : 0) |
+                                                               ((op_ptr->data.build_program.tc.body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL    : 0) |
+                                                               ((op_ptr->data.build_program.te.body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION : 0) |
+                                                               ((op_ptr->data.build_program.vs.body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX          : 0)),
                     op_ptr->data.build_program.name
                 };
 
@@ -530,9 +530,12 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                 {
                     const _shader& current_shader = shaders[n_shader];
 
-                    if (current_shader.data_ptr->body != NULL)
+                    ASSERT_DEBUG_SYNC(current_shader.data_ptr != nullptr,
+                                      "Null _shader pointer");
+
+                    if (current_shader.data_ptr->body != nullptr)
                     {
-                        ral_shader                      new_shader         = NULL;
+                        ral_shader                      new_shader         = nullptr;
                         const system_hashed_ansi_string shader_body        = system_hashed_ansi_string_create_by_token_replacement(current_shader.data_ptr->body,
                                                                                                                                    current_shader.data_ptr->n_tokens,
                                                                                                                                    current_shader.data_ptr->token_keys,
@@ -573,7 +576,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                     }
                 }
 
-                if (new_program != NULL)
+                if (new_program != nullptr)
                 {
                     system_resizable_vector_get_property(loader_ptr->loaded_objects[DEMO_LOADER_OBJECT_TYPE_PROGRAM],
                                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -582,7 +585,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                     system_resizable_vector_push(loader_ptr->loaded_objects[DEMO_LOADER_OBJECT_TYPE_PROGRAM],
                                                  new_program);
 
-                    if (op_ptr->data.build_program.pfn_on_link_finished_callback_proc != NULL)
+                    if (op_ptr->data.build_program.pfn_on_link_finished_callback_proc != nullptr)
                     {
                         op_ptr->data.build_program.pfn_on_link_finished_callback_proc(new_program,
                                                                                       op_ptr->data.build_program.on_link_finished_callback_user_arg);
@@ -602,12 +605,12 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
             case DEMO_LOADER_OP_LOAD_AUDIO_STREAM:
             {
-                system_file_serializer audio_serializer = NULL;
-                audio_stream           new_audio_stream = NULL;
+                system_file_serializer audio_serializer = nullptr;
+                audio_stream           new_audio_stream = nullptr;
 
                 audio_serializer = system_file_serializer_create_for_reading(op_ptr->data.load_audio_stream.audio_file_name);
 
-                ASSERT_ALWAYS_SYNC(audio_serializer != NULL,
+                ASSERT_ALWAYS_SYNC(audio_serializer != nullptr,
                                    "Could not open [%s]",
                                    system_hashed_ansi_string_get_buffer(op_ptr->data.load_audio_stream.audio_file_name) );
 
@@ -615,7 +618,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                                        audio_serializer,
                                                        window);
 
-                ASSERT_ALWAYS_SYNC(new_audio_stream != NULL,
+                ASSERT_ALWAYS_SYNC(new_audio_stream != nullptr,
                                    "Could not create an audio_stream instance.");
 
                 /* NOTE: The audio stream will be bound to the window after the loader part finishes executing.
@@ -624,7 +627,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                  */
 
                 /* Cache the audio stream */
-                if (op_ptr->data.load_audio_stream.result_audio_stream_index_ptr != NULL)
+                if (op_ptr->data.load_audio_stream.result_audio_stream_index_ptr != nullptr)
                 {
                     system_resizable_vector_get_property(loader_ptr->loaded_objects[DEMO_LOADER_OBJECT_TYPE_AUDIO_STREAM],
                                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -642,8 +645,8 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
             case DEMO_LOADER_OP_LOAD_SCENES:
             {
-                scene_multiloader       multiloader       = NULL;
-                system_file_serializer* scene_serializers = NULL;
+                scene_multiloader       multiloader       = nullptr;
+                system_file_serializer* scene_serializers = nullptr;
 
                 ASSERT_DEBUG_SYNC(op_ptr->data.load_scenes.n_scenes >= 1,
                                   "Invalid number of scenes requested for DEMO_LOADER_OP_LOAD_SCENES operation.");
@@ -652,7 +655,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                                                                       op_ptr->data.load_scenes.n_scenes,
                                                                       op_ptr->data.load_scenes.scene_file_names);
 
-                ASSERT_DEBUG_SYNC(multiloader != NULL,
+                ASSERT_DEBUG_SYNC(multiloader != nullptr,
                                   "Could not spawn a scene_multiloader instance");
 
                 scene_multiloader_load_async         (multiloader);
@@ -663,13 +666,13 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                               n_scene < op_ptr->data.load_scenes.n_scenes;
                             ++n_scene)
                 {
-                    scene result_scene = NULL;
+                    scene result_scene = nullptr;
 
                     scene_multiloader_get_loaded_scene(multiloader,
                                                        n_scene,
                                                       &result_scene);
 
-                    ASSERT_DEBUG_SYNC(result_scene != NULL,
+                    ASSERT_DEBUG_SYNC(result_scene != nullptr,
                                       "scene_multiloader returned a NULL scene handle");
 
                     system_resizable_vector_get_property(loader_ptr->loaded_objects[DEMO_LOADER_OBJECT_TYPE_SCENE],
@@ -684,9 +687,9 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
             case DEMO_LOADER_OP_RENDER_ANIMATION:
             {
-                system_event          playback_in_progress_event = NULL;
-                system_event          playback_stopped_event     = NULL;
-                ral_rendering_handler rendering_handler          = NULL;
+                system_event          playback_in_progress_event = nullptr;
+                system_event          playback_stopped_event     = nullptr;
+                ral_rendering_handler rendering_handler          = nullptr;
 
                 system_window_get_property        (window_private,
                                                    SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
@@ -717,7 +720,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
             case DEMO_LOADER_OP_RENDER_FRAME:
             {
-                ral_rendering_handler rendering_handler = NULL;
+                ral_rendering_handler rendering_handler = nullptr;
 
                 system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
@@ -733,7 +736,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
 
             case DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK:
             {
-                ral_rendering_handler rendering_handler = NULL;
+                ral_rendering_handler rendering_handler = nullptr;
 
                 system_window_get_property(window_private,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
