@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -11,8 +11,8 @@
 typedef struct _ral_sampler
 {
     ral_color                 border_color;
-    ral_compare_function      compare_function;
     bool                      compare_mode_enabled;
+    ral_compare_op            compare_op;
     ral_context               context;
     float                     lod_bias;
     float                     lod_min;
@@ -29,7 +29,7 @@ typedef struct _ral_sampler
     _ral_sampler(ral_context               in_context,
                  system_hashed_ansi_string in_name,
                  ral_color                 in_border_color,
-                 ral_compare_function      in_compare_function,
+                 ral_compare_op            in_compare_op,
                  bool                      in_compare_mode_enabled,
                  float                     in_lod_bias,
                  float                     in_lod_min,
@@ -43,8 +43,8 @@ typedef struct _ral_sampler
                  ral_texture_wrap_mode     in_wrap_t)
     {
         border_color         = in_border_color;
-        compare_function     = in_compare_function;
         compare_mode_enabled = in_compare_mode_enabled;
+        compare_op           = in_compare_op;
         context              = in_context;
         lod_bias             = in_lod_bias;
         lod_max              = in_lod_max;
@@ -81,7 +81,7 @@ PUBLIC ral_sampler ral_sampler_create(ral_context                    context,
     _ral_sampler* sampler_ptr = new (std::nothrow) _ral_sampler(context,
                                                                 name,
                                                                 sampler_create_info_ptr->border_color,
-                                                                sampler_create_info_ptr->compare_function,
+                                                                sampler_create_info_ptr->compare_op,
                                                                 sampler_create_info_ptr->compare_mode_enabled,
                                                                 sampler_create_info_ptr->lod_bias,
                                                                 sampler_create_info_ptr->lod_min,
@@ -94,7 +94,7 @@ PUBLIC ral_sampler ral_sampler_create(ral_context                    context,
                                                                 sampler_create_info_ptr->wrap_s,
                                                                 sampler_create_info_ptr->wrap_t);
 
-    ASSERT_ALWAYS_SYNC(sampler_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(sampler_ptr != nullptr,
                        "Out of memory");
 
     return (ral_sampler) sampler_ptr;
@@ -108,7 +108,7 @@ PUBLIC void ral_sampler_get_property(ral_sampler          sampler,
     const _ral_sampler* sampler_ptr = (_ral_sampler*) sampler;
 
     /* Sanity checks */
-    if (sampler == NULL)
+    if (sampler == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input sampler instance is NULL");
@@ -126,16 +126,16 @@ PUBLIC void ral_sampler_get_property(ral_sampler          sampler,
             break;
         }
 
-        case RAL_SAMPLER_PROPERTY_COMPARE_FUNCTION:
+        case RAL_SAMPLER_PROPERTY_COMPARE_MODE_ENABLED:
         {
-            *(ral_compare_function*) out_result_ptr = sampler_ptr->compare_function;
+            *(bool*) out_result_ptr = sampler_ptr->compare_mode_enabled;
 
             break;
         }
 
-        case RAL_SAMPLER_PROPERTY_COMPARE_MODE_ENABLED:
+        case RAL_SAMPLER_PROPERTY_COMPARE_OP:
         {
-            *(bool*) out_result_ptr = sampler_ptr->compare_mode_enabled;
+            *(ral_compare_op*) out_result_ptr = sampler_ptr->compare_op;
 
             break;
         }
@@ -222,7 +222,7 @@ PUBLIC void ral_sampler_get_property(ral_sampler          sampler,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ral_sampler_property value.");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }
@@ -235,7 +235,7 @@ PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    s
     _ral_sampler* sampler_ptr = (_ral_sampler*) sampler;
 
     /* Sanity checks */
-    if (sampler == NULL)
+    if (sampler == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input sampler is NULL");
@@ -243,7 +243,7 @@ PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    s
         goto end;
     }
 
-    if (sampler_create_info_ptr == NULL)
+    if (sampler_create_info_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input sampler create info is NULL");
@@ -259,7 +259,7 @@ PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    s
 
     switch (sampler_ptr->border_color.data_type)
     {
-        case ral_color::RAL_COLOR_DATA_TYPE_FLOAT:
+        case RAL_COLOR_DATA_TYPE_FLOAT:
         {
             if (fabs(sampler_ptr->border_color.f32[0] - sampler_create_info_ptr->border_color.f32[0]) > 1e-5f ||
                 fabs(sampler_ptr->border_color.f32[1] - sampler_create_info_ptr->border_color.f32[1]) > 1e-5f ||
@@ -272,8 +272,8 @@ PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    s
             break;
         }
 
-        case ral_color::RAL_COLOR_DATA_TYPE_SINT:
-        case ral_color::RAL_COLOR_DATA_TYPE_UINT:
+        case RAL_COLOR_DATA_TYPE_SINT:
+        case RAL_COLOR_DATA_TYPE_UINT:
         {
             if (sampler_ptr->border_color.i32[0] != sampler_create_info_ptr->border_color.i32[0] ||
                 sampler_ptr->border_color.i32[1] != sampler_create_info_ptr->border_color.i32[1] ||
@@ -293,10 +293,10 @@ PUBLIC bool ral_sampler_is_equal_to_create_info(ral_sampler                    s
 
             break;
         }
-    } /* switch (sampler_a_ptr->border_color.data_type) */
+    }
 
-    if (sampler_ptr->compare_function     != sampler_create_info_ptr->compare_function     ||
-        sampler_ptr->compare_mode_enabled != sampler_create_info_ptr->compare_mode_enabled ||
+    if (sampler_ptr->compare_mode_enabled != sampler_create_info_ptr->compare_mode_enabled ||
+        sampler_ptr->compare_op           != sampler_create_info_ptr->compare_op           ||
         sampler_ptr->mag_filter           != sampler_create_info_ptr->mag_filter           ||
         sampler_ptr->min_filter           != sampler_create_info_ptr->min_filter           ||
         sampler_ptr->mipmap_mode          != sampler_create_info_ptr->mipmap_mode          ||

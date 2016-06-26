@@ -168,7 +168,7 @@ PUBLIC EMERALD_API bool ral_utils_get_format_property(ral_format          format
 
             result = false;
         }
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -206,6 +206,7 @@ PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_class_property(r
         }
     }
 }
+
 /** Please see header for specification */
 PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_property(ral_program_variable_type          variable_type,
                                                                          ral_program_variable_type_property property,

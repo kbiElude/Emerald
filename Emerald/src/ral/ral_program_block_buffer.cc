@@ -41,33 +41,33 @@ typedef struct _ral_program_block_buffer
 
     _ral_program_block_buffer()
     {
-        buffer_ral         = NULL;
-        context_ral        = NULL;
-        data               = NULL;
+        buffer_ral         = nullptr;
+        context_ral        = nullptr;
+        data               = nullptr;
         dirty_offset_end   = DIRTY_OFFSET_UNUSED;
         dirty_offset_start = DIRTY_OFFSET_UNUSED;
-        name               = NULL;
-        program_ral        = NULL;
+        name               = nullptr;
+        program_ral        = nullptr;
         size               = 0;
     }
 
     ~_ral_program_block_buffer()
     {
-        if (buffer_ral != NULL)
+        if (buffer_ral != nullptr)
         {
             ral_context_delete_objects(context_ral,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
                                        (const void**) &buffer_ral);
 
-            buffer_ral = NULL;
+            buffer_ral = nullptr;
         }
 
-        if (data != NULL)
+        if (data != nullptr)
         {
             delete [] data;
 
-            data = NULL;
+            data = nullptr;
         }
     }
 } _ral_program_block_buffer;
@@ -113,7 +113,7 @@ PRIVATE unsigned int _ral_program_block_buffer_get_expected_src_data_size(const 
                               "Unrecognized variable type [%d]",
                               variable_ptr->type);
         }
-    } /* switch (variable_ptr->type) */
+    }
 
     result *= n_array_items;
 
@@ -188,7 +188,7 @@ PRIVATE unsigned int _ral_program_block_buffer_get_memcpy_friendly_matrix_stride
                               "Unrecognized variable type [%d]",
                               variable_ptr->type);
         }
-    } /* switch (variable_ptr->type) */
+    }
 
     return result;
 }
@@ -216,7 +216,7 @@ PRIVATE unsigned int _ral_program_block_buffer_get_n_matrix_columns(const ral_pr
                               "Unrecognized variable type [%d]",
                               variable_ptr->type);
         }
-    } /* switch (variable_ptr->type) */
+    }
 
     return result;
 }
@@ -244,7 +244,7 @@ PRIVATE unsigned int _ral_program_block_buffer_get_n_matrix_rows(const ral_progr
                               "Unrecognized variable type [%d]",
                               variable_ptr->type);
         }
-    } /* switch (variable_ptr->type) */
+    }
 
     return result;
 }
@@ -268,7 +268,7 @@ PRIVATE bool _ral_program_block_buffer_is_matrix_variable(const ral_program_vari
         {
             result = true;
         }
-    } /* switch (variable_ptr->type) */
+    }
 
     return result;
 }
@@ -281,15 +281,15 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
                                                           unsigned int               dst_array_start_index,
                                                           unsigned int               dst_array_item_count)
 {
-    unsigned char*              dst_traveller_ptr     = NULL;
+    unsigned char*              dst_traveller_ptr     = nullptr;
     bool                        is_matrix_variable    = false;
     unsigned int                modified_region_end   = DIRTY_OFFSET_UNUSED;
     unsigned int                modified_region_start = DIRTY_OFFSET_UNUSED;
-    const unsigned char*        src_traveller_ptr     = NULL;
-    const ral_program_variable* variable_ral_ptr      = NULL;
+    const unsigned char*        src_traveller_ptr     = nullptr;
+    const ral_program_variable* variable_ral_ptr      = nullptr;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(block_buffer_ptr != NULL,
+    ASSERT_DEBUG_SYNC(block_buffer_ptr != nullptr,
                       "Input UB is NULL - crash ahead.");
 
     ASSERT_DEBUG_SYNC(block_variable_offset < block_buffer_ptr->size,
@@ -337,7 +337,7 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
                               block_variable_offset);
 
             goto end;
-        } /* if (src_data_size != expected_src_data_size) */
+        }
     }
     #endif
 
@@ -384,7 +384,7 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
 
                     dst_traveller_ptr += variable_ral_ptr->matrix_stride;
                     src_traveller_ptr += row_data_size;
-                } /* for (all matrix rows) */
+                }
             }
             else
             {
@@ -415,9 +415,9 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
 
                     dst_traveller_ptr += variable_ral_ptr->matrix_stride;
                     src_traveller_ptr += column_data_size;
-                } /* for (all matrix columns) */
+                }
             }
-        } /* if (_ral_program_block_buffer_get_memcpy_friendly_matrix_stride(variable_ral_ptr) != variable_ral_ptr->matrix_stride) */
+        }
         else
         {
             /* Good to use the good old memcpy(), since the data is laid out linearly
@@ -436,7 +436,7 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
                 modified_region_end   = modified_region_start + src_data_size;
             }
         }
-    } /* if (is_matrix_variable) */
+    }
     else
     {
         /* Non-matrix variables */
@@ -471,7 +471,7 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
 
                 dst_traveller_ptr += variable_ral_ptr->array_stride;
                 src_traveller_ptr += src_single_item_size;
-            } /* for (all array items) */
+            }
         }
         else
         {
@@ -516,7 +516,7 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
         {
             block_buffer_ptr->dirty_offset_end = modified_region_end;
         }
-    } /* if (modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED) */
+    }
 
     /* All done */
 end:
@@ -531,12 +531,12 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
 {
     ral_program_block_type     block_type;
     bool                       is_successful        = true;
-    _ral_program_block_buffer* new_block_buffer_ptr = NULL;
+    _ral_program_block_buffer* new_block_buffer_ptr = nullptr;
 
     /* Sanity checks */
-    if (program == NULL)
+    if (program == nullptr)
     {
-        ASSERT_DEBUG_SYNC(program != NULL,
+        ASSERT_DEBUG_SYNC(program != nullptr,
                           "Input RAL program instance is NULL");
 
         goto end;
@@ -545,7 +545,7 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
     if (!ral_program_is_block_defined(program,
                                       block_name) )
     {
-        system_hashed_ansi_string program_name = NULL;
+        system_hashed_ansi_string program_name = nullptr;
 
         ral_program_get_property(program,
                                  RAL_PROGRAM_PROPERTY_NAME,
@@ -566,14 +566,14 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
     /* Create new block instance */
     new_block_buffer_ptr = new (std::nothrow) _ral_program_block_buffer;
 
-    ASSERT_ALWAYS_SYNC(new_block_buffer_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_block_buffer_ptr != nullptr,
                        "Out of memory");
 
     new_block_buffer_ptr->context_ral = context;
     new_block_buffer_ptr->name        = block_name;
     new_block_buffer_ptr->program_ral = program;
 
-    if (new_block_buffer_ptr != NULL)
+    if (new_block_buffer_ptr != nullptr)
     {
         ral_buffer_create_info new_block_create_info;
         uint32_t               new_block_size = 0;
@@ -590,9 +590,9 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
         {
             new_block_buffer_ptr->data = new (std::nothrow) unsigned char[new_block_size];
 
-            if (new_block_buffer_ptr->data == NULL)
+            if (new_block_buffer_ptr->data == nullptr)
             {
-                ASSERT_ALWAYS_SYNC(new_block_buffer_ptr->data != NULL,
+                ASSERT_ALWAYS_SYNC(new_block_buffer_ptr->data != nullptr,
                                    "Out of memory");
 
                 is_successful = false;
@@ -605,7 +605,7 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
                    new_block_size);
 
             new_block_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-            new_block_create_info.parent_buffer    = NULL;
+            new_block_create_info.parent_buffer    = nullptr;
             new_block_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
             new_block_create_info.size             = new_block_size;
             new_block_create_info.start_offset     = 0;
@@ -623,8 +623,8 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
         }
         else
         {
-            new_block_buffer_ptr->buffer_ral         = NULL;
-            new_block_buffer_ptr->data               = NULL;
+            new_block_buffer_ptr->buffer_ral         = nullptr;
+            new_block_buffer_ptr->data               = nullptr;
             new_block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
             new_block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
         }
@@ -635,7 +635,7 @@ end:
     {
         ral_program_block_buffer_release( (ral_program_block_buffer) new_block_buffer_ptr);
 
-        new_block_buffer_ptr = NULL;
+        new_block_buffer_ptr = nullptr;
     }
 
     return (ral_program_block_buffer) new_block_buffer_ptr;
@@ -648,9 +648,9 @@ PUBLIC EMERALD_API void ral_program_block_buffer_get_property(ral_program_block_
 {
     _ral_program_block_buffer* block_buffer_ptr = (_ral_program_block_buffer*) block_buffer;
 
-    if (block_buffer == NULL)
+    if (block_buffer == nullptr)
     {
-        ASSERT_DEBUG_SYNC(block_buffer != NULL,
+        ASSERT_DEBUG_SYNC(block_buffer != nullptr,
                           "Input ral_program_block_buffer instance is NULL");
 
         goto end;
@@ -670,7 +670,7 @@ PUBLIC EMERALD_API void ral_program_block_buffer_get_property(ral_program_block_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ral_program_block_buffer_property value.");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }

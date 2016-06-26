@@ -37,10 +37,10 @@ typedef struct _ral_scheduler_backend
         job_available_semaphore = system_semaphore_create       (N_MAX_SCHEDULABLE_JOBS, /* semaphore_capacity      */
                                                                   0);                    /* semaphore_default_value */
         job_pool                = system_resource_pool_create   (sizeof(ral_scheduler_job_info),
-                                                                 4,     /* n_elements_to_preallocate */
-                                                                 NULL,  /* init_fn                   */
-                                                                 NULL); /* deinit_fn                 */
-        jobs                    = system_resizable_vector_create(4);    /* capacity                  */
+                                                                 4,        /* n_elements_to_preallocate */
+                                                                 nullptr,  /* init_fn                   */
+                                                                 nullptr); /* deinit_fn                 */
+        jobs                    = system_resizable_vector_create(4);       /* capacity                  */
         jobs_cs                 = system_critical_section_create();
         n_threads_active        = 0;
         please_leave_event      = system_event_create           (true); /* manual_reset              */

@@ -573,6 +573,8 @@ PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buf
 
         if (is_command_valid)
         {
+            new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+
             memcpy(new_command_ptr->clear_rt_binding_command.clear_regions,
                    src_command.clear_regions,
                    src_command.n_clear_regions * sizeof(src_command.clear_regions[0]) );

@@ -26,9 +26,6 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_window.h"
 
-typedef bool (*PFNRALBACKENDGETFRAMEBUFFERPROC)(void*                      backend,
-                                                ral_framebuffer            framebuffer_ral,
-                                                void**                     out_framebuffer_backend_ptr);
 typedef void (*PFNRALBACKENDGETPROPERTYPROC)   (void*                      backend,
                                                 ral_context_property       property,
                                                 void*                      out_result_ptr);
@@ -44,7 +41,6 @@ typedef struct _ral_context
      **/
     void*                              backend;
     ral_backend_type                   backend_type;
-    PFNRALBACKENDGETFRAMEBUFFERPROC    pfn_backend_get_framebuffer_proc;
     PFNRALBACKENDGETPROPERTYPROC       pfn_backend_get_property_proc;
     PFNRALBACKENDRELEASEPROC           pfn_backend_release_proc;
 
@@ -107,7 +103,7 @@ typedef struct _ral_context
         callback_manager          = system_callback_manager_create((_callback_id) RAL_CONTEXT_CALLBACK_ID_COUNT);
         command_buffers           = system_resizable_vector_create(sizeof(ral_command_buffer) );
         command_buffers_cs        = system_critical_section_create();
-        gfx_states                = system_resizable_vector_create(sizeof(ral_framebuffer) );
+        gfx_states                = system_resizable_vector_create(sizeof(ral_gfx_state) );
         gfx_states_cs             = system_critical_section_create();
         n_buffers_created         = 0;
         n_command_buffers_created = 0;
@@ -1411,13 +1407,12 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
             case RAL_BACKEND_TYPE_ES:
             case RAL_BACKEND_TYPE_GL:
             {
-                new_context_ptr->backend_type                     = backend_type;
-                new_context_ptr->backend                          = (void*) raGL_backend_create( (ral_context) new_context_ptr,
-                                                                                                name,
-                                                                                                backend_type);
-                new_context_ptr->pfn_backend_get_framebuffer_proc = raGL_backend_get_framebuffer;
-                new_context_ptr->pfn_backend_get_property_proc    = raGL_backend_get_property;
-                new_context_ptr->pfn_backend_release_proc         = raGL_backend_release;
+                new_context_ptr->backend_type                  = backend_type;
+                new_context_ptr->backend                       = (void*) raGL_backend_create( (ral_context) new_context_ptr,
+                                                                                             name,
+                                                                                             backend_type);
+                new_context_ptr->pfn_backend_get_property_proc = raGL_backend_get_property;
+                new_context_ptr->pfn_backend_release_proc      = raGL_backend_release;
 
                 break;
             }

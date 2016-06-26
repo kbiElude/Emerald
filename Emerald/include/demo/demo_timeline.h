@@ -157,7 +157,7 @@ PUBLIC EMERALD_API bool demo_timeline_add_video_segment(demo_timeline           
                                                         system_time               start_time,
                                                         system_time               end_time,
                                                         float                     aspect_ratio,
-                                                        ral_texture_format        output_texture_format,
+                                                        ral_format                output_texture_format,
                                                         demo_timeline_segment_id* out_opt_video_segment_id_ptr,
                                                         demo_timeline_segment*    out_opt_video_segment_ptr);
 

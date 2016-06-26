@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -46,20 +46,20 @@ typedef struct _ral_texture_layer
 
     ~_ral_texture_layer()
     {
-        if (mipmaps != NULL)
+        if (mipmaps != nullptr)
         {
-            _ral_texture_mipmap* current_mipmap_ptr = NULL;
+            _ral_texture_mipmap* current_mipmap_ptr = nullptr;
 
             while (system_resizable_vector_pop(mipmaps,
                                               &current_mipmap_ptr) )
             {
                 delete current_mipmap_ptr;
-                current_mipmap_ptr = NULL;
+                current_mipmap_ptr = nullptr;
             }
 
             system_resizable_vector_release(mipmaps);
-            mipmaps = NULL;
-        } /* if (mipmaps != NULL) */
+            mipmaps = nullptr;
+        }
     }
 } _ral_texture_layer;
 
@@ -103,7 +103,7 @@ typedef struct _ral_texture
         base_mipmap_size[2]    = in_base_mipmap_depth;
         callback_manager       = system_callback_manager_create( (_callback_id) RAL_TEXTURE_CALLBACK_ID_COUNT);
         context                = in_context;
-        file_name              = NULL;
+        file_name              = nullptr;
         fixed_sample_locations = in_fixed_sample_locations;
         format                 = in_format;
         layers                 = system_resizable_vector_create(in_n_layers);
@@ -117,28 +117,28 @@ typedef struct _ral_texture
 
     ~_ral_texture()
     {
-        if (callback_manager != NULL)
+        if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
 
-            callback_manager = NULL;
-        } /* if (callback_manager != NULL) */
+            callback_manager = nullptr;
+        }
 
-        if (layers != NULL)
+        if (layers != nullptr)
         {
-            _ral_texture_layer* current_layer_ptr = NULL;
+            _ral_texture_layer* current_layer_ptr = nullptr;
 
             while (system_resizable_vector_pop(layers,
                                               &current_layer_ptr) )
             {
                 delete current_layer_ptr;
 
-                current_layer_ptr = NULL;
-            } /* while (there are mipmap vectors to pop) */
+                current_layer_ptr = nullptr;
+            }
 
             system_resizable_vector_release(layers);
-            layers = NULL;
-        } /* if (layers != NULL) */
+            layers = nullptr;
+        }
     }
 } _ral_texture;
 
@@ -170,7 +170,7 @@ PRIVATE void _ral_texture_init_mipmap_chain(_ral_texture* texture_ptr)
 
         _ral_texture_layer* new_texture_layer_ptr = new (std::nothrow) _ral_texture_layer();
 
-        ASSERT_ALWAYS_SYNC(new_texture_layer_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(new_texture_layer_ptr != nullptr,
                            "Out of memory");
 
         system_resizable_vector_push(texture_ptr->layers,
@@ -184,7 +184,7 @@ PRIVATE void _ral_texture_init_mipmap_chain(_ral_texture* texture_ptr)
                                                                                                  mipmap_height,
                                                                                                  mipmap_depth);
 
-            ASSERT_ALWAYS_SYNC(new_texture_mipmap_ptr != NULL,
+            ASSERT_ALWAYS_SYNC(new_texture_mipmap_ptr != nullptr,
                                "Out of memory");
 
             system_resizable_vector_push(new_texture_layer_ptr->mipmaps,
@@ -201,19 +201,19 @@ PRIVATE void _ral_texture_init_mipmap_chain(_ral_texture* texture_ptr)
             if (mipmap_width < 1)
             {
                 mipmap_width = 1;
-            } /* if (mipmap_width < 1) */
+            }
 
             if (mipmap_height < 1)
             {
                 mipmap_height = 1;
-            } /* if (mipmap_height < 1) */
+            }
 
             if (mipmap_depth < 1)
             {
                 mipmap_depth = 1;
             }
         }
-    } /* for (all texture layers to create) */
+    }
 }
 
 /** TODO */
@@ -235,12 +235,12 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
                                       const ral_texture_create_info* create_info_ptr)
 {
     uint32_t      n_mipmaps  = 0;
-    ral_texture   result     = NULL;
-    _ral_texture* result_ptr = NULL;
+    ral_texture   result     = nullptr;
+    _ral_texture* result_ptr = nullptr;
 
     /* Sanity checks */
-    if (name            == NULL ||
-        create_info_ptr == NULL)
+    if (name            == nullptr ||
+        create_info_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "One or more of the input variables are NULL");
@@ -344,7 +344,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* switch (create_info_ptr->type) */
+        }
 
         if (req_base_mipmap_depth_set_to_one)
         {
@@ -355,7 +355,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* if (req_base_mipmap_depth_set_to_one) */
+        }
         else
         {
             if (create_info_ptr->base_mipmap_depth < 1)
@@ -376,7 +376,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* if (req_base_mipmap_height_set_to_one) */
+        }
         else
         {
             if (create_info_ptr->base_mipmap_height < 1)
@@ -397,7 +397,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* if (req_base_mipmap_height_equals_mipmap_width) */
+        }
 
         if (req_n_layers_mul_six)
         {
@@ -408,7 +408,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* if (req_n_layers_mul_six) */
+        }
 
         if (req_n_layers_set_to_one)
         {
@@ -419,7 +419,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* if (req_n_layers_set_to_one) */
+        }
 
         if (req_n_layers_set_to_six)
         {
@@ -430,7 +430,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* if (req_n_layers_set_to_six) */
+        }
 
         if (req_n_samples_set_to_one)
         {
@@ -441,7 +441,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
 
                 goto end;
             }
-        } /* if (req_n_samples_set_to_one) */
+        }
         else
         {
             if (create_info_ptr->n_samples < 1)
@@ -478,7 +478,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
         {
             n_mipmaps = 1;
         }
-    } /* if (create_info_ptr->use_full_mipmap_chain) */
+    }
     else
     {
         n_mipmaps = 1;
@@ -498,7 +498,7 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
                                                  create_info_ptr->type,
                                                  create_info_ptr->usage);
 
-    if (result_ptr == NULL)
+    if (result_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -524,12 +524,12 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
                                                      PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
                                                      bool                                         async)
 {
-    gfx_image   new_gfx_image = NULL;
-    ral_texture result        = NULL;
+    gfx_image   new_gfx_image = nullptr;
+    ral_texture result        = nullptr;
 
     /* Sanity checks */
-    if (name      == NULL ||
-        file_name == NULL)
+    if (name      == nullptr ||
+        file_name == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "One or more input arguments are NULL");
@@ -551,7 +551,7 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
                                                file_name,
                                                true); /* use_alternative_filename_getter */
 
-    if (new_gfx_image == NULL)
+    if (new_gfx_image == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not create a gfx_image instance for file [%s]",
@@ -568,7 +568,7 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
                                                pfn_notify_backend_about_new_object_proc,
                                                async);
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not create a ral_texture from a gfx_image instance created for file [%s]",
@@ -582,7 +582,7 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
 
     /* Release the gfx_image instance - we don't need it anymore. */
     gfx_image_release(new_gfx_image);
-    new_gfx_image = NULL;
+    new_gfx_image = nullptr;
 
     /* All done */
 end:
@@ -597,20 +597,20 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                                                      PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
                                                      bool                                         async)
 {
-    system_hashed_ansi_string                                       base_image_file_name    = NULL;
+    system_hashed_ansi_string                                       base_image_file_name    = nullptr;
     unsigned int                                                    base_image_height       = 0;
     unsigned int                                                    base_image_width        = 0;
     ral_format                                                      image_format            = RAL_FORMAT_UNKNOWN;
     bool                                                            image_is_compressed     = false;
     unsigned int                                                    image_n_mipmaps         = 0;
-    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = NULL;
-    ral_texture                                                     result                  = NULL;
+    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = nullptr;
+    ral_texture                                                     result                  = nullptr;
     ral_texture_create_info                                         result_create_info;
-    _ral_texture*                                                   result_ptr              = NULL;
+    _ral_texture*                                                   result_ptr              = nullptr;
 
     /* Sanity checks */
-    if (image == NULL ||
-        name  == NULL)
+    if (image == nullptr ||
+        name  == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "One or more input arguments are NULL");
@@ -659,13 +659,13 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
 
     mipmap_update_info_ptrs = new (std::nothrow) std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>[image_n_mipmaps];
 
-    if (mipmap_update_info_ptrs == NULL)
+    if (mipmap_update_info_ptrs == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
 
         goto end;
-    } /* if (mipmap_update_info_ptrs == NULL) */
+    }
 
     /* Set up the ral_texture instance */
     result_create_info.base_mipmap_depth      = 1;
@@ -684,7 +684,7 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                                 name,
                                &result_create_info);
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "ral_texture_create() failed.");
@@ -702,7 +702,7 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                 ++n_mipmap)
     {
         uint32_t              mipmap_data_height        = 0;
-        void*                 mipmap_data_ptr           = NULL;
+        void*                 mipmap_data_ptr           = nullptr;
         uint32_t              mipmap_data_row_alignment = 0;
         uint32_t              mipmap_data_size          = 0;
         ral_texture_data_type mipmap_data_type          = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
@@ -752,7 +752,7 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
         mipmap_update_info_ptrs[n_mipmap]->delete_handler_proc_user_arg = image;
 
         gfx_image_retain(image);
-    } /* for (all mipmap descriptors) */
+    }
 
     pfn_notify_backend_about_new_object_proc(context,
                                              result,
@@ -767,16 +767,16 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                           "Failed to set mipmap data for a ral_texture instance deriving from a gfx_image instance.");
 
         ral_texture_release(result);
-        result = NULL;
-    } /* if (!result) */
+        result = nullptr;
+    }
 
     /* All done */
 end:
-    if (mipmap_update_info_ptrs != NULL)
+    if (mipmap_update_info_ptrs != nullptr)
     {
         delete [] mipmap_update_info_ptrs;
 
-        mipmap_update_info_ptrs = NULL;
+        mipmap_update_info_ptrs = nullptr;
     }
     return result;
 }
@@ -789,7 +789,7 @@ PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture,
     _ral_texture* texture_ptr = (_ral_texture*) texture;
 
     /* Sanity checks */
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_texture instance is NULL");
@@ -822,12 +822,12 @@ PUBLIC EMERALD_API bool ral_texture_get_mipmap_property(ral_texture             
                                                         void*                       out_result_ptr)
 {
     bool                 result             = false;
-    _ral_texture_layer*  texture_layer_ptr  = NULL;
-    _ral_texture_mipmap* texture_mipmap_ptr = NULL;
+    _ral_texture_layer*  texture_layer_ptr  = nullptr;
+    _ral_texture_mipmap* texture_mipmap_ptr = nullptr;
     _ral_texture*        texture_ptr        = (_ral_texture*) texture;
 
     /* Sanity checks */
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input texture is NULL");
@@ -909,7 +909,7 @@ PUBLIC EMERALD_API bool ral_texture_get_mipmap_property(ral_texture             
 
             goto end;
         }
-    } /* switch (mipmap_property) */
+    }
 
     /* All done. */
 
@@ -926,7 +926,7 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
     _ral_texture* texture_ptr = (_ral_texture*) texture;
 
     /* Sanity checks */
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input texture is NULL");
@@ -1044,7 +1044,7 @@ PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
 
             result = false;
         }
-    } /* switch (property) */
+    }
 
 end:
     return result;
@@ -1068,7 +1068,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
     _ral_texture*                                                   texture_ptr     = (_ral_texture*) texture;
 
     /* Sanity checks */
-    if (texture == NULL)
+    if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_texture instance is NULL");
@@ -1083,7 +1083,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
         goto end;
     }
 
-    if (updates == NULL)
+    if (updates == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input update descriptor array is NULL");
@@ -1107,7 +1107,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
                     ++n_update)
         {
             uint32_t            n_texture_layer_mipmaps = 0;
-            _ral_texture_layer* texture_layer_ptr       = NULL;
+            _ral_texture_layer* texture_layer_ptr       = nullptr;
 
             /* Is valid data provided for texture dimensions required by the specified texture's type? */
             for (uint32_t n_texture_dimension = 0;
@@ -1174,7 +1174,7 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
 
                 goto end;
             }
-        } /* for (all update descriptors) */
+        }
     }
     #endif /* _DEBUG */
 
@@ -1199,8 +1199,8 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
                   n_update < n_updates;
                 ++n_update)
     {
-        _ral_texture_layer*  texture_layer_ptr  = NULL;
-        _ral_texture_mipmap* texture_mipmap_ptr = NULL;
+        _ral_texture_layer*  texture_layer_ptr  = nullptr;
+        _ral_texture_mipmap* texture_mipmap_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(texture_ptr->layers,
                                                     updates[n_update]->n_layer,
@@ -1239,9 +1239,9 @@ PUBLIC void ral_texture_set_property(ral_texture          texture,
 {
     _ral_texture* texture_ptr = (_ral_texture*) texture;
 
-    if (texture == NULL)
+    if (texture == nullptr)
     {
-        ASSERT_DEBUG_SYNC(texture != NULL,
+        ASSERT_DEBUG_SYNC(texture != nullptr,
                           "Input ral_texture instance is NULL");
 
         goto end;
@@ -1268,7 +1268,7 @@ PUBLIC void ral_texture_set_property(ral_texture          texture,
             ASSERT_DEBUG_SYNC(false,
                               "Unsupported ral_texture_property value requested.");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }

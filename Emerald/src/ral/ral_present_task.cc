@@ -1,3 +1,8 @@
+/**
+ *
+ * Emerald (kbi/elude @2016)
+ *
+ */
 #include "shared.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"

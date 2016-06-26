@@ -244,7 +244,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
  */
 PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ral_context               context,
                                                                 demo_timeline             owner_timeline,
-                                                                ral_texture_format        output_texture_format,
+                                                                ral_format                output_texture_format,
                                                                 system_hashed_ansi_string name,
                                                                 system_time               start_time,
                                                                 system_time               end_time,

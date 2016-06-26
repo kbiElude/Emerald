@@ -25,7 +25,7 @@ typedef struct _ral_shader
     {
         callback_manager = system_callback_manager_create((_callback_id) RAL_SHADER_CALLBACK_ID_COUNT);
         cs               = system_critical_section_create();
-        glsl_body        = NULL;
+        glsl_body        = nullptr;
         glsl_body_lock   = system_read_write_mutex_create();
         name             = shader_create_info_ptr->name;
         source           = shader_create_info_ptr->source;
@@ -34,25 +34,25 @@ typedef struct _ral_shader
 
     ~_ral_shader()
     {
-        if (callback_manager != NULL)
+        if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
 
-            callback_manager = NULL;
+            callback_manager = nullptr;
         }
 
-        if (cs != NULL)
+        if (cs != nullptr)
         {
             system_critical_section_release(cs);
 
-            cs = NULL;
+            cs = nullptr;
         }
 
-        if (glsl_body_lock != NULL)
+        if (glsl_body_lock != nullptr)
         {
             system_read_write_mutex_release(glsl_body_lock);
 
-            glsl_body_lock = NULL;
+            glsl_body_lock = nullptr;
         }
     }
 } _ral_shader;
@@ -70,7 +70,7 @@ PUBLIC ral_shader ral_shader_create(const ral_shader_create_info* shader_create_
 {
     _ral_shader* shader_ptr = new (std::nothrow) _ral_shader(shader_create_info_ptr);
 
-    ASSERT_ALWAYS_SYNC(shader_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(shader_ptr != nullptr,
                        "Out of memory");
 
     return (ral_shader) shader_ptr;
@@ -84,7 +84,7 @@ PUBLIC EMERALD_API void ral_shader_get_property(ral_shader          shader,
     const _ral_shader* shader_ptr = (_ral_shader*) shader;
 
     /* Sanity checks */
-    if (shader == NULL)
+    if (shader == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input shader instance is NULL");
@@ -138,7 +138,7 @@ PUBLIC EMERALD_API void ral_shader_get_property(ral_shader          shader,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ral_shader_property value.");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }
@@ -163,7 +163,7 @@ PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
 {
     _ral_shader* shader_ptr = (_ral_shader*) shader;
 
-    if (shader == NULL)
+    if (shader == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_shader instance is NULL");
@@ -179,10 +179,10 @@ PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
         {
             system_hashed_ansi_string in_body;
 
-            if (         data == NULL ||
-                *(void**)data == NULL)
+            if (         data == nullptr ||
+                *(void**)data == nullptr)
             {
-                in_body = NULL;
+                in_body = nullptr;
             }
             else
             {
@@ -202,7 +202,7 @@ PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
                 system_read_write_mutex_unlock( ((_ral_shader*) shader)->glsl_body_lock,
                                                ACCESS_WRITE);
 
-                if (in_body != NULL)
+                if (in_body != nullptr)
                 {
                     system_callback_manager_call_back(shader_ptr->callback_manager,
                                                       RAL_SHADER_CALLBACK_ID_GLSL_BODY_UPDATED,
@@ -218,7 +218,7 @@ PUBLIC EMERALD_API void ral_shader_set_property(ral_shader          shader,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognzied ral_shader_property value.");
         }
-    } /* switch (property) */
+    }
 
     system_critical_section_leave(shader_ptr->cs);
 end:

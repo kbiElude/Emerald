@@ -1,3 +1,8 @@
+/**
+ *
+ * Emerald (kbi/elude @2014-2016)
+ *
+ */
 #include "shared.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"

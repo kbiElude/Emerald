@@ -80,6 +80,7 @@ typedef struct
     volatile bool                                    should_thread_live;
     system_event*                                    wait_events;           /* has n_backend_wait_events + n_default_wait_events items */
     ral_rendering_handler_custom_wait_event_handler* wait_event_handlers;
+
     REFCOUNT_INSERT_VARIABLES
 } _ral_rendering_handler;
 
@@ -214,7 +215,7 @@ PRIVATE bool _ral_rendering_handler_key_down_callback(system_window window,
                 }
 
                 /* Update the audio stream playback position */
-                if (rendering_handler_ptr->active_audio_stream != NULL)
+                if (rendering_handler_ptr->active_audio_stream != nullptr)
                 {
                     int32_t     frame_index;
                     system_time frame_time;
@@ -249,7 +250,7 @@ PRIVATE bool _ral_rendering_handler_key_down_callback(system_window window,
                 }
 
                 /* Update the audio stream playback position */
-                if (rendering_handler_ptr->active_audio_stream != NULL)
+                if (rendering_handler_ptr->active_audio_stream != nullptr)
                 {
                     int32_t     frame_index;
                     system_time frame_time;
@@ -353,7 +354,7 @@ PRIVATE bool _ral_rendering_handler_key_up_callback(system_window window,
                 rendering_handler_ptr->left_arrow_key_press_start_time = 0;
 
                 /* Update the audio stream playback position */
-                if (rendering_handler_ptr->active_audio_stream != NULL)
+                if (rendering_handler_ptr->active_audio_stream != nullptr)
                 {
                     int32_t     frame_index;
                     system_time frame_time;
@@ -381,7 +382,7 @@ PRIVATE bool _ral_rendering_handler_key_up_callback(system_window window,
                 rendering_handler_ptr->right_arrow_key_press_start_time = 0;
 
                 /* Update the audio stream playback position */
-                if (rendering_handler_ptr->active_audio_stream != NULL)
+                if (rendering_handler_ptr->active_audio_stream != nullptr)
                 {
                     int32_t     frame_index;
                     system_time frame_time;
@@ -506,7 +507,7 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
              *    value by querying the object.
              * 2) Otherwise, we use the OGL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO property value.
              */
-            if (rendering_handler_ptr->timeline != NULL)
+            if (rendering_handler_ptr->timeline != nullptr)
             {
                 aspect_ratio = demo_timeline_get_aspect_ratio(rendering_handler_ptr->timeline,
                                                               new_frame_time);
@@ -534,11 +535,11 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                 rendering_area[3] = window_size[1] - rendering_area[1];
             }
 
-            if (rendering_handler_ptr->pfn_rendering_callback != NULL ||
-                rendering_handler_ptr->timeline               != NULL)
+            if (rendering_handler_ptr->pfn_rendering_callback != nullptr ||
+                rendering_handler_ptr->timeline               != nullptr)
             {
                  /* If timeline instance is specified, prefer it over the rendering call-back func ptr */
-                 if (rendering_handler_ptr->timeline != NULL)
+                 if (rendering_handler_ptr->timeline != nullptr)
                  {
                      has_rendered_frame = demo_timeline_render(rendering_handler_ptr->timeline,
                                                                frame_index,
@@ -547,7 +548,7 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                  }
                  else
                  {
-                     if (rendering_handler_ptr->pfn_rendering_callback != NULL)
+                     if (rendering_handler_ptr->pfn_rendering_callback != nullptr)
                      {
                          rendering_handler_ptr->pfn_rendering_callback(rendering_handler_ptr->context,
                                                                        frame_index,
@@ -621,9 +622,9 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
 
         /* Cache some variables.. */
         ral_context               context_ral         = rendering_handler_ptr->context;
-        system_window             context_window      = NULL;
-        system_hashed_ansi_string context_window_name = NULL;
-        system_pixel_format       context_window_pf   = NULL;
+        system_window             context_window      = nullptr;
+        system_hashed_ansi_string context_window_name = nullptr;
+        system_pixel_format       context_window_pf   = nullptr;
         GLint                     window_size[2]      = {0};
 
         ral_context_get_property  (rendering_handler_ptr->context,
@@ -654,7 +655,7 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
         {
             /* Create a new text string which we will use to show performance info */
             const float         text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
-            varia_text_renderer text_renderer          = NULL;
+            varia_text_renderer text_renderer          = nullptr;
             const float         text_scale             = 0.75f;
             const int           text_string_position[] = {0, window_size[1]};
 
@@ -709,7 +710,7 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
                                                        rendering_handler_ptr->n_backend_wait_events + rendering_handler_ptr->n_default_wait_events,
                                                        false, /* wait_on_all_objects */
                                                        SYSTEM_TIME_INFINITE,
-                                                       NULL); /* out_result_ptr */
+                                                       nullptr); /* out_result_ptr */
             }
             system_event_reset(rendering_handler_ptr->playback_waiting_event);
 
@@ -748,17 +749,17 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
     _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) in_arg;
 
     /* Release the timeline, if one was assigned. */
-    if (rendering_handler_ptr->timeline != NULL)
+    if (rendering_handler_ptr->timeline != nullptr)
     {
         demo_timeline_release(rendering_handler_ptr->timeline);
 
-        rendering_handler_ptr->timeline = NULL;
+        rendering_handler_ptr->timeline = nullptr;
     }
 
-    if (rendering_handler_ptr->context != NULL)
+    if (rendering_handler_ptr->context != nullptr)
     {
         /* Unsubscribe from the window call-backs */
-        system_window window = NULL;
+        system_window window = nullptr;
 
         ral_context_get_property(rendering_handler_ptr->context,
                                  RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -787,7 +788,7 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
     system_event_set        (rendering_handler_ptr->shutdown_request_event);
     system_event_wait_single(rendering_handler_ptr->shutdown_request_ack_event);
 
-    rendering_handler_ptr->context = NULL;
+    rendering_handler_ptr->context = nullptr;
 
     /* Release the backend's rendering handler instance */
     if (rendering_handler_ptr->rendering_handler_backend != nullptr)
@@ -847,19 +848,19 @@ PUBLIC bool ral_rendering_handler_bind_to_context(ral_rendering_handler renderin
     _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
     bool                    result                = false;
 
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context == NULL,
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context == nullptr,
                       "Rendering handler is already bound to a context! A rendering handler cannot be bound to more than one context at a time. ");
 
-    if (rendering_handler_ptr->context == NULL)
+    if (rendering_handler_ptr->context == nullptr)
     {
-        system_window context_window = NULL;
+        system_window context_window = nullptr;
         int           window_size[2];
 
         ral_context_get_property(context,
                                  RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                 &context_window);
 
-        ASSERT_DEBUG_SYNC(context_window != NULL,
+        ASSERT_DEBUG_SYNC(context_window != nullptr,
                           "No rendering window associated with the rendering context.");
 
         rendering_handler_ptr->context        = context;
@@ -911,10 +912,10 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
 {
     _ral_rendering_handler* new_handler_ptr = new (std::nothrow) _ral_rendering_handler;
 
-    ASSERT_ALWAYS_SYNC(new_handler_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_handler_ptr != nullptr,
                        "Out of memory while allocating memroy for rendering handler.");
 
-    if (new_handler_ptr != NULL)
+    if (new_handler_ptr != nullptr)
     {
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_handler_ptr,
                                                        _ral_rendering_handler_release,
@@ -971,8 +972,8 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
         /* Create the event array we will use in the rendering thread */
         const ral_rendering_handler_custom_wait_event_handler default_handlers[] =
         {
-            {new_handler_ptr->shutdown_request_event,     -1, _ral_rendering_handler_shutdown_request_callback_handler},
-            {new_handler_ptr->playback_in_progress_event, -1, _ral_rendering_handler_playback_in_progress_callback_handler},
+            {new_handler_ptr->shutdown_request_event,     UINT_MAX, _ral_rendering_handler_shutdown_request_callback_handler},
+            {new_handler_ptr->playback_in_progress_event, UINT_MAX, _ral_rendering_handler_playback_in_progress_callback_handler},
         };
         const uint32_t n_default_handlers = sizeof(default_handlers) / sizeof(default_handlers[0]);
 
@@ -1045,7 +1046,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
 
         system_threads_spawn(_ral_rendering_handler_thread_entrypoint,
                              new_handler_ptr,
-                             NULL, /* thread_wait_event */
+                             nullptr, /* thread_wait_event */
                              system_hashed_ansi_string_create("RAL rendering handler thread") );
     }
 
@@ -1184,10 +1185,10 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
     _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
     bool                    result                = false;
 
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != NULL,
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != nullptr,
                       "Cannot play - the handler is not bound to any window.");
 
-    if (rendering_handler_ptr->context != NULL)
+    if (rendering_handler_ptr->context != nullptr)
     {
         if (rendering_handler_ptr->playback_status == RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED ||
             rendering_handler_ptr->playback_status == RAL_RENDERING_HANDLER_PLAYBACK_STATUS_PAUSED)
@@ -1209,34 +1210,34 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
                      *    is ~10 frames, we'd need to start from frame -10!), we will NOT render frame contents
                      *    until the rendering loop starts drawing the frame corresponding to @param start_time. */
                     system_time   audio_latency               = 0;
-                    system_window context_window              = NULL;
-                    audio_stream  context_window_audio_stream = NULL;
+                    system_window context_window              = nullptr;
+                    audio_stream  context_window_audio_stream = nullptr;
                     bool          use_audio_playback          = false;
 
                     ral_context_get_property(rendering_handler_ptr->context,
                                              RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
                                             &context_window);
 
-                    ASSERT_DEBUG_SYNC(context_window != NULL,
+                    ASSERT_DEBUG_SYNC(context_window != nullptr,
                                       "No window associated with the rendering context!");
 
                     system_window_get_property(context_window,
                                                SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM,
                                               &context_window_audio_stream);
 
-                    use_audio_playback = (context_window_audio_stream != NULL);
+                    use_audio_playback = (context_window_audio_stream != nullptr);
 
                     if ( use_audio_playback                                                             &&
                         (rendering_handler_ptr->policy == RAL_RENDERING_HANDLER_POLICY_FPS              ||
                          rendering_handler_ptr->policy == RAL_RENDERING_HANDLER_POLICY_MAX_PERFORMANCE))
                     {
-                        audio_device stream_audio_device = NULL;
+                        audio_device stream_audio_device = nullptr;
 
                         audio_stream_get_property(context_window_audio_stream,
                                                   AUDIO_STREAM_PROPERTY_AUDIO_DEVICE,
                                                  &stream_audio_device);
 
-                        ASSERT_DEBUG_SYNC(stream_audio_device != NULL,
+                        ASSERT_DEBUG_SYNC(stream_audio_device != nullptr,
                                           "No audio_device instance associated with an audio_stream instance.");
 
                         audio_device_get_property(stream_audio_device,
@@ -1249,7 +1250,7 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
                     }
 
                     rendering_handler_ptr->active_audio_stream = (use_audio_playback) ? context_window_audio_stream
-                                                                                      : NULL;
+                                                                                      : nullptr;
                     rendering_handler_ptr->n_frames_rendered   = 0;
                     rendering_handler_ptr->playback_start_time = system_time_now() - start_time - audio_latency;
 
@@ -1260,11 +1261,11 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
                 else
                 {
                     /* Must be paused then. */
-                    if (rendering_handler_ptr->active_audio_stream != NULL)
+                    if (rendering_handler_ptr->active_audio_stream != nullptr)
                     {
                         /* Resume the audio stream playback */
                         system_time  audio_latency             = 0;
-                        audio_device audio_stream_audio_device = NULL;
+                        audio_device audio_stream_audio_device = nullptr;
 
                         audio_stream_get_property(rendering_handler_ptr->active_audio_stream,
                                                   AUDIO_STREAM_PROPERTY_AUDIO_DEVICE,
@@ -1346,7 +1347,7 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
             ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status != RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
                               "OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK property set attempt while rendering play-back in progress");
 
-            if (rendering_handler_ptr->pfn_rendering_callback == NULL)
+            if (rendering_handler_ptr->pfn_rendering_callback == nullptr)
             {
                 rendering_handler_ptr->pfn_rendering_callback = *(PFNRALRENDERINGHANDLERRENDERINGCALLBACK*) value;
             }
@@ -1373,7 +1374,7 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
 
         case RAL_RENDERING_HANDLER_PROPERTY_TIMELINE:
         {
-            ASSERT_DEBUG_SYNC(rendering_handler_ptr->timeline == NULL                    ||
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->timeline == nullptr                ||
                               rendering_handler_ptr->timeline == *(demo_timeline*) value,
                               "Another timeline instance is already assigned to the rendering handler!");
 
@@ -1401,10 +1402,10 @@ PUBLIC bool ral_rendering_handler_stop(ral_rendering_handler rendering_handler)
     _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
     bool                    result                = false;
 
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != NULL,
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != nullptr,
                       "Cannot play - the handler is not bound to any window.");
 
-    if (rendering_handler_ptr->context != NULL)
+    if (rendering_handler_ptr->context != nullptr)
     {
         if (rendering_handler_ptr->playback_status == RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
         {
@@ -1419,12 +1420,12 @@ PUBLIC bool ral_rendering_handler_stop(ral_rendering_handler rendering_handler)
             system_critical_section_leave(rendering_handler_ptr->rendering_cs);
 
             /* Stop the audio stream (if one is used) */
-            if (rendering_handler_ptr->active_audio_stream != NULL)
+            if (rendering_handler_ptr->active_audio_stream != nullptr)
             {
                 audio_stream_stop(rendering_handler_ptr->active_audio_stream);
 
-                rendering_handler_ptr->active_audio_stream = NULL;
-            } /* if (rendering_handler_ptr->active_audio_stream != NULL) */
+                rendering_handler_ptr->active_audio_stream = nullptr;
+            }
 
             /* Wait until the rendering process stops */
             if (!ral_rendering_handler_is_current_thread_rendering_thread(rendering_handler))

@@ -1,8 +1,8 @@
 /**
-*
-* Emerald (kbi/elude @2016)
-*
-*/
+ *
+ * Emerald (kbi/elude @2016)
+ *
+ */
 #include "shared.h"
 #include "ral/ral_present_job.h"
 #include "ral/ral_present_task.h"

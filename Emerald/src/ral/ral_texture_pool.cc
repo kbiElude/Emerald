@@ -268,8 +268,8 @@ PUBLIC bool ral_texture_pool_add(ral_texture_pool pool,
             system_hash64map_insert(pool_ptr->texture_hash_to_items_vector_map,
                                     texture_hash,
                                     texture_vector,
-                                    NULL,  /* callback          */
-                                    NULL); /* callback_argument */
+                                    nullptr,  /* callback          */
+                                    nullptr); /* callback_argument */
         }
 
         /* Stash the new texture instance */

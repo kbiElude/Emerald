@@ -410,6 +410,10 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
     ral_program_variable_type_class variable_type_class;
     system_resizable_vector         variable_type_vector                   = nullptr;
 
+    ral_utils_get_ral_program_variable_type_property(variable_ptr->type,
+                                                     RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
+                                                     (void**) &variable_type_class);
+
     if (system_hash64map_get(block_ptr->variable_vector_by_class_hashmap,
                              variable_type_class,
                             &variable_type_vector) )
@@ -437,11 +441,6 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
             }
         }
     }
-
-    ral_utils_get_ral_program_variable_type_property(variable_ptr->type,
-                                                     RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
-                                                     (void**) &variable_type_class);
-
 
     if (is_variable_added_to_type_class_vector                                                                                 ||
                                                              system_hash64map_contains(block_ptr->variables_by_name_hashmap,
@@ -1046,8 +1045,9 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_class(ral_program     
 
     /* All done */
     result = true;
+
 end:
-    ;
+    return result;
 }
 
 /** Please see header for specification */

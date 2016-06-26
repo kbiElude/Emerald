@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -49,11 +49,11 @@ typedef struct _ral_buffer
 
     ~_ral_buffer()
     {
-        if (callback_manager != NULL)
+        if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
 
-            callback_manager = NULL;
+            callback_manager = nullptr;
         }
     }
 } _ral_buffer;
@@ -70,7 +70,7 @@ PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    bu
     bool                                 result       = false;
 
     /* Sanity checks */
-    if (buffer == NULL)
+    if (buffer == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input buffer is NULL");
@@ -85,7 +85,7 @@ PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    bu
         goto end;
     }
 
-    if (clear_ops == NULL)
+    if (clear_ops == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input clear info array is NULL");
@@ -131,7 +131,7 @@ PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                    
     _ral_buffer*                           src_buffer_ptr = (_ral_buffer*) src_buffer;
 
     /* Sanity checks */
-    if (dst_buffer == NULL || src_buffer == NULL)
+    if (dst_buffer == nullptr || src_buffer == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input destination/source buffer is NULL");
@@ -146,7 +146,7 @@ PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                    
         goto end;
     }
 
-    if (copy_ops == NULL)
+    if (copy_ops == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input copy info array is NULL");
@@ -186,10 +186,10 @@ PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
                                     system_hashed_ansi_string     name,
                                     const ral_buffer_create_info* create_info_ptr)
 {
-    _ral_buffer* new_buffer_ptr = NULL;
+    _ral_buffer* new_buffer_ptr = nullptr;
 
     /* Sanity checks */
-    if (name == NULL)
+    if (name == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "NULL name specified");
@@ -197,7 +197,7 @@ PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
         goto end;
     }
 
-    if (create_info_ptr == NULL)
+    if (create_info_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Create info pointer is NULL");
@@ -205,7 +205,7 @@ PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
         goto end;
     }
 
-    ASSERT_DEBUG_SYNC(create_info_ptr->parent_buffer == NULL,
+    ASSERT_DEBUG_SYNC(create_info_ptr->parent_buffer == nullptr,
                       "TODO");
 
     if (create_info_ptr->mappability_bits >= (1 << (RAL_BUFFER_MAPPABILITY_LAST_USED_BIT + 1)) )
@@ -259,7 +259,7 @@ PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
                                                     create_info_ptr->property_bits,
                                                     create_info_ptr->mappability_bits);
 
-    ASSERT_ALWAYS_SYNC(new_buffer_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_buffer_ptr != nullptr,
                        "Out of memory");
 
 end:
@@ -274,7 +274,7 @@ PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
     _ral_buffer* buffer_ptr = (_ral_buffer*) buffer;
 
     /* Sanity checks */
-    if (buffer_ptr == NULL)
+    if (buffer_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input RAL buffer is NULL");
@@ -353,7 +353,7 @@ PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ral_buffer_property value");
         }
-    } /* switch (property) */
+    }
 end:
     ;
 }
@@ -375,7 +375,7 @@ PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer       
     bool                                               result     = false;
 
     /* Sanity checks */
-    if (buffer == NULL)
+    if (buffer == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Input ral_buffer instance is NULL");
