@@ -194,16 +194,22 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_init_rendering_thread_calb
                     }
                     else
                     {
-                        ASSERT_DEBUG_SYNC(texture_view_n_base_layer == 0,
-                                          "Invalid base layer specified.");
-                        ASSERT_DEBUG_SYNC(texture_view_n_layers == 1,
-                                          "Invalid number of layers specified.");
-
-                        entrypoints_dsa_ptr->pGLNamedFramebufferTexture2DEXT(args_ptr->fbo_ptr->id,
-                                                                             target_gl,
-                                                                             GL_TEXTURE_2D,
-                                                                             texture_view_raGL_id,
-                                                                             texture_view_n_base_mipmap);
+                        if (texture_view_n_layers == 1)
+                        {
+                            entrypoints_dsa_ptr->pGLNamedFramebufferTexture2DEXT(args_ptr->fbo_ptr->id,
+                                                                                 target_gl,
+                                                                                 GL_TEXTURE_2D,
+                                                                                 texture_view_raGL_id,
+                                                                                 texture_view_n_base_mipmap);
+                        }
+                        else
+                        {
+                            /* TODO: This is a bit tricky and need to be implemented carefully. */
+                            ASSERT_DEBUG_SYNC(texture_view_n_base_layer == 0,
+                                              "Invalid base layer specified.");
+                            ASSERT_DEBUG_SYNC(false,
+                                              "TODO");
+                        }
                     }
 
                     break;

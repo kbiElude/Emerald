@@ -131,12 +131,15 @@ typedef struct _postprocessing_blur_gaussian
 
     ral_present_task                        cached_present_task;
     postprocessing_blur_gaussian_resolution cached_present_task_blur_resolution;
+    ral_texture_view                        cached_present_task_dst_src_texture_view;
     float                                   cached_present_task_n_iterations;
     unsigned int                            cached_present_task_n_taps;
-    ral_texture_view                        cached_present_task_src_texture_view;
     ral_gfx_state                           gfx_state;
     ral_texture                             ping_pong_rt;
-    ral_texture_view                        ping_pong_rt_view;
+    ral_texture_view                        ping_pong_rt_view_l0;
+    ral_texture_view                        ping_pong_rt_view_l012;
+    ral_texture_view                        ping_pong_rt_view_l1;
+    ral_texture_view                        ping_pong_rt_view_l2;
     ral_sampler                             sampler_blur_linear;
     ral_sampler                             sampler_blur_nearest;
 
@@ -171,7 +174,10 @@ typedef struct _postprocessing_blur_gaussian
         other_data_bo_cached_value      = 0;
         other_data_bo                   = nullptr;
         ping_pong_rt                    = nullptr;
-        ping_pong_rt_view               = nullptr;
+        ping_pong_rt_view_l0            = nullptr;
+        ping_pong_rt_view_l012          = nullptr;
+        ping_pong_rt_view_l1            = nullptr;
+        ping_pong_rt_view_l2            = nullptr;
         po                              = nullptr;
         sampler_blur_linear             = nullptr;
         sampler_blur_nearest            = nullptr;
@@ -179,9 +185,21 @@ typedef struct _postprocessing_blur_gaussian
 
     ~_postprocessing_blur_gaussian()
     {
+        const ral_buffer buffers_to_release[] =
+        {
+            coeff_bo,
+            other_data_bo
+        };
         const ral_gfx_state gfx_states_to_release[] =
         {
             gfx_state
+        };
+        const ral_texture_view texture_views_to_release[] =
+        {
+            ping_pong_rt_view_l0,
+            ping_pong_rt_view_l012,
+            ping_pong_rt_view_l1,
+            ping_pong_rt_view_l2,
         };
         const ral_sampler samplers_to_release[] =
         {
@@ -189,8 +207,10 @@ typedef struct _postprocessing_blur_gaussian
             sampler_blur_nearest
         };
 
-        const uint32_t n_gfx_states_to_release = sizeof(gfx_states_to_release) / sizeof(gfx_states_to_release[0]);
-        const uint32_t n_samplers_to_release   = sizeof(samplers_to_release)   / sizeof(samplers_to_release  [0]);
+        const uint32_t n_buffers_to_release       = sizeof(buffers_to_release)       / sizeof(buffers_to_release      [0]);
+        const uint32_t n_gfx_states_to_release    = sizeof(gfx_states_to_release)    / sizeof(gfx_states_to_release   [0]);
+        const uint32_t n_samplers_to_release      = sizeof(samplers_to_release)      / sizeof(samplers_to_release     [0]);
+        const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release) / sizeof(texture_views_to_release[0]);
 
         if (coeff_buffer_offsets != nullptr)
         {
@@ -207,13 +227,10 @@ typedef struct _postprocessing_blur_gaussian
                                        (const void**) &ping_pong_rt);
         }
 
-        if (ping_pong_rt_view != nullptr)
-        {
-            ral_context_delete_objects(context,
-                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                       1, /* n_objects */
-                                       (const void**) &ping_pong_rt_view);
-        }
+        ral_context_delete_objects(context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   n_texture_views_to_release,
+                                   (const void**) texture_views_to_release);
 
         if (po != nullptr)
         {
@@ -225,6 +242,10 @@ typedef struct _postprocessing_blur_gaussian
             po = nullptr;
         }
 
+        ral_context_delete_objects(context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   n_buffers_to_release,
+                                   (const void**) buffers_to_release);
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
                                    n_gfx_states_to_release,
@@ -246,48 +267,6 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_blur_gaussian,
                                postprocessing_blur_gaussian,
                               _postprocessing_blur_gaussian);
 
-
-/** TODO */
-PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(ogl_context context,
-                                                                            void*       user_arg)
-{
-    const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
-    _postprocessing_blur_gaussian*    instance_ptr    = (_postprocessing_blur_gaussian*) user_arg;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    if (instance_ptr->coeff_bo != nullptr)
-    {
-        ral_context_delete_objects(instance_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                   1, /* n_objects */
-                                   (const void**) &instance_ptr->coeff_bo);
-
-        instance_ptr->coeff_bo = nullptr;
-    }
-
-    if (instance_ptr->other_data_bo != nullptr)
-    {
-        ral_context_delete_objects(instance_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                   1, /* n_objects */
-                                   (const void**) &instance_ptr->other_data_bo);
-
-        instance_ptr->other_data_bo = nullptr;
-    }
-
-    if (instance_ptr->sampler_blur_nearest != nullptr)
-    {
-        ral_context_delete_objects(instance_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-                                   1, /* n_objects */
-                                   (const void**) &instance_ptr->sampler_blur_nearest);
-
-        instance_ptr->sampler_blur_nearest = nullptr;
-    }
-}
 
 /** TODO */
 PRIVATE system_hashed_ansi_string _postprocessing_blur_gaussian_get_fs_name(uint32_t n_max_data_coeffs)
@@ -846,11 +825,7 @@ PRIVATE void _postprocessing_blur_gaussian_init(_postprocessing_blur_gaussian* i
 /** TODO */
 PRIVATE void _postprocessing_blur_gaussian_release(void* ptr)
 {
-    _postprocessing_blur_gaussian* data_ptr = (_postprocessing_blur_gaussian*) ptr;
-
-    ogl_context_request_callback_from_context_thread(data_ptr->context,
-                                                     _postprocessing_blur_gaussian_deinit_rendering_thread_callback,
-                                                     data_ptr);
+    /* Stub */
 }
 
 
@@ -904,49 +879,55 @@ end:
 PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postprocessing_blur_gaussian            blur,
                                                                          unsigned int                            n_taps,
                                                                          float                                   n_iterations,
-                                                                         ral_texture_view                        src_texture_view,
+                                                                         ral_texture_view                        dst_src_texture_view,
                                                                          postprocessing_blur_gaussian_resolution blur_resolution)
 {
-    _postprocessing_blur_gaussian* blur_ptr                = (_postprocessing_blur_gaussian*) blur;
-    ral_present_task               result                  = nullptr;
-    ral_format                     src_texture_view_format = RAL_FORMAT_UNKNOWN;
-    unsigned int                   src_texture_view_height = 0;
-    unsigned int                   src_texture_view_width  = 0;
-    ral_texture_type               src_texture_view_type   = RAL_TEXTURE_TYPE_UNKNOWN;
+    _postprocessing_blur_gaussian* blur_ptr                    = (_postprocessing_blur_gaussian*) blur;
+    ral_command_buffer_create_info cmd_buffer_create_info;
+    ral_texture                    dst_src_texture             = nullptr;
+    ral_format                     dst_src_texture_view_format = RAL_FORMAT_UNKNOWN;
+    unsigned int                   dst_src_texture_view_height = 0;
+    unsigned int                   dst_src_texture_view_width  = 0;
+    ral_texture_type               dst_src_texture_view_type   = RAL_TEXTURE_TYPE_UNKNOWN;
+    ral_present_task               result                      = nullptr;
 
     ASSERT_DEBUG_SYNC(n_taps >= blur_ptr->n_min_taps &&
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
 
+    ral_texture_view_get_property(dst_src_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                 &dst_src_texture);
+
     /* Check if we can re-use a command buffer which has been created in the last invocation */
-    if (blur_ptr->cached_present_task                  != nullptr          &&
-        blur_ptr->cached_present_task_blur_resolution  == blur_resolution  &&
-        blur_ptr->cached_present_task_n_iterations     == n_iterations     &&
-        blur_ptr->cached_present_task_n_taps           == n_taps           &&
-        blur_ptr->cached_present_task_src_texture_view == src_texture_view)
+    if (blur_ptr->cached_present_task                      != nullptr              &&
+        blur_ptr->cached_present_task_blur_resolution      == blur_resolution      &&
+        blur_ptr->cached_present_task_n_iterations         == n_iterations         &&
+        blur_ptr->cached_present_task_n_taps               == n_taps               &&
+        blur_ptr->cached_present_task_dst_src_texture_view == dst_src_texture_view)
     {
         result = blur_ptr->cached_present_task;
 
         goto end;
     }
 
-    ral_texture_view_get_mipmap_property(src_texture_view,
+    ral_texture_view_get_mipmap_property(dst_src_texture_view,
                                          0, /* n_layer */
                                          0, /* n_mipmap */
                                          RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                        &src_texture_view_height);
-    ral_texture_view_get_mipmap_property(src_texture_view,
+                                        &dst_src_texture_view_height);
+    ral_texture_view_get_mipmap_property(dst_src_texture_view,
                                          0, /* n_layer  */
                                          0, /* n_mipmap */
                                          RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                        &src_texture_view_width);
+                                        &dst_src_texture_view_width);
 
-    ral_texture_view_get_property(src_texture_view,
+    ral_texture_view_get_property(dst_src_texture_view,
                                   RAL_TEXTURE_VIEW_PROPERTY_TYPE,
-                                 &src_texture_view_type);
-    ral_texture_view_get_property(src_texture_view,
+                                 &dst_src_texture_view_type);
+    ral_texture_view_get_property(dst_src_texture_view,
                                   RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
-                                 &src_texture_view_format);
+                                 &dst_src_texture_view_format);
 
     /* The implementation below may look a bit wooly. Below is the break-down of the
      * whole process:
@@ -1006,27 +987,27 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
     {
         case POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_ORIGINAL:
         {
-            target_height  = src_texture_view_height;
+            target_height  = dst_src_texture_view_height;
             target_sampler = blur_ptr->sampler_blur_nearest; /* no interpolation needed */
-            target_width   = src_texture_view_width;
+            target_width   = dst_src_texture_view_width;
 
             break;
         }
 
         case POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_HALF:
         {
-            target_height  = src_texture_view_height / 2;
+            target_height  = dst_src_texture_view_height / 2;
             target_sampler = blur_ptr->sampler_blur_linear;
-            target_width   = src_texture_view_width  / 2;
+            target_width   = dst_src_texture_view_width  / 2;
 
             break;
         }
 
         case POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_QUARTER:
         {
-            target_height  = src_texture_view_height / 4;
+            target_height  = dst_src_texture_view_height / 4;
             target_sampler = blur_ptr->sampler_blur_linear;
-            target_width   = src_texture_view_width  / 4;
+            target_width   = dst_src_texture_view_width  / 4;
 
             break;
         }
@@ -1060,21 +1041,33 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                                         RAL_TEXTURE_PROPERTY_FORMAT,
                                        &ping_pong_rt_format);
 
-        if (ping_pong_rt_format  != src_texture_view_format ||
-            ping_pong_rt_size[0] != src_texture_view_width  ||
-            ping_pong_rt_size[1] != src_texture_view_height)
+        if (ping_pong_rt_format  != dst_src_texture_view_format ||
+            ping_pong_rt_size[0] != dst_src_texture_view_width  ||
+            ping_pong_rt_size[1] != dst_src_texture_view_height)
         {
+            const ral_texture_view ping_pong_rt_views[] =
+            {
+                blur_ptr->ping_pong_rt_view_l0,
+                blur_ptr->ping_pong_rt_view_l012,
+                blur_ptr->ping_pong_rt_view_l1,
+                blur_ptr->ping_pong_rt_view_l2,
+            };
+            const uint32_t n_ping_pong_rt_views = sizeof(ping_pong_rt_views) / sizeof(ping_pong_rt_views[0]);
+
             ral_context_delete_objects(blur_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                        1, /* n_objects */
                                        (const void**) &blur_ptr->ping_pong_rt);
             ral_context_delete_objects(blur_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                       1, /* n_objects */
-                                       (const void**) &blur_ptr->ping_pong_rt_view);
+                                       n_ping_pong_rt_views,
+                                       (const void**) ping_pong_rt_views);
 
-            blur_ptr->ping_pong_rt      = nullptr;
-            blur_ptr->ping_pong_rt_view = nullptr;
+            blur_ptr->ping_pong_rt           = nullptr;
+            blur_ptr->ping_pong_rt_view_l0   = nullptr;
+            blur_ptr->ping_pong_rt_view_l012 = nullptr;
+            blur_ptr->ping_pong_rt_view_l1   = nullptr;
+            blur_ptr->ping_pong_rt_view_l2   = nullptr;
         }
     }
 
@@ -1082,12 +1075,18 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
     {
         ral_texture_create_info      ping_pong_rt_create_info;
         ral_texture_view_create_info ping_pong_rt_view_create_info;
+        ral_texture_view*            ping_pong_rt_views[] =
+        {
+            &blur_ptr->ping_pong_rt_view_l0,
+            &blur_ptr->ping_pong_rt_view_l1,
+            &blur_ptr->ping_pong_rt_view_l2,
+        };
 
         ping_pong_rt_create_info.base_mipmap_depth      = 1;
         ping_pong_rt_create_info.base_mipmap_height     = target_height;
         ping_pong_rt_create_info.base_mipmap_width      = target_width;
         ping_pong_rt_create_info.fixed_sample_locations = false;
-        ping_pong_rt_create_info.format                 = src_texture_view_format;
+        ping_pong_rt_create_info.format                 = dst_src_texture_view_format;
         ping_pong_rt_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(blur_ptr->name),
                                                                                                                   " temp 2D array texture");
         ping_pong_rt_create_info.n_layers               = 3;
@@ -1109,12 +1108,26 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         ral_context_create_texture_views(blur_ptr->context,
                                          1, /* n_texture_views */
                                         &ping_pong_rt_view_create_info,
-                                        &blur_ptr->ping_pong_rt_view);
+                                        &blur_ptr->ping_pong_rt_view_l012);
+
+        for (uint32_t n_layer = 0;
+                      n_layer < sizeof(ping_pong_rt_views) / sizeof(ping_pong_rt_views[0]);
+                    ++n_layer)
+        {
+            ral_texture_view* result_view_ptr = ping_pong_rt_views[n_layer];
+
+            ping_pong_rt_view_create_info.n_base_layer = n_layer;
+            ping_pong_rt_view_create_info.n_layers      = 1;
+
+            ral_context_create_texture_views(blur_ptr->context,
+                                             1, /* n_texture_views */
+                                            &ping_pong_rt_view_create_info,
+                                             result_view_ptr);
+        }
     }
 
     /* Start recording the command buffer.. */
-    ral_command_buffer             cmd_buffer;
-    ral_command_buffer_create_info cmd_buffer_create_info;
+    ral_command_buffer cmd_buffer;
 
     cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
     cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
@@ -1153,8 +1166,8 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         set_viewport_command_info.depth_range[0] = 0.0;
         set_viewport_command_info.depth_range[1] = 1.0;
         set_viewport_command_info.index          = 0;
-        set_viewport_command_info.size[0]        = target_width;
-        set_viewport_command_info.size[1]        = target_height;
+        set_viewport_command_info.size[0]        = static_cast<float>(target_width);
+        set_viewport_command_info.size[1]        = static_cast<float>(target_height);
         set_viewport_command_info.xy[0]          = 0;
         set_viewport_command_info.xy[1]          = 0;
 
@@ -1168,7 +1181,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
 
         set_data_texture_binding_command_info.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
         set_data_texture_binding_command_info.sampled_image_binding.sampler      = target_sampler;
-        set_data_texture_binding_command_info.sampled_image_binding.texture_view = blur_ptr->ping_pong_rt_view;
+        set_data_texture_binding_command_info.sampled_image_binding.texture_view = blur_ptr->ping_pong_rt_view_l012;
 
         ral_command_buffer_record_set_bindings(cmd_buffer,
                                                1, /* n_bindings */
@@ -1182,7 +1195,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         const int data[] =
         {
             0,
-            n_taps,
+            static_cast<int>(n_taps),
             1
         };
         std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
@@ -1204,14 +1217,14 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
     }
 
     /* Iterate over all layers we need blurred */
-    ASSERT_DEBUG_SYNC(src_texture_view_type == RAL_TEXTURE_TYPE_2D       ||
-                      src_texture_view_type == RAL_TEXTURE_TYPE_2D_ARRAY ||
-                      src_texture_view_type == RAL_TEXTURE_TYPE_CUBE_MAP,
+    ASSERT_DEBUG_SYNC(dst_src_texture_view_type == RAL_TEXTURE_TYPE_2D       ||
+                      dst_src_texture_view_type == RAL_TEXTURE_TYPE_2D_ARRAY ||
+                      dst_src_texture_view_type == RAL_TEXTURE_TYPE_CUBE_MAP,
                       "Unsupported source texture type");
 
     unsigned int n_layers = 0;
 
-    switch (src_texture_view_type)
+    switch (dst_src_texture_view_type)
     {
         case RAL_TEXTURE_TYPE_2D:
         {
@@ -1222,7 +1235,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
 
         case RAL_TEXTURE_TYPE_2D_ARRAY:
         {
-            ral_texture_view_get_property(src_texture_view,
+            ral_texture_view_get_property(dst_src_texture_view,
                                           RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
                                          &n_layers);
 
@@ -1303,11 +1316,6 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         /* Copy the layer data to be blurred */
         {
             ral_command_buffer_copy_texture_to_texture_command_info copy_layer_to_temp_2d_array_command_info;
-            ral_texture                                             src_texture;
-
-            ral_texture_view_get_property(src_texture_view,
-                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                         &src_texture);
 
             copy_layer_to_temp_2d_array_command_info.aspect               = RAL_TEXTURE_ASPECT_COLOR_BIT;
             copy_layer_to_temp_2d_array_command_info.dst_size[0]          = target_width;
@@ -1323,13 +1331,13 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             copy_layer_to_temp_2d_array_command_info.n_src_texture_mipmap = 0;
             copy_layer_to_temp_2d_array_command_info.scaling_filter       = (target_sampler == blur_ptr->sampler_blur_linear) ? RAL_TEXTURE_FILTER_LINEAR
                                                                                                                               : RAL_TEXTURE_FILTER_NEAREST;
-            copy_layer_to_temp_2d_array_command_info.src_size[0]          = src_texture_view_width;
-            copy_layer_to_temp_2d_array_command_info.src_size[1]          = src_texture_view_height;
+            copy_layer_to_temp_2d_array_command_info.src_size[0]          = dst_src_texture_view_width;
+            copy_layer_to_temp_2d_array_command_info.src_size[1]          = dst_src_texture_view_height;
             copy_layer_to_temp_2d_array_command_info.src_size[2]          = 1;
             copy_layer_to_temp_2d_array_command_info.src_start_xyz[0]     = 0;
             copy_layer_to_temp_2d_array_command_info.src_start_xyz[1]     = 0;
             copy_layer_to_temp_2d_array_command_info.src_start_xyz[2]     = 0;
-            copy_layer_to_temp_2d_array_command_info.src_texture          = src_texture;
+            copy_layer_to_temp_2d_array_command_info.src_texture          = dst_src_texture;
 
             ral_command_buffer_record_copy_texture_to_texture(cmd_buffer,
                                                               1, /* n_copy_ops */
@@ -1355,8 +1363,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                 set_rt_command_info.channel_writes.color2 = true;
                 set_rt_command_info.channel_writes.color3 = true;
                 set_rt_command_info.rendertarget_index    = 0;
-                set_rt_command_info.texture_view_n_layer  = 1;
-                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view;
+                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view_l1;
 
                 ral_command_buffer_record_set_color_rendertargets(cmd_buffer,
                                                                   1, /* n_rendertargets */
@@ -1391,8 +1398,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                 set_rt_command_info.channel_writes.color2 = true;
                 set_rt_command_info.channel_writes.color3 = true;
                 set_rt_command_info.rendertarget_index    = 0;
-                set_rt_command_info.texture_view_n_layer  = 0;
-                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view;
+                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view_l0;
 
                 ral_command_buffer_record_set_color_rendertargets(cmd_buffer,
                                                                   1, /* n_rendertargets */
@@ -1429,8 +1435,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                 set_rt_command_info.channel_writes.color2 = true;
                 set_rt_command_info.channel_writes.color3 = true;
                 set_rt_command_info.rendertarget_index    = 0;
-                set_rt_command_info.texture_view_n_layer  = 2;
-                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view;
+                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view_l2;
 
                 ral_command_buffer_record_set_color_rendertargets(cmd_buffer,
                                                                   1, /* n_rendertargets */
@@ -1460,8 +1465,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                 set_rt_command_info.channel_writes.color2 = true;
                 set_rt_command_info.channel_writes.color3 = true;
                 set_rt_command_info.rendertarget_index    = 0;
-                set_rt_command_info.texture_view_n_layer  = 1;
-                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view;
+                set_rt_command_info.texture_view          = blur_ptr->ping_pong_rt_view_l1;
 
                 ral_command_buffer_record_set_color_rendertargets(cmd_buffer,
                                                                   1, /* n_rendertargets */
@@ -1502,8 +1506,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                 set_rt_command_info.rendertarget_index       = 0;
                 set_rt_command_info.src_alpha_blend_factor   = RAL_BLEND_FACTOR_CONSTANT_ALPHA;
                 set_rt_command_info.src_color_blend_factor   = RAL_BLEND_FACTOR_CONSTANT_ALPHA;
-                set_rt_command_info.texture_view_n_layer     = 1;
-                set_rt_command_info.texture_view             = blur_ptr->ping_pong_rt_view;
+                set_rt_command_info.texture_view             = blur_ptr->ping_pong_rt_view_l1;
 
                 ral_command_buffer_record_set_color_rendertargets(cmd_buffer,
                                                                   1, /* n_rendertargets */
@@ -1513,8 +1516,8 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             {
                 ral_command_buffer_set_binding_command_info set_coeffs_data_binding_command_info;
 
-                set_coeffs_data_binding_command_info.binding_type = RAL_BINDING_TYPE_UNIFORM_BUFFER;
-                set_coeffs_data_binding_command_info.name         = system_hashed_ansi_string_create("coeffs_data");
+                set_coeffs_data_binding_command_info.binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+                set_coeffs_data_binding_command_info.name                          = system_hashed_ansi_string_create("coeffs_data");
                 set_coeffs_data_binding_command_info.uniform_buffer_binding.buffer = blur_ptr->coeff_bo;
                 set_coeffs_data_binding_command_info.uniform_buffer_binding.offset = blur_ptr->coeff_buffer_offset_for_value_1;
                 set_coeffs_data_binding_command_info.uniform_buffer_binding.size   = blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float);
@@ -1550,62 +1553,42 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         }
 
         /* Step 4): Store the result in the user-specified texture */
-        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                            pong_fbo_raGL_id);
-        entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                            ping_fbo_raGL_id);
-
-        if (src_texture_type == RAL_TEXTURE_TYPE_2D)
         {
-            dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_raGL_id,
-                                                                 GL_COLOR_ATTACHMENT0,
-                                                                 GL_TEXTURE_2D,
-                                                                 src_texture_id,
-                                                                 0); /* level */
-        }
-        else
-        {
-            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_raGL_id,
-                                                                    GL_COLOR_ATTACHMENT0,
-                                                                    src_texture_id,
-                                                                    0, /* level */
-                                                                    n_layer);
-        }
+            ral_command_buffer_copy_texture_to_texture_command_info copy_texture_command_info;
 
-        entrypoints_ptr->pGLBlitFramebuffer(0,                  /* srcX0 */
-                                            0,                  /* srcY0 */
-                                            target_width,
-                                            target_height,
-                                            0,                  /* dstX0 */
-                                            0,                  /* dstY0 */
-                                            src_texture_width,
-                                            src_texture_height,
-                                            GL_COLOR_BUFFER_BIT,
-                                            target_interpolation);
+            copy_texture_command_info.aspect               = RAL_TEXTURE_ASPECT_COLOR_BIT;
+            copy_texture_command_info.dst_size[0]          = target_height;
+            copy_texture_command_info.dst_size[1]          = target_width;
+            copy_texture_command_info.dst_size[2]          = 1;
+            copy_texture_command_info.dst_start_xyz[0]     = 0;
+            copy_texture_command_info.dst_start_xyz[1]     = 0;
+            copy_texture_command_info.dst_start_xyz[2]     = 0;
+            copy_texture_command_info.dst_texture          = dst_src_texture;
+            copy_texture_command_info.n_dst_texture_layer  = 0;
+            copy_texture_command_info.n_dst_texture_mipmap = 0;
+            copy_texture_command_info.n_src_texture_layer  = (dst_src_texture_view_type == RAL_TEXTURE_TYPE_2D) ? 0 : n_layer;
+            copy_texture_command_info.n_src_texture_mipmap = 0;
+            copy_texture_command_info.scaling_filter       = (target_sampler == blur_ptr->sampler_blur_nearest) ? RAL_TEXTURE_FILTER_NEAREST
+                                                                                                                : RAL_TEXTURE_FILTER_LINEAR;
+            copy_texture_command_info.src_size[0]          = dst_src_texture_view_width;
+            copy_texture_command_info.src_size[1]          = dst_src_texture_view_height;
+            copy_texture_command_info.src_size[2]          = 1;
+            copy_texture_command_info.src_start_xyz[0]     = 0;
+            copy_texture_command_info.src_start_xyz[1]     = 0;
+            copy_texture_command_info.src_start_xyz[2]     = 0;
+            copy_texture_command_info.src_texture          = blur_ptr->ping_pong_rt;
+
+            ral_command_buffer_record_copy_texture_to_texture(cmd_buffer,
+                                                              1, /* n_copy_ops */
+                                                             &copy_texture_command_info);
+        }
     }
 
     /* All done */
-    entrypoints_ptr->pGLInvalidateTexImage(temp_2d_array_texture_id,
-                                           0); /* level */
-
-    entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                        context_default_fb_raGL_id);
-    entrypoints_ptr->pGLBindSampler    (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
-                                        0);
-    entrypoints_ptr->pGLViewport       (viewport_data[0],
-                                        viewport_data[1],
-                                        viewport_data[2],
-                                        viewport_data[3]);
-
-    if (is_culling_enabled)
-    {
-        entrypoints_ptr->pGLEnable(GL_CULL_FACE);
-    }
-
-    ral_context_delete_objects(blur_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                               1, /* n_textures */
-                               (const void**) &temp_2d_array_texture);
+    ral_command_buffer_record_invalidate_texture(cmd_buffer,
+                                                 blur_ptr->ping_pong_rt,
+                                                 0, /* n_start_mip */
+                                                 1);
 
 end:
     if (result != nullptr)

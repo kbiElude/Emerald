@@ -51,6 +51,7 @@ typedef struct _ral_command
         ral_command_buffer_draw_call_indirect_command_info      draw_call_indirect_command;
         ral_command_buffer_draw_call_regular_command_info       draw_call_regular_command;
         ral_command_buffer_execute_command_buffer_command_info  execute_command_buffer_command;
+        ral_command_buffer_invalidate_texture_command_info      invalidate_texture_command;
         ral_command_buffer_set_binding_command_info             set_binding_command;
         ral_command_buffer_set_gfx_state_command_info           set_gfx_state_command;
         ral_command_buffer_set_program_command_info             set_program_command;
@@ -126,6 +127,22 @@ typedef struct _ral_command
                                            RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                            1, /* n_objects */
                                            (const void**) &execute_command_buffer_command.command_buffer);
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_INVALIDATE_TEXTURE:
+            {
+                ral_context texture_context = nullptr;
+
+                ral_texture_get_property(invalidate_texture_command.texture,
+                                         RAL_TEXTURE_PROPERTY_CONTEXT,
+                                        &texture_context);
+
+                ral_context_delete_objects(texture_context,
+                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                           1, /* n_objects */
+                                           (const void**) &invalidate_texture_command.texture);
 
                 break;
             }
@@ -1085,6 +1102,63 @@ PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer 
                                      new_command_ptr);
     }
 
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_invalidate_texture(ral_command_buffer recording_command_buffer,
+                                                         ral_texture        texture,
+                                                         uint32_t           n_start_mip,
+                                                         uint32_t           n_mips)
+{
+    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command*        new_command_ptr    = nullptr;
+    uint32_t             texture_n_mips     = 0;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    /* Sanity checks */
+    if (texture == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(texture != nullptr,
+                          "Input RAL texture instance is NULL");
+
+        goto end;
+    }
+
+    ral_texture_get_property(texture,
+                             RAL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &texture_n_mips);
+
+    if (n_start_mip + n_mips > texture_n_mips)
+    {
+        ASSERT_DEBUG_SYNC(!(n_start_mip + n_mips > texture_n_mips),
+                          "Invalid mipmap range specified");
+
+        goto end;
+    }
+
+    /* Record the command */
+    new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+    new_command_ptr->invalidate_texture_command.n_mips      = n_mips;
+    new_command_ptr->invalidate_texture_command.n_start_mip = n_start_mip;
+    new_command_ptr->invalidate_texture_command.texture     = texture;
+    new_command_ptr->type                                   = RAL_COMMAND_TYPE_INVALIDATE_TEXTURE;
+
+    ral_context_retain_object(command_buffer_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                              texture);
+
+    system_resizable_vector_push(command_buffer_ptr->commands,
+                                 new_command_ptr);
 end:
     ;
 }

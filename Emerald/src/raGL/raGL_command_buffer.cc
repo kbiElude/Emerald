@@ -17,6 +17,7 @@
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_utils.h"
 #include "raGL/raGL_vaos.h"
+#include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_gfx_state.h"
 #include "ral/ral_program.h"
@@ -159,6 +160,9 @@ typedef enum
 
     /* Command args stored in _raGL_command_front_face_command_info */
     RAGL_COMMAND_TYPE_FRONT_FACE,
+
+    /* Command args stored in _raGL_command_invalidate_tex_image_command_info */
+    RAGL_COMMAND_TYPE_INVALIDATE_TEX_IMAGE,
 
     /* Command args stored in _raGL_command_line_width_command_info */
     RAGL_COMMAND_TYPE_LINE_WIDTH,
@@ -518,6 +522,13 @@ typedef struct
 
 typedef struct
 {
+    GLint  level;
+    GLuint texture;
+
+} _raGL_command_invalidate_tex_image_command_info;
+
+typedef struct
+{
     float width;
 
 } _raGL_command_line_width_command_info;
@@ -679,6 +690,7 @@ typedef struct
         _raGL_command_enable_vertex_attrib_array_command_info                        enable_vertex_attrib_array_command_info;
         _raGL_command_execute_command_buffer_command_info                            execute_command_buffer_command_info;
         _raGL_command_front_face_command_info                                        front_face_command_info;
+        _raGL_command_invalidate_tex_image_command_info                              invalidate_tex_image_command_info;
         _raGL_command_line_width_command_info                                        line_width_command_info;
         _raGL_command_logic_op_command_info                                          logic_op_command_info;
         _raGL_command_memory_barrier_command_info                                    memory_barriers_command_info;
@@ -727,19 +739,19 @@ typedef struct _raGL_command_buffer_bake_state_rt
 
     explicit _raGL_command_buffer_bake_state_rt(const ral_command_buffer_set_color_rendertarget_command_info& set_rt_command)
     {
-        blend_constant         = set_rt_command.blend_constant;
-        blend_enabled          = set_rt_command.blend_enabled;
-        blend_op_alpha         = set_rt_command.blend_op_alpha;
-        blend_op_color         = set_rt_command.blend_op_color;
-        color_writes[0]        = set_rt_command.channel_writes.color0;
-        color_writes[1]        = set_rt_command.channel_writes.color1;
-        color_writes[2]        = set_rt_command.channel_writes.color2;
-        color_writes[3]        = set_rt_command.channel_writes.color3;
-        dst_alpha_blend_factor = set_rt_command.dst_alpha_blend_factor;
-        dst_color_blend_factor = set_rt_command.dst_color_blend_factor;
-        src_alpha_blend_factor = set_rt_command.src_alpha_blend_factor;
-        src_color_blend_factor = set_rt_command.src_color_blend_factor;
-        texture_view           = set_rt_command.texture_view;
+        blend_constant            = set_rt_command.blend_constant;
+        blend_enabled             = set_rt_command.blend_enabled;
+        blend_op_alpha            = set_rt_command.blend_op_alpha;
+        blend_op_color            = set_rt_command.blend_op_color;
+        color_writes[0]           = set_rt_command.channel_writes.color0;
+        color_writes[1]           = set_rt_command.channel_writes.color1;
+        color_writes[2]           = set_rt_command.channel_writes.color2;
+        color_writes[3]           = set_rt_command.channel_writes.color3;
+        dst_alpha_blend_factor    = set_rt_command.dst_alpha_blend_factor;
+        dst_color_blend_factor    = set_rt_command.dst_color_blend_factor;
+        src_alpha_blend_factor    = set_rt_command.src_alpha_blend_factor;
+        src_color_blend_factor    = set_rt_command.src_color_blend_factor;
+        texture_view              = set_rt_command.texture_view;
     }
 
     _raGL_command_buffer_bake_state_rt()
@@ -890,6 +902,7 @@ typedef struct _raGL_command_buffer
     void process_draw_call_indirect_command     (const ral_command_buffer_draw_call_indirect_command_info*      command_ral_ptr);
     void process_draw_call_regular_command      (const ral_command_buffer_draw_call_regular_command_info*       command_ral_ptr);
     void process_execute_command_buffer_command (const ral_command_buffer_execute_command_buffer_command_info*  command_ral_ptr);
+    void process_invalidate_texture_command     (const ral_command_buffer_invalidate_texture_command_info*      command_ral_ptr);
     void process_set_binding_command            (const ral_command_buffer_set_binding_command_info*             command_ral_ptr);
     void process_set_gfx_state_command          (const ral_command_buffer_set_gfx_state_command_info*           command_ral_ptr);
     void process_set_program_command            (const ral_command_buffer_set_program_command_info*             command_ral_ptr);
@@ -1115,6 +1128,13 @@ void _raGL_command_buffer::bake_commands()
             case RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
             {
                 process_execute_command_buffer_command(reinterpret_cast<const ral_command_buffer_execute_command_buffer_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_INVALIDATE_TEXTURE:
+            {
+                process_invalidate_texture_command(reinterpret_cast<const ral_command_buffer_invalidate_texture_command_info*>(command_ral_raw_ptr) );
 
                 break;
             }
@@ -3107,6 +3127,47 @@ void _raGL_command_buffer::process_execute_command_buffer_command(const ral_comm
 }
 
 /** TODO */
+void _raGL_command_buffer::process_invalidate_texture_command(const ral_command_buffer_invalidate_texture_command_info* command_ral_ptr)
+{
+    raGL_backend backend_raGL       = nullptr;
+    raGL_texture texture_raGL       = nullptr;
+    GLuint       texture_raGL_id    = 0;
+    bool         texture_raGL_is_rb = false;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    raGL_backend_get_texture(backend_raGL,
+                             command_ral_ptr->texture,
+                             (void**) &texture_raGL);
+
+    raGL_texture_get_property(texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_ID,
+                              (void**) &texture_raGL_id);
+    raGL_texture_get_property(texture_raGL,
+                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                              (void**) &texture_raGL_is_rb);
+
+    ASSERT_DEBUG_SYNC(!texture_raGL_is_rb,
+                      "TODO"); /* NOTE: To invalidate a RB, we'd need to set up a FBO; probably not worth the effort. */
+
+    for (uint32_t n_mip = command_ral_ptr->n_start_mip;
+                  n_mip < command_ral_ptr->n_start_mip + command_ral_ptr->n_mips;
+                ++n_mip)
+    {
+        _raGL_command* new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+        new_command_ptr->invalidate_tex_image_command_info.level   = n_mip;
+        new_command_ptr->invalidate_tex_image_command_info.texture = texture_raGL_id;
+        new_command_ptr->type                                      = RAGL_COMMAND_TYPE_INVALIDATE_TEX_IMAGE;
+
+        system_resizable_vector_push(commands,
+                                     new_command_ptr);
+    }
+}
+
+/** TODO */
 void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_set_binding_command_info* command_ral_ptr)
 {
     raGL_backend backend_gl = nullptr;
@@ -3258,12 +3319,22 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
         case RAL_BINDING_TYPE_STORAGE_BUFFER:
         case RAL_BINDING_TYPE_UNIFORM_BUFFER:
         {
-            GLuint                                          bp                    = -1;
-            const ral_command_buffer_buffer_binding_info&   buffer_binding_info   = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? command_ral_ptr->storage_buffer_binding : command_ral_ptr->uniform_buffer_binding;
-            const GLenum                                    buffer_binding_target = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BUFFER                : GL_UNIFORM_BUFFER;
-            raGL_buffer                                     buffer_raGL           = nullptr;
-            GLuint                                          buffer_raGL_id        = 0;
-            const uint32_t                                  n_bps_supported       = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? N_MAX_SB_BINDINGS : N_MAX_UB_BINDINGS;
+            GLuint                                          bp                       = -1;
+            const ral_command_buffer_buffer_binding_info&   buffer_binding_info      = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? command_ral_ptr->storage_buffer_binding : command_ral_ptr->uniform_buffer_binding;
+            const GLenum                                    buffer_binding_target    = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BUFFER                : GL_UNIFORM_BUFFER;
+            raGL_buffer                                     buffer_raGL              = nullptr;
+            GLuint                                          buffer_raGL_id           = 0;
+            uint32_t                                        buffer_raGL_start_offset = -1;
+            uint32_t                                        buffer_ral_size          = -1;
+            uint32_t                                        buffer_ral_start_offset  = -1;
+            const uint32_t                                  n_bps_supported          = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? N_MAX_SB_BINDINGS : N_MAX_UB_BINDINGS;
+
+            ral_buffer_get_property(buffer_binding_info.buffer,
+                                    RAL_BUFFER_PROPERTY_START_OFFSET,
+                                   &buffer_ral_start_offset);
+            ral_buffer_get_property(buffer_binding_info.buffer,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &buffer_ral_size);
 
             raGL_backend_get_buffer(backend_gl,
                                     buffer_binding_info.buffer,
@@ -3275,6 +3346,10 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             raGL_buffer_get_property               (buffer_raGL,
                                                     RAGL_BUFFER_PROPERTY_ID,
                                                    &buffer_raGL_id);
+            raGL_buffer_get_property               (buffer_raGL,
+                                                    RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                                   &buffer_raGL_start_offset);
+
             raGL_program_get_block_property_by_name(bake_state.active_program,
                                                     command_ral_ptr->name,
                                                     RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
@@ -3297,7 +3372,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             bind_command_ptr->bind_buffer_range_command_info.offset   = buffer_binding_info.offset +
                                                                         buffer_raGL_start_offset   +
                                                                         buffer_ral_start_offset;
-            bind_command_ptr->bind_buffer_range_command_info.size     = (buffer_binding_info.size == 0) ? buffer_raGL_size :
+            bind_command_ptr->bind_buffer_range_command_info.size     = (buffer_binding_info.size == 0) ? buffer_ral_size :
                                                                                                           buffer_binding_info.size;
             bind_command_ptr->bind_buffer_range_command_info.target   = buffer_binding_target;
             bind_command_ptr->type                                    = RAGL_COMMAND_TYPE_BIND_BUFFER_RANGE;
@@ -4161,6 +4236,16 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
                 const _raGL_command_front_face_command_info& command_args = command_ptr->front_face_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLFrontFace(command_args.mode);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_INVALIDATE_TEX_IMAGE:
+            {
+                const _raGL_command_invalidate_tex_image_command_info& command_args = command_ptr->invalidate_tex_image_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLInvalidateTexImage(command_args.texture,
+                                                                           command_args.level);
 
                 break;
             }

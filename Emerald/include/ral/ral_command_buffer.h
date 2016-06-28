@@ -31,6 +31,34 @@ typedef enum
     RAL_COMMAND_BUFFER_CALLBACK_ID_COUNT
 } ral_command_buffer_callback_id;
 
+typedef enum
+{
+    /* not settable; system_callback_manager */
+    RAL_COMMAND_BUFFER_PROPERTY_CALLBACK_MANAGER,
+
+    /* not settable; ral_queue_bits */
+    RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES,
+
+    /* not settable; ral_context */
+    RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
+
+    /* not settable; bool */
+    RAL_COMMAND_BUFFER_PROPERTY_IS_INVOKABLE_FROM_OTHER_COMMAND_BUFFERS,
+
+    /* not settable; bool */
+    RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE,
+
+    /* not settable; bool */
+    RAL_COMMAND_BUFFER_PROPERTY_IS_TRANSIENT,
+
+    /* not settable; uint32_t */
+    RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
+
+    /* not settable; ral_command_buffer_status */
+    RAL_COMMAND_BUFFER_PROPERTY_STATUS,
+} ral_command_buffer_property;
+
+
 typedef struct ral_command_buffer_copy_buffer_to_buffer_command_info
 {
     ral_buffer dst_buffer;
@@ -131,13 +159,13 @@ typedef struct ral_dependency
      * NOTE: For texture object accesses only.
      */
     static ral_dependency get_storage_image_access(ral_texture_view        in_texture_view,
-                                                            ral_access_bits         in_accesses,
-                                                            ral_pipeline_stage_bits in_stages,
-                                                            ral_texture_aspect_bits in_aspects,
-                                                            uint32_t                in_n_base_layer,
-                                                            uint32_t                in_n_base_mip,
-                                                            uint32_t                in_n_layers,
-                                                            uint32_t                in_n_mips)
+                                                   ral_access_bits         in_accesses,
+                                                   ral_pipeline_stage_bits in_stages,
+                                                   ral_texture_aspect_bits in_aspects,
+                                                   uint32_t                in_n_base_layer,
+                                                   uint32_t                in_n_base_mip,
+                                                   uint32_t                in_n_layers,
+                                                   uint32_t                in_n_mips)
     {
         ral_dependency instance;
 
@@ -262,32 +290,14 @@ typedef struct ral_command_buffer_execute_command_buffer_command_info
 
 } ral_command_buffer_execute_command_buffer_command_info;
 
-typedef enum
+typedef struct ral_command_buffer_invalidate_texture_command_info
 {
-    /* not settable; system_callback_manager */
-    RAL_COMMAND_BUFFER_PROPERTY_CALLBACK_MANAGER,
+    uint32_t    n_mips;
+    uint32_t    n_start_mip;
+    ral_texture texture;
 
-    /* not settable; ral_queue_bits */
-    RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES,
+} ral_command_buffer_invalidate_texture_command_info;
 
-    /* not settable; ral_context */
-    RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
-
-    /* not settable; bool */
-    RAL_COMMAND_BUFFER_PROPERTY_IS_INVOKABLE_FROM_OTHER_COMMAND_BUFFERS,
-
-    /* not settable; bool */
-    RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE,
-
-    /* not settable; bool */
-    RAL_COMMAND_BUFFER_PROPERTY_IS_TRANSIENT,
-
-    /* not settable; uint32_t */
-    RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
-
-    /* not settable; ral_command_buffer_status */
-    RAL_COMMAND_BUFFER_PROPERTY_STATUS,
-} ral_command_buffer_property;
 
 typedef struct
 {
@@ -378,23 +388,23 @@ typedef struct ral_command_buffer_set_color_rendertarget_command_info
     {
         ral_command_buffer_set_color_rendertarget_command_info result;
 
-        result.blend_constant.f32[0]   = 0.0f;
-        result.blend_constant.f32[1]   = 0.0f;
-        result.blend_constant.f32[2]   = 0.0f;
-        result.blend_constant.f32[3]   = 0.0f;
-        result.blend_enabled           = false;
-        result.blend_op_alpha          = RAL_BLEND_OP_ADD;
-        result.blend_op_color          = RAL_BLEND_OP_ADD;
-        result.channel_writes.color0   = true;
-        result.channel_writes.color1   = true;
-        result.channel_writes.color2   = true;
-        result.channel_writes.color3   = true;
-        result.dst_alpha_blend_factor  = RAL_BLEND_FACTOR_ONE;
-        result.dst_color_blend_factor  = RAL_BLEND_FACTOR_ONE;
-        result.rendertarget_index      = -1;
-        result.src_alpha_blend_factor  = RAL_BLEND_FACTOR_ONE;
-        result.src_color_blend_factor  = RAL_BLEND_FACTOR_ONE;
-        result.texture_view            = nullptr;
+        result.blend_constant.f32[0]  = 0.0f;
+        result.blend_constant.f32[1]  = 0.0f;
+        result.blend_constant.f32[2]  = 0.0f;
+        result.blend_constant.f32[3]  = 0.0f;
+        result.blend_enabled          = false;
+        result.blend_op_alpha         = RAL_BLEND_OP_ADD;
+        result.blend_op_color         = RAL_BLEND_OP_ADD;
+        result.channel_writes.color0  = true;
+        result.channel_writes.color1  = true;
+        result.channel_writes.color2  = true;
+        result.channel_writes.color3  = true;
+        result.dst_alpha_blend_factor = RAL_BLEND_FACTOR_ONE;
+        result.dst_color_blend_factor = RAL_BLEND_FACTOR_ONE;
+        result.rendertarget_index     = -1;
+        result.src_alpha_blend_factor = RAL_BLEND_FACTOR_ONE;
+        result.src_color_blend_factor = RAL_BLEND_FACTOR_ONE;
+        result.texture_view           = nullptr;
 
         return result;
     }
@@ -440,6 +450,7 @@ typedef enum
     RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT,
     RAL_COMMAND_TYPE_DRAW_CALL_REGULAR,
     RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER,
+    RAL_COMMAND_TYPE_INVALIDATE_TEXTURE,
     RAL_COMMAND_TYPE_SET_BINDING,
     RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET,
     RAL_COMMAND_TYPE_SET_GFX_STATE,
@@ -510,6 +521,12 @@ PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer      
 PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer                                            recording_command_buffer,
                                                              uint32_t                                                      n_commands,
                                                              const ral_command_buffer_execute_command_buffer_command_info* command_ptrs);
+
+/** TODO */
+PUBLIC void ral_command_buffer_record_invalidate_texture(ral_command_buffer recording_command_buffer,
+                                                         ral_texture        texture,
+                                                         uint32_t           n_start_mip,
+                                                         uint32_t           n_mips);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer                           recording_command_buffer,

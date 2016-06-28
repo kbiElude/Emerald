@@ -31,7 +31,7 @@ PUBLIC postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ral_cont
 PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postprocessing_blur_gaussian            blur,
                                                                          unsigned int                            n_taps,
                                                                          float                                   n_iterations,
-                                                                         ral_texture_view                        src_texture_view,
+                                                                         ral_texture_view                        dst_src_texture_view,
                                                                          postprocessing_blur_gaussian_resolution blur_resolution);
 
 #endif /* POSTPROCESSING_BLUR_GAUSSIAN_H */
