@@ -861,6 +861,7 @@ typedef struct _raGL_command_buffer
     const ogl_context_gl_entrypoints*                         entrypoints_ptr;
     const ogl_context_gl_limits*                              limits_ptr;
 
+
     explicit _raGL_command_buffer(ogl_context in_context)
     {
         raGL_backend backend = nullptr;

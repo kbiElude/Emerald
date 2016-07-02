@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -70,7 +70,7 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(glsl_shader_constructor 
                                                        9, /* array_size */
                                                        vs_ub_id,
                                                        system_hashed_ansi_string_create(light_sh3_variable_name_sstream.str().c_str() ),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add uniform variables */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -80,7 +80,7 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(glsl_shader_constructor 
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("mesh_sh3"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                        VARIABLE_TYPE_UNIFORM,
                                                        LAYOUT_QUALIFIER_NONE,
@@ -88,7 +88,7 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(glsl_shader_constructor 
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("mesh_sh3_data_offset"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add output variables */
     std::stringstream light_mesh_ambient_diffuse_sh3_name_sstream;
@@ -104,7 +104,7 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(glsl_shader_constructor 
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create(light_mesh_ambient_diffuse_sh3_name_sstream.str().c_str() ),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Compute output variable value */
     std::stringstream body;
@@ -143,7 +143,7 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(glsl_shader_constructor 
                                                        12, /* array_size */
                                                        vs_ub_id,
                                                        system_hashed_ansi_string_create(light_sh3_variable_name_sstream.str().c_str() ),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add uniform variables */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -153,7 +153,7 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(glsl_shader_constructor 
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("mesh_sh4"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                        VARIABLE_TYPE_UNIFORM,
                                                        LAYOUT_QUALIFIER_NONE,
@@ -161,7 +161,7 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(glsl_shader_constructor 
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("mesh_sh4_data_offset"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add output variables */
     std::stringstream light_mesh_ambient_diffuse_sh4_name_sstream;
@@ -177,7 +177,7 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(glsl_shader_constructor 
                                                       0, /* array_size */
                                                       0, /* uniform_block */
                                                       system_hashed_ansi_string_create(light_mesh_ambient_diffuse_sh4_name_sstream.str().c_str() ),
-                                                      NULL /* out_variable_id */);
+                                                      nullptr /* out_variable_id */);
 
     /* Compute output variable value */
     std::stringstream body;
@@ -207,11 +207,11 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(glsl_shader_constructor 
  **/
 PRIVATE void _shaders_vertex_uber_release(void* ptr)
 {
-    _shaders_vertex_uber* data_ptr = (_shaders_vertex_uber*) ptr;
+    _shaders_vertex_uber* data_ptr = reinterpret_cast<_shaders_vertex_uber*>(ptr);
 
-    if (data_ptr->added_items != NULL)
+    if (data_ptr->added_items != nullptr)
     {
-        _shaders_vertex_uber_item* item_ptr = NULL;
+        _shaders_vertex_uber_item* item_ptr = nullptr;
 
         while (system_resizable_vector_pop(data_ptr->added_items, &item_ptr) )
         {
@@ -220,24 +220,24 @@ PRIVATE void _shaders_vertex_uber_release(void* ptr)
 
         system_resizable_vector_release(data_ptr->added_items);
 
-        data_ptr->added_items = NULL;
+        data_ptr->added_items = nullptr;
     }
 
-    if (data_ptr->shader_constructor != NULL)
+    if (data_ptr->shader_constructor != nullptr)
     {
         glsl_shader_constructor_release(data_ptr->shader_constructor);
 
-        data_ptr->shader_constructor = NULL;
+        data_ptr->shader_constructor = nullptr;
     }
 
-    if (data_ptr->vertex_shader != NULL)
+    if (data_ptr->vertex_shader != nullptr)
     {
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &data_ptr->vertex_shader);
 
-        data_ptr->vertex_shader = NULL;
+        data_ptr->vertex_shader = nullptr;
     }
 }
 
@@ -248,7 +248,7 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(shad
                                                                             ral_program_variable_type in_attribute_variable_type,
                                                                             system_hashed_ansi_string out_attribute_name)
 {
-    _shaders_vertex_uber* uber_ptr = (_shaders_vertex_uber*) uber;
+    _shaders_vertex_uber* uber_ptr = reinterpret_cast<_shaders_vertex_uber*>(uber);
 
     /* Add input attribute */
     if (!glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
@@ -258,7 +258,7 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(shad
                                                             0, /* array_size */
                                                             0, /* uniform_block */
                                                             in_attribute_name,
-                                                            NULL /* out_variable_id */) )
+                                                            nullptr /* out_variable_id */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not add input attribute [%s] to the uber vertex shader",
@@ -273,7 +273,7 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(shad
                                                             0, /* array_size */
                                                             0, /* uniform_block */
                                                             out_attribute_name,
-                                                            NULL /* out_variable_id */) )
+                                                            nullptr /* out_variable_id */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not add output attribute [%s] to the uber vertex shader",
@@ -311,9 +311,9 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(sha
                                                                              shaders_fragment_uber_light_type light_type,
                                                                              bool                             is_shadow_caster)
 {
-    _shaders_vertex_uber*       uber_ptr     = (_shaders_vertex_uber*) uber;
+    _shaders_vertex_uber*       uber_ptr     = reinterpret_cast<_shaders_vertex_uber*>(uber);
     unsigned int                n_items      = 0;
-    _shaders_vertex_uber_item*  new_item_ptr = NULL;
+    _shaders_vertex_uber_item*  new_item_ptr = nullptr;
     shaders_vertex_uber_item_id result       = -1;
 
     system_resizable_vector_get_property(uber_ptr->added_items,
@@ -351,7 +351,7 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(sha
 
             goto end;
         }
-    } /* switch (light) */
+    }
 
     /* Add shadow mapping code if needed */
     if (is_shadow_caster)
@@ -366,10 +366,10 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(sha
     /* Spawn new descriptor */
     new_item_ptr = new (std::nothrow) _shaders_vertex_uber_item;
 
-    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_item_ptr != nullptr,
                        "Out of memory");
 
-    if (new_item_ptr == NULL)
+    if (new_item_ptr == nullptr)
     {
         goto end;
     }
@@ -401,16 +401,16 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
     std::stringstream                        body_stream;
     system_hashed_ansi_string                ral_shader_instance_name = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                                 " vertex uber");
-    _shaders_vertex_uber*                    result_object_ptr        = NULL;
-    shaders_vertex_uber                      result_shader            = NULL;
-    glsl_shader_constructor                  shader_constructor       = NULL;
+    _shaders_vertex_uber*                    result_object_ptr        = nullptr;
+    shaders_vertex_uber                      result_shader            = nullptr;
+    glsl_shader_constructor                  shader_constructor       = nullptr;
     ral_shader_create_info                   shader_create_info;
     glsl_shader_constructor_uniform_block_id ub_id                    = -1;
-    ral_shader                               vertex_shader            = NULL;
+    ral_shader                               vertex_shader            = nullptr;
 
     /* Make sure no other RAL shader instance lives under the name we're about to use */
     if ((ral_context_get_shader_by_name(context,
-                                        ral_shader_instance_name)) != NULL)
+                                        ral_shader_instance_name)) != nullptr)
     {
         /* It is an error if a shader with the same name already exists. */
         ASSERT_DEBUG_SYNC(false,
@@ -425,7 +425,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                         system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                 " vertex uber"));
 
-    if (shader_constructor == NULL)
+    if (shader_constructor == nullptr)
     {
         LOG_ERROR("Could not create a shader constructor instance");
 
@@ -445,7 +445,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                        0, /* array_size */
                                                        ub_id,
                                                        system_hashed_ansi_string_create("world_camera"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add object_normal input attribute */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -455,7 +455,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("object_normal"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add world_vertex output attribute */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -465,7 +465,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("world_vertex"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add out_vs_normal output attribute */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -475,7 +475,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("out_vs_normal"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add view_vector output attribute */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -485,7 +485,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("view_vector"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add object_vertex input attribute */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -495,7 +495,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("object_vertex"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add vp member */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -505,7 +505,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                       0, /* array_size */
                                                       ub_id,
                                                       system_hashed_ansi_string_create("vp"),
-                                                      NULL /* out_variable_id */);
+                                                      nullptr /* out_variable_id */);
 
     /* Add model uniform */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -515,7 +515,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                       0, /* array_size */
                                                       ub_id,
                                                       system_hashed_ansi_string_create("model"),
-                                                      NULL /* out_variable_id */);
+                                                      nullptr /* out_variable_id */);
 
     /* Add normal_matrix uniform */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -525,7 +525,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
                                                        0, /* array_size */
                                                        ub_id,
                                                        system_hashed_ansi_string_create("normal_matrix"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Set the body */
     glsl_shader_constructor_set_function_body(shader_constructor,
@@ -541,10 +541,10 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_vertex_uber;
 
-    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                       "Out of memory while instantiating _shaders_vertex_uber object.");
 
-    if (result_object_ptr == NULL)
+    if (result_object_ptr == nullptr)
     {
         LOG_ERROR("Out of memory while creating uber vertex shader object instance.");
 
@@ -595,14 +595,14 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
     return (shaders_vertex_uber) result_object_ptr;
 
 end:
-    if (shader_constructor != NULL)
+    if (shader_constructor != nullptr)
     {
         glsl_shader_constructor_release(shader_constructor);
 
-        shader_constructor = NULL;
+        shader_constructor = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */
@@ -610,13 +610,16 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_item_type(shaders_vertex_uber   
                                                           shaders_vertex_uber_item_id    item_id,
                                                           shaders_vertex_uber_item_type* out_item_type)
 {
-    _shaders_vertex_uber_item* item_ptr = NULL;
-    _shaders_vertex_uber*      uber_ptr = (_shaders_vertex_uber*) uber;
+    _shaders_vertex_uber_item* item_ptr = nullptr;
+    _shaders_vertex_uber*      uber_ptr = reinterpret_cast<_shaders_vertex_uber*>(uber);
     bool                       result   = false;
 
-    if (!system_resizable_vector_get_element_at(uber_ptr->added_items, item_id, &item_ptr) )
+    if (!system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                item_id,
+                                               &item_ptr) )
     {
-        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%u]", item_id);
+        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%u]",
+                  item_id);
 
         goto end;
     }
@@ -633,8 +636,8 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(shaders_vertex_uber  
                                                            shaders_vertex_uber_item_id item_id,
                                                            shaders_vertex_uber_light*  out_light_type)
 {
-    _shaders_vertex_uber_item* item_ptr = NULL;
-    _shaders_vertex_uber*      uber_ptr = (_shaders_vertex_uber*) uber;
+    _shaders_vertex_uber_item* item_ptr = nullptr;
+    _shaders_vertex_uber*      uber_ptr = reinterpret_cast<_shaders_vertex_uber*>(uber);
     bool                       result   = false;
 
     if (!system_resizable_vector_get_element_at(uber_ptr->added_items,
@@ -677,7 +680,7 @@ PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(shaders_vertex_uber 
 /** Please see header for specification */
 PUBLIC EMERALD_API ral_shader shaders_vertex_uber_get_shader(shaders_vertex_uber shader)
 {
-    _shaders_vertex_uber* shader_ptr = (_shaders_vertex_uber*) shader;
+    _shaders_vertex_uber* shader_ptr = reinterpret_cast<_shaders_vertex_uber*>(shader);
 
     if (shader_ptr->dirty)
     {
@@ -698,7 +701,7 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(shaders_vertex_uber uber)
 /* Please see header for specificationb */
 PUBLIC EMERALD_API void shaders_vertex_uber_recompile(shaders_vertex_uber uber)
 {
-    _shaders_vertex_uber* uber_ptr = (_shaders_vertex_uber*) uber;
+    _shaders_vertex_uber* uber_ptr = reinterpret_cast<_shaders_vertex_uber*>(uber);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(uber_ptr->dirty,

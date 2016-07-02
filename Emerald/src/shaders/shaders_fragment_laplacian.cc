@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -38,13 +38,13 @@ static const float laplacian[9] = {1,  1, 1,
  **/
 PRIVATE void _shaders_fragment_laplacian_release(void* ptr)
 {
-    _shaders_fragment_laplacian* data_ptr = (_shaders_fragment_laplacian*) ptr;
+    _shaders_fragment_laplacian* data_ptr = reinterpret_cast<_shaders_fragment_laplacian*>(ptr);
 
-    if (data_ptr->shader != NULL)
+    if (data_ptr->shader != nullptr)
     {
         shaders_fragment_convolution3x3_release(data_ptr->shader);
 
-        data_ptr->shader = NULL;
+        data_ptr->shader = nullptr;
     }
 }
 
@@ -53,18 +53,18 @@ PRIVATE void _shaders_fragment_laplacian_release(void* ptr)
 PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(ral_context               context,
                                                                                 system_hashed_ansi_string name)
 {
-    _shaders_fragment_laplacian* result_object = NULL;
-    shaders_fragment_laplacian   result_shader = NULL;
+    _shaders_fragment_laplacian* result_object_ptr = nullptr;
+    shaders_fragment_laplacian   result_shader     = nullptr;
 
     /* Create the shader */
     shaders_fragment_convolution3x3 shader = shaders_fragment_convolution3x3_create(context,
                                                                                     laplacian,
                                                                                     name);
 
-    ASSERT_DEBUG_SYNC(shader != NULL,
+    ASSERT_DEBUG_SYNC(shader != nullptr,
                       "shaders_fragment_convolution3x3_create() failed");
 
-    if (shader == NULL)
+    if (shader == nullptr)
     {
         LOG_ERROR("Could not create shader object.");
 
@@ -72,39 +72,39 @@ PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(
     }
 
     /* Everything went okay. Instantiate the object */
-    result_object = new (std::nothrow) _shaders_fragment_laplacian;
+    result_object_ptr = new (std::nothrow) _shaders_fragment_laplacian;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                       "Out of memory while instantiating _shaders_fragment_laplacian object.");
 
-    if (result_object == NULL)
+    if (result_object_ptr == nullptr)
     {
         LOG_ERROR("Out of memory while creating Laplacian object instance.");
 
         goto end;
     }
 
-    result_object->shader = shader;
+    result_object_ptr >shader = shader;
 
     /* Return the object */
-    return (shaders_fragment_laplacian) result_object;
+    return reinterpret_cast<shaders_fragment_laplacian>(result_object_ptr);
 
 end:
-    if (shader != NULL)
+    if (shader != nullptr)
     {
         shaders_fragment_convolution3x3_release(shader);
 
-        shader = NULL;
+        shader = nullptr;
     }
 
-    if (result_object != NULL)
+    if (result_object_ptr != nullptr)
     {
-        delete result_object;
+        delete result_object_ptr;
 
-        result_object = NULL;
+        result_object = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */

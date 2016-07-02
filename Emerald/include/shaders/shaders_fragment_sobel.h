@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * 3x3 Sobel operator implementation for 2D textures. In order to apply the operator, first execute an off-screen full-screen
  * pass with DX fragment shader, then another one with DY fragment shader. The fragment shaders use "uv" attribute.
@@ -10,7 +10,6 @@
 #ifndef SHADERS_FRAGMENT_SOBEL_H
 #define SHADERS_FRAGMENT_SOBEL_H
 
-#include "gfx/gfx_types.h"
 #include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_sobel,

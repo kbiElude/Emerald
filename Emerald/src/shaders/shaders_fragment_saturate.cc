@@ -1,10 +1,9 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
 #include "ral/ral_shader.h"
 #include "shaders/shaders_fragment_saturate.h"
@@ -14,22 +13,23 @@
 #include <sstream>
 
 /* Internal variables */
-const char* saturate_fragment_shader_body = "#version 430 core\n"
-                                            "\n"
-                                            "in vec2 uv;\n"
-                                            "\n"
-                                            "uniform sampler2D in_texture;\n"
-                                            "uniform float     strength;\n"
-                                            "\n"
-                                            "out vec4 color;\n"
-                                            "\n"
-                                            "void main()\n"
-                                            "{\n"
-                                            "    vec4  in_texel = texture(in_texture, uv);\n"
-                                            "    float avg      = (in_texel.x + in_texel.y + in_texel.z) / 3.0;\n"
-                                            "\n"
-                                            "    color = vec4(avg + strength * (in_texel.rgb - avg), 1.0);\n"
-                                            "}\n";
+const char* saturate_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in vec2 uv;\n"
+    "\n"
+    "uniform sampler2D in_texture;\n"
+    "uniform float     strength;\n"
+    "\n"
+    "out vec4 color;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    vec4  in_texel = texture(in_texture, uv);\n"
+    "    float avg      = (in_texel.x + in_texel.y + in_texel.z) / 3.0;\n"
+    "\n"
+    "    color = vec4(avg + strength * (in_texel.rgb - avg), 1.0);\n"
+    "}\n";
 
 /** Internal type definition */
 typedef struct
@@ -52,16 +52,16 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_saturate,
  **/
 PRIVATE void _shaders_fragment_saturate_release(void* ptr)
 {
-    _shaders_fragment_saturate* data_ptr = (_shaders_fragment_saturate*) ptr;
+    _shaders_fragment_saturate* data_ptr = reinterpret_cast<_shaders_fragment_saturate*>(ptr);
 
-    if (data_ptr->shader != NULL)
+    if (data_ptr->shader != nullptr)
     {
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &data_ptr->shader);
 
-        data_ptr->shader = NULL;
+        data_ptr->shader = nullptr;
     }
 }
 
@@ -70,8 +70,8 @@ PRIVATE void _shaders_fragment_saturate_release(void* ptr)
 PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ral_context               context,
                                                                               system_hashed_ansi_string name)
 {
-    _shaders_fragment_saturate* result_object_ptr = NULL;
-    ral_shader                  shader            = NULL;
+    _shaders_fragment_saturate* result_object_ptr = nullptr;
+    ral_shader                  shader            = nullptr;
 
     /* Create the shader */
     system_hashed_ansi_string shader_body       (system_hashed_ansi_string_create(saturate_fragment_shader_body) );
@@ -96,10 +96,10 @@ PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ra
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_fragment_saturate;
 
-    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                       "Out of memory while instantiating _shaders_fragment_saturate object.");
 
-    if (result_object_ptr == NULL)
+    if (result_object_ptr == nullptr)
     {
         goto end;
     }
@@ -111,17 +111,17 @@ PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(ra
     return (shaders_fragment_saturate) result_object_ptr;
 
 end:
-    if (shader != NULL)
+    if (shader != nullptr)
     {
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &shader);
 
-        shader = NULL;
+        shader = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */

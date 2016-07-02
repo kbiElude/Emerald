@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  * 
  * The implementation is reference counter-based.
  */
@@ -98,9 +98,9 @@ typedef struct _shaders_fragment_uber_new_fragment_input_callback
 
     _shaders_fragment_uber_new_fragment_input_callback()
     {
-        fs_attribute_name = NULL;
+        fs_attribute_name = nullptr;
         fs_attribute_type = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;
-        vs_attribute_name = NULL;
+        vs_attribute_name = nullptr;
     }
 
 } _shaders_fragment_uber_new_fragment_input_callback;

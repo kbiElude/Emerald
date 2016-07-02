@@ -29,92 +29,96 @@
 #define DATA_SAMPLER_UNIFORM_LOCATION   (0)
 #define OTHER_DATA_UB_BP                (1)
 
-static const char* fs_preamble = "#version 430 core\n"
-                                 "\n";
-static const char* fs_body =     "layout(binding = 0, std140) uniform coeffs_data\n"
-                                 "{\n"
-                                 /* data[0]..data[n_taps_half-1]: coeffs, data[n_taps_half..n_taps_half*2-1] - offsets */
-                                 "    float data[N_MAX_COEFFS];\n"
-                                 "};\n"
-                                 "\n"
-                                 "layout(binding = 1, std140) uniform other_data\n"
-                                 "{\n"
-                                 "    int n_taps;\n"
-                                 "};\n"
-                                 "\n"
-                                 "layout(location = 0, binding = 0) uniform sampler2DArray data_sampler;\n"
-                                 "\n"
-                                 "flat in  vec2 offset_multiplier;\n"
-                                 "flat in  int  read_layer_id;\n"
-                                 "     out vec4 result;\n"
-                                 "\n"
-                                 "void main()\n"
-                                 "{\n"
-                                 "    const int  n_taps_half  = (n_taps + 1) / 2;\n"
-                                 "    const int  n_taps_mod_2 = n_taps % 2;\n"
-                                 "    const int  n_start_tap  = (n_taps_mod_2 != 0) ? 1 : 0;\n"
-                                 "          vec2 texture_size = vec2(textureSize(data_sampler, 0).xy);\n"
-                                 "          vec2 uv           = gl_FragCoord.xy / texture_size;\n"
-                                 "\n"
-                                 "    if (n_taps_mod_2 != 0)\n"
-                                 "    {\n"
-                                 "        result = textureLod(data_sampler,\n"
-                                 "                            vec3(uv, float(read_layer_id) ),\n"
-                                 "                            0.0) * data[0];\n"
-                                 "    }\n"
-                                 "    else\n"
-                                 "    {\n"
-                                 "        result = vec4(0.0);\n"
-                                 "    }\n"
-                                 "\n"
-                                 /* Note: we also use this program for blending if frac(n_taps) != .0. In this case,
-                                  *       n_taps is set to 1, which essentially fetches 1 texel from data_sampler and
-                                  *       returns the read value. data[0] is set to 1.0 for this iteration.
-                                  */
-                                 "    for (int n_tap = n_start_tap;\n"
-                                 "             n_tap < n_taps_half;\n"
-                                 "             n_tap ++)\n"
-                                 "    {\n"
-                                 "        vec4 tap_weight = vec4(data[n_tap]);\n"
-                                 "        vec2 tap_offset = vec2(data[n_taps_half + n_tap]);\n"
-                                 "\n"
-                                 "        result += textureLod(data_sampler,\n"
-                                 "                             vec3(uv + offset_multiplier * tap_offset, float(read_layer_id) ),\n"
-                                 "                             0.0) * tap_weight;\n"
-                                 "        result += textureLod(data_sampler,\n"
-                                 "                             vec3(uv - offset_multiplier * tap_offset, float(read_layer_id) ),\n"
-                                 "                             0.0) * tap_weight;\n"
-                                 "    }\n"
-                                 "}\n";
-static const char* vs_body =     "#version 430 core\n"
-                                 "\n"
-                                 "layout(location = 0, binding = 0)      uniform sampler2DArray data_sampler;\n"
-                                 "                                  flat out     int            read_layer_id;\n"
-                                 "                                  flat out     vec2           offset_multiplier;\n"
-                                 "\n"
-                                 "void main()\n"
-                                 "{\n"
-                                 "    int vertex_id_mod_4 = gl_VertexID % 4;\n"
-                                 "\n"
-                                 "    read_layer_id = gl_VertexID / 4;\n"
-                                 "\n"
-                                 "    if (read_layer_id == 0)\n"
-                                 "    {\n"
-                                 "        offset_multiplier = vec2(1.0 / textureSize(data_sampler, 0).x, 0.0);\n"
-                                 "    }\n"
-                                 "    else\n"
-                                 "    {\n"
-                                 "        offset_multiplier = vec2(0.0, 1.0 / textureSize(data_sampler, 0).y);\n"
-                                 "    }\n"
-                                 "\n"
-                                 "    switch (vertex_id_mod_4)\n"
-                                 "    {\n"
-                                 "        case 0: gl_Position = vec4(-1.0, -1.0, 0.0, 1.0); break;\n"
-                                 "        case 1: gl_Position = vec4(-1.0,  1.0, 0.0, 1.0); break;\n"
-                                 "        case 2: gl_Position = vec4( 1.0, -1.0, 0.0, 1.0); break;\n"
-                                 "        case 3: gl_Position = vec4( 1.0,  1.0, 0.0, 1.0); break;\n"
-                                 "    }\n"
-                                 "}\n";
+static const char* fs_preamble =
+    "#version 430 core\n"
+    "\n";
+static const char* fs_body =
+    "layout(binding = 0, std140) uniform coeffs_data\n"
+    "{\n"
+    /* data[0]..data[n_taps_half-1]: coeffs, data[n_taps_half..n_taps_half*2-1] - offsets */
+    "    float data[N_MAX_COEFFS];\n"
+    "};\n"
+    "\n"
+    "layout(binding = 1, std140) uniform other_data\n"
+    "{\n"
+    "    int n_taps;\n"
+    "};\n"
+    "\n"
+    "layout(location = 0, binding = 0) uniform sampler2DArray data_sampler;\n"
+    "\n"
+    "flat in  vec2 offset_multiplier;\n"
+    "flat in  int  read_layer_id;\n"
+    "     out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    const int  n_taps_half  = (n_taps + 1) / 2;\n"
+    "    const int  n_taps_mod_2 = n_taps % 2;\n"
+    "    const int  n_start_tap  = (n_taps_mod_2 != 0) ? 1 : 0;\n"
+    "          vec2 texture_size = vec2(textureSize(data_sampler, 0).xy);\n"
+    "          vec2 uv           = gl_FragCoord.xy / texture_size;\n"
+    "\n"
+    "    if (n_taps_mod_2 != 0)\n"
+    "    {\n"
+    "        result = textureLod(data_sampler,\n"
+    "                            vec3(uv, float(read_layer_id) ),\n"
+    "                            0.0) * data[0];\n"
+    "    }\n"
+    "    else\n"
+    "    {\n"
+    "        result = vec4(0.0);\n"
+    "    }\n"
+    "\n"
+    /* Note: we also use this program for blending if frac(n_taps) != .0. In this case,
+     *       n_taps is set to 1, which essentially fetches 1 texel from data_sampler and
+     *       returns the read value. data[0] is set to 1.0 for this iteration.
+     */
+    "    for (int n_tap = n_start_tap;\n"
+    "             n_tap < n_taps_half;\n"
+    "             n_tap ++)\n"
+    "    {\n"
+    "        vec4 tap_weight = vec4(data[n_tap]);\n"
+    "        vec2 tap_offset = vec2(data[n_taps_half + n_tap]);\n"
+    "\n"
+    "        result += textureLod(data_sampler,\n"
+    "                             vec3(uv + offset_multiplier * tap_offset, float(read_layer_id) ),\n"
+    "                             0.0) * tap_weight;\n"
+    "        result += textureLod(data_sampler,\n"
+    "                             vec3(uv - offset_multiplier * tap_offset, float(read_layer_id) ),\n"
+    "                             0.0) * tap_weight;\n"
+    "    }\n"
+    "}\n";
+
+static const char* vs_body =
+    "#version 430 core\n"
+    "\n"
+    "layout(location = 0, binding = 0)      uniform sampler2DArray data_sampler;\n"
+    "                                  flat out     int            read_layer_id;\n"
+    "                                  flat out     vec2           offset_multiplier;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    int vertex_id_mod_4 = gl_VertexID % 4;\n"
+    "\n"
+    "    read_layer_id = gl_VertexID / 4;\n"
+    "\n"
+    "    if (read_layer_id == 0)\n"
+    "    {\n"
+    "        offset_multiplier = vec2(1.0 / textureSize(data_sampler, 0).x, 0.0);\n"
+    "    }\n"
+    "    else\n"
+    "    {\n"
+    "        offset_multiplier = vec2(0.0, 1.0 / textureSize(data_sampler, 0).y);\n"
+    "    }\n"
+    "\n"
+    "    switch (vertex_id_mod_4)\n"
+    "    {\n"
+    "        case 0: gl_Position = vec4(-1.0, -1.0, 0.0, 1.0); break;\n"
+    "        case 1: gl_Position = vec4(-1.0,  1.0, 0.0, 1.0); break;\n"
+    "        case 2: gl_Position = vec4( 1.0, -1.0, 0.0, 1.0); break;\n"
+    "        case 3: gl_Position = vec4( 1.0,  1.0, 0.0, 1.0); break;\n"
+    "    }\n"
+    "}\n";
 
 /** Internal type definition */
 typedef struct _postprocessing_blur_gaussian
@@ -162,6 +166,7 @@ typedef struct _postprocessing_blur_gaussian
         ASSERT_DEBUG_SYNC(in_n_min_taps <= in_n_max_taps,
                           "Invalid min/max tap argument values");
 
+        cached_present_task             = nullptr;
         coeff_bo                        = nullptr;
         coeff_buffer_offset_for_value_1 = 0; /* always zero */
         coeff_buffer_offsets            = nullptr;
@@ -211,6 +216,13 @@ typedef struct _postprocessing_blur_gaussian
         const uint32_t n_gfx_states_to_release    = sizeof(gfx_states_to_release)    / sizeof(gfx_states_to_release   [0]);
         const uint32_t n_samplers_to_release      = sizeof(samplers_to_release)      / sizeof(samplers_to_release     [0]);
         const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release) / sizeof(texture_views_to_release[0]);
+
+        if (cached_present_task != nullptr)
+        {
+            ral_present_task_release(cached_present_task);
+
+            cached_present_task = nullptr;
+        }
 
         if (coeff_buffer_offsets != nullptr)
         {
@@ -891,6 +903,9 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
     ral_texture_type               dst_src_texture_view_type   = RAL_TEXTURE_TYPE_UNKNOWN;
     ral_present_task               result                      = nullptr;
 
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO: Separate into cpu+gpu tasks, so that n_iterations can be changed in run-time w/o rebuilding the whole thing.");
+
     ASSERT_DEBUG_SYNC(n_taps >= blur_ptr->n_min_taps &&
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
@@ -909,6 +924,13 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         result = blur_ptr->cached_present_task;
 
         goto end;
+    }
+
+    if (blur_ptr->cached_present_task != nullptr)
+    {
+        ral_present_task_release(blur_ptr->cached_present_task);
+
+        blur_ptr->cached_present_task = nullptr;
     }
 
     ral_texture_view_get_mipmap_property(dst_src_texture_view,
@@ -1584,17 +1606,43 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         }
     }
 
-    /* All done */
     ral_command_buffer_record_invalidate_texture(cmd_buffer,
                                                  blur_ptr->ping_pong_rt,
                                                  0, /* n_start_mip */
                                                  1);
+    ral_command_buffer_stop_recording           (cmd_buffer);
 
-end:
+
+    /* Recording finished. Create a new presentation  task. */
+    ral_present_task_io              dst_src_texture_io;
+    ral_present_task_gpu_create_info present_task_create_info;
+
+    dst_src_texture_io.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    dst_src_texture_io.texture_view = dst_src_texture_view;
+
+    present_task_create_info.command_buffer   = cmd_buffer;
+    present_task_create_info.n_unique_inputs  = 1;
+    present_task_create_info.n_unique_outputs = 1;
+    present_task_create_info.unique_inputs    = &dst_src_texture_io;
+    present_task_create_info.unique_outputs   = &dst_src_texture_io;
+
+    result = ral_present_task_create_gpu(blur_ptr->name,
+                                        &present_task_create_info);
+
+    ASSERT_DEBUG_SYNC(result != nullptr,
+                      "Could not create a present task.");
+
     if (result != nullptr)
     {
+        blur_ptr->cached_present_task                      = result;
+        blur_ptr->cached_present_task_blur_resolution      = blur_resolution;
+        blur_ptr->cached_present_task_dst_src_texture_view = dst_src_texture_view;
+        blur_ptr->cached_present_task_n_iterations         = n_iterations;
+        blur_ptr->cached_present_task_n_taps               = n_taps;
+
         ral_present_task_retain(result);
     }
 
+end:
     return result;
 }

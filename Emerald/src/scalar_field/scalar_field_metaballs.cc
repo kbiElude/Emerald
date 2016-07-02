@@ -1,6 +1,10 @@
+#if 0
+
+TODO
+
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -52,20 +56,20 @@ typedef struct _scalar_field_metaballs
                in_grid_size_xyz,
                sizeof(grid_size_xyz) );
 
-        backend                             =  NULL;
+        backend                             =  nullptr;
         context                             =  in_context;
         is_update_needed                    =  true;
-        metaball_data                       =  NULL;
+        metaball_data                       =  nullptr;
         n_max_metaballs                     =  0;
         n_max_metaballs_cross_platform      =  0;
         n_metaballs                         =  0;
         name                                =  in_name;
-        po                                  =  NULL;
-        po_props_ub                         =  NULL;
+        po                                  =  nullptr;
+        po_props_ub                         =  nullptr;
         po_props_ub_bo_offset_metaball_data = -1;
         po_props_ub_bo_offset_n_metaballs   = -1;
         po_props_ub_bo_size                 = 0;
-        scalar_field_bo                     = NULL;
+        scalar_field_bo                     = nullptr;
         sync_max_index                      = -1;
         sync_min_index                      = -1;
 
@@ -88,31 +92,31 @@ PRIVATE void _scalar_field_metaballs_deinit_rendering_thread_callback(ogl_contex
 {
     _scalar_field_metaballs* metaballs_ptr = (_scalar_field_metaballs*) user_arg;
 
-    if (metaballs_ptr->po != NULL)
+    if (metaballs_ptr->po != nullptr)
     {
         ral_context_delete_objects(metaballs_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
                                    (const void**) &metaballs_ptr->po);
 
-        metaballs_ptr->po = NULL;
+        metaballs_ptr->po = nullptr;
     }
 
-    if (metaballs_ptr->po_props_ub != NULL)
+    if (metaballs_ptr->po_props_ub != nullptr)
     {
         ral_program_block_buffer_release(metaballs_ptr->po_props_ub);
 
-        metaballs_ptr->po_props_ub = NULL;
+        metaballs_ptr->po_props_ub = nullptr;
     }
 
-    if (metaballs_ptr->scalar_field_bo != NULL)
+    if (metaballs_ptr->scalar_field_bo != nullptr)
     {
         ral_context_delete_objects(metaballs_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
                                    (const void**) &metaballs_ptr->scalar_field_bo);
 
-        metaballs_ptr->scalar_field_bo = NULL;
+        metaballs_ptr->scalar_field_bo = nullptr;
     }
 }
 
@@ -128,8 +132,8 @@ PRIVATE void _scalar_field_metaballs_get_token_key_value_arrays(const ogl_contex
     *out_token_key_array_ptr   = new system_hashed_ansi_string[7];
     *out_token_value_array_ptr = new system_hashed_ansi_string[7];
 
-    ASSERT_ALWAYS_SYNC(*out_token_key_array_ptr   != NULL &&
-                       *out_token_value_array_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(*out_token_key_array_ptr   != nullptr &&
+                       *out_token_value_array_ptr != nullptr,
                        "Out of memory");
 
     (*out_token_key_array_ptr)[0] = system_hashed_ansi_string_create("LOCAL_WG_SIZE_X"),
@@ -209,13 +213,13 @@ PRIVATE void _scalar_field_metaballs_get_token_key_value_arrays(const ogl_contex
 PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context context,
                                                                     void*       user_arg)
 {
-    ral_shader                        cs                      = NULL;
-    const ogl_context_gl_entrypoints* entrypoints_ptr         = NULL;
-    const ogl_context_gl_limits*      limits_ptr              = NULL;
+    ral_shader                        cs                      = nullptr;
+    const ogl_context_gl_entrypoints* entrypoints_ptr         = nullptr;
+    const ogl_context_gl_limits*      limits_ptr              = nullptr;
     _scalar_field_metaballs*          metaballs_ptr           = (_scalar_field_metaballs*) user_arg;
     unsigned int                      n_token_key_value_pairs = 0;
-    system_hashed_ansi_string*        token_key_array_ptr     = NULL;
-    system_hashed_ansi_string*        token_value_array_ptr   = NULL;
+    system_hashed_ansi_string*        token_key_array_ptr     = nullptr;
+    system_hashed_ansi_string*        token_value_array_ptr   = nullptr;
 
     const char* cs_body_template = "#version 430 core\n"
                                    "\n"
@@ -328,10 +332,10 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
                            &cs_body);
 
     delete [] token_key_array_ptr;
-    token_key_array_ptr = NULL;
+    token_key_array_ptr = nullptr;
 
     delete [] token_value_array_ptr;
-    token_value_array_ptr = NULL;
+    token_value_array_ptr = nullptr;
 
     /* Configure & link the program object */
     if (!ral_program_attach_shader(metaballs_ptr->po,
@@ -362,9 +366,9 @@ PRIVATE void _scalar_field_metaballs_init_rendering_thread_callback(ogl_context 
     /* Retrieve properties of the "props" UB */
     const raGL_program          program_raGL                           = ral_context_get_program_gl(metaballs_ptr->context,
                                                                                                     metaballs_ptr->po);
-    ral_buffer                  props_ub_bo_ral                        = NULL;
-    const ral_program_variable* uniform_metaball_data_variable_ral_ptr = NULL;
-    const ral_program_variable* uniform_n_metaballs_variable_ral_ptr   = NULL;
+    ral_buffer                  props_ub_bo_ral                        = nullptr;
+    const ral_program_variable* uniform_metaball_data_variable_ral_ptr = nullptr;
+    const ral_program_variable* uniform_n_metaballs_variable_ral_ptr   = nullptr;
 
     metaballs_ptr->po_props_ub = ral_program_block_buffer_create(metaballs_ptr->context,
                                                                  metaballs_ptr->po,
@@ -407,11 +411,11 @@ PRIVATE void _scalar_field_metaballs_release(void* metaballs)
                                                      metaballs_ptr);
 
     /* Release any memory buffers allocated during init time */
-    if (metaballs_ptr->metaball_data != NULL)
+    if (metaballs_ptr->metaball_data != nullptr)
     {
         delete [] metaballs_ptr->metaball_data;
 
-        metaballs_ptr->metaball_data = NULL;
+        metaballs_ptr->metaball_data = nullptr;
     }
 }
 
@@ -425,13 +429,13 @@ PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ral_cont
                                                                                         grid_size_xyz,
                                                                                         name);
 
-    ASSERT_DEBUG_SYNC(metaballs_ptr != NULL,
+    ASSERT_DEBUG_SYNC(metaballs_ptr != nullptr,
                       "Out of memory");
 
-    if (metaballs_ptr != NULL)
+    if (metaballs_ptr != nullptr)
     {
         /* Set up metaballs storage */
-        const ogl_context_gl_limits* limits_ptr = NULL;
+        const ogl_context_gl_limits* limits_ptr = nullptr;
 
         ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_LIMITS,
@@ -483,7 +487,7 @@ PUBLIC EMERALD_API void scalar_field_metaballs_get_property(scalar_field_metabal
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scalar_field_metaballs_property value.");
         }
-    } /* switch (property) */
+    }
 }
 
 /** TODO */
@@ -503,7 +507,7 @@ PUBLIC EMERALD_API void scalar_field_metaballs_set_metaball_property(scalar_fiel
     {
         LOG_ERROR("Metaball index [%u] may not be cross-platform",
                   n_metaball);
-    } /* if (n_metaball < metaballs_ptr->n_max_metaballs_cross_platform) */
+    }
 
     switch (property)
     {
@@ -528,7 +532,7 @@ PUBLIC EMERALD_API void scalar_field_metaballs_set_metaball_property(scalar_fiel
             ASSERT_DEBUG_SYNC(false,
                               "scalar_field_metaballs_metaball_property value not recognized.");
         }
-    } /* switch (property) */
+    }
 
     if (metaballs_ptr->sync_max_index <  (int) n_metaball ||
         metaballs_ptr->sync_max_index == -1)
@@ -564,13 +568,13 @@ PUBLIC EMERALD_API void scalar_field_metaballs_set_property(scalar_field_metabal
 
             break;
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(scalar_field_metaballs metaballs)
 {
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     _scalar_field_metaballs*          metaballs_ptr   = (_scalar_field_metaballs*) metaballs;
     bool                              result          = false;
 
@@ -600,20 +604,20 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
 
             metaballs_ptr->sync_max_index = -1;
             metaballs_ptr->sync_min_index = -1;
-        } /* if (metaball data needs an update) */
+        }
 
         ral_program_block_buffer_sync(metaballs_ptr->po_props_ub);
 
         /* Run the CS and generate the scalar field data */
         GLuint             po_props_ub_bo_id            = 0;
-        raGL_buffer        po_props_ub_bo_raGL          = NULL;
-        ral_buffer         po_props_ub_bo_ral           = NULL;
+        raGL_buffer        po_props_ub_bo_raGL          = nullptr;
+        ral_buffer         po_props_ub_bo_ral           = nullptr;
         uint32_t           po_props_ub_bo_start_offset  = -1;
         const raGL_program po_raGL                      = ral_context_get_program_gl(metaballs_ptr->context,
                                                                                      metaballs_ptr->po);
         GLuint             po_raGL_id                   = 0;
         GLuint             scalar_field_bo_id           = 0;
-        raGL_buffer        scalar_field_bo_raGL         = NULL;
+        raGL_buffer        scalar_field_bo_raGL         = nullptr;
         uint32_t           scalar_field_bo_size         = 0;
         uint32_t           scalar_field_bo_start_offset = -1;
 
@@ -666,7 +670,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(sca
 
         metaballs_ptr->is_update_needed = false;
         result                          = true;
-    } /* if (metaballs_ptr->is_update_needed) */
+    }
 
     return result;
 }
+
+#endif

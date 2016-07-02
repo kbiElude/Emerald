@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -29,20 +29,22 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_convolution3x3,
 
 
 /* Internal variables */
-const char* convolution3x3_fragment_shader_body_prefix = "#version 430 core\n"
-                                                         "\n"
-                                                         "in vec2 uv;\n"
-                                                         "\n"
-                                                         "uniform sampler2D texture;\n"
-                                                         "\n"
-                                                         "out vec4 color;\n"
-                                                         "\n"
-                                                         "void main()\n"
-                                                         "{\n"
-                                                         "    color = ";
+const char* convolution3x3_fragment_shader_body_prefix =
+    "#version 430 core\n"
+    "\n"
+    "in vec2 uv;\n"
+    "\n"
+    "uniform sampler2D texture;\n"
+    "\n"
+    "out vec4 color;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    color = ";
 
-const char* convolution3x3_fragment_shader_body_suffix = ";\n"
-                                                         "}\n";
+const char* convolution3x3_fragment_shader_body_suffix =
+    ";\n"
+    "}\n";
 
 
 /** Function called back when reference counter drops to zero. Releases the 3x3 convolution shader object.
@@ -51,16 +53,16 @@ const char* convolution3x3_fragment_shader_body_suffix = ";\n"
  **/
 PRIVATE void _shaders_fragment_convolution3x3_release(void* ptr)
 {
-    _shaders_fragment_convolution3x3* data_ptr = (_shaders_fragment_convolution3x3*) ptr;
+    _shaders_fragment_convolution3x3* data_ptr = reinterpret_cast<_shaders_fragment_convolution3x3*>(ptr);
 
-    if (data_ptr->fragment_shader != NULL)
+    if (data_ptr->fragment_shader != nullptr)
     {
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &data_ptr->fragment_shader);
 
-        data_ptr->fragment_shader = NULL;
+        data_ptr->fragment_shader = nullptr;
     }
 }
 
@@ -70,9 +72,9 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
                                                                                           const float*              input_mask,
                                                                                           system_hashed_ansi_string name)
 {
-    ral_shader                        convolution_shader = NULL;
+    ral_shader                        convolution_shader = nullptr;
     bool                              result             = false;
-    _shaders_fragment_convolution3x3* result_object_ptr  = NULL;
+    _shaders_fragment_convolution3x3* result_object_ptr  = nullptr;
 
     /* Create the body */
     std::stringstream body_stream;
@@ -119,7 +121,7 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_fragment_convolution3x3;
 
-    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                       "Out of memory while instantiating _shaders_fragment_convolution3x3 object.");
 
     memcpy(result_object_ptr->mask,

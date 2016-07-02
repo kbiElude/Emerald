@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -13,19 +13,20 @@
 #include <sstream>
 
 /* Internal variables */
-const char* fragment_shader_body = "#version 430 core\n"
-                                   "\n"
-                                   "uniform dataFS\n"
-                                   "{\n"
-                                   "    vec4 color;\n"
-                                   "};\n"
-                                   "\n"
-                                   "out vec4 result;\n"
-                                   "\n"
-                                   "void main()\n"
-                                   "{\n"
-                                   "    result = color;\n"
-                                   "}\n";
+const char* fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "uniform dataFS\n"
+    "{\n"
+    "    vec4 color;\n"
+    "};\n"
+    "\n"
+    "out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    result = color;\n"
+    "}\n";
 
 /** Internal type definition */
 typedef struct
@@ -48,16 +49,16 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_static,
  **/
 PRIVATE void _shaders_fragment_static_release(void* ptr)
 {
-    _shaders_fragment_static* data_ptr = (_shaders_fragment_static*) ptr;
+    _shaders_fragment_static* data_ptr = reinterpret_cast<_shaders_fragment_static*>(ptr);
 
-    if (data_ptr->shader != NULL)
+    if (data_ptr->shader != nullptr)
     {
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &data_ptr->shader);
 
-        data_ptr->shader = NULL;
+        data_ptr->shader = nullptr;
     }
 }
 
@@ -66,8 +67,8 @@ PRIVATE void _shaders_fragment_static_release(void* ptr)
 PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ral_context               context,
                                                                           system_hashed_ansi_string name)
 {
-    _shaders_fragment_static* result_object_ptr = NULL;
-    ral_shader                shader            = NULL;
+    _shaders_fragment_static* result_object_ptr = nullptr;
+    ral_shader                shader            = nullptr;
 
     /* Create the shader */
     system_hashed_ansi_string shader_body       (system_hashed_ansi_string_create(fragment_shader_body) );
@@ -92,10 +93,10 @@ PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ral_co
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_fragment_static;
 
-    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                       "Out of memory while instantiating _shaders_fragment_static object.");
 
-    if (result_object_ptr == NULL)
+    if (result_object_ptr == nullptr)
     {
         LOG_ERROR("Out of memory while creating Static object instance.");
 
@@ -112,27 +113,27 @@ PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(ral_co
                                                                                                            system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
-    return (shaders_fragment_static) result_object_ptr;
+    return reinterpret_cast<shaders_fragment_static>(result_object_ptr);
 
 end:
-    if (shader != NULL)
+    if (shader != nullptr)
     {
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &shader);
 
-        shader = NULL;
+        shader = nullptr;
     }
 
-    if (result_object_ptr != NULL)
+    if (result_object_ptr != nullptr)
     {
         delete result_object_ptr;
 
-        result_object_ptr = NULL;
+        result_object_ptr = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */

@@ -1,10 +1,10 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * Blurs input texture using Poisson disc samples
  *
- * TODO: Generation of Poisson samples, which would allow to set amount of samples during instantiation.
+ * TODO: Generation of Poisson samples, which would allow to set number of samples during instantiation.
  *
  * The implementation is reference counter-based.
  */
@@ -28,10 +28,10 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
                                                                                   const char*                                       custom_shader_code = NULL);
 
 /** TODO */
-PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(postprocessing_blur_poisson blur_poisson,
-                                                            ral_texture                 input_texture,
-                                                            float                       blur_strength,
-                                                            ral_texture                 result_texture);
+PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task(postprocessing_blur_poisson blur_poisson,
+                                                                                 ral_texture_view            input_texture_view,
+                                                                                 float                       blur_strength,
+                                                                                 ral_texture_view            result_texture_view);
 
 /** TODO */
 PUBLIC EMERALD_API const char* postprocessing_blur_poisson_get_tap_data_shader_code();

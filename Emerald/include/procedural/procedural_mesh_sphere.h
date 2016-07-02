@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * TODO.
  *
@@ -16,23 +16,32 @@ REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_sphere,
 
 typedef enum
 {
-    PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_RAL,                 /* not settable, GLuint */
-    PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET, /* not settable, GLuint */
-    PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,  /* not settable, GLuint */
-    PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_RAW_DATA,               /* not settable, GLfloat*. Will throw an assertion failure if the sphere
-                                                                    *                         has not been created with DATA_RAW flag. */
+    /* not settable, ral_buffer */
+    PROCEDURAL_MESH_SPHERE_PROPERTY_NONINDEXED_BUFFER,
 
-    PROCEDURAL_MESH_SPHERE_PROPERTY_N_TRIANGLES,                  /* not settable, unsigned int */
+    /* not settable, uint32_t */
+    PROCEDURAL_MESH_SPHERE_PROPERTY_NONINDEXED_BUFFER_NORMAL_DATA_OFFSET,
+
+    /* not settable, uint32_t */
+    PROCEDURAL_MESH_SPHERE_PROPERTY_NONINDEXED_BUFFER_VERTEX_DATA_OFFSET,
+
+    /* not settable, float*.
+     *
+     * Will throw an assertion failure if the sphere has not been created with DATA_RAW flag. */
+    PROCEDURAL_MESH_SPHERE_PROPERTY_NONINDEXED_RAW_DATA,
+
+    /* not settable, unsigned int */
+    PROCEDURAL_MESH_SPHERE_PROPERTY_N_TRIANGLES,
 } _procedural_mesh_sphere_property;
 
-/** TODO. Does NOT support 
+/** TODO.
  *
  **/
-PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ral_context                   context_ral,
-                                                                        _procedural_mesh_data_bitmask data_bitmask,
-                                                                        uint32_t                      n_latitude_splices, /* number of latitude splices */
-                                                                        uint32_t                      n_longitude_splices, /* number of longitude splices */
-                                                                        system_hashed_ansi_string     name);
+PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ral_context                    context,
+                                                                        procedural_mesh_data_type_bits data_types,
+                                                                        uint32_t                       n_latitude_splices,  /* number of latitude splices  */
+                                                                        uint32_t                       n_longitude_splices, /* number of longitude splices */
+                                                                        system_hashed_ansi_string      name);
 
 /** TODO */
 PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphere           sphere,

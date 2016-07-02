@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -47,18 +47,18 @@ PRIVATE void _shaders_fragment_sobel_release(void* ptr)
 {
     _shaders_fragment_sobel* data_ptr = (_shaders_fragment_sobel*) ptr;
 
-    if (data_ptr->dx_shader != NULL)
+    if (data_ptr->dx_shader != nullptr)
     {
         shaders_fragment_convolution3x3_release(data_ptr->dx_shader);
 
-        data_ptr->dx_shader = NULL;
+        data_ptr->dx_shader = nullptr;
     }
 
-    if (data_ptr->dy_shader != NULL)
+    if (data_ptr->dy_shader != nullptr)
     {
         shaders_fragment_convolution3x3_release(data_ptr->dy_shader);
 
-        data_ptr->dy_shader = NULL;
+        data_ptr->dy_shader = nullptr;
     }
 }
 
@@ -67,9 +67,9 @@ PRIVATE void _shaders_fragment_sobel_release(void* ptr)
 PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_context               context,
                                                                         system_hashed_ansi_string name)
 {
-    shaders_fragment_convolution3x3 dx_shader         = NULL;
-    shaders_fragment_convolution3x3 dy_shader         = NULL;
-    _shaders_fragment_sobel*        result_object_ptr = NULL;
+    shaders_fragment_convolution3x3 dx_shader         = nullptr;
+    shaders_fragment_convolution3x3 dy_shader         = nullptr;
+    _shaders_fragment_sobel*        result_object_ptr = nullptr;
 
     /* Create the shaders */
     dx_shader = shaders_fragment_convolution3x3_create(context,
@@ -78,7 +78,7 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_cont
                                                                                                                " DX")
                                                       );
 
-    if (dx_shader == NULL)
+    if (dx_shader == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not create DX sobel object.");
@@ -92,7 +92,7 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_cont
                                                                                                                " DY")
                                                       );
 
-    if (dy_shader == NULL)
+    if (dy_shader == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not create DY sobel object.");
@@ -103,10 +103,10 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_cont
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_fragment_sobel;
 
-    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                       "Out of memory while instantiating _shaders_fragment_sobel object.");
 
-    if (result_object_ptr == NULL)
+    if (result_object_ptr == nullptr)
     {
         LOG_ERROR("Out of memory while creating Sobel object instance.");
 
@@ -117,31 +117,31 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(ral_cont
     result_object_ptr->dy_shader = dy_shader;
 
     /* Return the object */
-    return (shaders_fragment_sobel) result_object_ptr;
+    return reinterpret_cast<shaders_fragment_sobel>(result_object_ptr);
 
 end:
-    if (dx_shader != NULL)
+    if (dx_shader != nullptr)
     {
         shaders_fragment_convolution3x3_release(dx_shader);
 
-        dx_shader = NULL;
+        dx_shader = nullptr;
     }
 
-    if (dy_shader != NULL)
+    if (dy_shader != nullptr)
     {
         shaders_fragment_convolution3x3_release(dy_shader);
 
-        dy_shader = NULL;
+        dy_shader = nullptr;
     }
 
-    if (result_object_ptr != NULL)
+    if (result_object_ptr != nullptr)
     {
         delete result_object_ptr;
 
-        result_object_ptr = NULL;
+        result_object_ptr = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */

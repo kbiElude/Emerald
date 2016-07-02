@@ -673,6 +673,12 @@ typedef enum
      */
     RAL_CONTEXT_PROPERTY_IS_NV_DRIVER,
 
+    /* not settable, uint32_t[3].
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     **/
+    RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_SIZE,
+
     /* not settable; ral_rendering_handler */
     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
 

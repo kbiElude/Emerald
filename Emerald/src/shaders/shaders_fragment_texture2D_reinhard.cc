@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -14,45 +14,47 @@
 
 
 /* Internal variables */
-const char* tex2D_fragment_reinhardt_shader_body_not_reverted = "#version 430 core\n"
-                                                                "\n"
-                                                                "in vec2 uv;\n"
-                                                                "\n"
-                                                                "uniform data\n"
-                                                                "{\n"
-                                                                "    float exposure;\n"
-                                                                "};\n"
-                                                                "\n"
-                                                                "uniform sampler2D tex;\n"
-                                                                "\n"
-                                                                "out vec4 result;\n"
-                                                                "\n"
-                                                                "void main()\n"
-                                                                "{\n"
-                                                                "    vec3 tex = texture(tex, uv).xyz * vec3(exposure);\n"
-                                                                "\n"
-                                                                "    result = vec4(pow(tex / (1 + tex), vec3(1/2.2) ), 1);\n"
-                                                                "}\n";
+const char* tex2D_fragment_reinhardt_shader_body_not_reverted =
+    "#version 430 core\n"
+    "\n"
+    "in vec2 uv;\n"
+    "\n"
+    "uniform data\n"
+    "{\n"
+    "    float exposure;\n"
+    "};\n"
+    "\n"
+    "uniform sampler2D tex;\n"
+    "\n"
+    "out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    vec3 tex = texture(tex, uv).xyz * vec3(exposure);\n"
+    "\n"
+    "    result = vec4(pow(tex / (1 + tex), vec3(1/2.2) ), 1);\n"
+    "}\n";
 
-const char* tex2D_fragment_reinhardt_shader_body_reverted = "#version 430 core\n"
-                                                            "\n"
-                                                            "in vec2 uv;\n"
-                                                            "\n"
-                                                            "uniform data\n"
-                                                            "{\n"
-                                                            "    float exposure;\n"
-                                                            "};\n"
-                                                            "\n"
-                                                            "uniform sampler2D tex;\n"
-                                                            "\n"
-                                                            "out vec4 result;\n"
-                                                            "\n"
-                                                            "void main()\n"
-                                                            "{\n"
-                                                            "    vec3 tex = texture(tex, vec2(uv.x, 1-uv.y)).xyz * vec3(exposure);\n"
-                                                            "\n"
-                                                            "    result = vec4(pow(tex / (1 + tex), vec3(1/2.2) ), 1);\n"
-                                                            "}\n";
+const char* tex2D_fragment_reinhardt_shader_body_reverted =
+    "#version 430 core\n"
+    "\n"
+    "in vec2 uv;\n"
+    "\n"
+    "uniform data\n"
+    "{\n"
+    "    float exposure;\n"
+    "};\n"
+    "\n"
+    "uniform sampler2D tex;\n"
+    "\n"
+    "out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    vec3 tex = texture(tex, vec2(uv.x, 1-uv.y)).xyz * vec3(exposure);\n"
+    "\n"
+    "    result = vec4(pow(tex / (1 + tex), vec3(1/2.2) ), 1);\n"
+    "}\n";
 
 /** Internal type definition */
 typedef struct
@@ -75,16 +77,16 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_texture2D_reinhardt,
  **/
 PRIVATE void _shaders_fragment_texture2D_reinhardt_release(void* ptr)
 {
-    _shaders_fragment_texture2D_reinhardt* data_ptr = (_shaders_fragment_texture2D_reinhardt*) ptr;
+    _shaders_fragment_texture2D_reinhardt* data_ptr = reinterpret_cast<_shaders_fragment_texture2D_reinhardt*>(ptr);
 
-    if (data_ptr->shader != NULL)
+    if (data_ptr->shader != nullptr)
     {
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &data_ptr->shader);
 
-        data_ptr->shader = NULL;
+        data_ptr->shader = nullptr;
     }
 }
 
@@ -94,8 +96,8 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture
                                                                                                     bool                      should_revert_y,
                                                                                                     system_hashed_ansi_string name)
 {
-    _shaders_fragment_texture2D_reinhardt* result_object_ptr = NULL;
-    ral_shader                             shader            = NULL;
+    _shaders_fragment_texture2D_reinhardt* result_object_ptr = nullptr;
+    ral_shader                             shader            = nullptr;
 
     /* Create the shader */
     system_hashed_ansi_string shader_body       (system_hashed_ansi_string_create(should_revert_y ? tex2D_fragment_reinhardt_shader_body_reverted
@@ -121,9 +123,9 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_fragment_texture2D_reinhardt;
 
-    if (result_object_ptr == NULL)
+    if (result_object_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+        ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                           "Out of memory while instantiating _shaders_fragment_texture2D_reinhardt object.");
 
         goto end;
@@ -142,24 +144,24 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture
     return (shaders_fragment_texture2D_reinhardt) result_object_ptr;
 
 end:
-    if (shader != NULL)
+    if (shader != nullptr)
     {
         ral_context_delete_objects(result_object_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &shader);
 
-        shader = NULL;
+        shader = nullptr;
     }
 
-    if (result_object_ptr != NULL)
+    if (result_object_ptr != nullptr)
     {
         delete result_object_ptr;
 
-        result_object_ptr = NULL;
+        result_object_ptr = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */

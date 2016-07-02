@@ -24,6 +24,12 @@ typedef enum
      * true if the format can be used to describe stencil data; false otherwise */
     RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
 
+    /* system_hashed_ansi_string
+     *
+     * Null if no image layout qualifier exists for the specified format.
+     */
+    RAL_FORMAT_PROPERTY_IMAGE_LAYOUT_QUALIFIER,
+
     /* bool.
      *
      * true if the format is compressed; false otherwise */
@@ -44,10 +50,29 @@ typedef enum
 
 typedef enum
 {
+    /* system_hashed_ansi_string.
+     *
+     * GLSL image layout qualifier, corresponding to the texture type and data type,
+     * as indicated by the property's name.
+     */
+    RAL_TEXTURE_TYPE_PROPERTY_GLSL_FLOAT_IMAGE_LAYOUT_QUALIFIER,
+    RAL_TEXTURE_TYPE_PROPERTY_GLSL_SINT_IMAGE_LAYOUT_QUALIFIER,
+    RAL_TEXTURE_TYPE_PROPERTY_GLSL_UINT_IMAGE_LAYOUT_QUALIFIER,
+
+    /* system_hashed_ansi_string.
+     *
+     * GLSL sampler type, corresponding to the texture type and data type,
+     * as indicated by the property's name.
+     */
+    RAL_TEXTURE_TYPE_PROPERTY_GLSL_FLOAT_SAMPLER_TYPE,
+    RAL_TEXTURE_TYPE_PROPERTY_GLSL_SINT_SAMPLER_TYPE,
+    RAL_TEXTURE_TYPE_PROPERTY_GLSL_UINT_SAMPLER_TYPE,
+
     /* uint32_t.
      *
      * Number of dimensions used by the texture type. */
     RAL_TEXTURE_TYPE_PROPERTY_N_DIMENSIONS
+
 } ral_texture_type_property;
 
 /** Provides information about specified RAL format.

@@ -1,12 +1,14 @@
+#if 0
+
+TODO
+
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #ifndef SCALAR_FIELD_METABALLS_H
 #define SCALAR_FIELD_METABALLS_H
-
-#include "ogl/ogl_types.h"
 
 DECLARE_HANDLE(scalar_field_metaballs);
 
@@ -72,3 +74,4 @@ PUBLIC EMERALD_API void scalar_field_metaballs_set_property(scalar_field_metabal
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(scalar_field_metaballs metaballs);
 
 #endif /* SCALAR_FIELD_METABALLS_H */
+#endif

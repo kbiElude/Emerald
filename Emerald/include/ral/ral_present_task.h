@@ -12,9 +12,10 @@ typedef struct
 
     union
     {
-        ral_buffer  buffer;
-        void*       object;
-        ral_texture texture;
+        ral_buffer       buffer;
+        void*            object;
+        ral_texture      texture;
+        ral_texture_view texture_view;
     };
 } ral_present_task_io;
 
@@ -35,15 +36,60 @@ typedef enum
 
 typedef struct
 {
+    /* NOTE: Unique input objects may be set to null if input object should be extracted during run-time */
     PFNRALPRESENTTASKCPUCALLBACKPROC pfn_cpu_task_callback_proc;
     void*                            cpu_task_callback_user_arg;
 
     uint32_t                         n_unique_inputs;
     uint32_t                         n_unique_outputs;
-
     const ral_present_task_io*       unique_inputs;
     const ral_present_task_io*       unique_outputs;
+
 } ral_present_task_cpu_create_info;
+
+typedef struct
+{
+    /* NOTE: Unique input objects may be set to null if input object should be extracted during run-time */
+    ral_command_buffer         command_buffer;
+
+    uint32_t                   n_unique_inputs;
+    uint32_t                   n_unique_outputs;
+    const ral_present_task_io* unique_inputs;
+    const ral_present_task_io* unique_outputs;
+
+} ral_present_task_gpu_create_info;
+
+typedef struct
+{
+    uint32_t io_index;
+    uint32_t n_present_task;
+
+} ral_present_task_group_mapping;
+
+typedef struct
+{
+    uint32_t input_present_task_index; /* index to the present_tasks[] array */
+    uint32_t input_present_task_io_index;
+    uint32_t output_present_task_index; /* index to the present_tasks[] array */
+    uint32_t output_present_task_io_index;
+
+} ral_present_task_ingroup_connection;
+
+typedef struct
+{
+    uint32_t          n_present_tasks;
+    ral_present_task* present_tasks;
+
+    uint32_t                                   n_ingroup_connections;
+    const ral_present_task_ingroup_connection* ingroup_connections;
+
+    uint32_t                              n_unique_inputs;
+    const ral_present_task_group_mapping* unique_input_to_ingroup_task_mapping;
+    
+    uint32_t                              n_unique_outputs;
+    const ral_present_task_group_mapping* unique_output_to_ingroup_task_mapping;
+
+} ral_present_task_group_create_info;
 
 typedef enum
 {
@@ -71,6 +117,7 @@ typedef enum
     /* not settable; system_hashed_ansi_string */
     RAL_PRESENT_TASK_PROPERTY_NAME,
 
+
     /* not settable; ral_present_task_type */
     RAL_PRESENT_TASK_PROPERTY_TYPE
 } ral_present_task_property;
@@ -80,12 +127,26 @@ typedef enum
     RAL_PRESENT_TASK_TYPE_CPU_TASK,
     RAL_PRESENT_TASK_TYPE_GPU_TASK,
 
+    /* This task is a bag consisting of:
+     *
+     * - present tasks
+     * - description of IO connection between these tasks.
+     *
+     * plus the usual unique input/output connections.
+     *
+     */
+    RAL_PRESENT_TASK_TYPE_GROUP,
 } ral_present_task_type;
-
 
 /** TODO */
 PUBLIC ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
                                                     const ral_present_task_cpu_create_info* create_info_ptr);
+
+/** TODO
+ *
+ *  Specified ral_present_tasks are retained.
+ */
+PUBLIC ral_present_task ral_present_task_create_group(const ral_present_task_group_create_info* create_info_ptr);
 
 /** Wraps a RAL command buffer inside a RAL present task. The command buffer is processed
  *  and information about read & modified RAL objects is extracted & cached.
@@ -93,8 +154,8 @@ PUBLIC ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string   
  *  NOTE: Support for resettable command buffers is TODO.
  *
  ***/
-PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string name,
-                                                    ral_command_buffer        command_buffer);
+PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
+                                                    const ral_present_task_gpu_create_info* create_info_ptr);
 
 /** TODO */
 PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,

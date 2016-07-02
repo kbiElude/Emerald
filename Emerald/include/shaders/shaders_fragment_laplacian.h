@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2105)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * 3x3 diagonal Laplacian operator implementation for 2D textures. In order to apply the operator, execute an off-screen full-screen
  * pass with the fragment shader. The fragment shaders use "uv" attribute.
@@ -10,7 +10,6 @@
 #ifndef SHADERS_FRAGMENT_LAPLACIAN_H
 #define SHADERS_FRAGMENT_LAPLACIAN_H
 
-#include "gfx/gfx_types.h"
 #include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_laplacian,

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  * This shader can be used for performing a full-screen off-screen rendering pass. It can optionally
  * pass UV data to other shaders.
@@ -13,7 +13,6 @@
 #ifndef SHADERS_VERTEX_FULLSCREEN_H
 #define SHADERS_VERTEX_FULLSCREEN_H
 
-#include "gfx/gfx_types.h"
 #include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_fullscreen,

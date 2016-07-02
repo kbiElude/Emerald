@@ -1,3 +1,7 @@
+#if 0
+
+TODO
+
 /**
  *
  * Emerald (kbi/elude @2012-2015)
@@ -1406,3 +1410,5 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void procedural_uv_generator_update(pr
 end:
     ;
 }
+
+#endif

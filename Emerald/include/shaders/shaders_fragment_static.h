@@ -1,13 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * The implementation is reference counter-based.
  */
 #ifndef SHADERS_FRAGMENT_STATIC_H
 #define SHADERS_FRAGMENT_STATIC_H
 
-#include "gfx/gfx_types.h"
 #include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_static,

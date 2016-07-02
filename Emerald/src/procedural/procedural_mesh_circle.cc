@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -17,7 +17,7 @@ typedef struct
     uint32_t                  n_segments;
     system_hashed_ansi_string name;
 
-    ral_buffer arrays_bo;
+    ral_buffer nonindexed_bo;
     GLuint     n_vertices;
 
     REFCOUNT_INSERT_VARIABLES
@@ -30,97 +30,69 @@ REFCOUNT_INSERT_IMPLEMENTATION(procedural_mesh_circle,
 
 
 /* Private functions */
-PRIVATE void _procedural_mesh_circle_create_renderer_callback(ogl_context context,
-                                                              void*       arg)
+PRIVATE void _procedural_mesh_circle_init(_procedural_mesh_circle* mesh_ptr)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
-    const ogl_context_gl_limits*                              limits_ptr       = NULL;
-    _procedural_mesh_circle*                                  mesh_circle_ptr  = (_procedural_mesh_circle*) arg;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entry_points);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
     /* Generate the data. Since we want a triangle fan, the first vertex lands in (0, 0),
      * and then we iterate over vertices, uniformly distributed over the perimeter. We ensure
      * the very last vertex covers the first one we generated right after the one in the centre,
      * so that there's no visible crack in the generated mesh.
      */
-    const unsigned int n_vertices         = (1 /* centre */ + mesh_circle_ptr->n_segments);
+    const unsigned int n_vertices         = (1 /* centre */ + mesh_ptr->n_segments);
     const unsigned int data_size          = sizeof(float) * n_vertices * 2 /* x, y*/;
     float*             data_ptr           = new float[data_size / sizeof(float) ];
     float*             data_traveller_ptr = data_ptr;
-    float              step               = 2.0f * 3.14152965f / float(mesh_circle_ptr->n_segments - 1);
+    float              step               = 2.0f * 3.14152965f / float(mesh_ptr->n_segments - 1);
 
-    ASSERT_DEBUG_SYNC(data_ptr != NULL,
+    ASSERT_DEBUG_SYNC(data_ptr != nullptr,
                       "Out of memory");
 
     *data_traveller_ptr = 0.0f; ++data_traveller_ptr;
     *data_traveller_ptr = 0.0f; ++data_traveller_ptr;
 
     for (unsigned int n_segment = 0;
-                      n_segment < mesh_circle_ptr->n_segments;
+                      n_segment < mesh_ptr->n_segments;
                     ++n_segment)
     {
         *data_traveller_ptr = cos(float(n_segment) * step); ++data_traveller_ptr;
         *data_traveller_ptr = sin(float(n_segment) * step); ++data_traveller_ptr;
-    } /* for (all segments) */
+    }
 
     ASSERT_DEBUG_SYNC( ((char*) data_traveller_ptr - (char*) data_ptr) == data_size,
                       "Buffer underflow/overflow detected");
 
-    mesh_circle_ptr->n_vertices = n_vertices;
+    mesh_ptr->n_vertices = n_vertices;
 
     /* Store the data in buffer memory */
-    ral_buffer_client_sourced_update_info                                arrays_bo_update_info;
-    ral_buffer_create_info                                               arrays_bo_create_info;
     std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
+    ral_buffer_client_sourced_update_info                                nonindexed_bo_update_info;
+    ral_buffer_create_info                                               nonindexed_bo_create_info;
 
-    arrays_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-    arrays_bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
-    arrays_bo_create_info.size             = data_size;
-    arrays_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    arrays_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
+    nonindexed_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+    nonindexed_bo_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+    nonindexed_bo_create_info.size             = data_size;
+    nonindexed_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    nonindexed_bo_create_info.user_queue_bits  = 0xFFFFFFFF;
 
-    arrays_bo_update_info.data         = data_ptr;
-    arrays_bo_update_info.data_size    = data_size;
-    arrays_bo_update_info.start_offset = 0;
+    nonindexed_bo_update_info.data         = data_ptr;
+    nonindexed_bo_update_info.data_size    = data_size;
+    nonindexed_bo_update_info.start_offset = 0;
 
-    bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&arrays_bo_update_info,
+    bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&nonindexed_bo_update_info,
                                                                                     NullDeleter<ral_buffer_client_sourced_update_info>() ));
 
-    ral_context_create_buffers(mesh_circle_ptr->context,
+    ral_context_create_buffers(mesh_ptr->context,
                                1, /* n_buffers */
-                               &arrays_bo_create_info,
-                              &mesh_circle_ptr->arrays_bo);
+                               &nonindexed_bo_create_info,
+                               &mesh_ptr->nonindexed_bo);
 
-    ral_buffer_set_data_from_client_memory(mesh_circle_ptr->arrays_bo,
+    ral_buffer_set_data_from_client_memory(mesh_ptr->nonindexed_bo,
                                            bo_update_ptrs,
                                            false, /* async */
                                            true   /* sync_other_contexts */);
 
     /* Safe to release the data buffer at this point */
     delete [] data_ptr;
-    data_ptr = NULL;
-}
-
-/** TODO */
-PRIVATE void _procedural_mesh_circle_release_renderer_callback(ogl_context context, void* arg)
-{
-    _procedural_mesh_circle* mesh_circle_ptr = (_procedural_mesh_circle*) arg;
-
-    if (mesh_circle_ptr->arrays_bo != NULL)
-    {
-        ral_context_delete_objects(mesh_circle_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                   1, /* n_buffers */
-                                   (const void**) &mesh_circle_ptr->arrays_bo);
-
-        mesh_circle_ptr->arrays_bo = NULL;
-    }
+    data_ptr = nullptr;
 }
 
 /** TODO */
@@ -128,42 +100,46 @@ PRIVATE void _procedural_mesh_circle_release(void* arg)
 {
     _procedural_mesh_circle* instance_ptr = (_procedural_mesh_circle*) arg;
 
-    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(instance_ptr->context),
-                                                     _procedural_mesh_circle_release_renderer_callback,
-                                                     instance_ptr);
+    if (instance_ptr->nonindexed_bo != nullptr)
+    {
+        ral_context_delete_objects(instance_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_buffers */
+                                   (const void**) &instance_ptr->nonindexed_bo);
+
+        instance_ptr->nonindexed_bo = nullptr;
+    }
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ral_context                   context,
-                                                                        _procedural_mesh_data_bitmask data_bitmask,
-                                                                        uint32_t                      n_segments,
-                                                                        system_hashed_ansi_string     name)
+PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ral_context                    context,
+                                                                        procedural_mesh_data_type_bits mesh_data_types,
+                                                                        uint32_t                       n_segments,
+                                                                        system_hashed_ansi_string      name)
 {
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(data_bitmask == DATA_BO_ARRAYS,
-                      "data_bitmask argument must be set to DATA_BO_ARRAYS");
+    ASSERT_DEBUG_SYNC(mesh_data_types == PROCEDURAL_MESH_DATA_TYPE_NONINDEXED_BIT,
+                      "data_bitmask argument must be set to PROCEDURAL_MESH_DATA_TYPE_NONINDEXED_BIT");
     ASSERT_DEBUG_SYNC(n_segments >= 4,
                       "Number of circle segments must be at least 4.");
 
     /* Create the instance */
     _procedural_mesh_circle* new_circle_ptr = new (std::nothrow) _procedural_mesh_circle;
 
-    ASSERT_ALWAYS_SYNC(new_circle_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_circle_ptr != nullptr,
                        "Out of memory while allocating space for a procedural_mesh_circle instance [%s]",
                        system_hashed_ansi_string_get_buffer(name) );
 
-    if (new_circle_ptr != NULL)
+    if (new_circle_ptr != nullptr)
     {
         /* Cache input arguments */
-        new_circle_ptr->arrays_bo  = NULL;
-        new_circle_ptr->context    = context;
-        new_circle_ptr->n_segments = n_segments;
-        new_circle_ptr->name       = name;
+        new_circle_ptr->context       = context;
+        new_circle_ptr->n_segments    = n_segments;
+        new_circle_ptr->name          = name;
+        new_circle_ptr->nonindexed_bo = nullptr;
 
-        /* Call back renderer to continue */
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
-                                                         _procedural_mesh_circle_create_renderer_callback,
-                                                         new_circle_ptr);
+        /* Initialize the new instance */
+        _procedural_mesh_circle_init(new_circle_ptr);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_circle_ptr,
                                                        _procedural_mesh_circle_release,
@@ -176,22 +152,22 @@ PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ral_cont
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void procedural_mesh_circle_get_property(procedural_mesh_circle           circle,
-                                                            _procedural_mesh_circle_property property,
-                                                            void*                            out_result)
+PUBLIC EMERALD_API void procedural_mesh_circle_get_property(procedural_mesh_circle          circle,
+                                                            procedural_mesh_circle_property property,
+                                                            void*                           out_result)
 {
-    const _procedural_mesh_circle* circle_ptr = (_procedural_mesh_circle*) circle;
+    const _procedural_mesh_circle* circle_ptr = reinterpret_cast<_procedural_mesh_circle*>(circle);
 
     switch (property)
     {
-        case PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_RAL:
+        case PROCEDURAL_MESH_CIRCLE_PROPERTY_NONINDEXED_BUFFER:
         {
-            *(ral_buffer*) out_result = circle_ptr->arrays_bo;
+            *(ral_buffer*) out_result = circle_ptr->nonindexed_bo;
 
             break;
         }
 
-        case PROCEDURAL_MESH_CIRCLE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET:
+        case PROCEDURAL_MESH_CIRCLE_PROPERTY_NONINDEXED_BUFFER_VERTEX_DATA_OFFSET:
         {
             *(uint32_t*) out_result = 0;
 
@@ -208,7 +184,7 @@ PUBLIC EMERALD_API void procedural_mesh_circle_get_property(procedural_mesh_circ
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized _procedural_mesh_circle_property value");
+                              "Unrecognized procedural_mesh_circle_property value");
         }
-    } /* switch (property) */
+    }
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -21,24 +21,25 @@ typedef struct
     REFCOUNT_INSERT_VARIABLES
 } _shaders_vertex_combinedmvp_simplified_twopoint;
 
-static const char* shader_body = "#version 430 core\n"
-                                 "\n"
-                                 "in vec2 in_uv;\n"
-                                 "\n"
-                                 "uniform dataVS\n"
-                                 "{\n"
-                                 "    vec4 a;\n"
-                                 "    vec4 b;\n"
-                                 "    mat4 mvp;\n"
-                                 "};\n"
-                                 "\n"
-                                 "out vec2 uv;\n"
-                                 "\n"
-                                 "void main()\n"
-                                 "{\n"
-                                 "   gl_Position = mvp * (gl_VertexID == 0 ? a : b);\n"
-                                 "   uv          = in_uv;\n"
-                                 "}\n";
+static const char* shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in vec2 in_uv;\n"
+    "\n"
+    "uniform dataVS\n"
+    "{\n"
+    "    vec4 a;\n"
+    "    vec4 b;\n"
+    "    mat4 mvp;\n"
+    "};\n"
+    "\n"
+    "out vec2 uv;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "   gl_Position = mvp * (gl_VertexID == 0 ? a : b);\n"
+    "   uv          = in_uv;\n"
+    "}\n";
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_combinedmvp_simplified_twopoint,
@@ -52,16 +53,16 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_combinedmvp_simplified_twopoint,
  **/
 PRIVATE void _shaders_vertex_combinedmvp_simplified_twopoint_release(void* ptr)
 {
-    _shaders_vertex_combinedmvp_simplified_twopoint* data_ptr = (_shaders_vertex_combinedmvp_simplified_twopoint*) ptr;
+    _shaders_vertex_combinedmvp_simplified_twopoint* data_ptr = reinterpret_cast<_shaders_vertex_combinedmvp_simplified_twopoint*>(ptr);
 
-    if (data_ptr->shader != NULL)
+    if (data_ptr->shader != nullptr)
     {
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &data_ptr->shader);
 
-        data_ptr->shader = NULL;
+        data_ptr->shader = nullptr;
     }
 }
 
@@ -71,8 +72,8 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
                                                                                                                         system_hashed_ansi_string name)
 {
     bool                                             result            = false;
-    _shaders_vertex_combinedmvp_simplified_twopoint* result_object_ptr = NULL;
-    ral_shader                                       shader            = NULL;
+    _shaders_vertex_combinedmvp_simplified_twopoint* result_object_ptr = nullptr;
+    ral_shader                                       shader            = nullptr;
 
     /* Create the shader */
     system_hashed_ansi_string shader_body_has   (system_hashed_ansi_string_create(shader_body) );
@@ -97,9 +98,9 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
     /* Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_vertex_combinedmvp_simplified_twopoint;
 
-    if (result_object_ptr == NULL)
+    if (result_object_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+        ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                           "Out of memory while instantiating _shaders_vertex_combinedmvp_simplified_twopoint object.");
 
         goto end;
@@ -115,10 +116,10 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
                                                                                                            system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
-    return (shaders_vertex_combinedmvp_simplified_twopoint) result_object_ptr;
+    return reinterpret_cast<shaders_vertex_combinedmvp_simplified_twopoint>(result_object_ptr);
 
 end:
-    if (shader != NULL)
+    if (shader != nullptr)
     {
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
@@ -126,14 +127,14 @@ end:
                                    (const void**) &shader);
     }
 
-    if (result_object_ptr != NULL)
+    if (result_object_ptr != nullptr)
     {
         delete result_object_ptr;
 
-        result_object_ptr = NULL;
+        result_object_ptr = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */

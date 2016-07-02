@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * Yxy=>RGB color space conversion implementation. Uses "tex" sampler2D uniform, passes unmodified alpha channel.
  *
@@ -9,7 +9,6 @@
 #ifndef SHADERS_FRAGMENT_YXY_TO_RGB_H
 #define SHADERS_FRAGMENT_YXY_TO_RGB_H
 
-#include "gfx/gfx_types.h"
 #include "ral/ral_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_Yxy_to_rgb,

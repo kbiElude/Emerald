@@ -2886,6 +2886,19 @@ PUBLIC void raGL_backend_get_property(void*                backend,
             break;
         }
 
+        case RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_SIZE:
+        {
+            const ogl_context_gl_limits* limits_ptr = nullptr;
+
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_LIMITS,
+                                    &limits_ptr);
+
+            *(const GLint**) out_result_ptr = limits_ptr->max_compute_work_group_size;
+
+            break;
+        }
+
         case RAL_CONTEXT_PROPERTY_STORAGE_BUFFER_ALIGNMENT:
         {
             const ogl_context_gl_limits* limits_ptr = nullptr;

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -164,7 +164,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                                            0, /* array_size */
                                                            fs_props_ub_id,
                                                            system_hashed_ansi_string_create(light_cone_angle_var_name_sstream.str().c_str() ),
-                                                           NULL /* out_variable_id */);
+                                                           nullptr /* out_variable_id */);
         glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                            VARIABLE_TYPE_UNIFORM,
                                                            LAYOUT_QUALIFIER_NONE,
@@ -172,7 +172,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                                            0, /* array_size */
                                                            fs_props_ub_id,
                                                            system_hashed_ansi_string_create(light_edge_angle_var_name_sstream.str().c_str() ),
-                                                           NULL /* out_variable_id */);
+                                                           nullptr /* out_variable_id */);
 
         line << "float "
              << light_spotlight_effect_var_name_sstream.str()
@@ -230,7 +230,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                                                   0, /* array_size */
                                                                   fs_props_ub_id,
                                                                   system_hashed_ansi_string_create(light_attenuations_var_name_sstream.str().c_str() ),
-                                                                  NULL /* out_variable_id */);
+                                                                  nullptr /* out_variable_id */);
 
                 line << "float "
                      << light_attenuation_var_name_sstream.str() << " = "
@@ -251,7 +251,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                                                    0, /* array_size */
                                                                    fs_props_ub_id,
                                                                    system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
-                                                                   NULL /* out_variable_id */);
+                                                                   nullptr /* out_variable_id */);
 
                 line << "float "
                      << light_attenuation_var_name_sstream.str() << " = ";
@@ -279,7 +279,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                                                    0, /* array_size */
                                                                    fs_props_ub_id,
                                                                    system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
-                                                                   NULL /* out_variable_id */);
+                                                                   nullptr /* out_variable_id */);
 
                 line << "float "
                      << light_attenuation_var_name_sstream.str() << " = ";
@@ -309,7 +309,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                                                                    0, /* array_size */
                                                                    fs_props_ub_id,
                                                                    system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
-                                                                   NULL /* out_variable_id */);
+                                                                   nullptr /* out_variable_id */);
 
                 line << "float "
                      << light_attenuation_var_name_sstream.str()
@@ -353,7 +353,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized light falloff requested");
             }
-        } /* switch (light_falloff_type) */
+        }
     }
 
     /* Compute diffuse factor for non-ambient lights */
@@ -363,7 +363,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
 
     line << "result_fragment += ";
 
-    if (light_visibility_var_name != NULL                                     &&
+    if (light_visibility_var_name != nullptr                                  &&
         light_type                != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
     {
         line << "vec4("
@@ -415,7 +415,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                 ASSERT_DEBUG_SYNC(false,
                                   "TODO: Add support for ambient materials");
             }
-        } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]) */
+        }
 
         line << "vec4(ambient_color, 1.0)";
     }
@@ -457,7 +457,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized emission data source property value");
             }
-        } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]) */
+        }
 
         /* Finally, multiply the result color with the diffuse color defined for the light */
         line << " * "
@@ -527,7 +527,7 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(glsl_shader_constr
     line << "\n// Phong: specular (light:[" << n_light << "])\n"
             "result_fragment += ";
 
-    if (light_visibility_var_name != NULL)
+    if (light_visibility_var_name != nullptr)
     {
         line << "vec4("
              << system_hashed_ansi_string_get_buffer(light_visibility_var_name)
@@ -563,7 +563,7 @@ PRIVATE void _shaders_fragment_uber_add_sh3_diffuse_factor(glsl_shader_construct
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create(attribute_name_sstream.str().c_str() ),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Compute the light contribution */
     std::stringstream line;
@@ -593,7 +593,7 @@ PRIVATE void _shaders_fragment_uber_add_sh4_diffuse_factor(glsl_shader_construct
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create(attribute_name_sstream.str().c_str() ),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Compute the light contribution */
     std::stringstream line;
@@ -613,9 +613,9 @@ PRIVATE void _shaders_fragment_uber_release(void* ptr)
 {
     _shaders_fragment_uber* data_ptr = (_shaders_fragment_uber*) ptr;
 
-    if (data_ptr->added_items != NULL)
+    if (data_ptr->added_items != nullptr)
     {
-        _shaders_fragment_uber_item* item_ptr = NULL;
+        _shaders_fragment_uber_item* item_ptr = nullptr;
 
         while (system_resizable_vector_pop(data_ptr->added_items,
                                           &item_ptr) )
@@ -633,39 +633,40 @@ PRIVATE void _shaders_fragment_uber_release(void* ptr)
                 {
                     delete (_shaders_fragment_uber_item_light*) item_ptr->data;
 
-                    item_ptr->data = NULL;
+                    item_ptr->data = nullptr;
                     break;
                 }
 
                 default:
                 {
-                    ASSERT_ALWAYS_SYNC(false, "Unrecognized item type");
+                    ASSERT_ALWAYS_SYNC(false,
+                                       "Unrecognized item type");
                 }
-            } /* switch (item_ptr->type) */
+            }
 
             delete item_ptr;
-            item_ptr = NULL;
-        } /* while (system_resizable_vector_pop(data_ptr->added_items, &item_ptr) ) */
+            item_ptr = nullptr;
+        }
 
         system_resizable_vector_release(data_ptr->added_items);
-        data_ptr->added_items = NULL;
+        data_ptr->added_items = nullptr;
     }
 
-    if (data_ptr->shader != NULL)
+    if (data_ptr->shader != nullptr)
     {
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &data_ptr->shader);
 
-        data_ptr->shader = NULL;
+        data_ptr->shader = nullptr;
     }
 
-    if (data_ptr->shader_constructor != NULL)
+    if (data_ptr->shader_constructor != nullptr)
     {
         glsl_shader_constructor_release(data_ptr->shader_constructor);
 
-        data_ptr->shader_constructor = NULL;
+        data_ptr->shader_constructor = nullptr;
     }
 
 }
@@ -692,9 +693,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     /* Spawn an attribute item descriptor */
     _shaders_fragment_uber_item* new_item_ptr = new (std::nothrow) _shaders_fragment_uber_item;
 
-    if (new_item_ptr == NULL)
+    if (new_item_ptr == nullptr)
     {
-        ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(new_item_ptr != nullptr,
                            "Out of memory");
 
         goto end;
@@ -728,7 +729,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
         {
             ASSERT_DEBUG_SYNC(false, "Unrecognized input attribute type");
         }
-    } /* switch (attribute_type) */
+    }
 
     fs_attribute_name_has = system_hashed_ansi_string_create(fs_attribute_name_sstream.str().c_str() );
 
@@ -740,7 +741,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        fs_attribute_name_has,
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Form new line */
     body_sstream << "result_fragment += vec4(";
@@ -774,7 +775,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
                                                     system_hashed_ansi_string_create(body_sstream.str().c_str() ));
 
     /* Call back the parent so that vertex shader actually passes the data we need to fragment shader stage */
-    if (pCallbackProc != NULL)
+    if (pCallbackProc != nullptr)
     {
         _shaders_fragment_uber_new_fragment_input_callback callback_data;
 
@@ -827,9 +828,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     _shaders_fragment_uber_item*       new_item_ptr            = new (std::nothrow) _shaders_fragment_uber_item;
     _shaders_fragment_uber_item_light* new_light_item_data_ptr = new (std::nothrow) _shaders_fragment_uber_item_light;
 
-    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_item_ptr != nullptr,
                        "Out of memory");
-    ASSERT_ALWAYS_SYNC(new_light_item_data_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_light_item_data_ptr != nullptr,
                        "Out of memory");
 
     new_light_item_data_ptr->light_type = light_type;
@@ -853,7 +854,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     std::stringstream         light_direction_name_sstream;
     std::stringstream         light_vector_non_norm_name_sstream;
     std::stringstream         light_vector_norm_name_sstream;
-    system_hashed_ansi_string light_visibility_var_name_has = NULL;
+    system_hashed_ansi_string light_visibility_var_name_has = nullptr;
     std::stringstream         light_world_pos_name_sstream;
 
     /* Add light properties */
@@ -872,7 +873,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                            0, /* array_size */
                                                            uber_ptr->fragment_shader_properties_ub,
                                                            system_hashed_ansi_string_create(light_diffuse_name_sstream.str().c_str() ),
-                                                           NULL /* out_variable_id */);
+                                                           nullptr /* out_variable_id */);
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
@@ -888,7 +889,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                            0, /* array_size */
                                                            uber_ptr->fragment_shader_properties_ub,
                                                            system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ),
-                                                           NULL /* out_variable_id */);
+                                                           nullptr /* out_variable_id */);
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
@@ -904,7 +905,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                            0, /* array_size */
                                                            uber_ptr->fragment_shader_properties_ub,
                                                            system_hashed_ansi_string_create(light_direction_name_sstream.str().c_str() ),
-                                                           NULL /* out_variable_id */);
+                                                           nullptr /* out_variable_id */);
     }
 
     /* Add light vector calculation */
@@ -967,7 +968,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                            0, /* array_size */
                                                            uber_ptr->fragment_shader_properties_ub,
                                                            system_hashed_ansi_string_create("ambient_color"),
-                                                           NULL /* out_variable_id */);
+                                                           nullptr /* out_variable_id */);
     }
 
     /* Add material-specific input attributes & uniforms if not already defined. Note that all the names
@@ -1027,7 +1028,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
 
             RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED,
-            NULL,
+            nullptr,
 
             RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D,
             "diffuse_material_sampler",
@@ -1057,7 +1058,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
 
             RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED,
-            NULL,
+            nullptr,
 
             RAL_PROGRAM_VARIABLE_TYPE_SAMPLER_2D,
             "luminosity_material_sampler",
@@ -1126,9 +1127,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
         if (new_light_item_data_ptr->properties[iteration_data.property] == iteration_data.value)
         {
-            if (iteration_data.uv_fs_input_attribute_name != NULL)
+            if (iteration_data.uv_fs_input_attribute_name != nullptr)
             {
-                ASSERT_DEBUG_SYNC(iteration_data.uv_vs_input_attribute_name != NULL,
+                ASSERT_DEBUG_SYNC(iteration_data.uv_vs_input_attribute_name != nullptr,
                                   "No VS input attribute name defined");
 
                 /** Add a new attribute if necessary */
@@ -1141,11 +1142,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                       0, /* array_size */
                                                                       0, /* uniform_block */
                                                                       attribute_name_has,
-                                                                      NULL /* out_variable_id */) )
+                                                                      nullptr /* out_variable_id */) )
                 {
                     /* Since we're adding an input attribute, we must ask the parent to set up
                      * the attribute chain for us */
-                    if (pCallbackProc != NULL)
+                    if (pCallbackProc != nullptr)
                     {
                         _shaders_fragment_uber_new_fragment_input_callback callback_data;
 
@@ -1164,7 +1165,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                 }
             }
 
-            if (iteration_data.shader_uniform_name != NULL)
+            if (iteration_data.shader_uniform_name != nullptr)
             {
                 glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                                    VARIABLE_TYPE_UNIFORM,
@@ -1173,10 +1174,10 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                    0, /* array_size */
                                                                    uber_ptr->fragment_shader_properties_ub,
                                                                    system_hashed_ansi_string_create(iteration_data.shader_uniform_name),
-                                                                   NULL /* out_variable_id */);
+                                                                   nullptr /* out_variable_id */);
             }
 
-            if (iteration_data.uv_sampler_uniform_name != NULL)
+            if (iteration_data.uv_sampler_uniform_name != nullptr)
             {
                 glsl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                                    VARIABLE_TYPE_UNIFORM,
@@ -1185,10 +1186,10 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                    0, /* array_size */
                                                                    0, /* uniform_block */
                                                                    system_hashed_ansi_string_create(iteration_data.uv_sampler_uniform_name),
-                                                                   NULL /* out_variable_id */);
+                                                                   nullptr /* out_variable_id */);
             }
-        } /* if (properties[iteration_data.property] == iteration_data.value) */
-    } /* for (all properties items) */
+        }
+    }
 
     /* Add a variable storing result of dot(normal, light). This is used by both shading &
      * shadow map calculations */
@@ -1270,7 +1271,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized diffuse light type");
         }
-    } /* switch (light_type) */
+    }
 
     /* Compute specular light factor */
     switch (light_type)
@@ -1285,7 +1286,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             break;
         }
-    } /* switch (light_type) */
+    }
 
     /* Add the descriptor to added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
@@ -1305,18 +1306,18 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_context                context,
                                                                       system_hashed_ansi_string  name)
 {
-    ral_shader                               embedded_shader               = NULL;
+    ral_shader                               embedded_shader               = nullptr;
     glsl_shader_constructor_uniform_block_id fragment_shader_properties_ub = 0;
     system_hashed_ansi_string                ral_shader_instance_name      = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                                      " fragment uber");
-    _shaders_fragment_uber*                  result_object_ptr             = NULL;
-    shaders_fragment_uber                    result_shader                 = NULL;
-    glsl_shader_constructor                  shader_constructor            = NULL;
+    _shaders_fragment_uber*                  result_object_ptr             = nullptr;
+    shaders_fragment_uber                    result_shader                 = nullptr;
+    glsl_shader_constructor                  shader_constructor            = nullptr;
     ral_shader_create_info                   shader_create_info;
 
     /* Create a new ral_shader instance only if one is not already registered */
     if ((ral_context_get_shader_by_name(context,
-                                        ral_shader_instance_name)) != NULL)
+                                        ral_shader_instance_name)) != nullptr)
     {
         /* It is an error if a shader with the same name already exists. */
         ASSERT_DEBUG_SYNC(false,
@@ -1331,10 +1332,10 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
                                                         system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                 " fragment uber"));
 
-    ASSERT_DEBUG_SYNC(shader_constructor != NULL,
+    ASSERT_DEBUG_SYNC(shader_constructor != nullptr,
                       "Could not create a shader constructor");
 
-    if (shader_constructor == NULL)
+    if (shader_constructor == nullptr)
     {
         LOG_ERROR("Could not create a shader constructor");
 
@@ -1354,7 +1355,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("world_vertex"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                        VARIABLE_TYPE_INPUT_ATTRIBUTE,
@@ -1363,7 +1364,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("out_vs_normal"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                        VARIABLE_TYPE_INPUT_ATTRIBUTE,
@@ -1372,7 +1373,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("view_vector"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Add output attributes */
     glsl_shader_constructor_add_general_variable_to_ub(shader_constructor,
@@ -1382,7 +1383,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
                                                        0, /* array_size */
                                                        0, /* uniform_block */
                                                        system_hashed_ansi_string_create("result_fragment"),
-                                                       NULL /* out_variable_id */);
+                                                       nullptr /* out_variable_id */);
 
     /* Set base shader body */
     glsl_shader_constructor_set_function_body(shader_constructor,
@@ -1415,10 +1416,10 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_fragment_uber;
 
-    ASSERT_DEBUG_SYNC(result_object_ptr != NULL,
+    ASSERT_DEBUG_SYNC(result_object_ptr != nullptr,
                       "Out of memory while instantiating _shaders_fragment_uber object.");
 
-    if (result_object_ptr == NULL)
+    if (result_object_ptr == nullptr)
     {
         LOG_ERROR("Out of memory while creating uber object instance.");
 
@@ -1432,7 +1433,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
     result_object_ptr->shader                        = embedded_shader;
     result_object_ptr->shader_constructor            = shader_constructor;
 
-    ASSERT_ALWAYS_SYNC(result_object_ptr->added_items != NULL,
+    ASSERT_ALWAYS_SYNC(result_object_ptr->added_items != nullptr,
                        "Out of memory");
 
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object_ptr,
@@ -1451,7 +1452,7 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(shaders_fragment_ube
                                                             shaders_fragment_uber_item_id    item_id,
                                                             shaders_fragment_uber_item_type* out_item_type)
 {
-    _shaders_fragment_uber_item* item_ptr = NULL;
+    _shaders_fragment_uber_item* item_ptr = nullptr;
     _shaders_fragment_uber*      uber_ptr = (_shaders_fragment_uber*) uber;
     bool                         result   = false;
 
@@ -1479,7 +1480,7 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(const sh
 {
     bool                          result        = false;
     const _shaders_fragment_uber* uber_ptr      = (const _shaders_fragment_uber*) uber;
-    _shaders_fragment_uber_item*  uber_item_ptr = NULL;
+    _shaders_fragment_uber_item*  uber_item_ptr = nullptr;
 
     if (system_resizable_vector_get_element_at(uber_ptr->added_items,
                                                item_id,

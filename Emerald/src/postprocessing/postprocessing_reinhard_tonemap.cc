@@ -1,22 +1,24 @@
+#if 0
+
+TODO
+
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
-#include "raGL/raGL_buffer.h"
-#include "raGL/raGL_framebuffer.h"
-#include "raGL/raGL_program.h"
-#include "raGL/raGL_shader.h"
-#include "raGL/raGL_texture.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "shaders/shaders_fragment_rgb_to_Yxy.h"
 #include "shaders/shaders_vertex_fullscreen.h"
 #include "system/system_assertions.h"
@@ -35,27 +37,18 @@ typedef struct
     ral_context context;
 
     ral_texture  downsampled_yxy_texture;
-    raGL_texture downsampled_yxy_texture_gl;
-
     ral_texture  yxy_texture;
-    raGL_texture yxy_texture_gl;
-
-    ral_framebuffer dst_framebuffer;
-    ral_framebuffer src_framebuffer;
 
     shaders_fragment_rgb_to_Yxy rgb_to_Yxy_fragment_shader;
     shaders_vertex_fullscreen   fullscreen_vertex_shader;
 
     ral_program rgb_to_Yxy_program;
-    GLuint      rgb_to_Yxy_program_tex_uniform_location;
 
     ral_program              operator_program;
     GLuint                   operator_program_alpha_ub_offset;
     ral_program_block_buffer operator_program_ub;
     GLuint                   operator_program_ub_bo_size;
     ral_shader               operator_fragment_shader;
-    GLuint                   operator_program_luminance_texture_location;
-    GLuint                   operator_program_luminance_texture_avg_location;
     GLuint                   operator_program_white_level_ub_offset;
 
     uint32_t texture_width;
@@ -74,43 +67,44 @@ typedef struct
 } _create_callback_data;
 
 /** Internal variables */
-system_hashed_ansi_string reinhard_tonemap_fragment_shader_body = system_hashed_ansi_string_create("#version 430 core\n"
-                                                                                                   "\n"
-                                                                                                   "uniform data\n"
-                                                                                                   "{\n"
-                                                                                                   "    float alpha;\n"
-                                                                                                   "    float white_level;\n"
-                                                                                                   "};\n"
-                                                                                                   "\n"
-                                                                                                   "uniform sampler2D luminance_texture;\n"
-                                                                                                   "uniform sampler2D luminance_texture_avg;\n"
-                                                                                                   "uniform sampler2D rgb_texture;\n"
-                                                                                                   "\n"
-                                                                                                   "in  vec2 uv;\n"
-                                                                                                   "out vec4 result;\n"
-                                                                                                   "\n"
-                                                                                                   "void main()\n"
-                                                                                                   "{\n"
-                                                                                                   "    float lum_avg = textureLod(luminance_texture_avg, vec2(0.0, 0.0), 5).x;\n"
-                                                                                                   "    vec4  Yxy     = texture   (luminance_texture,     vec2(uv.x, 1-uv.y) );\n"
-                                                                                                   "\n"
-                                                                                                   "    lum_avg = exp(lum_avg);\n"
-                                                                                                   "    Yxy.x   = exp(Yxy.x);\n"
-                                                                                                   "\n"
-                                                                                                   "    float luminance_scaled = alpha / (lum_avg + 0.001) * Yxy.x;\n"
-                                                                                                   "\n"
-                                                                                                   "    /* Prepare result XYZA vector */\n"
-                                                                                                   "    Yxy.x = luminance_scaled / (1 + luminance_scaled) * (1 + luminance_scaled / pow(white_level, 2.0) );\n"
-                                                                                                   "\n"
-                                                                                                   "    vec3 XYZ = vec3(Yxy.y * Yxy.x / Yxy.z, Yxy.x, (1.0 - Yxy.y - Yxy.z) * (Yxy.x / Yxy.z));\n"
-                                                                                                   "\n"
-                                                                                                   "    /* Convert from XYZA to sRGB */\n"
-                                                                                                   "    const vec3 X_vector = vec3( 3.2410, -1.5374, -0.4986);\n"
-                                                                                                   "    const vec3 Y_vector = vec3(-0.9692,  1.8760,  0.0416);\n"
-                                                                                                   "    const vec3 Z_vector = vec3( 0.0556, -0.2040,  1.0570);\n"
-                                                                                                   "\n"
-                                                                                                   "    result = vec4(dot(X_vector, XYZ), dot(Y_vector, XYZ), dot(Z_vector, XYZ), Yxy.w);\n"
-                                                                                                   "}\n");
+static const char* reinhard_tonemap_fragment_shader_body = 
+    "#version 430 core\n"
+    "\n"
+    "uniform data\n"
+    "{\n"
+    "    float alpha;\n"
+    "    float white_level;\n"
+    "};\n"
+    "\n"
+    "uniform sampler2D luminance_texture;\n"
+    "uniform sampler2D luminance_texture_avg;\n"
+    "uniform sampler2D rgb_texture;\n"
+    "\n"
+    "in  vec2 uv;\n"
+    "out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    float lum_avg = textureLod(luminance_texture_avg, vec2(0.0, 0.0),     5).x;\n"
+    "    vec4  Yxy     = textureLod(luminance_texture,     vec2(uv.x, 1-uv.y), 0);\n"
+    "\n"
+    "    lum_avg = exp(lum_avg);\n"
+    "    Yxy.x   = exp(Yxy.x);\n"
+    "\n"
+    "    float luminance_scaled = alpha / (lum_avg + 0.001) * Yxy.x;\n"
+    "\n"
+    "    /* Prepare result XYZA vector */\n"
+    "    Yxy.x = luminance_scaled / (1 + luminance_scaled) * (1 + luminance_scaled / pow(white_level, 2.0) );\n"
+    "\n"
+    "    vec3 XYZ = vec3(Yxy.y * Yxy.x / Yxy.z, Yxy.x, (1.0 - Yxy.y - Yxy.z) * (Yxy.x / Yxy.z));\n"
+    "\n"
+    "    /* Convert from XYZA to sRGB */\n"
+    "    const vec3 X_vector = vec3( 3.2410, -1.5374, -0.4986);\n"
+    "    const vec3 Y_vector = vec3(-0.9692,  1.8760,  0.0416);\n"
+    "    const vec3 Z_vector = vec3( 0.0556, -0.2040,  1.0570);\n"
+    "\n"
+    "    result = vec4(dot(X_vector, XYZ), dot(Y_vector, XYZ), dot(Z_vector, XYZ), Yxy.w);\n"
+    "}\n";
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_reinhard_tonemap,
@@ -123,7 +117,7 @@ PRIVATE void _create_callback(ogl_context context,
                               void*       arg)
 {
     _create_callback_data*            callback_ptr     = (_create_callback_data*) arg;
-    const ogl_context_gl_entrypoints* entry_points_ptr = NULL;
+    const ogl_context_gl_entrypoints* entry_points_ptr = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -131,7 +125,7 @@ PRIVATE void _create_callback(ogl_context context,
 
     /* TODO */
     ral_texture_create_info         yxy_texture_create_info;
-    raGL_texture                    yxy_texture_gl     = NULL;
+    raGL_texture                    yxy_texture_gl     = nullptr;
     GLuint                          yxy_texture_id     = 0;
     bool                            yxy_texture_is_rbo = false;
     const system_hashed_ansi_string yxy_texture_name   = system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
@@ -242,7 +236,7 @@ PRIVATE void _create_callback(ogl_context context,
     }
     else
     {
-        callback_ptr->data_ptr->downsampled_yxy_texture = NULL;
+        callback_ptr->data_ptr->downsampled_yxy_texture = nullptr;
     }
 
     /* Create framebuffers we will be using for blitting purposes */
@@ -274,7 +268,7 @@ PRIVATE void _create_callback(ogl_context context,
         system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap RGB2YXY ",
                                                                 system_hashed_ansi_string_get_buffer(callback_ptr->name) )
     };
-    raGL_program                  rgb_to_yXy_po_raGL = NULL;
+    raGL_program                  rgb_to_yXy_po_raGL = nullptr;
 
     if (!ral_context_create_programs(callback_ptr->data_ptr->context,
                                      1, /* n_create_info_items */
@@ -329,7 +323,7 @@ PRIVATE void _create_callback(ogl_context context,
         system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
                                                                 system_hashed_ansi_string_get_buffer(callback_ptr->name))
     };
-    raGL_program                  operator_po_raGL = NULL;
+    raGL_program                  operator_po_raGL = nullptr;
 
     if (!ral_context_create_programs(callback_ptr->data_ptr->context,
                                      1, /* n_create_info_items */
@@ -357,7 +351,7 @@ PRIVATE void _create_callback(ogl_context context,
     }
 
     /* Retrieve uniform properties */
-    const _raGL_program_variable* tex_uniform_raGL_ptr = NULL;
+    const _raGL_program_variable* tex_uniform_raGL_ptr = nullptr;
 
     raGL_program_get_uniform_by_name(rgb_to_yXy_po_raGL,
                                      system_hashed_ansi_string_create("tex"),
@@ -366,7 +360,7 @@ PRIVATE void _create_callback(ogl_context context,
     callback_ptr->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_raGL_ptr->location;
 
     /* Retrieve uniform block properties */
-    ral_buffer ub_ral = NULL;
+    ral_buffer ub_ral = nullptr;
 
     callback_ptr->data_ptr->operator_program_ub = ral_program_block_buffer_create(callback_ptr->data_ptr->context,
                                                                                   callback_ptr->data_ptr->operator_program,
@@ -380,10 +374,10 @@ PRIVATE void _create_callback(ogl_context context,
                                          &callback_ptr->data_ptr->operator_program_ub_bo_size);
 
     /* Retrieve uniform properties */
-    const ral_program_variable*   alpha_uniform_ral_ptr                  = NULL;
-    const _raGL_program_variable* luminance_texture_uniform_raGL_ptr     = NULL;
-    const _raGL_program_variable* luminance_texture_avg_uniform_raGL_ptr = NULL;
-    const ral_program_variable*   white_level_uniform_ral_ptr            = NULL;
+    const ral_program_variable*   alpha_uniform_ral_ptr                  = nullptr;
+    const _raGL_program_variable* luminance_texture_uniform_raGL_ptr     = nullptr;
+    const _raGL_program_variable* luminance_texture_avg_uniform_raGL_ptr = nullptr;
+    const ral_program_variable*   white_level_uniform_ral_ptr            = nullptr;
 
     ral_program_get_block_variable_by_name(callback_ptr->data_ptr->operator_program,
                                            system_hashed_ansi_string_create("data"),
@@ -411,7 +405,7 @@ PRIVATE void _release_callback(ogl_context context,
                                void*       arg)
 {
     _postprocessing_reinhard_tonemap* data_ptr     = (_postprocessing_reinhard_tonemap*) arg;
-    const ogl_context_gl_entrypoints* entry_points = NULL;
+    const ogl_context_gl_entrypoints* entry_points = nullptr;
 
     const ral_framebuffer fbs_to_release[] =
     {
@@ -447,7 +441,7 @@ PRIVATE void _release_callback(ogl_context context,
                                n_tos_to_release,
                                (const void**) tos_to_release);
 
-    data_ptr->yxy_texture = NULL;
+    data_ptr->yxy_texture = nullptr;
 
     shaders_fragment_rgb_to_Yxy_release(data_ptr->rgb_to_Yxy_fragment_shader);
     shaders_vertex_fullscreen_release  (data_ptr->fullscreen_vertex_shader);
@@ -461,11 +455,11 @@ PRIVATE void _release_callback(ogl_context context,
                                1, /* n_objects */
                                (const void**) &data_ptr->operator_fragment_shader);
 
-    if (data_ptr->operator_program_ub != NULL)
+    if (data_ptr->operator_program_ub != nullptr)
     {
         ral_program_block_buffer_release(data_ptr->operator_program_ub);
 
-        data_ptr->operator_program_ub = NULL;
+        data_ptr->operator_program_ub = nullptr;
     }
 }
 
@@ -489,10 +483,10 @@ PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonem
     /* Instantiate the object */
     _postprocessing_reinhard_tonemap* result_ptr = new (std::nothrow) _postprocessing_reinhard_tonemap;
 
-    ASSERT_DEBUG_SYNC(result_ptr != NULL,
+    ASSERT_DEBUG_SYNC(result_ptr != nullptr,
                       "Out of memory while instantiating _postprocessing_reinhard_tonemap object.");
 
-    if (result_ptr == NULL)
+    if (result_ptr == nullptr)
     {
         LOG_ERROR("Out of memory while creating Reinhard tonemap postprocessor object instance.");
 
@@ -524,33 +518,34 @@ PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonem
     return (postprocessing_reinhard_tonemap) result_ptr;
 
 end:
-    if (result_ptr != NULL)
+    if (result_ptr != nullptr)
     {
         delete result_ptr;
 
-        result_ptr = NULL;
+        result_ptr = nullptr;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_reinhard_tonemap tonemapper,
-                                                                ral_texture                     in_texture,
-                                                                float                           alpha,
-                                                                float                           white_level,
-                                                                ral_texture                     out_texture)
+PUBLIC EMERALD_API ral_present_task postprocessing_reinhard_tonemap_get_present_task(postprocessing_blur_poisson motion_blur,
+                                                                                     ral_texture_view            in_texture_view,
+                                                                                     float                       alpha,
+                                                                                     float                       white_level,
+                                                                                     ral_texture_view            out_texture_view)
+
 {
-    ral_framebuffer                   context_default_fb             = NULL;
-    raGL_framebuffer                  context_default_fb_raGL        = NULL;
+    ral_framebuffer                   context_default_fb             = nullptr;
+    raGL_framebuffer                  context_default_fb_raGL        = nullptr;
     GLuint                            context_default_fb_raGL_id     = -1;
     GLuint                            downsampled_yxy_texture_id     = 0;
     bool                              downsampled_yxy_texture_is_rbo = false;
-    const ogl_context_gl_entrypoints* entry_points                   = NULL;
-    raGL_texture                      in_texture_gl                  = NULL;
+    const ogl_context_gl_entrypoints* entry_points                   = nullptr;
+    raGL_texture                      in_texture_gl                  = nullptr;
     GLuint                            in_texture_id                  = 0;
     bool                              in_texture_is_rbo              = false;
-    raGL_texture                      out_texture_gl                 = NULL;
+    raGL_texture                      out_texture_gl                 = nullptr;
     GLuint                            out_texture_id                 = 0;
     bool                              out_texture_is_rbo             = false;
     _postprocessing_reinhard_tonemap* tonemapper_ptr                 = (_postprocessing_reinhard_tonemap*) tonemapper;
@@ -734,7 +729,7 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
 
     ral_program_block_buffer_sync(tonemapper_ptr->operator_program_ub);
 
-    if (out_texture != NULL)
+    if (out_texture != nullptr)
     {
         raGL_texture_get_property(out_texture_gl,
                                   RAGL_TEXTURE_PROPERTY_ID,
@@ -788,3 +783,4 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(postprocessing_r
                                      0,  /* first */
                                      4); /* count */
 }
+#endif

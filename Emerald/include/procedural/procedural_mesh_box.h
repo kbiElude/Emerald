@@ -1,13 +1,13 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * Generates a box spanning from <0, 0, 0> to <1, 1, 1>.
  *
  * Culling:     NOT taken into account (TODO).
  * Vertex data: vec3.
  *
- * TODO: The generated data sets should be stride-based.
+ * TODO: The generated data streams should be laid out in an interleaving manner.
  *
  * Implementation is NOT culling-aware.
  */
@@ -23,47 +23,47 @@ REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_box,
 
 typedef enum
 {
-    /* GLuint */
-    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_RAL,
+    /* not settable; GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_INDEXED_BUFFER,
 
-    /* unsigned int */
-    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET,
+    /* not settable; GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_INDEXED_BUFFER_INDEX_DATA_OFFSET,
 
-    /* unsigned int */
-    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,
+    /* not settable; GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_INDEXED_BUFFER_NORMAL_DATA_OFFSET,
 
-
-    /* GLuint */
-    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_RAL,
-
-    /* GLuint */
-    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_INDICES_DATA_OFFSET,
-
-    /* GLuint */
-    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_NORMALS_DATA_OFFSET,
-
-    /* GLuint */
-    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_VERTEX_DATA_OFFSET,
+    /* not settable; GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_INDEXED_BUFFER_VERTEX_DATA_OFFSET,
 
 
-    /* unsigned int */
+    /* not settable; ral_buffer */
+    PROCEDURAL_MESH_BOX_PROPERTY_NONINDEXED_BUFFER,
+
+    /* not settable; unsigned int */
+    PROCEDURAL_MESH_BOX_PROPERTY_NONINDEXED_BUFFER_NORMAL_DATA_OFFSET,
+
+    /* not settable; unsigned int */
+    PROCEDURAL_MESH_BOX_PROPERTY_NONINDEXED_BUFFER_VERTEX_DATA_OFFSET,
+
+
+    /* not settable; unsigned int */
     PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES,
 
-    /* unsigned int */
+    /* not settable; unsigned int */
     PROCEDURAL_MESH_BOX_PROPERTY_N_VERTICES,
 
-    /* GLuint */
+    /* not settable; GLuint */
     PROCEDURAL_MESH_BOX_PROPERTY_RESTART_INDEX
 } procedural_mesh_box_property;
 
 /** TODO.
  *
  **/
-PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ral_context                   context,
-                                                                  _procedural_mesh_data_bitmask mesh_data_bitmask,
-                                                                  uint32_t                      n_horizontal_patches, /* number of horizontal patches per plane */
-                                                                  uint32_t                      n_vertical_patches,   /* number of vertical patches per plane */
-                                                                  system_hashed_ansi_string     name);
+PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ral_context                    context,
+                                                                  procedural_mesh_data_type_bits mesh_data_types,
+                                                                  uint32_t                       n_horizontal_patches, /* number of horizontal patches per plane */
+                                                                  uint32_t                       n_vertical_patches,   /* number of vertical patches per plane */
+                                                                  system_hashed_ansi_string      name);
 
 /** TODO */
 PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box          box,

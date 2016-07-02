@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  * 
  * Reinhardt tone mapping operator. Only exposes "exposure" float uniform (in data uniform block)
  *

@@ -500,6 +500,10 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                                               const ral_command_buffer_copy_texture_to_texture_command_info* copy_op_ptrs);
 
 /** TODO */
+PUBLIC void ral_command_buffer_record_dispatch(ral_command_buffer recording_command_buffer,
+                                               const uint32_t*    xyz);
+
+/** TODO */
 PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer                                       recording_command_buffer,
                                                         uint32_t                                                 n_draw_calls,
                                                         const ral_command_buffer_draw_call_indexed_command_info* draw_call_ptrs);
