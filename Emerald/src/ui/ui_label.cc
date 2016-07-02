@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -31,7 +31,7 @@ typedef struct
 PUBLIC void ui_label_deinit(void* internal_instance)
 {
     const bool new_visibility = false;
-    _ui_label* ui_label_ptr   = (_ui_label*) internal_instance;
+    _ui_label* ui_label_ptr   = reinterpret_cast<_ui_label*>(internal_instance);
 
     varia_text_renderer_set_text_string_property(ui_label_ptr->text_renderer,
                                                  ui_label_ptr->text_id,
@@ -46,13 +46,13 @@ PUBLIC void ui_label_get_property(const void*         label,
                                   ui_control_property property,
                                   void*               out_result)
 {
-    const _ui_label* label_ptr = (const _ui_label*) label;
+    const _ui_label* label_ptr = reinterpret_cast<const _ui_label*>(label);
 
     switch (property)
     {
         case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
-            *(bool*) out_result = label_ptr->visible;
+            *reinterpret_cast<bool*>(out_result) = label_ptr->visible;
 
             break;
         }
@@ -72,7 +72,7 @@ PUBLIC void ui_label_get_property(const void*         label,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }
 
 /** Please see header for specification */
@@ -83,10 +83,10 @@ PUBLIC void* ui_label_init(ui                        instance,
 {
     _ui_label* new_label_ptr = new (std::nothrow) _ui_label;
 
-    ASSERT_ALWAYS_SYNC(new_label_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_label_ptr != nullptr,
                        "Out of memory");
 
-    if (new_label_ptr != NULL)
+    if (new_label_ptr != nullptr)
     {
         /* Initialize fields */
         memset(new_label_ptr,
@@ -113,9 +113,9 @@ PUBLIC void* ui_label_init(ui                        instance,
                                                      new_label_ptr->text_id,
                                                      VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS,
                                                      x1y1);
-    } /* if (new_label != NULL) */
+    }
 
-    return (void*) new_label_ptr;
+    return reinterpret_cast<void*>(new_label_ptr);
 }
 
 /** Please see header for specification */
@@ -123,7 +123,7 @@ PUBLIC void ui_label_set_property(void*               label,
                                   ui_control_property property,
                                   const void*         data)
 {
-    _ui_label* label_ptr = (_ui_label*) label;
+    _ui_label* label_ptr = reinterpret_cast<_ui_label*>(label);
 
     switch (property)
     {
@@ -156,5 +156,5 @@ PUBLIC void ui_label_set_property(void*               label,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }

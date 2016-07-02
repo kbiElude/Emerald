@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -94,31 +94,33 @@ static const char* ui_texture_preview_renderer_sampler2d_red_body        = "resu
 static const char* ui_texture_preview_renderer_sampler2d_rgb_body        = "result = vec4(textureLod(texture, uv, 0).xyz, 1.0);\n";
 static const char* ui_texture_preview_renderer_sampler2d_rgba_body       = "result = textureLod(texture, uv, 0);\n";
 static const char* ui_texture_preview_renderer_sampler2darray_depth_body = "result = vec4(textureLod(texture, vec3(uv, layer), 0.0).xxx, 1.0);\n";
-static const char* ui_texture_preview_fragment_shader_body               = "#version 430 core\n"
-                                                                           "\n"
-                                                                           "in      vec2         uv;\n"
-                                                                           "out     vec4         result;\n"
-                                                                           "uniform SAMPLER_TYPE texture;\n"
-                                                                           "\n"
-                                                                           "uniform dataFS\n"
-                                                                           "{\n"
-                                                                           "    vec2  border_width;\n"
-                                                                           "    float layer;\n"
-                                                                           "};\n"
-                                                                           "\n"
-                                                                           "void main()\n"
-                                                                           "{\n"
-                                                                           "    RENDER_RESULT;\n"
-                                                                           "\n"
-                                                                           /* Border? */
-                                                                           "    if (uv.x < border_width[0]         ||\n"
-                                                                           "        uv.x > (1.0 - border_width[0]) ||\n"
-                                                                           "        uv.y < border_width[1]         ||\n"
-                                                                           "        uv.y > (1.0 - border_width[1]) )\n"
-                                                                           "    {\n"
-                                                                           "        result = vec4(0.42f, 0.41f, 0.41f, 1.0);\n"
-                                                                           "    }\n"
-                                                                           "}\n";
+
+static const char* ui_texture_preview_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in      vec2         uv;\n"
+    "out     vec4         result;\n"
+    "uniform SAMPLER_TYPE texture;\n"
+    "\n"
+    "uniform dataFS\n"
+    "{\n"
+    "    vec2  border_width;\n"
+    "    float layer;\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    RENDER_RESULT;\n"
+    "\n"
+    /* Border? */
+    "    if (uv.x < border_width[0]         ||\n"
+    "        uv.x > (1.0 - border_width[0]) ||\n"
+    "        uv.y < border_width[1]         ||\n"
+    "        uv.y > (1.0 - border_width[1]) )\n"
+    "    {\n"
+    "        result = vec4(0.42f, 0.41f, 0.41f, 1.0);\n"
+    "    }\n"
+    "}\n";
 
 static const char* ui_texture_preview_sampler2d_type      = "sampler2D";
 static const char* ui_texture_preview_sampler2darray_type = "sampler2DArray";
@@ -142,9 +144,9 @@ PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
                                               _ui_texture_preview* texture_preview_ptr)
 {
     /* Create all objects */
-    ral_context context = NULL;
-    ral_shader  fs      = NULL;
-    ral_shader  vs      = NULL;
+    ral_context context = nullptr;
+    ral_shader  fs      = nullptr;
+    ral_shader  vs      = nullptr;
 
     const ral_shader_create_info fs_create_info =
     {
@@ -200,8 +202,8 @@ PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
 
     /* Set up FS body */
     std::string fs_body                      = ui_texture_preview_fragment_shader_body;
-    const char* render_result_body           = NULL;
-    const char* sampler_type_body            = NULL;
+    const char* render_result_body           = nullptr;
+    const char* sampler_type_body            = nullptr;
     const char* token_render_result          = "RENDER_RESULT";
     std::size_t token_render_result_location = std::string::npos;
     const char* token_sampler_type           = "SAMPLER_TYPE";
@@ -262,7 +264,7 @@ PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized texture preview type requested");
         }
-    } /* switch (texture_preview_ptr->preview_type) */
+    }
 
     while ( (token_render_result_location = fs_body.find(token_render_result) ) != std::string::npos)
     {
@@ -324,11 +326,11 @@ PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
 PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context context,
                                                                 void*       texture_preview)
 {
-    _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) texture_preview;
+    _ui_texture_preview* texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(texture_preview);
     const raGL_program   program_raGL        = ral_context_get_program_gl(texture_preview_ptr->context,
                                                                           texture_preview_ptr->program);
     GLuint               program_raGL_id     = 0;
-    system_window        window              = NULL;
+    system_window        window              = nullptr;
     int                  window_size[2]      = {0};
 
     ASSERT_DEBUG_SYNC(!texture_preview_ptr->texture_initialized,
@@ -434,10 +436,10 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
                                                  text_xy);
 
     /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform_ral_ptr = NULL;
-    const ral_program_variable* layer_uniform_ral_ptr        = NULL;
-    const ral_program_variable* texture_uniform_ral_ptr      = NULL;
-    const ral_program_variable* x1y1x2y2_uniform_ral_ptr     = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr = nullptr;
+    const ral_program_variable* layer_uniform_ral_ptr        = nullptr;
+    const ral_program_variable* texture_uniform_ral_ptr      = nullptr;
+    const ral_program_variable* x1y1x2y2_uniform_ral_ptr     = nullptr;
 
     ral_program_get_block_variable_by_name(texture_preview_ptr->program,
                                            system_hashed_ansi_string_create("dataFS"),
@@ -456,7 +458,7 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
                                            system_hashed_ansi_string_create("x1y1x2y2"),
                                           &x1y1x2y2_uniform_ral_ptr);
 
-    if (border_width_uniform_ral_ptr != NULL)
+    if (border_width_uniform_ral_ptr != nullptr)
     {
         texture_preview_ptr->program_border_width_ub_offset = border_width_uniform_ral_ptr->block_offset;
     }
@@ -465,7 +467,7 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
         texture_preview_ptr->program_border_width_ub_offset = -1;
     }
 
-    if (layer_uniform_ral_ptr != NULL)
+    if (layer_uniform_ral_ptr != nullptr)
     {
         texture_preview_ptr->program_layer_ub_offset = layer_uniform_ral_ptr->block_offset;
     }
@@ -478,12 +480,12 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
     texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform_ral_ptr->block_offset;
 
     /* Set up uniform blocks */
-    ral_buffer   ub_fs_bo_ral = NULL;
+    ral_buffer   ub_fs_bo_ral = nullptr;
     unsigned int ub_fs_index = -1;
-    ral_buffer   ub_vs_bo_ral = NULL;
+    ral_buffer   ub_vs_bo_ral = nullptr;
     unsigned int ub_vs_index = -1;
 
-    if (texture_preview_ptr->program_ub_fs == NULL)
+    if (texture_preview_ptr->program_ub_fs == nullptr)
     {
         static const uint32_t datafs_ub_fs_bp_index = UB_FS_BP_INDEX;
 
@@ -503,7 +505,7 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
                                                &datafs_ub_fs_bp_index);
     }
 
-    if (texture_preview_ptr->program_ub_vs == NULL)
+    if (texture_preview_ptr->program_ub_vs == nullptr)
     {
         static const uint32_t datafs_ub_vs_bp_index = UB_VS_BP_INDEX;
 
@@ -530,7 +532,7 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
 /** Please see header for specification */
 PUBLIC void ui_texture_preview_deinit(void* internal_instance)
 {
-    _ui_texture_preview* ui_texture_preview_ptr = (_ui_texture_preview*) internal_instance;
+    _ui_texture_preview* ui_texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(internal_instance);
 
     ral_context_delete_objects(ui_texture_preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -541,18 +543,18 @@ PUBLIC void ui_texture_preview_deinit(void* internal_instance)
                             ui_texture_preview_ptr->text_index,
                             "");
 
-    if (ui_texture_preview_ptr->program_ub_fs != NULL)
+    if (ui_texture_preview_ptr->program_ub_fs != nullptr)
     {
         ral_program_block_buffer_release(ui_texture_preview_ptr->program_ub_fs);
 
-        ui_texture_preview_ptr->program_ub_fs = NULL;
+        ui_texture_preview_ptr->program_ub_fs = nullptr;
     }
 
-    if (ui_texture_preview_ptr->program_ub_vs != NULL)
+    if (ui_texture_preview_ptr->program_ub_vs != nullptr)
     {
         ral_program_block_buffer_release(ui_texture_preview_ptr->program_ub_vs);
 
-        ui_texture_preview_ptr->program_ub_vs = NULL;
+        ui_texture_preview_ptr->program_ub_vs = nullptr;
     }
 
     delete ui_texture_preview_ptr;
@@ -562,7 +564,7 @@ PUBLIC void ui_texture_preview_deinit(void* internal_instance)
 PUBLIC RENDERING_CONTEXT_CALL void ui_texture_preview_draw(void* internal_instance)
 {
     float                layer_index         = 0.0f;
-    _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) internal_instance;
+    _ui_texture_preview* texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(internal_instance);
     GLenum               texture_target      = GL_ZERO;
     ral_texture_type     texture_type        = RAL_TEXTURE_TYPE_UNKNOWN;
 
@@ -575,7 +577,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_texture_preview_draw(void* internal_instan
                              &program_raGL_id);
 
     /* Nothing to render if no TO is hooked up.. */
-    if (texture_preview_ptr->texture == NULL)
+    if (texture_preview_ptr->texture == nullptr)
     {
         goto end;
     }
@@ -630,7 +632,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_texture_preview_draw(void* internal_instan
     }
 
     /* Set up uniforms */
-    layer_index = (float) texture_preview_ptr->layer_shown;
+    layer_index = static_cast<float>(texture_preview_ptr->layer_shown);
 
     ral_program_block_buffer_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
                                                            texture_preview_ptr->program_border_width_ub_offset,
@@ -671,12 +673,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_texture_preview_draw(void* internal_instan
 
     /* Draw */
     GLuint      program_ub_fs_bo_id           = 0;
-    raGL_buffer program_ub_fs_bo_raGL         = NULL;
-    ral_buffer  program_ub_fs_bo_ral          = NULL;
+    raGL_buffer program_ub_fs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_fs_bo_ral          = nullptr;
     uint32_t    program_ub_fs_bo_start_offset = -1;
     GLuint      program_ub_vs_bo_id           = 0;
-    raGL_buffer program_ub_vs_bo_raGL         = NULL;
-    ral_buffer  program_ub_vs_bo_ral          = NULL;
+    raGL_buffer program_ub_vs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_vs_bo_ral          = nullptr;
     uint32_t    program_ub_vs_bo_start_offset = -1;
 
     ral_program_block_buffer_get_property(texture_preview_ptr->program_ub_fs,
@@ -738,7 +740,7 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
     {
         case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
-            *(bool*) out_result = texture_preview_ptr->visible;
+            *reinterpret_cast<bool*>(out_result) = texture_preview_ptr->visible;
 
             break;
         }
@@ -754,49 +756,49 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
         {
-            *(GLenum*) out_result = texture_preview_ptr->blend_equation_alpha;
+            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_equation_alpha;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
         {
-            *(GLenum*) out_result = texture_preview_ptr->blend_equation_rgb;
+            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_equation_rgb;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
         {
-            *(GLenum*) out_result = texture_preview_ptr->blend_function_dst_alpha;
+            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_dst_alpha;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
         {
-            *(GLenum*) out_result = texture_preview_ptr->blend_function_dst_rgb;
+            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_dst_rgb;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
         {
-            *(GLenum*) out_result = texture_preview_ptr->blend_function_src_alpha;
+            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_src_alpha;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
         {
-            *(GLenum*) out_result = texture_preview_ptr->blend_function_src_rgb;
+            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_src_rgb;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
-            *(bool*) out_result = texture_preview_ptr->is_blending_enabled;
+            *reinterpret_cast<bool*>(out_result) = texture_preview_ptr->is_blending_enabled;
 
             break;
         }
@@ -813,7 +815,7 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
         {
-            *(ral_texture*) out_result = texture_preview_ptr->texture;
+            *reinterpret_cast<ral_texture*>(out_result) = texture_preview_ptr->texture;
 
             break;
         }
@@ -823,7 +825,7 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }
 
 /** Please see header for specification */
@@ -837,10 +839,10 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
 {
     _ui_texture_preview* new_texture_preview_ptr = new (std::nothrow) _ui_texture_preview;
 
-    ASSERT_ALWAYS_SYNC(new_texture_preview_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_texture_preview_ptr != nullptr,
                        "Out of memory");
 
-    if (new_texture_preview_ptr != NULL)
+    if (new_texture_preview_ptr != nullptr)
     {
         /* Initialize fields */
         memset(new_texture_preview_ptr,
@@ -884,8 +886,8 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
 
         if (new_texture_preview_ptr->backend_type == RAL_BACKEND_TYPE_ES)
         {
-            ogl_context                       context_es       = NULL;
-            const ogl_context_es_entrypoints* entry_points_ptr = NULL;
+            ogl_context                       context_es       = nullptr;
+            const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
 
             context_es = ral_context_get_gl_context(new_texture_preview_ptr->context);
 
@@ -893,8 +895,8 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points_ptr);
 
-            new_texture_preview_ptr->gl_pGLBindMultiTextureEXT  = NULL;
-            new_texture_preview_ptr->gl_pGLTextureParameteriEXT = NULL;
+            new_texture_preview_ptr->gl_pGLBindMultiTextureEXT  = nullptr;
+            new_texture_preview_ptr->gl_pGLTextureParameteriEXT = nullptr;
             new_texture_preview_ptr->pGLActiveTexture           = entry_points_ptr->pGLActiveTexture;
             new_texture_preview_ptr->pGLBindBufferRange         = entry_points_ptr->pGLBindBufferRange;
             new_texture_preview_ptr->pGLBindSampler             = entry_points_ptr->pGLBindSampler;
@@ -915,9 +917,9 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
             ASSERT_DEBUG_SYNC(new_texture_preview_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
-            ogl_context                                               context_gl           = NULL;
-            const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points_ptr = NULL;
-            const ogl_context_gl_entrypoints*                         entry_points_ptr     = NULL;
+            ogl_context                                               context_gl           = nullptr;
+            const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points_ptr = nullptr;
+            const ogl_context_gl_entrypoints*                         entry_points_ptr     = nullptr;
 
             context_gl = ral_context_get_gl_context(new_texture_preview_ptr->context);
 
@@ -950,24 +952,24 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
         new_texture_preview_ptr->program = ui_get_registered_program(instance,
                                                                      system_hashed_ansi_string_create(_ui_texture_preview_get_program_name(preview_type)) );
 
-        if (new_texture_preview_ptr->program == NULL)
+        if (new_texture_preview_ptr->program == nullptr)
         {
             _ui_texture_preview_init_program(instance,
                                              new_texture_preview_ptr);
 
-            ASSERT_DEBUG_SYNC(new_texture_preview_ptr->program != NULL,
+            ASSERT_DEBUG_SYNC(new_texture_preview_ptr->program != nullptr,
                               "Could not initialize texture preview UI program");
-        } /* if (new_texture_preview->program == NULL) */
+        }
 
         /* Set up rendering program. This must not be called if the requested TO
          * is NULL.*/
-        if (to != NULL)
+        if (to != nullptr)
         {
             ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_texture_preview_ptr->context),
                                                              _ui_texture_preview_init_texture_renderer_callback,
                                                              new_texture_preview_ptr);
         }
-    } /* if (new_texture_preview_ptr != NULL) */
+    }
 
     return (void*) new_texture_preview_ptr;
 }
@@ -977,7 +979,7 @@ PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
                                             ui_control_property property,
                                             const void*         data)
 {
-    _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) texture_preview;
+    _ui_texture_preview* texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(texture_preview);
 
     switch (property)
     {
@@ -992,56 +994,56 @@ PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
         {
-            texture_preview_ptr->blend_equation_alpha = *(GLenum*) data;
+            texture_preview_ptr->blend_equation_alpha = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
         {
-            texture_preview_ptr->blend_equation_rgb = *(GLenum*) data;
+            texture_preview_ptr->blend_equation_rgb = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
         {
-            texture_preview_ptr->blend_function_dst_alpha = *(GLenum*) data;
+            texture_preview_ptr->blend_function_dst_alpha = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
         {
-            texture_preview_ptr->blend_function_dst_rgb = *(GLenum*) data;
+            texture_preview_ptr->blend_function_dst_rgb = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
         {
-            texture_preview_ptr->blend_function_src_alpha = *(GLenum*) data;
+            texture_preview_ptr->blend_function_src_alpha = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
         {
-            texture_preview_ptr->blend_function_src_rgb = *(GLenum*) data;
+            texture_preview_ptr->blend_function_src_rgb = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
-            texture_preview_ptr->is_blending_enabled = *(bool*) data;
+            texture_preview_ptr->is_blending_enabled = *reinterpret_cast<const bool*>(data);
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_LAYER_SHOWN:
         {
-            texture_preview_ptr->layer_shown = *(GLuint*) data;
+            texture_preview_ptr->layer_shown = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
@@ -1058,7 +1060,7 @@ PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
         {
-            texture_preview_ptr->texture             = *(ral_texture*) data;
+            texture_preview_ptr->texture             = *reinterpret_cast<const ral_texture*>(data);
             texture_preview_ptr->texture_initialized = false;
 
             break;
@@ -1069,5 +1071,5 @@ PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value requested");
         }
-    } /* switch (property) */
+    }
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -74,28 +74,29 @@ typedef struct
 } _ui_button;
 
 /** Internal variables */
-static const char* ui_button_fragment_shader_body = "#version 430 core\n"
-                                                    "\n"
-                                                    "in  vec2 uv;\n"
-                                                    "out vec3 result;\n"
-                                                    /* stop, rgb */
-                                                    "layout(binding = 0) uniform dataFS\n"
-                                                    "{\n"
-                                                    "    float brightness;\n"
-                                                    "    vec2  border_width;\n"
-                                                    "    vec4  stop_data[4];\n"
-                                                    "};\n"
-                                                    "\n"
-                                                    "void main()\n"
-                                                    "{\n"
-                                                    "    if (uv.y >= stop_data[0].x && uv.y <= stop_data[1].x) result = mix(stop_data[0].yzw, stop_data[1].yzw, (uv.y - stop_data[0].x) / (stop_data[1].x - stop_data[0].x));else\n"
-                                                    "    if (uv.y >= stop_data[1].x && uv.y <= stop_data[2].x) result = mix(stop_data[1].yzw, stop_data[2].yzw, (uv.y - stop_data[1].x) / (stop_data[2].x - stop_data[1].x));else\n"
-                                                    "                                                          result = mix(stop_data[2].yzw, stop_data[3].yzw, (uv.y - stop_data[2].x) / (stop_data[3].x - stop_data[2].x));\n"
-                                                    "\n" 
-                                                    "    result *= brightness;\n"
-                                                    /* Border? */
-                                                    "if (uv.x <= border_width[0] || uv.x >= (1.0 - border_width[0]) || uv.y <= border_width[1] || uv.y >= (1.0 - border_width[1]) ) result = vec3(0.42f, 0.41f, 0.41f);\n"
-                                                    "}\n";
+static const char* ui_button_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in  vec2 uv;\n"
+    "out vec3 result;\n"
+    /* stop, rgb */
+    "layout(binding = 0) uniform dataFS\n"
+    "{\n"
+    "    float brightness;\n"
+    "    vec2  border_width;\n"
+    "    vec4  stop_data[4];\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    if (uv.y >= stop_data[0].x && uv.y <= stop_data[1].x) result = mix(stop_data[0].yzw, stop_data[1].yzw, (uv.y - stop_data[0].x) / (stop_data[1].x - stop_data[0].x));else\n"
+    "    if (uv.y >= stop_data[1].x && uv.y <= stop_data[2].x) result = mix(stop_data[1].yzw, stop_data[2].yzw, (uv.y - stop_data[1].x) / (stop_data[2].x - stop_data[1].x));else\n"
+    "                                                          result = mix(stop_data[2].yzw, stop_data[3].yzw, (uv.y - stop_data[2].x) / (stop_data[3].x - stop_data[2].x));\n"
+    "\n" 
+    "    result *= brightness;\n"
+    /* Border? */
+    "if (uv.x <= border_width[0] || uv.x >= (1.0 - border_width[0]) || uv.y <= border_width[1] || uv.y >= (1.0 - border_width[1]) ) result = vec3(0.42f, 0.41f, 0.41f);\n"
+    "}\n";
 
 /** TODO */
 PRIVATE void _ui_button_init_program(ui          ui_instance,
@@ -103,9 +104,9 @@ PRIVATE void _ui_button_init_program(ui          ui_instance,
 {
     /* Create all objects */
     ral_context context = ui_get_context(ui_instance);
-    ral_shader  fs      = NULL;
-    ral_program program = NULL;
-    ral_shader  vs      = NULL;
+    ral_shader  fs      = nullptr;
+    ral_program program = nullptr;
+    ral_shader  vs      = nullptr;
 
     ral_shader_create_info  fs_create_info;
     ral_program_create_info program_create_info;
@@ -198,14 +199,14 @@ PRIVATE void _ui_button_init_program(ui          ui_instance,
 PRIVATE void _ui_button_init_renderer_callback(ogl_context context,
                                                void*       button)
 {
-    _ui_button*   button_ptr      = (_ui_button*) button;
-    raGL_program  program_raGL    = NULL;
+    _ui_button*   button_ptr      = reinterpret_cast<_ui_button*>(button);
+    raGL_program  program_raGL    = nullptr;
     GLuint        program_raGL_id = 0;
     const GLfloat stop_data[]     = {0,     174.0f / 255.0f * 0.5f, 188.0f / 255.0f * 0.5f, 191.0f / 255.0f * 0.5f,
                                      0.5f,  110.0f / 255.0f * 0.5f, 119.0f / 255.0f * 0.5f, 116.0f / 255.0f * 0.5f,
                                      0.51f, 10.0f  / 255.0f * 0.5f, 14.0f  / 255.0f * 0.5f, 10.0f  / 255.0f * 0.5f,
                                      1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
-    system_window window          = NULL;
+    system_window window          = nullptr;
 
     ral_context_get_property(button_ptr->context,
                              RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -231,10 +232,10 @@ PRIVATE void _ui_button_init_renderer_callback(ogl_context context,
                       "BP match detected");
 
     /* Retrieve uniform UB offsets */
-    const ral_program_variable* border_width_uniform_ral_ptr = NULL;
-    const ral_program_variable* brightness_uniform_ral_ptr   = NULL;
-    const ral_program_variable* stop_data_uniform_ral_ptr    = NULL;
-    const ral_program_variable* x1y1x2y2_uniform_ral_ptr     = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr = nullptr;
+    const ral_program_variable* brightness_uniform_ral_ptr   = nullptr;
+    const ral_program_variable* stop_data_uniform_ral_ptr    = nullptr;
+    const ral_program_variable* x1y1x2y2_uniform_ral_ptr     = nullptr;
 
     ral_program_get_block_variable_by_name(button_ptr->program,
                                            system_hashed_ansi_string_create("dataFS"),
@@ -283,7 +284,7 @@ PRIVATE void _ui_button_update_text_location(_ui_button* button_ptr)
     int           text_height   = 0;
     int           text_xy[2]    = {0};
     int           text_width    = 0;
-    system_window window        = NULL;
+    system_window window        = nullptr;
     int           window_size[2];
     const float   x1y1[2]       =
     {
@@ -325,7 +326,7 @@ PRIVATE void _ui_button_update_text_location(_ui_button* button_ptr)
 /** Please see header for specification */
 PUBLIC void ui_button_deinit(void* internal_instance)
 {
-    _ui_button* ui_button_ptr = (_ui_button*) internal_instance;
+    _ui_button* ui_button_ptr = reinterpret_cast<_ui_button*>(internal_instance);
 
     varia_text_renderer_set(ui_button_ptr->text_renderer,
                             ui_button_ptr->text_index,
@@ -336,18 +337,18 @@ PUBLIC void ui_button_deinit(void* internal_instance)
                                1, /* n_objects */
                                (const void**) &ui_button_ptr->program);
 
-    if (ui_button_ptr->program_ub_fs != NULL)
+    if (ui_button_ptr->program_ub_fs != nullptr)
     {
         ral_program_block_buffer_release(ui_button_ptr->program_ub_fs);
 
-        ui_button_ptr->program_ub_fs = NULL;
+        ui_button_ptr->program_ub_fs = nullptr;
     }
 
-    if (ui_button_ptr->program_ub_vs != NULL)
+    if (ui_button_ptr->program_ub_vs != nullptr)
     {
         ral_program_block_buffer_release(ui_button_ptr->program_ub_vs);
 
-        ui_button_ptr->program_ub_vs = NULL;
+        ui_button_ptr->program_ub_vs = nullptr;
     }
 
     delete ui_button_ptr;
@@ -356,7 +357,7 @@ PUBLIC void ui_button_deinit(void* internal_instance)
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void ui_button_draw(void* internal_instance)
 {
-    _ui_button* button_ptr  = (_ui_button*) internal_instance;
+    _ui_button* button_ptr  = reinterpret_cast<_ui_button*>(internal_instance);
     system_time time_now    = system_time_now();
 
     /* Update brightness if necessary */
@@ -381,14 +382,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_button_draw(void* internal_instance)
             if (brightness > FOCUSED_BRIGHTNESS)
             {
                 brightness = FOCUSED_BRIGHTNESS;
-            } /* if (brightness > FOCUSED_BRIGHTNESS) */
+            }
         }
         else
         {
             /* Past the transition time, make sure brightness is valid */
             brightness = FOCUSED_BRIGHTNESS;
         }
-    } /* if (button_ptr->is_hovering) */
+    }
     else
     {
         /* Are we transiting? */
@@ -409,7 +410,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_button_draw(void* internal_instance)
             if (brightness < NONFOCUSED_BRIGHTNESS)
             {
                 brightness = NONFOCUSED_BRIGHTNESS;
-            } /* if (brightness < 0) */
+            }
         }
         else
         {
@@ -447,7 +448,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_button_draw(void* internal_instance)
     if (button_ptr->should_update_border_width)
     {
         float         border_width[2] = {0};
-        system_window window          = NULL;
+        system_window window          = nullptr;
         int           window_size[2];
 
         ral_context_get_property    (button_ptr->context,
@@ -470,12 +471,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_button_draw(void* internal_instance)
 
     /* Draw */
     GLuint      program_ub_fs_bo_id           = 0;
-    raGL_buffer program_ub_fs_bo_raGL         = NULL;
-    ral_buffer  program_ub_fs_bo_ral          = NULL;
+    raGL_buffer program_ub_fs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_fs_bo_ral          = nullptr;
     uint32_t    program_ub_fs_bo_start_offset = -1;
     GLuint      program_ub_vs_bo_id           = 0;
-    raGL_buffer program_ub_vs_bo_raGL         = NULL;
-    ral_buffer  program_ub_vs_bo_ral          = NULL;
+    raGL_buffer program_ub_vs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_vs_bo_ral          = nullptr;
     uint32_t    program_ub_vs_bo_start_offset = -1;
 
     ral_program_block_buffer_get_property(button_ptr->program_ub_fs,
@@ -490,7 +491,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_button_draw(void* internal_instance)
     program_ub_vs_bo_raGL = ral_context_get_buffer_gl(button_ptr->context,
                                                       program_ub_vs_bo_ral);
 
-                                           
+
     raGL_buffer_get_property(program_ub_fs_bo_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &program_ub_fs_bo_id);
@@ -529,7 +530,7 @@ PUBLIC void ui_button_get_property(const void*         button,
                                    ui_control_property property,
                                    void*               out_result)
 {
-    const _ui_button* button_ptr = (const _ui_button*) button;
+    const _ui_button* button_ptr = reinterpret_cast<const _ui_button*>(button);
 
     switch (property)
     {
@@ -560,7 +561,7 @@ PUBLIC void ui_button_get_property(const void*         button,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property property");
         }
-    } /* switch (property_value) */
+    }
 }
 
 /** Please see header for specification */
@@ -574,10 +575,10 @@ PUBLIC void* ui_button_init(ui                        instance,
 {
     _ui_button* new_button_ptr = new (std::nothrow) _ui_button;
 
-    ASSERT_ALWAYS_SYNC(new_button_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_button_ptr != nullptr,
                        "Out of memory");
 
-    if (new_button_ptr != NULL)
+    if (new_button_ptr != nullptr)
     {
         /* Initialize fields */
         memset(new_button_ptr,
@@ -606,7 +607,7 @@ PUBLIC void* ui_button_init(ui                        instance,
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints* entry_points = NULL;
+            const ogl_context_es_entrypoints* entry_points = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_button_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -622,7 +623,7 @@ PUBLIC void* ui_button_init(ui                        instance,
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized backend type");
 
-            const ogl_context_gl_entrypoints* entry_points = NULL;
+            const ogl_context_gl_entrypoints* entry_points = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_button_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -650,28 +651,29 @@ PUBLIC void* ui_button_init(ui                        instance,
         new_button_ptr->program = ui_get_registered_program(instance,
                                                             ui_button_program_name);
 
-        if (new_button_ptr->program == NULL)
+        if (new_button_ptr->program == nullptr)
         {
             _ui_button_init_program(instance,
                                     new_button_ptr);
 
-            ASSERT_DEBUG_SYNC(new_button_ptr->program != NULL,
+            ASSERT_DEBUG_SYNC(new_button_ptr->program != nullptr,
                               "Could not initialize button UI program");
-        } /* if (new_button->program == NULL) */
+        }
 
         /* Set up predefined values */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_button_ptr->context),
                                                          _ui_button_init_renderer_callback,
                                                          new_button_ptr);
-    } /* if (new_button != NULL) */
+    }
 
     return (void*) new_button_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC bool ui_button_is_over(void* internal_instance, const float* xy)
+PUBLIC bool ui_button_is_over(void*        internal_instance,
+                              const float* xy)
 {
-    _ui_button* button_ptr = (_ui_button*) internal_instance;
+    _ui_button* button_ptr = reinterpret_cast<_ui_button*>(internal_instance);
     float       inversed_y = 1.0f - xy[1];
 
     if (xy[0]      >= button_ptr->x1y1x2y2[0] && xy[0]      <= button_ptr->x1y1x2y2[2] &&
@@ -682,7 +684,7 @@ PUBLIC bool ui_button_is_over(void* internal_instance, const float* xy)
             button_ptr->start_hovering_brightness = button_ptr->current_gpu_brightness_level;
             button_ptr->start_hovering_time       = system_time_now();
             button_ptr->is_hovering               = true;
-        } /* if (!button_ptr->is_hovering) */
+        }
 
         return true;
     }
@@ -700,9 +702,10 @@ PUBLIC bool ui_button_is_over(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ui_button_on_lbm_down(void* internal_instance, const float* xy)
+PUBLIC void ui_button_on_lbm_down(void*        internal_instance,
+                                  const float* xy)
 {
-    _ui_button* button_ptr = (_ui_button*) internal_instance;
+    _ui_button* button_ptr = reinterpret_cast<_ui_button*>(internal_instance);
     float       inversed_y = 1.0f - xy[1];
 
     if (xy[0]      >= button_ptr->x1y1x2y2[0] && xy[0]      <= button_ptr->x1y1x2y2[2] &&
@@ -714,15 +717,17 @@ PUBLIC void ui_button_on_lbm_down(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ui_button_on_lbm_up(void* internal_instance, const float* xy)
+PUBLIC void ui_button_on_lbm_up(void*        internal_instance,
+                                const float* xy)
 {
-    _ui_button* button_ptr = (_ui_button*) internal_instance;
+    _ui_button* button_ptr = reinterpret_cast<_ui_button*>(internal_instance);
 
     button_ptr->is_lbm_on                   = false;
     button_ptr->force_gpu_brightness_update = true;
 
-    if (ui_button_is_over(internal_instance, xy) &&
-        button_ptr->pfn_fire_proc_ptr != NULL)
+    if (ui_button_is_over(internal_instance,
+                          xy)                     &&
+        button_ptr->pfn_fire_proc_ptr != nullptr)
     {
         system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
                                                                                    (PFNSYSTEMTHREADPOOLCALLBACKPROC) button_ptr->pfn_fire_proc_ptr,
@@ -737,7 +742,7 @@ PUBLIC void ui_button_set_property(void*               button,
                                    ui_control_property property,
                                    const void*         data)
 {
-    _ui_button* button_ptr = (_ui_button*) button;
+    _ui_button* button_ptr = reinterpret_cast<_ui_button*>(button);
 
     switch (property)
     {
@@ -783,5 +788,5 @@ PUBLIC void ui_button_set_property(void*               button,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }

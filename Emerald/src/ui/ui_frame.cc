@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -46,14 +46,15 @@ typedef struct
 } _ui_frame;
 
 /** Internal variables */
-static const char* ui_frame_fragment_shader_body = "#version 430 core\n"
-                                                   "\n"
-                                                   "out vec4 result;\n"
-                                                   "\n"
-                                                   "void main()\n"
-                                                   "{\n"
-                                                   "    result = vec4(0.1, 0.1, 0.1f, 0.7);\n"
-                                                   "}\n";
+static const char* ui_frame_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    result = vec4(0.1, 0.1, 0.1f, 0.7);\n"
+    "}\n";
 
 static system_hashed_ansi_string ui_frame_program_name = system_hashed_ansi_string_create("UI Frame");
 
@@ -63,8 +64,8 @@ PRIVATE void _ui_frame_init_program(ui         ui_instance,
 {
     /* Create all objects */
     ral_context context = ui_get_context(ui_instance);
-    ral_shader  fs      = NULL;
-    ral_shader  vs      = NULL;
+    ral_shader  fs      = nullptr;
+    ral_shader  vs      = nullptr;
 
     const ral_shader_create_info fs_create_info =
     {
@@ -157,18 +158,18 @@ PRIVATE void _ui_frame_init_program(ui         ui_instance,
 /** Please see header for specification */
 PUBLIC void ui_frame_deinit(void* internal_instance)
 {
-    _ui_frame* ui_frame_ptr = (_ui_frame*) internal_instance;
+    _ui_frame* ui_frame_ptr = reinterpret_cast<_ui_frame*>(internal_instance);
 
     ral_context_delete_objects(ui_frame_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
                                (const void**) &ui_frame_ptr->program);
 
-    if (ui_frame_ptr->program_ub != NULL)
+    if (ui_frame_ptr->program_ub != nullptr)
     {
         ral_program_block_buffer_release(ui_frame_ptr->program_ub);
 
-        ui_frame_ptr->program_ub = NULL;
+        ui_frame_ptr->program_ub = nullptr;
     }
 
     delete ui_frame_ptr;
@@ -177,7 +178,7 @@ PUBLIC void ui_frame_deinit(void* internal_instance)
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void ui_frame_draw(void* internal_instance)
 {
-    _ui_frame* frame_ptr = (_ui_frame*) internal_instance;
+    _ui_frame* frame_ptr = reinterpret_cast<_ui_frame*>(internal_instance);
 
     /* Update uniforms */
     raGL_program program_raGL    = ral_context_get_program_gl(frame_ptr->context,
@@ -200,8 +201,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_frame_draw(void* internal_instance)
     frame_ptr->pGLEnable       (GL_BLEND);
     {
         GLuint      program_ub_bo_id           = 0;
-        raGL_buffer program_ub_bo_raGL         = NULL;
-        ral_buffer  program_ub_bo_ral          = NULL;
+        raGL_buffer program_ub_bo_raGL         = nullptr;
+        ral_buffer  program_ub_bo_ral          = nullptr;
         uint32_t    program_ub_bo_start_offset = -1;
 
         ral_program_block_buffer_get_property(frame_ptr->program_ub,
@@ -239,7 +240,7 @@ PUBLIC void ui_frame_get_property(const void*         frame,
                                   ui_control_property property,
                                   void*               out_result)
 {
-    const _ui_frame* frame_ptr = (const _ui_frame*) frame;
+    const _ui_frame* frame_ptr = reinterpret_cast<const _ui_frame*>(frame);
 
     switch (property)
     {
@@ -272,7 +273,7 @@ PUBLIC void ui_frame_get_property(const void*         frame,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }
 
 /** Please see header for specification */
@@ -281,10 +282,10 @@ PUBLIC void* ui_frame_init(ui           instance,
 {
     _ui_frame* new_frame_ptr = new (std::nothrow) _ui_frame;
 
-    ASSERT_ALWAYS_SYNC(new_frame_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_frame_ptr != nullptr,
                        "Out of memory");
 
-    if (new_frame_ptr != NULL)
+    if (new_frame_ptr != nullptr)
     {
         /* Initialize fields */
         memset(new_frame_ptr,
@@ -307,7 +308,7 @@ PUBLIC void* ui_frame_init(ui           instance,
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints* entry_points_ptr = NULL;
+            const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_frame_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -327,7 +328,7 @@ PUBLIC void* ui_frame_init(ui           instance,
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized backend type");
 
-            const ogl_context_gl_entrypoints* entry_points_ptr = NULL;
+            const ogl_context_gl_entrypoints* entry_points_ptr = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_frame_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -344,20 +345,20 @@ PUBLIC void* ui_frame_init(ui           instance,
         }
 
         /* Retrieve the rendering program */
-        raGL_program program_raGL    = NULL;
+        raGL_program program_raGL    = nullptr;
         GLuint       program_raGL_id = 0;
 
         new_frame_ptr->program = ui_get_registered_program(instance,
                                                            ui_frame_program_name);
 
-        if (new_frame_ptr->program == NULL)
+        if (new_frame_ptr->program == nullptr)
         {
             _ui_frame_init_program(instance,
                                    new_frame_ptr);
 
-            ASSERT_DEBUG_SYNC(new_frame_ptr->program != NULL,
+            ASSERT_DEBUG_SYNC(new_frame_ptr->program != nullptr,
                               "Could not initialize frame UI program");
-        } /* if (new_button->program == NULL) */
+        }
 
         program_raGL = ral_context_get_program_gl(new_frame_ptr->context,
                                                   new_frame_ptr->program);
@@ -367,7 +368,7 @@ PUBLIC void* ui_frame_init(ui           instance,
                                  &program_raGL_id);
 
         /* Retrieve the uniform block properties */
-        ral_buffer program_ub_bo_ral = NULL;
+        ral_buffer program_ub_bo_ral = nullptr;
 
         new_frame_ptr->program_ub = ral_program_block_buffer_create(new_frame_ptr->context,
                                                                     new_frame_ptr->program,
@@ -388,7 +389,7 @@ PUBLIC void* ui_frame_init(ui           instance,
                                                &datavs_indexed_bp);
 
         /* Retrieve the uniforms */
-        const ral_program_variable* x1y1x2y2_uniform_ral_ptr = NULL;
+        const ral_program_variable* x1y1x2y2_uniform_ral_ptr = nullptr;
 
         ral_program_get_block_variable_by_name(new_frame_ptr->program,
                                                system_hashed_ansi_string_create("dataVS"),
@@ -396,9 +397,9 @@ PUBLIC void* ui_frame_init(ui           instance,
                                               &x1y1x2y2_uniform_ral_ptr);
 
         new_frame_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform_ral_ptr->block_offset;
-    } /* if (new_frame_ptr != NULL) */
+    }
 
-    return (void*) new_frame_ptr;
+    return reinterpret_cast<void*>(new_frame_ptr);
 }
 
 /** Please see header for specification */
@@ -406,7 +407,7 @@ PUBLIC void ui_frame_set_property(void*               frame,
                                   ui_control_property property,
                                   const void*         data)
 {
-    _ui_frame* frame_ptr = (_ui_frame*) frame;
+    _ui_frame* frame_ptr = reinterpret_cast<_ui_frame*>(frame);
 
     switch (property)
     {
@@ -429,5 +430,5 @@ PUBLIC void ui_frame_set_property(void*               frame,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }

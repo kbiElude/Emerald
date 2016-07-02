@@ -2,9 +2,6 @@
  *
  * Emerald (kbi/elude @2012-2016)
  *
- * NOTE: UI renderer is built under assumption that UI components need not use attributes.
- *       This is owing to the fact ui uses the context-wide no-VAA VAO for rendering.
- *       Change this if necessary (but face the performance penalty due to VAO rebindings).
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
@@ -64,8 +61,8 @@ typedef struct _ui_callback
     _ui_callback()
     {
         callback_id            = 0;
-        callback_proc_ptr      = NULL;
-        callback_proc_user_arg = NULL;
+        callback_proc_ptr      = nullptr;
+        callback_proc_user_arg = nullptr;
     }
 } _ui_callback;
 
@@ -135,16 +132,16 @@ typedef struct _ui_control
     _ui_control()
     {
         control_type                = UI_CONTROL_TYPE_UNKNOWN;
-        owner_ptr                   = NULL;
-        pfn_deinit_func_ptr         = NULL;
-        pfn_draw_func_ptr           = NULL;
-        pfn_get_property_func_ptr   = NULL;
-        pfn_is_over_func_ptr        = NULL;
-        pfn_on_lbm_down_func_ptr    = NULL;
-        pfn_on_lbm_up_func_ptr      = NULL;
-        pfn_on_mouse_move_func_ptr  = NULL;
-        pfn_on_mouse_wheel_func_ptr = NULL;
-        pfn_set_property_func_ptr   = NULL;
+        owner_ptr                   = nullptr;
+        pfn_deinit_func_ptr         = nullptr;
+        pfn_draw_func_ptr           = nullptr;
+        pfn_get_property_func_ptr   = nullptr;
+        pfn_is_over_func_ptr        = nullptr;
+        pfn_on_lbm_down_func_ptr    = nullptr;
+        pfn_on_lbm_up_func_ptr      = nullptr;
+        pfn_on_mouse_move_func_ptr  = nullptr;
+        pfn_on_mouse_wheel_func_ptr = nullptr;
+        pfn_set_property_func_ptr   = nullptr;
     }
 } _ui_control;
 
@@ -188,18 +185,18 @@ REFCOUNT_INSERT_IMPLEMENTATION(ui,
 /** TODO */
 PRIVATE void _ui_control_deinit(_ui_control* ui_control_ptr)
 {
-    if (ui_control_ptr->pfn_deinit_func_ptr != NULL)
+    if (ui_control_ptr->pfn_deinit_func_ptr != nullptr)
     {
         ui_control_ptr->pfn_deinit_func_ptr(ui_control_ptr->internal);
 
-        ui_control_ptr->internal = NULL;
-    } /* if (ui_control_ptr->pfn_deinit_func_ptr != NULL) */
+        ui_control_ptr->internal = nullptr;
+    }
 }
 
 /** TODO */
 PRIVATE void* _ui_get_internal_control_ptr(ui_control control)
 {
-    _ui_control* control_ptr = (_ui_control*) control;
+    _ui_control* control_ptr = reinterpret_cast<_ui_control*>(control);
 
     return control_ptr->internal;
 }
@@ -217,8 +214,8 @@ PRIVATE void _ui_deinit_gl_renderer_callback(ogl_context context,
                                              void*       user_arg)
 {
     ral_backend_type            backend_type          = RAL_BACKEND_TYPE_UNKNOWN;
-    PFNGLDELETEVERTEXARRAYSPROC pGLDeleteVertexArrays = NULL;
-    _ui*                        ui_ptr                = (_ui*) user_arg;
+    PFNGLDELETEVERTEXARRAYSPROC pGLDeleteVertexArrays = nullptr;
+    _ui*                        ui_ptr                = reinterpret_cast<_ui*>(user_arg);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
@@ -226,7 +223,7 @@ PRIVATE void _ui_deinit_gl_renderer_callback(ogl_context context,
 
     if (backend_type == RAL_BACKEND_TYPE_ES)
     {
-        const ogl_context_es_entrypoints* entry_points = NULL;
+        const ogl_context_es_entrypoints* entry_points = nullptr;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -239,7 +236,7 @@ PRIVATE void _ui_deinit_gl_renderer_callback(ogl_context context,
         ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "Unsupportedbackend type");
 
-        const ogl_context_gl_entrypoints* entry_points = NULL;
+        const ogl_context_gl_entrypoints* entry_points = nullptr;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -252,7 +249,7 @@ PRIVATE void _ui_deinit_gl_renderer_callback(ogl_context context,
 /** TODO */
 PRIVATE void _ui_deinit(_ui* ui_ptr)
 {
-    _ui_control* ui_control_ptr = NULL;
+    _ui_control* ui_control_ptr = nullptr;
 
     /* Release call-backs */
     system_window_delete_callback_func(ui_ptr->window,
@@ -274,11 +271,11 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
                                                      ui_ptr);
 
     /* Release all controls */
-    if (ui_ptr->controls_rw_mutex != NULL)
+    if (ui_ptr->controls_rw_mutex != nullptr)
     {
         system_read_write_mutex_release(ui_ptr->controls_rw_mutex);
 
-        ui_ptr->controls_rw_mutex = NULL;
+        ui_ptr->controls_rw_mutex = nullptr;
     }
 
     while (true)
@@ -294,7 +291,7 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
             _ui_control_deinit(ui_control_ptr);
 
             delete ui_control_ptr;
-            ui_control_ptr = NULL;
+            ui_control_ptr = nullptr;
 
             system_resizable_vector_delete_element_at(ui_ptr->controls,
                                                       0);
@@ -302,17 +299,17 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
     }
 
     system_resizable_vector_release(ui_ptr->controls);
-    ui_ptr->controls = NULL;
+    ui_ptr->controls = nullptr;
 
     /* Release other owned objects */
-    if (ui_ptr->text_renderer != NULL)
+    if (ui_ptr->text_renderer != nullptr)
     {
         varia_text_renderer_release(ui_ptr->text_renderer);
 
-        ui_ptr->text_renderer = NULL;
+        ui_ptr->text_renderer = nullptr;
     }
 
-    if (ui_ptr->registered_ui_control_callbacks != NULL)
+    if (ui_ptr->registered_ui_control_callbacks != nullptr)
     {
         while (true)
         {
@@ -329,7 +326,7 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
 
             bool          result           = false;
             system_hash64 ui_callback_hash = 0;
-            _ui_callback* ui_callback_ptr  = NULL;
+            _ui_callback* ui_callback_ptr  = nullptr;
 
             if (system_hash64map_get_element_at(ui_ptr->registered_ui_control_callbacks,
                                                 0,
@@ -337,7 +334,7 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
                                                &ui_callback_hash) )
             {
                 delete ui_callback_ptr;
-                ui_callback_ptr = NULL;
+                ui_callback_ptr = nullptr;
 
                 result = system_hash64map_remove(ui_ptr->registered_ui_control_callbacks,
                                                  ui_callback_hash);
@@ -349,16 +346,16 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
 
         system_hash64map_release(ui_ptr->registered_ui_control_callbacks);
 
-        ui_ptr->registered_ui_control_callbacks = NULL;
-    } /* if (ui_ptr->registered_ui_control_callbacks != NULL) */
+        ui_ptr->registered_ui_control_callbacks = nullptr;
+    }
 
-    if (ui_ptr->registered_ui_control_programs != NULL)
+    if (ui_ptr->registered_ui_control_programs != nullptr)
     {
         while (true)
         {
             uint32_t      n_programs                   = 0;
             bool          result                       = false;
-            ral_program   ui_control_program           = NULL;
+            ral_program   ui_control_program           = nullptr;
             system_hash64 ui_control_program_name_hash = 0;
 
             system_hash64map_get_property(ui_ptr->registered_ui_control_programs,
@@ -375,7 +372,7 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
                                                &ui_control_program,
                                                &ui_control_program_name_hash) )
             {
-                ral_context context = NULL;
+                ral_context context = nullptr;
 
                 system_window_get_property(ui_ptr->window,
                                            SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
@@ -391,13 +388,13 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
 
                 ASSERT_ALWAYS_SYNC(result,
                                    "Could not remove UI control descriptor");
-            } /* if (system_hash64map_get_element_at(ui_ptr->registered_ui_control_programs, 0, &ui_control_ptr, &ui_control_name_hash) ) */
+            }
         }
 
         system_hash64map_release(ui_ptr->registered_ui_control_programs);
 
-        ui_ptr->registered_ui_control_programs = NULL;
-    } /* if (ui_ptr->registered_ui_control_programs != NULL) */
+        ui_ptr->registered_ui_control_programs = nullptr;
+    }
 }
 
 /** TODO */
@@ -405,8 +402,8 @@ PRIVATE void _ui_init_gl_renderer_callback(ogl_context context,
                                            void*       user_arg)
 {
     ral_backend_type         backend_type       = RAL_BACKEND_TYPE_UNKNOWN;
-    PFNGLGENVERTEXARRAYSPROC pGLGenVertexArrays = NULL;
-    _ui*                     ui_ptr             = (_ui*) user_arg;
+    PFNGLGENVERTEXARRAYSPROC pGLGenVertexArrays = nullptr;
+    _ui*                     ui_ptr             = reinterpret_cast<_ui*>(user_arg);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
@@ -414,7 +411,7 @@ PRIVATE void _ui_init_gl_renderer_callback(ogl_context context,
 
     if (backend_type == RAL_BACKEND_TYPE_ES)
     {
-        const ogl_context_es_entrypoints* entry_points = NULL;
+        const ogl_context_es_entrypoints* entry_points = nullptr;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -427,7 +424,7 @@ PRIVATE void _ui_init_gl_renderer_callback(ogl_context context,
         ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "Unsupported context type");
 
-        const ogl_context_gl_entrypoints* entry_points = NULL;
+        const ogl_context_gl_entrypoints* entry_points = nullptr;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -453,7 +450,7 @@ PRIVATE void _ui_init(_ui*                      ui_ptr,
     ui_ptr->registered_ui_control_callbacks = system_hash64map_create(sizeof(void*) );
     ui_ptr->registered_ui_control_programs  = system_hash64map_create(sizeof(void*) );
     ui_ptr->text_renderer                   = text_renderer;
-    ui_ptr->window                          = NULL;
+    ui_ptr->window                          = nullptr;
 
     varia_text_renderer_retain(text_renderer);
 
@@ -470,7 +467,7 @@ PRIVATE void _ui_init(_ui*                      ui_ptr,
 
     if (backend_type == RAL_BACKEND_TYPE_ES)
     {
-        ogl_context_es_entrypoints* entry_points = NULL;
+        ogl_context_es_entrypoints* entry_points = nullptr;
 
         ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -484,7 +481,7 @@ PRIVATE void _ui_init(_ui*                      ui_ptr,
         ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                           "Unrecognized context type");
 
-        ogl_context_gl_entrypoints* entry_points = NULL;
+        ogl_context_gl_entrypoints* entry_points = nullptr;
 
         ogl_context_get_property(ral_context_get_gl_context(context),
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -530,7 +527,7 @@ PRIVATE bool _ui_callback_on_lbm_down(system_window           window,
                                       void*                   ui_instance)
 {
     bool has_captured = false;
-    _ui* ui_ptr       = (_ui*) ui_instance;
+    _ui* ui_ptr       = reinterpret_cast<_ui*>(ui_instance);
 
     if (!ui_ptr->current_lbm_status)
     {
@@ -565,7 +562,7 @@ PRIVATE bool _ui_callback_on_lbm_down(system_window           window,
                         n_control < n_controls;
                       ++n_control)
             {
-                _ui_control* control_ptr = NULL;
+                _ui_control* control_ptr = nullptr;
 
                 if (system_resizable_vector_get_element_at(ui_ptr->controls,
                                                            n_control,
@@ -582,7 +579,7 @@ PRIVATE bool _ui_callback_on_lbm_down(system_window           window,
                         continue;
                     }
 
-                    if (control_ptr->pfn_is_over_func_ptr != NULL &&
+                    if (control_ptr->pfn_is_over_func_ptr != nullptr &&
                         control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
                                                           click_xy) )
                     {
@@ -591,15 +588,15 @@ PRIVATE bool _ui_callback_on_lbm_down(system_window           window,
 
                         has_captured = true;
                         break;
-                    } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, click_xy) ) */
-                } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-            } /* foreach (control) */
+                    }
+                }
+            }
         }
         system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
                                        ACCESS_READ);
 
         ui_ptr->current_lbm_status = true;
-    } /* if (!ui_ptr->current_lbm_status) */
+    }
 
     return !has_captured;
 }
@@ -611,7 +608,7 @@ PRIVATE bool _ui_callback_on_lbm_up(system_window           window,
                                     system_window_vk_status key_status,
                                     void*                   ui_instance)
 {
-    _ui* ui_ptr = (_ui*) ui_instance;
+    _ui* ui_ptr = reinterpret_cast<_ui*>(ui_instance);
 
     if (ui_ptr->current_lbm_status)
     {
@@ -648,7 +645,7 @@ PRIVATE bool _ui_callback_on_lbm_up(system_window           window,
                         n_control < n_controls;
                       ++n_control)
             {
-                _ui_control* control_ptr = NULL;
+                _ui_control* control_ptr = nullptr;
 
                 if (system_resizable_vector_get_element_at(ui_ptr->controls,
                                                            n_control,
@@ -665,19 +662,19 @@ PRIVATE bool _ui_callback_on_lbm_up(system_window           window,
                         continue;
                     }
 
-                    if (control_ptr->pfn_on_lbm_up_func_ptr != NULL)
+                    if (control_ptr->pfn_on_lbm_up_func_ptr != nullptr)
                     {
                         control_ptr->pfn_on_lbm_up_func_ptr(control_ptr->internal,
                                                             click_xy);
                     }
-                } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-            } /* foreach (control) */
+                }
+            }
         }
         system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
                                        ACCESS_READ);
 
         ui_ptr->current_lbm_status = false;
-    } /* if (ui_ptr->current_lbm_status) */
+    }
 
     return true;
 }
@@ -691,7 +688,7 @@ PRIVATE bool _ui_callback_on_mouse_move(system_window           window,
 {
     int  window_position[2] = {0};
     int  window_size    [2] = {0};
-    _ui* ui_ptr             = (_ui*) ui_instance;
+    _ui* ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
     system_window_get_property(ui_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -720,7 +717,7 @@ PRIVATE bool _ui_callback_on_mouse_move(system_window           window,
                     n_control < n_controls;
                   ++n_control)
         {
-            _ui_control* control_ptr = NULL;
+            _ui_control* control_ptr =  /* if (ui_ptr->current_lbm_status) */;
 
             if (system_resizable_vector_get_element_at(ui_ptr->controls,
                                                        n_control,
@@ -737,8 +734,8 @@ PRIVATE bool _ui_callback_on_mouse_move(system_window           window,
                     continue;
                 }
 
-                if (control_ptr->pfn_is_over_func_ptr       != NULL           &&
-                    control_ptr->pfn_on_mouse_move_func_ptr != NULL           &&
+                if (control_ptr->pfn_is_over_func_ptr       != nullptr          &&
+                    control_ptr->pfn_on_mouse_move_func_ptr != nullptr          &&
                     control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
                                                       ui_ptr->current_mouse_xy))
                 {
@@ -746,15 +743,15 @@ PRIVATE bool _ui_callback_on_mouse_move(system_window           window,
                                                             ui_ptr->current_mouse_xy);
 
                     break;
-                } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, ui_ptr->current_mouse_xy) ) */
+                }
 
-                if (control_ptr->pfn_on_mouse_move_func_ptr != NULL)
+                if (control_ptr->pfn_on_mouse_move_func_ptr != nullptr)
                 {
                     control_ptr->pfn_on_mouse_move_func_ptr(control_ptr->internal,
                                                             ui_ptr->current_mouse_xy);
                 }
-            } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-        } /* foreach (control) */
+            }
+        }
     }
     system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
                                    ACCESS_READ);
@@ -773,7 +770,7 @@ PRIVATE bool _ui_callback_on_mouse_wheel(system_window           window,
     bool handled            = false;
     int  window_position[2] = {0};
     int  window_size    [2] = {0};
-    _ui* ui_ptr             = (_ui*) ui_instance;
+    _ui* ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
     system_window_get_property(ui_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -802,7 +799,7 @@ PRIVATE bool _ui_callback_on_mouse_wheel(system_window           window,
                     n_control < n_controls;
                   ++n_control)
         {
-            _ui_control* control_ptr = NULL;
+            _ui_control* control_ptr = nullptr;
 
             if (system_resizable_vector_get_element_at(ui_ptr->controls,
                                                        n_control,
@@ -819,8 +816,8 @@ PRIVATE bool _ui_callback_on_mouse_wheel(system_window           window,
                     continue;
                 }
 
-                if (control_ptr->pfn_is_over_func_ptr        != NULL              &&
-                    control_ptr->pfn_on_mouse_wheel_func_ptr != NULL              &&
+                if (control_ptr->pfn_is_over_func_ptr        != nullptr          &&
+                    control_ptr->pfn_on_mouse_wheel_func_ptr != nullptr          &&
                     control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
                                                       ui_ptr->current_mouse_xy) )
                 {
@@ -834,8 +831,8 @@ PRIVATE bool _ui_callback_on_mouse_wheel(system_window           window,
                     handled = true;
                     break;
                 }
-            } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-        } /* foreach (control) */
+            }
+        }
     }
     system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
                                    ACCESS_READ);
@@ -846,7 +843,7 @@ PRIVATE bool _ui_callback_on_mouse_wheel(system_window           window,
 /** TODO */
 PRIVATE void _ui_release(void* data_ptr)
 {
-    _ui_deinit( (_ui*) data_ptr);
+    _ui_deinit( reinterpret_cast<_ui*>(data_ptr) );
 }
 
 /** Please see header for specification */
@@ -857,13 +854,14 @@ PUBLIC EMERALD_API ui_control ui_add_button(ui                        ui_instanc
                                             void*                     fire_user_arg)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
-    _ui*         ui_ptr             = (_ui*) ui_instance;
+    _ui*         ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != nullptr,
                        "Out of memory");
-    if (new_ui_control_ptr != NULL)
+
+    if (new_ui_control_ptr != nullptr)
     {
-        void* new_internal   = NULL;
+        void* new_internal   = nullptr;
         int   window_size[2] = {0};
         float x2y2       [2] = {0};
 
@@ -894,8 +892,8 @@ PUBLIC EMERALD_API ui_control ui_add_button(ui                        ui_instanc
         new_ui_control_ptr->pfn_is_over_func_ptr        = ui_button_is_over;
         new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = ui_button_on_lbm_down;
         new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = ui_button_on_lbm_up;
-        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = NULL;
-        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
+        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = nullptr;
+        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = nullptr;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ui_button_set_property;
 
         system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
@@ -920,14 +918,14 @@ PUBLIC EMERALD_API ui_control ui_add_checkbox(ui                        ui_insta
                                               void*                     fire_user_arg)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
-    _ui*         ui_ptr             = (_ui*) ui_instance;
+    _ui*         ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != nullptr,
                        "Out of memory");
 
-    if (new_ui_control_ptr != NULL)
+    if (new_ui_control_ptr != nullptr)
     {
-        void* new_internal   = NULL;
+        void* new_internal   = nullptr;
         int   window_size[2] = {0};
         float x2y2       [2] = {0};
 
@@ -958,8 +956,8 @@ PUBLIC EMERALD_API ui_control ui_add_checkbox(ui                        ui_insta
         new_ui_control_ptr->pfn_is_over_func_ptr        = ui_checkbox_is_over;
         new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = ui_checkbox_on_lbm_down;
         new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = ui_checkbox_on_lbm_up;
-        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = NULL;
-        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
+        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = nullptr;
+        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = nullptr;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ui_checkbox_set_property;
 
         system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
@@ -987,13 +985,14 @@ PUBLIC EMERALD_API ui_control ui_add_dropdown(ui                         ui_inst
                                               void*                      fire_user_arg)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
-    _ui*         ui_ptr             = (_ui*) ui_instance;
+    _ui*         ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != nullptr,
                        "Out of memory");
-    if (new_ui_control_ptr != NULL)
+
+    if (new_ui_control_ptr != nullptr)
     {
-        void* new_internal   = NULL;
+        void* new_internal   = nullptr;
         int   window_size[2] = {0};
         float x2y2       [2] = {0};
 
@@ -1020,7 +1019,7 @@ PUBLIC EMERALD_API ui_control ui_add_dropdown(ui                         ui_inst
 
         new_ui_control_ptr->control_type                = UI_CONTROL_TYPE_DROPDOWN;
         new_ui_control_ptr->internal                    = new_internal;
-        new_ui_control_ptr->owner_ptr                   = (_ui*) ui_instance;
+        new_ui_control_ptr->owner_ptr                   = reinterpret_cast<_ui*>(ui_instance);
         new_ui_control_ptr->pfn_deinit_func_ptr         = ui_dropdown_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ui_dropdown_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ui_dropdown_get_property;
@@ -1041,7 +1040,7 @@ PUBLIC EMERALD_API ui_control ui_add_dropdown(ui                         ui_inst
                                        ACCESS_WRITE);
     }
 
-    return (ui_control) new_ui_control_ptr;
+    return reinterpret_cast<ui_control>(new_ui_control_ptr);
 }
 
 /** Please see header for specification */
@@ -1049,13 +1048,14 @@ PUBLIC EMERALD_API ui_control ui_add_frame(ui           ui_instance,
                                            const float* x1y1x2y2)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
-    _ui*         ui_ptr             = (_ui*) ui_instance;
+    _ui*         ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != nullptr,
                        "Out of memory");
-    if (new_ui_control_ptr != NULL)
+
+    if (new_ui_control_ptr != nullptr)
     {
-        void* new_internal  = NULL;
+        void* new_internal  = nullptr;
 
         new_internal = ui_frame_init(ui_instance,
                                      x1y1x2y2);
@@ -1066,15 +1066,15 @@ PUBLIC EMERALD_API ui_control ui_add_frame(ui           ui_instance,
 
         new_ui_control_ptr->control_type                = UI_CONTROL_TYPE_FRAME;
         new_ui_control_ptr->internal                    = new_internal;
-        new_ui_control_ptr->owner_ptr                   = (_ui*) ui_instance;
+        new_ui_control_ptr->owner_ptr                   = reinterpret_cast<_ui*>(ui_instance);
         new_ui_control_ptr->pfn_deinit_func_ptr         = ui_frame_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ui_frame_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ui_frame_get_property;
-        new_ui_control_ptr->pfn_is_over_func_ptr        = NULL;
-        new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = NULL;
-        new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = NULL;
-        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = NULL;
-        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
+        new_ui_control_ptr->pfn_is_over_func_ptr        = nullptr;
+        new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = nullptr;
+        new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = nullptr;
+        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = nullptr;
+        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = nullptr;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ui_frame_set_property;
 
         system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
@@ -1096,13 +1096,14 @@ PUBLIC EMERALD_API ui_control ui_add_label(ui                        ui_instance
                                            const float*              x1y1)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
-    _ui*         ui_ptr             = (_ui*) ui_instance;
+    _ui*         ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != nullptr,
                        "Out of memory");
-    if (new_ui_control_ptr != NULL)
+
+    if (new_ui_control_ptr != nullptr)
     {
-        void* new_internal  = NULL;
+        void* new_internal = nullptr;
 
         new_internal = ui_label_init(ui_instance,
                                      ui_ptr->text_renderer,
@@ -1115,15 +1116,15 @@ PUBLIC EMERALD_API ui_control ui_add_label(ui                        ui_instance
 
         new_ui_control_ptr->control_type                = UI_CONTROL_TYPE_LABEL;
         new_ui_control_ptr->internal                    = new_internal;
-        new_ui_control_ptr->owner_ptr                   = (_ui*) ui_instance;
+        new_ui_control_ptr->owner_ptr                   = reinterpret_cast<_ui*>(ui_instance);
         new_ui_control_ptr->pfn_deinit_func_ptr         = ui_label_deinit;
-        new_ui_control_ptr->pfn_draw_func_ptr           = NULL;
+        new_ui_control_ptr->pfn_draw_func_ptr           = nullptr;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ui_label_get_property;
-        new_ui_control_ptr->pfn_is_over_func_ptr        = NULL;
-        new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = NULL;
-        new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = NULL;
-        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = NULL;
-        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
+        new_ui_control_ptr->pfn_is_over_func_ptr        = nullptr;
+        new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = nullptr;
+        new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = nullptr;
+        new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = nullptr;
+        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = nullptr;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ui_label_set_property;
 
         system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
@@ -1152,13 +1153,14 @@ PUBLIC EMERALD_API ui_control ui_add_scrollbar(ui                          ui_in
                                                void*                       set_current_value_ptr_user_arg)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
-    _ui*         ui_ptr             = (_ui*) ui_instance;
+    _ui*         ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != nullptr,
                        "Out of memory");
-    if (new_ui_control_ptr != NULL)
+
+    if (new_ui_control_ptr != nullptr)
     {
-        void* new_internal   = NULL;
+        void* new_internal   = nullptr;
         int   window_size[2] = {0};
         float x2y2       [2] = {0};
 
@@ -1188,7 +1190,7 @@ PUBLIC EMERALD_API ui_control ui_add_scrollbar(ui                          ui_in
 
         new_ui_control_ptr->control_type                = UI_CONTROL_TYPE_SCROLLBAR;
         new_ui_control_ptr->internal                    = new_internal;
-        new_ui_control_ptr->owner_ptr                   = (_ui*) ui_instance;
+        new_ui_control_ptr->owner_ptr                   = reinterpret_cast<_ui*>(ui_instance);
         new_ui_control_ptr->pfn_deinit_func_ptr         = ui_scrollbar_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ui_scrollbar_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ui_scrollbar_get_property;
@@ -1196,7 +1198,7 @@ PUBLIC EMERALD_API ui_control ui_add_scrollbar(ui                          ui_in
         new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = ui_scrollbar_on_lbm_down;
         new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = ui_scrollbar_on_lbm_up;
         new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = ui_scrollbar_on_mouse_move;
-        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
+        new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = nullptr;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ui_scrollbar_set_property;
 
         system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
@@ -1221,13 +1223,14 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
                                                      ui_texture_preview_type   preview_type)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
-    _ui*         ui_ptr             = (_ui*) ui_instance;
+    _ui*         ui_ptr             = reinterpret_cast<_ui*>(ui_instance);
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != nullptr,
                        "Out of memory");
-    if (new_ui_control_ptr != NULL)
+
+    if (new_ui_control_ptr != nullptr)
     {
-        void* new_internal  = NULL;
+        void* new_internal  = nullptr;
 
         new_internal = ui_texture_preview_init(ui_instance,
                                                ui_ptr->text_renderer,
@@ -1243,7 +1246,7 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
 
         new_ui_control_ptr->control_type              = UI_CONTROL_TYPE_TEXTURE_PREVIEW;
         new_ui_control_ptr->internal                  = new_internal;
-        new_ui_control_ptr->owner_ptr                 = (_ui*) ui_instance;
+        new_ui_control_ptr->owner_ptr                 = reinterpret_cast<_ui*>(ui_instance);
         new_ui_control_ptr->pfn_deinit_func_ptr       = ui_texture_preview_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr         = ui_texture_preview_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr = ui_texture_preview_get_property;
@@ -1268,10 +1271,10 @@ PUBLIC EMERALD_API ui ui_create(varia_text_renderer       text_renderer,
 {
     _ui* ui_ptr = new (std::nothrow) _ui;
 
-    ASSERT_ALWAYS_SYNC(ui_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(ui_ptr != nullptr,
                        "Out of memory");
 
-    if (ui_ptr != NULL)
+    if (ui_ptr != nullptr)
     {
         _ui_init(ui_ptr,
                  name,
@@ -1290,9 +1293,9 @@ PUBLIC EMERALD_API ui ui_create(varia_text_renderer       text_renderer,
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ui_draw(ui ui_instance)
 {
-    _ui*                              ui_ptr      = (_ui*) ui_instance;
+    _ui*                              ui_ptr      = reinterpret_cast<_ui*>(ui_instance);
     ogl_context                       context     = ogl_context_get_current_context();
-    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    const ogl_context_gl_entrypoints* entrypoints = nullptr;
     uint32_t                          n_controls  = 0;
     GLuint                            vao_id      = 0;
 
@@ -1311,7 +1314,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ui_draw(ui ui_instance)
                 n_control < n_controls;
               ++n_control)
     {
-        _ui_control* ui_control_ptr = NULL;
+        _ui_control* ui_control_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(ui_ptr->controls,
                                                    n_control,
@@ -1328,12 +1331,12 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ui_draw(ui ui_instance)
                 continue;
             }
 
-            if (ui_control_ptr->pfn_draw_func_ptr != NULL)
+            if (ui_control_ptr->pfn_draw_func_ptr != nullptr)
             {
                 ui_control_ptr->pfn_draw_func_ptr(ui_control_ptr->internal);
             }
-        } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &ui_control_ptr) */
-    } /* for (size_t n_control = 0; n_control < n_controls; ++n_control) */
+        }
+    }
 }
 
 /** Please see header for speciication */
@@ -1343,7 +1346,7 @@ PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
 {
     _ui_control* ui_control_ptr = (_ui_control*) control;
 
-    ASSERT_DEBUG_SYNC(ui_control_ptr->pfn_get_property_func_ptr != NULL,
+    ASSERT_DEBUG_SYNC(ui_control_ptr->pfn_get_property_func_ptr != nullptr,
                       "Requested user control does not support property getters");
 
     if (property == UI_CONTROL_PROPERTY_GENERAL_INDEX)
@@ -1356,15 +1359,15 @@ PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
         ASSERT_DEBUG_SYNC(result != ITEM_NOT_FOUND,
                           "Requested control was not found.");
 
-        *(uint32_t*) out_result = result;
+        *reinterpret_cast<uint32_t*>(out_result) = result;
     }
     else
     if (property == UI_CONTROL_PROPERTY_GENERAL_TYPE)
     {
-        *(_ui_control_type*) out_result = ui_control_ptr->control_type;
+        *reinterpret_cast<_ui_control_type*>(out_result) = ui_control_ptr->control_type;
     }
     else
-    if (ui_control_ptr->pfn_get_property_func_ptr != NULL)
+    if (ui_control_ptr->pfn_get_property_func_ptr != nullptr)
     {
         /* UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED and
          * UI_CONTROL_PROPERTY_GENERLA_VISIBLE are handled
@@ -1378,21 +1381,21 @@ PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
 /** Please see header for specification */
 PUBLIC ral_context ui_get_context(ui ui_instance)
 {
-    return varia_text_renderer_get_context( ((_ui*) ui_instance)->text_renderer);
+    return varia_text_renderer_get_context( (reinterpret_cast<_ui*>(ui_instance) )->text_renderer);
 }
 
 /** Please see header for specification */
 PUBLIC ral_program ui_get_registered_program(ui                        ui_instance,
                                              system_hashed_ansi_string name)
 {
-    ral_program result = NULL;
-    _ui*        ui_ptr = (_ui*) ui_instance;
+    ral_program result = nullptr;
+    _ui*        ui_ptr = reinterpret_cast<_ui*>(ui_instance);
 
     system_hash64map_get(ui_ptr->registered_ui_control_programs,
                          system_hashed_ansi_string_get_hash(name),
                         &result);
 
-    if (result != NULL)
+    if (result != nullptr)
     {
         ral_context_retain_object(varia_text_renderer_get_context(ui_ptr->text_renderer),
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -1406,7 +1409,7 @@ PUBLIC ral_program ui_get_registered_program(ui                        ui_instan
 PUBLIC EMERALD_API void ui_lock(ui                                  ui_instance,
                                 system_read_write_mutex_access_type access_type)
 {
-    system_read_write_mutex_lock( ((_ui*) ui_instance)->controls_rw_mutex,
+    system_read_write_mutex_lock( (reinterpret_cast<_ui*>(ui_instance))->controls_rw_mutex,
                                   access_type);
 }
 
@@ -1416,8 +1419,8 @@ PUBLIC void ui_receive_control_callback(ui         ui_instance,
                                         int        callback_id,
                                         void*      callback_user_arg)
 {
-    system_resizable_vector callback_vector = NULL;
-    _ui*                    ui_ptr          = (_ui*) ui_instance;
+    system_resizable_vector callback_vector = nullptr;
+    _ui*                    ui_ptr          = reinterpret_cast<_ui*>(ui_instance);
 
     /* Check if there is any callback vector associated with the control */
     if (system_hash64map_get(ui_ptr->registered_ui_control_callbacks,
@@ -1434,7 +1437,7 @@ PUBLIC void ui_receive_control_callback(ui         ui_instance,
                           n_callback < n_callbacks;
                         ++n_callback)
         {
-            _ui_callback* callback_ptr = NULL;
+            _ui_callback* callback_ptr = nullptr;
 
             if (system_resizable_vector_get_element_at(callback_vector,
                                                        n_callback,
@@ -1448,7 +1451,7 @@ PUBLIC void ui_receive_control_callback(ui         ui_instance,
                                                     callback_user_arg);
                 }
             }
-        } /* for (all callbacks) */
+        }
     }
 }
 
@@ -1459,9 +1462,9 @@ PUBLIC EMERALD_API void ui_register_control_callback(ui                        u
                                                      PFNUIEVENTCALLBACKPROCPTR callback_proc_ptr,
                                                      void*                     callback_proc_user_arg)
 {
-    system_resizable_vector callback_vector      = NULL;
+    system_resizable_vector callback_vector      = nullptr;
     void*                   internal_control_ptr = _ui_get_internal_control_ptr(control);
-    _ui*                    ui_ptr               = (_ui*) ui;
+    _ui*                    ui_ptr               = reinterpret_cast<_ui*>(ui);
 
     /* If there's no callback vector associated with the control, spawn one now */
     if (!system_hash64map_get(ui_ptr->registered_ui_control_callbacks,
@@ -1470,22 +1473,23 @@ PUBLIC EMERALD_API void ui_register_control_callback(ui                        u
     {
         callback_vector = system_resizable_vector_create(4 /* capacity */);
 
-        ASSERT_ALWAYS_SYNC(callback_vector != NULL,
+        ASSERT_ALWAYS_SYNC(callback_vector != nullptr,
                            "Could not create a callback vector");
 
         system_hash64map_insert(ui_ptr->registered_ui_control_callbacks,
                                 (system_hash64) internal_control_ptr,
                                 callback_vector,
-                                NULL,  /* on_remove_callback_proc */
-                                NULL); /* on_remove_callback_proc_user_arg */
+                                nullptr,  /* on_remove_callback_proc */
+                                nullptr); /* on_remove_callback_proc_user_arg */
     }
 
     /* Spawn the callback descriptor */
     _ui_callback* new_callback_ptr = new (std::nothrow) _ui_callback;
 
-    ASSERT_ALWAYS_SYNC(new_callback_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_callback_ptr != nullptr,
                        "Out of memory");
-    if (new_callback_ptr != NULL)
+
+    if (new_callback_ptr != nullptr)
     {
         new_callback_ptr->callback_id            = callback_id;
         new_callback_ptr->callback_proc_ptr      = callback_proc_ptr;
@@ -1504,7 +1508,7 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
 {
     const system_hash64 program_name_hash = system_hashed_ansi_string_get_hash(program_name);
     bool                result            = false;
-    _ui*                ui_ptr            = (_ui*) ui_instance;
+    _ui*                ui_ptr            = reinterpret_cast<_ui*>(ui_instance);
 
     if (!system_hash64map_contains(ui_ptr->registered_ui_control_programs,
                                    program_name_hash) )
@@ -1512,15 +1516,15 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
         system_hash64map_insert(ui_ptr->registered_ui_control_programs,
                                 program_name_hash,
                                 program,
-                                NULL,
-                                NULL);
+                                nullptr,
+                                nullptr);
 
         ral_context_retain_object(varia_text_renderer_get_context(ui_ptr->text_renderer),
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                   program);
 
         result = true;
-    } /* if (!system_hash64map_contains(ui_ptr->registered_ui_control_programs, program_name_hash) ) */
+    }
     else
     {
         LOG_ERROR("UI program [%s] will not be registered - already stored",
@@ -1534,7 +1538,7 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
 PUBLIC EMERALD_API void ui_reposition_control(ui_control   control,
                                               unsigned int new_control_index)
 {
-    _ui_control* control_ptr = (_ui_control*) control;
+    _ui_control* control_ptr = reinterpret_cast<_ui_control*>(control);
     unsigned int n_controls  = 0;
     _ui*         ui_ptr      = control_ptr->owner_ptr;
 
@@ -1583,7 +1587,7 @@ PUBLIC EMERALD_API void ui_reposition_control(ui_control   control,
             }
             system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
                                            ACCESS_WRITE);
-        } /* if (control_index != new_control_index) */
+        }
     }
 }
 
@@ -1592,17 +1596,17 @@ PUBLIC EMERALD_API void ui_set_control_property(ui_control          control,
                                                 ui_control_property property,
                                                 const void*         data)
 {
-    _ui_control* ui_control_ptr = (_ui_control*) control;
+    _ui_control* ui_control_ptr = reinterpret_cast<_ui_control*>(control);
 
-    if (ui_control_ptr == NULL)
+    if (ui_control_ptr == nullptr)
     {
         return;
     }
 
-    ASSERT_DEBUG_SYNC(ui_control_ptr->pfn_set_property_func_ptr != NULL,
+    ASSERT_DEBUG_SYNC(ui_control_ptr->pfn_set_property_func_ptr != nullptr,
                       "Requested user control does not support property setters");
 
-    if (ui_control_ptr->pfn_set_property_func_ptr != NULL)
+    if (ui_control_ptr->pfn_set_property_func_ptr != nullptr)
     {
         ui_control_ptr->pfn_set_property_func_ptr(ui_control_ptr->internal,
                                                   property,
@@ -1614,6 +1618,6 @@ PUBLIC EMERALD_API void ui_set_control_property(ui_control          control,
 PUBLIC EMERALD_API void ui_unlock(ui                                  ui_instance,
                                   system_read_write_mutex_access_type access_type)
 {
-    system_read_write_mutex_unlock( ((_ui*) ui_instance)->controls_rw_mutex,
+    system_read_write_mutex_unlock( (reinterpret_cast<_ui*>(ui_instance) )->controls_rw_mutex,
                                     access_type);
 }

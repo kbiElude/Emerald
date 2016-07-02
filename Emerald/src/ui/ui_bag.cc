@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -30,8 +30,8 @@ typedef struct _ui_bag
     explicit _ui_bag(ui           in_ui,
                      const float* in_x1y1)
     {
-        controls    = NULL;
-        frame       = NULL;
+        controls    = nullptr;
+        frame       = nullptr;
         x1y1[0]     = in_x1y1[0];
         x1y1[1]     = in_x1y1[1];
         ui_instance = in_ui;
@@ -39,11 +39,11 @@ typedef struct _ui_bag
 
     ~_ui_bag()
     {
-        if (controls != NULL)
+        if (controls != nullptr)
         {
             system_resizable_vector_release(controls);
 
-            controls = NULL;
+            controls = nullptr;
         }
     }
 } _ui_label;
@@ -68,7 +68,7 @@ PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr)
 
     /* Determine deltas */
     ral_context   context              = ui_get_context(bag_ptr->ui_instance);
-    system_window window               = NULL;
+    system_window window               = nullptr;
     int           window_dimensions[2] = {0};
 
     ral_context_get_property  (context,
@@ -90,7 +90,7 @@ PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr)
                       n_control < n_controls;
                     ++n_control)
     {
-        ui_control control         = NULL;
+        ui_control control         = nullptr;
         float      control_width   = 0.0f;
         float      control_x1y1[2] = {0.0f};
 
@@ -135,7 +135,7 @@ PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr)
                       n_control < n_controls;
                     ++n_control)
     {
-        ui_control control         = NULL;
+        ui_control control         = nullptr;
         float      control_height  = 0.0f;
         bool       control_visible = false;
 
@@ -160,8 +160,8 @@ PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr)
                                     current_x1y1);
 
             current_x1y1[1] += control_height;
-        } /* if (control_visible) */
-    } /* for (all bag-controlled controls) */
+        }
+    }
 
     current_x1y1[1] += v_delta;
 
@@ -181,7 +181,7 @@ PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr)
                       n_control < n_controls;
                     ++n_control)
     {
-        ui_control control         = NULL;
+        ui_control control         = nullptr;
         float      control_width   = 0.0f;
         float      control_x1y1[2] = {0.0f};
 
@@ -223,7 +223,7 @@ PRIVATE void _ui_on_controls_changed_callback(ui_control control,
                                               void*      callback_data)
 {
     /* Reposition the controls and resize the frame */
-    _ui_bag_position_controls( (_ui_bag*) callback_subscriber_data);
+    _ui_bag_position_controls( reinterpret_cast<_ui_bag*>(callback_subscriber_data) );
 }
 
 /* Please see header for spec */
@@ -235,13 +235,13 @@ PUBLIC EMERALD_API ui_bag ui_bag_create(ui                ui_instance,
     _ui_bag* new_bag_ptr = new (std::nothrow) _ui_bag(ui_instance,
                                                       x1y1);
 
-    ASSERT_DEBUG_SYNC(new_bag_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_bag_ptr != nullptr,
                       "Out of memory");
 
-    if (new_bag_ptr != NULL)
+    if (new_bag_ptr != nullptr)
     {
         /* Spawn the controls vector */
-        ASSERT_DEBUG_SYNC(new_bag_ptr->controls == NULL,
+        ASSERT_DEBUG_SYNC(new_bag_ptr->controls == nullptr,
                           "_ui_bag spawned a controls vector");
 
         new_bag_ptr->controls = system_resizable_vector_create(n_controls);
@@ -251,13 +251,13 @@ PUBLIC EMERALD_API ui_bag ui_bag_create(ui                ui_instance,
                           n_control < n_controls;
                         ++n_control)
         {
-            ASSERT_DEBUG_SYNC(controls[n_control] != NULL,
+            ASSERT_DEBUG_SYNC(controls[n_control] != nullptr,
                               "Input control at index [%d] is NULL.",
                               n_control);
 
             system_resizable_vector_push(new_bag_ptr->controls,
                                          controls[n_control]);
-        } /* for (all controls) */
+        }
 
         /* Spawn a new frame control */
         new_bag_ptr->frame = ui_add_frame(ui_instance,
@@ -282,7 +282,7 @@ PUBLIC EMERALD_API ui_bag ui_bag_create(ui                ui_instance,
             {
                 deepest_control_index = temp_index;
             }
-        } /* for (all controls) */
+        }
 
         /* Register for call-backs from dropdown controls. If we ever receive the
          * call-back, we need to re-position the controls */
@@ -318,7 +318,7 @@ PUBLIC EMERALD_API ui_bag ui_bag_create(ui                ui_instance,
                                              _ui_on_controls_changed_callback,
                                              new_bag_ptr);
             }
-        } /* for (all controls) */
+        }
 
         /* Insert the frame underneath */
         ui_reposition_control(new_bag_ptr->frame,
@@ -328,21 +328,21 @@ PUBLIC EMERALD_API ui_bag ui_bag_create(ui                ui_instance,
          * also resize the underlying frame.
          */
         _ui_bag_position_controls(new_bag_ptr);
-    } /* if (new_bag_ptr != NULL) */
+    }
 
     /* All done */
-    return (ui_bag) new_bag_ptr;
+    return reinterpret_cast<ui_bag>(new_bag_ptr);
 }
 
 /* Please see header for spec */
 PUBLIC EMERALD_API void ui_bag_release(ui_bag bag)
 {
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(bag != NULL,
+    ASSERT_DEBUG_SYNC(bag != nullptr,
                       "Input bag argument is NULL");
 
     /* Release the resource */
-    delete (_ui_bag*) bag;
+    delete reinterpret_cast<_ui_bag*>(bag);
 
-    bag = NULL;
+    bag = nullptr;
 }

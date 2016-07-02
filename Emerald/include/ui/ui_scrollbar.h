@@ -9,7 +9,6 @@
 #ifndef UI_SCROLLBAR_H
 #define UI_SCROLLBAR_H
 
-#include "ogl/ogl_types.h"
 #include "ui/ui_types.h"
 
 

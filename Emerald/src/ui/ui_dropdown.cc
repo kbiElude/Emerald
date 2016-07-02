@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -57,9 +57,9 @@ typedef struct _ui_dropdown_fire_event
 
     _ui_dropdown_fire_event()
     {
-        event_user_arg     = NULL;
-        fire_proc_user_arg = NULL;
-        pfn_fire_proc_ptr  = NULL;
+        event_user_arg     = nullptr;
+        fire_proc_user_arg = nullptr;
+        pfn_fire_proc_ptr  = nullptr;
     }
 } _ui_dropdown_fire_event;
 
@@ -77,10 +77,10 @@ typedef struct _ui_dropdown_entry
     {
         base_x    = 0;
         base_y    = 0;
-        name      = NULL;
+        name      = nullptr;
         string_id = -1;
         text_y    = 0;
-        user_arg  = NULL;
+        user_arg  = nullptr;
     }
 } _ui_dropdown_entry;
 
@@ -179,160 +179,168 @@ typedef struct
 } _ui_dropdown;
 
 /** Internal variables */
-static const char* ui_dropdown_bg_fragment_shader_body = "#version 430 core\n"
-                                                         "\n"
-                                                         "in  vec2 uv;\n"
-                                                         "out vec3 result;\n"
-                                                         "\n"
-                                                         "uniform dataFS\n"
-                                                         "{\n"
-                                                         "    vec2 border_width;\n"
-                                                         "    vec2 button_start_uv;\n"
-                                                         "    vec2 highlighted_v1v2;\n"
-                                                         "    vec2 selected_v1v2;\n"
-                                                         "};\n"
-                                                         "\n"
-                                                         "void main()\n"
-                                                         "{\n"
-                                                         "    result = vec3(mix(vec3(0.12), vec3(0.22), uv.yyy) );\n"
-                                                         /* Scroll area? */
-                                                         "    if (uv.x > button_start_uv.x)\n"
-                                                         "    {\n"
-                                                         "        result *= 0.8;\n"
-                                                         "    }\n"
-                                                         "    if (uv.x <= button_start_uv.x)\n"
-                                                         "    {\n"
-                                                         /* Highlighted entry? */
-                                                         "        if (uv.y >= highlighted_v1v2.x &&\n"
-                                                         "            uv.y <= highlighted_v1v2.y)\n"
-                                                         "        {\n"
-                                                         "            result *= mix(vec3(0.09, 0.64, 0.8125) * vec3(1.25),\n"
-                                                         "                          vec3(0.09, 0.64, 0.8125) * vec3(2.125),\n"
-                                                         "                          vec3((uv.y - highlighted_v1v2.x) / (highlighted_v1v2.y - highlighted_v1v2.x)) );\n"
-                                                         "        }\n"
-                                                         "        else\n"
-                                                         /* Selected entry? */
-                                                         "        if (uv.y >= selected_v1v2.x   &&\n"
-                                                         "            uv.y <= selected_v1v2.y)\n"
-                                                         "        {\n"
-                                                         "            result *= mix(vec3(0.09, 0.64, 0.8125) * vec3(2.5),\n"
-                                                         "                          vec3(0.09, 0.64, 0.8125) * vec3(4.25),\n"
-                                                         "                          vec3((uv.y - selected_v1v2.x) / (selected_v1v2.y - selected_v1v2.x)) );\n"
-                                                         "        }\n"
-                                                         "    }\n"
-                                                         /* Border? */
-                                                         "    if (uv.x < border_width[0]         ||\n"
-                                                         "        uv.x > (1.0 - border_width[0]) ||\n"
-                                                         "        uv.y < border_width[1]         ||\n"
-                                                         "        uv.y > (1.0 - border_width[1]) )\n"
-                                                         "    {\n"
-                                                         "        result = vec3(0.42f, 0.41f, 0.41f);\n"
-                                                         "    }\n"
-                                                         "}\n";
+static const char* ui_dropdown_bg_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in  vec2 uv;\n"
+    "out vec3 result;\n"
+    "\n"
+    "uniform dataFS\n"
+    "{\n"
+    "    vec2 border_width;\n"
+    "    vec2 button_start_uv;\n"
+    "    vec2 highlighted_v1v2;\n"
+    "    vec2 selected_v1v2;\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    result = vec3(mix(vec3(0.12), vec3(0.22), uv.yyy) );\n"
+    /* Scroll area? */
+    "    if (uv.x > button_start_uv.x)\n"
+    "    {\n"
+    "        result *= 0.8;\n"
+    "    }\n"
+    "    if (uv.x <= button_start_uv.x)\n"
+    "    {\n"
+    /* Highlighted entry? */
+    "        if (uv.y >= highlighted_v1v2.x &&\n"
+    "            uv.y <= highlighted_v1v2.y)\n"
+    "        {\n"
+    "            result *= mix(vec3(0.09, 0.64, 0.8125) * vec3(1.25),\n"
+    "                          vec3(0.09, 0.64, 0.8125) * vec3(2.125),\n"
+    "                          vec3((uv.y - highlighted_v1v2.x) / (highlighted_v1v2.y - highlighted_v1v2.x)) );\n"
+    "        }\n"
+    "        else\n"
+    /* Selected entry? */
+    "        if (uv.y >= selected_v1v2.x   &&\n"
+    "            uv.y <= selected_v1v2.y)\n"
+    "        {\n"
+    "            result *= mix(vec3(0.09, 0.64, 0.8125) * vec3(2.5),\n"
+    "                          vec3(0.09, 0.64, 0.8125) * vec3(4.25),\n"
+    "                          vec3((uv.y - selected_v1v2.x) / (selected_v1v2.y - selected_v1v2.x)) );\n"
+    "        }\n"
+    "    }\n"
+    /* Border? */
+    "    if (uv.x < border_width[0]         ||\n"
+    "        uv.x > (1.0 - border_width[0]) ||\n"
+    "        uv.y < border_width[1]         ||\n"
+    "        uv.y > (1.0 - border_width[1]) )\n"
+    "    {\n"
+    "        result = vec3(0.42f, 0.41f, 0.41f);\n"
+    "    }\n"
+    "}\n";
 
-static const char* ui_dropdown_fragment_shader_body    = "#version 430 core\n"
-                                                         "\n"
-                                                         "in  vec2 uv;\n"
-                                                         "out vec3 result;\n"
-                                                         "\n"
-                                                         "uniform dataFS\n"
-                                                         "{\n"
-                                                         "    float brightness;\n"
-                                                         "    vec2  border_width;\n"
-                                                         "    float button_start_u;\n"
-                                                         "    vec4  stop_data[4];\n"
-                                                         "};\n"
-                                                         "\n"
-                                                         "void main()\n"
-                                                         "{\n"
-                                                         "    if (uv.y >= stop_data[0].x && uv.y <= stop_data[1].x || uv.x >= 0.85)\n"
-                                                         "        result = mix(stop_data[0].yzw, stop_data[1].yzw, (uv.y - stop_data[0].x) / (stop_data[1].x - stop_data[0].x));\n"
-                                                         "    else\n"
-                                                         "    if (uv.y >= stop_data[1].x && uv.y <= stop_data[2].x)\n"
-                                                         "        result = mix(stop_data[1].yzw, stop_data[2].yzw, (uv.y - stop_data[1].x) / (stop_data[2].x - stop_data[1].x));\n"
-                                                         "    else\n"
-                                                         "        result = mix(stop_data[2].yzw, stop_data[3].yzw, (uv.y - stop_data[2].x) / (stop_data[3].x - stop_data[2].x));\n"
-                                                         "\n" 
-                                                         "    if (uv.x >= button_start_u)\n"
-                                                         "        result *= brightness + smoothstep(0.0, 1.0, (uv.x - button_start_u) * 5.0);\n"
-                                                         /* Border? */
-                                                         "    if (uv.x < border_width[0]         ||\n"
-                                                         "        uv.x > (1.0 - border_width[0]) ||\n"
-                                                         "        uv.y < border_width[1]         ||\n"
-                                                         "        uv.y > (1.0 - border_width[1]) )\n"
-                                                         "    {\n"
-                                                         "        result = vec3(0.42f, 0.41f, 0.41f);\n"
-                                                         "    }\n"
-                                                         "}\n";
+static const char* ui_dropdown_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in  vec2 uv;\n"
+    "out vec3 result;\n"
+    "\n"
+    "uniform dataFS\n"
+    "{\n"
+    "    float brightness;\n"
+    "    vec2  border_width;\n"
+    "    float button_start_u;\n"
+    "    vec4  stop_data[4];\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    if (uv.y >= stop_data[0].x && uv.y <= stop_data[1].x || uv.x >= 0.85)\n"
+    "        result = mix(stop_data[0].yzw, stop_data[1].yzw, (uv.y - stop_data[0].x) / (stop_data[1].x - stop_data[0].x));\n"
+    "    else\n"
+    "    if (uv.y >= stop_data[1].x && uv.y <= stop_data[2].x)\n"
+    "        result = mix(stop_data[1].yzw, stop_data[2].yzw, (uv.y - stop_data[1].x) / (stop_data[2].x - stop_data[1].x));\n"
+    "    else\n"
+    "        result = mix(stop_data[2].yzw, stop_data[3].yzw, (uv.y - stop_data[2].x) / (stop_data[3].x - stop_data[2].x));\n"
+    "\n" 
+    "    if (uv.x >= button_start_u)\n"
+    "        result *= brightness + smoothstep(0.0, 1.0, (uv.x - button_start_u) * 5.0);\n"
+    /* Border? */
+    "    if (uv.x < border_width[0]         ||\n"
+    "        uv.x > (1.0 - border_width[0]) ||\n"
+    "        uv.y < border_width[1]         ||\n"
+    "        uv.y > (1.0 - border_width[1]) )\n"
+    "    {\n"
+    "        result = vec3(0.42f, 0.41f, 0.41f);\n"
+    "    }\n"
+    "}\n";
 
-static const char* ui_dropdown_label_bg_fragment_shader_body  = "#version 430 core\n"
-                                                                "\n"
-                                                                "out vec4 result;\n"
-                                                                "\n"
-                                                                "void main()\n"
-                                                                "{\n"
-                                                                "    result = vec4(0.1f, 0.1f, 0.2f, 0.8f);\n"
-                                                                "}\n";
+static const char* ui_dropdown_label_bg_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    result = vec4(0.1f, 0.1f, 0.2f, 0.8f);\n"
+    "}\n";
 
-static const char* ui_dropdown_separator_fragment_shader_body = "#version 430 core\n"
-                                                                "\n"
-                                                                "out vec3 result;\n"
-                                                                "\n"
-                                                                "void main()\n"
-                                                                "{\n"
-                                                                "    result = vec3(0.42f, 0.41f, 0.41f);\n"
-                                                                "}";
-static const char* ui_dropdown_separator_vertex_shader_body   = "#version 430 core\n"
-                                                                "\n"
-                                                                "uniform dataVS\n"
-                                                                "{\n"
-                                                                "    vec3 x1_x2_y;\n"
-                                                                "};\n"
-                                                                "\n"
-                                                                "void main()\n"
-                                                                "{\n"
-                                                                "    int   end = gl_VertexID % 2;\n"
-                                                                "    float x;\n"
-                                                                "\n"
-                                                                "    if (end == 0) x = x1_x2_y.x;\n"
-                                                                "    else          x = x1_x2_y.y;\n"
-                                                                "\n"
-                                                                "    gl_Position = vec4(x, x1_x2_y.z, 0.0, 1.0);\n"
-                                                                "}";
+static const char* ui_dropdown_separator_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "out vec3 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    result = vec3(0.42f, 0.41f, 0.41f);\n"
+    "}";
 
-static const char* ui_dropdown_slider_fragment_shader_body    = "#version 430 core\n"
-                                                                "\n"
-                                                                "in  vec2 uv;\n"
-                                                                "out vec4 result;\n"
-                                                                "\n"
-                                                                "uniform dataFS\n"
-                                                                "{\n"
-                                                                "    uniform vec4 color;\n"
-                                                                "};\n"
-                                                                "\n"
-                                                                "void main()\n"
-                                                                "{\n"
-                                                                "    vec2 uv_ss = uv * vec2(2.0) - vec2(1.0);\n"
-                                                                "\n"
-                                                                "    result = color * vec4(1.0 - length(pow(abs(uv_ss), vec2(4.0))));\n"
-                                                                "}\n";
+static const char* ui_dropdown_separator_vertex_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "uniform dataVS\n"
+    "{\n"
+    "    vec3 x1_x2_y;\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    int   end = gl_VertexID % 2;\n"
+    "    float x;\n"
+    "\n"
+    "    if (end == 0) x = x1_x2_y.x;\n"
+    "    else          x = x1_x2_y.y;\n"
+    "\n"
+    "    gl_Position = vec4(x, x1_x2_y.z, 0.0, 1.0);\n"
+    "}";
+
+static const char* ui_dropdown_slider_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in  vec2 uv;\n"
+    "out vec4 result;\n"
+    "\n"
+    "uniform dataFS\n"
+    "{\n"
+    "    uniform vec4 color;\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    vec2 uv_ss = uv * vec2(2.0) - vec2(1.0);\n"
+    "\n"
+    "    result = color * vec4(1.0 - length(pow(abs(uv_ss), vec2(4.0))));\n"
+    "}\n";
+
 
 /** TODO */
 volatile void _ui_dropdown_fire_callback(system_thread_pool_callback_argument arg)
 {
-    _ui_dropdown_fire_event* event_ptr = (_ui_dropdown_fire_event*) arg;
+    _ui_dropdown_fire_event* event_ptr = reinterpret_cast<_ui_dropdown_fire_event*>(arg);
 
-    ASSERT_DEBUG_SYNC(event_ptr != NULL,
+    ASSERT_DEBUG_SYNC(event_ptr != nullptr,
                       "Event descriptor is NULL");
 
-    if (event_ptr != NULL)
+    if (event_ptr != nullptr)
     {
         event_ptr->pfn_fire_proc_ptr(event_ptr->fire_proc_user_arg,
                                      event_ptr->event_user_arg);
 
         /* Good to release the event descriptor at this point */
         delete event_ptr;
-    } /* if (event_ptr != NULL) */
+    }
 }
 
 /** TODO */
@@ -421,13 +429,13 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
 {
     /* Create all objects */
     ral_context context      = ui_get_context(ui_instance);
-    ral_shader  fs_bg        = NULL;
-    ral_shader  fs_label_bg  = NULL;
-    ral_shader  fs_separator = NULL;
-    ral_shader  fs_slider    = NULL;
-    ral_shader  fs           = NULL;
-    ral_shader  vs           = NULL;
-    ral_shader  vs_separator = NULL;
+    ral_shader  fs_bg        = nullptr;
+    ral_shader  fs_label_bg  = nullptr;
+    ral_shader  fs_separator = nullptr;
+    ral_shader  fs_slider    = nullptr;
+    ral_shader  fs           = nullptr;
+    ral_shader  vs           = nullptr;
+    ral_shader  vs_separator = nullptr;
 
     ral_program_create_info program_bg_create_info =
     {
@@ -668,7 +676,7 @@ PRIVATE void _ui_dropdown_init_renderer_callback(ogl_context context,
 {
     float                border_width_bg[2]        = {0};
     float                border_width[2]           = {0};
-    _ui_dropdown*        dropdown_ptr              = (_ui_dropdown*) dropdown;
+    _ui_dropdown*        dropdown_ptr              = reinterpret_cast<_ui_dropdown*>(dropdown);
     raGL_program         program_bg_raGL           = ral_context_get_program_gl(dropdown_ptr->context,
                                                                                 dropdown_ptr->program_bg);
     GLuint               program_bg_raGL_id        = 0;
@@ -688,7 +696,7 @@ PRIVATE void _ui_dropdown_init_renderer_callback(ogl_context context,
                                                       0.5f,  110.0f / 255.0f * 0.35f, 119.0f / 255.0f * 0.35f, 116.0f / 255.0f * 0.35f,
                                                       0.51f, 10.0f  / 255.0f * 0.35f, 14.0f  / 255.0f * 0.35f, 10.0f  / 255.0f * 0.35f,
                                                       1.0f,  10.0f  / 255.0f * 0.35f, 8.0f   / 255.0f * 0.35f, 9.0f   / 255.0f * 0.35f};
-    system_window        window                    = NULL;
+    system_window        window                    = nullptr;
     int                  window_size[2]            = {0};
 
     raGL_program_get_property(program_bg_raGL,
@@ -720,14 +728,14 @@ PRIVATE void _ui_dropdown_init_renderer_callback(ogl_context context,
     border_width   [1] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1]) * window_size[1]);
 
     /* Retrieve UBOs */
-    ral_buffer program_bg_ub_fs_bo_ral        = NULL;
-    ral_buffer program_bg_ub_vs_bo_ral        = NULL;
-    ral_buffer program_label_bg_ub_vs_bo_ral  = NULL;
-    ral_buffer program_separator_ub_vs_bo_ral = NULL;
-    ral_buffer program_slider_ub_fs_bo_ral    = NULL;
-    ral_buffer program_slider_ub_vs_bo_ral    = NULL;
-    ral_buffer program_ub_fs_bo_ral           = NULL;
-    ral_buffer program_ub_vs_bo_ral           = NULL;
+    ral_buffer program_bg_ub_fs_bo_ral        = nullptr;
+    ral_buffer program_bg_ub_vs_bo_ral        = nullptr;
+    ral_buffer program_label_bg_ub_vs_bo_ral  = nullptr;
+    ral_buffer program_separator_ub_vs_bo_ral = nullptr;
+    ral_buffer program_slider_ub_fs_bo_ral    = nullptr;
+    ral_buffer program_slider_ub_vs_bo_ral    = nullptr;
+    ral_buffer program_ub_fs_bo_ral           = nullptr;
+    ral_buffer program_ub_vs_bo_ral           = nullptr;
 
     dropdown_ptr->program_ub_fs = ral_program_block_buffer_create(dropdown_ptr->context,
                                                                   dropdown_ptr->program,
@@ -838,23 +846,23 @@ PRIVATE void _ui_dropdown_init_renderer_callback(ogl_context context,
                                                     RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
                                                    &vs_ub_bp);
         }
-    } /* for (all programs) */
+    }
 
     /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform_ral_ptr              = NULL;
-    const ral_program_variable* border_width_bg_uniform_ral_ptr           = NULL;
-    const ral_program_variable* brightness_uniform_ral_ptr                = NULL;
-    const ral_program_variable* button_start_u_uniform_ral_ptr            = NULL;
-    const ral_program_variable* button_start_uv_uniform_ral_ptr           = NULL;
-    const ral_program_variable* color_uniform_ral_ptr                     = NULL;
-    const ral_program_variable* highlighted_v1v2_uniform_ral_ptr          = NULL;
-    const ral_program_variable* selected_v1v2_uniform_ral_ptr             = NULL;
-    const ral_program_variable* stop_data_uniform_ral_ptr                 = NULL;
-    const ral_program_variable* x1_x2_y_uniform_ral_ptr                   = NULL;
-    const ral_program_variable* x1y1x2y2_program_bg_uniform_ral_ptr       = NULL;
-    const ral_program_variable* x1y1x2y2_program_label_bg_uniform_ral_ptr = NULL;
-    const ral_program_variable* x1y1x2y2_program_slider_uniform_ral_ptr   = NULL;
-    const ral_program_variable* x1y1x2y2_program_uniform_ral_ptr          = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr              = nullptr;
+    const ral_program_variable* border_width_bg_uniform_ral_ptr           = nullptr;
+    const ral_program_variable* brightness_uniform_ral_ptr                = nullptr;
+    const ral_program_variable* button_start_u_uniform_ral_ptr            = nullptr;
+    const ral_program_variable* button_start_uv_uniform_ral_ptr           = nullptr;
+    const ral_program_variable* color_uniform_ral_ptr                     = nullptr;
+    const ral_program_variable* highlighted_v1v2_uniform_ral_ptr          = nullptr;
+    const ral_program_variable* selected_v1v2_uniform_ral_ptr             = nullptr;
+    const ral_program_variable* stop_data_uniform_ral_ptr                 = nullptr;
+    const ral_program_variable* x1_x2_y_uniform_ral_ptr                   = nullptr;
+    const ral_program_variable* x1y1x2y2_program_bg_uniform_ral_ptr       = nullptr;
+    const ral_program_variable* x1y1x2y2_program_label_bg_uniform_ral_ptr = nullptr;
+    const ral_program_variable* x1y1x2y2_program_slider_uniform_ral_ptr   = nullptr;
+    const ral_program_variable* x1y1x2y2_program_uniform_ral_ptr          = nullptr;
 
     ral_program_get_block_variable_by_name(dropdown_ptr->program,
                                            system_hashed_ansi_string_create("dataFS"),
@@ -969,7 +977,7 @@ PRIVATE void _ui_dropdown_init_renderer_callback(ogl_context context,
 /* TODO */
 PRIVATE void _ui_dropdown_update_entry_positions(_ui_dropdown* dropdown_ptr)
 {
-    system_window context_window = NULL;
+    system_window context_window = nullptr;
     uint32_t      n_entries      = 0;
     int           window_size[2] = {0};
 
@@ -988,7 +996,7 @@ PRIVATE void _ui_dropdown_update_entry_positions(_ui_dropdown* dropdown_ptr)
                   n_entry < n_entries - 1; /* exclude bar string */
                 ++n_entry)
     {
-        _ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1009,7 +1017,7 @@ PRIVATE void _ui_dropdown_update_entry_positions(_ui_dropdown* dropdown_ptr)
                                                          VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
                                                          new_xy);
         }
-    } /* for (all entries) */
+    }
 }
 
 /** TODO */
@@ -1022,7 +1030,7 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_strings);
 
-    system_window      window         = NULL;
+    system_window      window         = nullptr;
     int                window_size[2] = {0};
     const float        x1y1[2]        =
     {
@@ -1051,7 +1059,7 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
                   n_entry < n_strings;
                 ++n_entry)
     {
-        _ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1062,7 +1070,7 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
                  dropdown_ptr->current_entry_string_id = entry_ptr->string_id;
 
                  /* Also update the string that should be shown on the bar */
-                 _ui_dropdown_entry* selected_entry_ptr = NULL;
+                 _ui_dropdown_entry* selected_entry_ptr = nullptr;
 
                  if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                             dropdown_ptr->n_selected_entry,
@@ -1073,7 +1081,7 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
 
                      entry_ptr->name = selected_entry_ptr->name;
                  }
-            } /* if (n_entry == (n_strings - 1)) */
+            }
 
             if ( only_update_selected_entry && n_entry == (n_strings - 1) ||
                 !only_update_selected_entry)
@@ -1124,9 +1132,9 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
                                                                  VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCISSOR_BOX,
                                                                  scissor_box);
                 }
-            } /* if (string should be updated) */
-        } /* if (string descriptor was retrieved) */
-    } /* for (all text entries) */
+            }
+        }
+    }
 }
 
 /** TODO */
@@ -1155,7 +1163,7 @@ PRIVATE void _ui_dropdown_update_entry_visibility(_ui_dropdown* dropdown_ptr)
                       n_entry < n_entries;
                     ++n_entry)
     {
-        _ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1186,13 +1194,13 @@ PRIVATE void _ui_dropdown_update_entry_visibility(_ui_dropdown* dropdown_ptr)
                               "Cannot retrieve text entry descriptor at index [%d]",
                               n_entry);
         }
-    } /* for (all entries) */
+    }
 }
 
 PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
                                           const float*  x1y1)
 {
-    system_window window         = NULL;
+    system_window window         = nullptr;
     int           window_size[2] = {0};
 
     ral_context_get_property  (dropdown_ptr->context,
@@ -1217,7 +1225,7 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
                       n_entry < n_strings;
                     ++n_entry)
     {
-        _ui_dropdown_entry* entry_ptr = NULL;
+        _ui_dropdown_entry* entry_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                    n_entry,
@@ -1245,8 +1253,8 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
             {
                 text_max_width = text_width;
             }
-        } /* if (entry descriptor was retrieved successfully) */
-    } /* for (all text strings) */
+        }
+    }
 
     const float x2y2[2] =
     {
@@ -1345,7 +1353,7 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
 /** Please see header for specification */
 PUBLIC void ui_dropdown_deinit(void* internal_instance)
 {
-    _ui_dropdown*     ui_dropdown_ptr  = (_ui_dropdown*) internal_instance;
+    _ui_dropdown*     ui_dropdown_ptr  = reinterpret_cast<_ui_dropdown*>(internal_instance);
     const static bool visibility_false = false;
 
     ral_program       programs_to_release[] =
@@ -1364,7 +1372,7 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
                                (const void**) programs_to_release);
 
     /* Release all entry instances */
-    _ui_dropdown_entry* entry_ptr = NULL;
+    _ui_dropdown_entry* entry_ptr = nullptr;
 
     varia_text_renderer_set_text_string_property(ui_dropdown_ptr->text_renderer,
                                                  ui_dropdown_ptr->current_entry_string_id,
@@ -1381,10 +1389,10 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
         /* Go ahead with the release */
         delete entry_ptr;
 
-        entry_ptr = NULL;
+        entry_ptr = nullptr;
     }
     system_resizable_vector_release(ui_dropdown_ptr->entries);
-    ui_dropdown_ptr->entries = NULL;
+    ui_dropdown_ptr->entries = nullptr;
 
     ral_program_block_buffer block_buffers[] =
     {
@@ -1403,7 +1411,7 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
                   n_block_buffer < n_block_buffers;
                 ++n_block_buffer)
     {
-        if (block_buffers[n_block_buffer] != NULL)
+        if (block_buffers[n_block_buffer] != nullptr)
         {
             ral_program_block_buffer_release(block_buffers[n_block_buffer]);
         }
@@ -1415,9 +1423,9 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
 {
-    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(internal_instance);
     system_time   time_now     = system_time_now();
-    system_window window       = NULL;
+    system_window window       = nullptr;
     int           window_size[2];
 
     ral_context_get_property  (dropdown_ptr->context,
@@ -1455,14 +1463,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
             if (brightness > FOCUSED_BRIGHTNESS)
             {
                 brightness = FOCUSED_BRIGHTNESS;
-            } /* if (brightness > FOCUSED_BRIGHTNESS) */
+            }
         }
         else
         {
             /* Past the transition time, make sure brightness is valid */
             brightness = FOCUSED_BRIGHTNESS;
         }
-    } /* if (button_ptr->is_hovering) */
+    }
     else
     {
         /* Are we transiting? */
@@ -1480,7 +1488,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
             if (brightness < NONFOCUSED_BRIGHTNESS)
             {
                 brightness = NONFOCUSED_BRIGHTNESS;
-            } /* if (brightness < 0) */
+            }
         }
         else
         {
@@ -1583,16 +1591,16 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
     if (dropdown_ptr->is_droparea_visible)
     {
         GLuint      program_bg_ub_fs_bo_id                  = 0;
-        raGL_buffer program_bg_ub_fs_bo_raGL                = NULL;
-        ral_buffer  program_bg_ub_fs_bo_ral                 = NULL;
+        raGL_buffer program_bg_ub_fs_bo_raGL                = nullptr;
+        ral_buffer  program_bg_ub_fs_bo_ral                 = nullptr;
         uint32_t    program_bg_ub_fs_bo_start_offset        = -1;
         GLuint      program_bg_ub_vs_bo_id                  = 0;
-        raGL_buffer program_bg_ub_vs_bo_raGL                = NULL;
-        ral_buffer  program_bg_ub_vs_bo_ral                 = NULL;
+        raGL_buffer program_bg_ub_vs_bo_raGL                = nullptr;
+        ral_buffer  program_bg_ub_vs_bo_ral                 = nullptr;
         uint32_t    program_bg_ub_vs_bo_start_offset        = -1;
         GLuint      program_separator_ub_vs_bo_id           = 0;
-        raGL_buffer program_separator_ub_vs_bo_raGL         = NULL;
-        ral_buffer  program_separator_ub_vs_bo_ral          = NULL;
+        raGL_buffer program_separator_ub_vs_bo_raGL         = nullptr;
+        ral_buffer  program_separator_ub_vs_bo_ral          = nullptr;
         uint32_t    program_separator_ub_vs_bo_start_offset = -1;
 
         ral_program_block_buffer_get_property(dropdown_ptr->program_bg_ub_fs,
@@ -1671,7 +1679,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
                           n_entry < n_entries;
                         ++n_entry)
         {
-            _ui_dropdown_entry* entry_ptr = NULL;
+            _ui_dropdown_entry* entry_ptr = nullptr;
 
             if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                        n_entry,
@@ -1706,12 +1714,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
 
         /* Draw the slider */
         GLuint      program_slider_ub_fs_bo_id           = 0;
-        raGL_buffer program_slider_ub_fs_bo_raGL         = NULL;
-        ral_buffer  program_slider_ub_fs_bo_ral          = NULL;
+        raGL_buffer program_slider_ub_fs_bo_raGL         = nullptr;
+        ral_buffer  program_slider_ub_fs_bo_ral          = nullptr;
         uint32_t    program_slider_ub_fs_bo_start_offset = -1;
         GLuint      program_slider_ub_vs_bo_id           = 0;
-        raGL_buffer program_slider_ub_vs_bo_raGL         = NULL;
-        ral_buffer  program_slider_ub_vs_bo_ral          = NULL;
+        raGL_buffer program_slider_ub_vs_bo_raGL         = nullptr;
+        ral_buffer  program_slider_ub_vs_bo_ral          = nullptr;
         uint32_t    program_slider_ub_vs_bo_start_offset = -1;
         float       slider_x1y1x2y2[4];
 
@@ -1785,12 +1793,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
 
     /* Draw the bar */
     GLuint      program_ub_fs_bo_id           = 0;
-    raGL_buffer program_ub_fs_bo_raGL         = NULL;
-    ral_buffer  program_ub_fs_bo_ral          = NULL;
+    raGL_buffer program_ub_fs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_fs_bo_ral          = nullptr;
     uint32_t    program_ub_fs_bo_start_offset = -1;
     GLuint      program_ub_vs_bo_id           = 0;
-    raGL_buffer program_ub_vs_bo_raGL         = NULL;
-    ral_buffer  program_ub_vs_bo_ral          = NULL;
+    raGL_buffer program_ub_vs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_vs_bo_ral          = nullptr;
     uint32_t    program_ub_vs_bo_start_offset = -1;
 
     ral_program_block_buffer_get_property(dropdown_ptr->program_ub_fs,
@@ -1841,9 +1849,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
     dropdown_ptr->pGLEnable(GL_BLEND);
     {
         GLuint      program_label_bg_ub_vs_bo_id                = 0;
-        raGL_buffer program_label_bg_ub_vs_bo_raGL              = NULL;
+        raGL_buffer program_label_bg_ub_vs_bo_raGL              = nullptr;
         uint32_t    program_label_bg_ub_vs_bo_raGL_start_offset = -1;
-        ral_buffer  program_label_bg_ub_vs_bo_ral               = NULL;
+        ral_buffer  program_label_bg_ub_vs_bo_ral               = nullptr;
         uint32_t    program_label_bg_ub_vs_bo_ral_start_offset  = -1;
 
         ral_program_block_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs,
@@ -1884,7 +1892,7 @@ PUBLIC void ui_dropdown_get_property(const void*         dropdown,
                                      ui_control_property property,
                                      void*               out_result)
 {
-    const _ui_dropdown* dropdown_ptr = (const _ui_dropdown*) dropdown;
+    const _ui_dropdown* dropdown_ptr = reinterpret_cast<const _ui_dropdown*>(dropdown);
 
     switch (property)
     {
@@ -1926,7 +1934,7 @@ PUBLIC void ui_dropdown_get_property(const void*         dropdown,
                     *(float*) out_result = dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] +
                                            dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1];
                 }
-            } /* if (dropdown_ptr->visible) */
+            }
             else
             {
                 *(float*) out_result = 0.0f;
@@ -1987,7 +1995,7 @@ PUBLIC void ui_dropdown_get_property(const void*         dropdown,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property property requested");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
@@ -2006,10 +2014,10 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
 {
     _ui_dropdown* new_dropdown_ptr = new (std::nothrow) _ui_dropdown;
 
-    ASSERT_ALWAYS_SYNC(new_dropdown_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_dropdown_ptr != nullptr,
                        "Out of memory");
 
-    if (new_dropdown_ptr != NULL)
+    if (new_dropdown_ptr != nullptr)
     {
         /* Initialize fields */
         memset(new_dropdown_ptr,
@@ -2042,7 +2050,7 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints* entry_points_ptr = NULL;
+            const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_dropdown_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -2060,7 +2068,7 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
-            const ogl_context_gl_entrypoints* entry_points_ptr = NULL;
+            const ogl_context_gl_entrypoints* entry_points_ptr = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_dropdown_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -2075,7 +2083,7 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
         }
 
         /* Initialize entries */
-        system_window window         = NULL;
+        system_window window         = nullptr;
         int           window_size[2] = {0};
 
         ral_context_get_property  (new_dropdown_ptr->context,
@@ -2089,10 +2097,12 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
                       n_entry < n_strings + 1 /* currently selected entry */;
                     ++n_entry)
         {
-            _ui_dropdown_entry* entry_ptr = NULL;
+            _ui_dropdown_entry* entry_ptr = nullptr;
 
             entry_ptr = new (std::nothrow) _ui_dropdown_entry;
-            ASSERT_DEBUG_SYNC(entry_ptr != NULL, "Out of memory");
+
+            ASSERT_DEBUG_SYNC(entry_ptr != nullptr,
+                              "Out of memory");
 
             /* Fill the descriptor */
             entry_ptr->string_id = varia_text_renderer_add_string(text_renderer);
@@ -2101,24 +2111,24 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
             {
                 entry_ptr->name = strings[n_entry];
 
-                if (user_args != NULL)
+                if (user_args != nullptr)
                 {
                     entry_ptr->user_arg = user_args[n_entry];
                 }
                 else
                 {
-                    entry_ptr->user_arg = NULL;
+                    entry_ptr->user_arg = nullptr;
                 }
             }
             else
             {
                 entry_ptr->name     = strings[new_dropdown_ptr->n_selected_entry];
-                entry_ptr->user_arg = NULL;
+                entry_ptr->user_arg = nullptr;
             }
 
             system_resizable_vector_push(new_dropdown_ptr->entries,
                                          entry_ptr);
-        } /* for (all text entries) */
+        }
 
         /* Create text string representations.
          *
@@ -2145,24 +2155,24 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
         new_dropdown_ptr->program_slider    = ui_get_registered_program(instance,
                                                                         ui_dropdown_slider_program_name);
 
-        if (new_dropdown_ptr->program           == NULL ||
-            new_dropdown_ptr->program_bg        == NULL ||
-            new_dropdown_ptr->program_label_bg  == NULL ||
-            new_dropdown_ptr->program_separator == NULL ||
-            new_dropdown_ptr->program_slider    == NULL)
+        if (new_dropdown_ptr->program           == nullptr ||
+            new_dropdown_ptr->program_bg        == nullptr ||
+            new_dropdown_ptr->program_label_bg  == nullptr ||
+            new_dropdown_ptr->program_separator == nullptr ||
+            new_dropdown_ptr->program_slider    == nullptr)
         {
             _ui_dropdown_init_program(instance,
                                       new_dropdown_ptr);
 
-            ASSERT_DEBUG_SYNC(new_dropdown_ptr->program != NULL,
+            ASSERT_DEBUG_SYNC(new_dropdown_ptr->program != nullptr,
                               "Could not initialize dropdown UI programs");
-        } /* if (new_button->program == NULL) */
+        }
 
         /* Set up predefined values */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_dropdown_ptr->context),
                                                          _ui_dropdown_init_renderer_callback,
                                                          new_dropdown_ptr);
-    } /* if (new_dropdown != NULL) */
+    }
 
     return (void*) new_dropdown_ptr;
 }
@@ -2171,7 +2181,7 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
 PUBLIC bool ui_dropdown_is_over(void*        internal_instance,
                                 const float* xy)
 {
-    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(internal_instance);
     float         inversed_y   = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
@@ -2197,7 +2207,7 @@ PUBLIC bool ui_dropdown_is_over(void*        internal_instance,
             dropdown_ptr->start_hovering_brightness = dropdown_ptr->current_gpu_brightness_level;
             dropdown_ptr->start_hovering_time       = system_time_now();
             dropdown_ptr->is_hovering               = true;
-        } /* if (!button_ptr->is_hovering) */
+        }
 
         return true;
     }
@@ -2240,7 +2250,7 @@ PUBLIC bool ui_dropdown_is_over(void*        internal_instance,
 PUBLIC void ui_dropdown_on_lbm_down(void*        internal_instance,
                                     const float* xy)
 {
-    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(internal_instance);
     float         inversed_y = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
@@ -2284,8 +2294,8 @@ PUBLIC void ui_dropdown_on_lbm_down(void*        internal_instance,
 PUBLIC void ui_dropdown_on_lbm_up(void*        internal_instance,
                                   const float* xy)
 {
-    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
-    float         inversed_y = 1.0f - xy[1];
+    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(internal_instance);
+    float         inversed_y   = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
     {
@@ -2346,22 +2356,24 @@ PUBLIC void ui_dropdown_on_lbm_up(void*        internal_instance,
                 dropdown_ptr->n_selected_entry = (n_selected_entry - 1);
 
                 /* Fire the associated callback, if assigned */
-                _ui_dropdown_entry* entry_ptr = NULL;
+                _ui_dropdown_entry* entry_ptr = nullptr;
 
                 system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                        dropdown_ptr->n_selected_entry,
                                                       &entry_ptr);
 
-                if (entry_ptr                       != NULL &&
-                    dropdown_ptr->pfn_fire_proc_ptr != NULL)
+                if (entry_ptr                       != nullptr &&
+                    dropdown_ptr->pfn_fire_proc_ptr != nullptr)
                 {
                     /* Spawn the callback descriptor. It will be released in the thread pool call-back
                      * handler after the event is taken care of by the dropdown fire event handler.
                      */
                     _ui_dropdown_fire_event* event_ptr = new (std::nothrow) _ui_dropdown_fire_event;
 
-                    ASSERT_ALWAYS_SYNC(event_ptr != NULL, "Out of memory");
-                    if (event_ptr != NULL)
+                    ASSERT_ALWAYS_SYNC(event_ptr != nullptr,
+                                       "Out of memory");
+
+                    if (event_ptr != nullptr)
                     {
                         event_ptr->event_user_arg     = entry_ptr->user_arg;
                         event_ptr->fire_proc_user_arg = dropdown_ptr->fire_proc_user_arg;
@@ -2391,7 +2403,7 @@ PUBLIC void ui_dropdown_on_lbm_up(void*        internal_instance,
 PUBLIC void ui_dropdown_on_mouse_move(void*        internal_instance,
                                       const float* xy)
 {
-    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(internal_instance);
     float         inversed_y   = 1.0f - xy[1];
 
     if (!dropdown_ptr->visible)
@@ -2417,14 +2429,14 @@ PUBLIC void ui_dropdown_on_mouse_move(void*        internal_instance,
 
         /* Update entry positions */
         _ui_dropdown_update_entry_positions(dropdown_ptr);
-    } /* if (dropdown_ptr->is_slider_lbm) */
+    }
 }
 
 /** Please see header for specification */
 PUBLIC void ui_dropdown_on_mouse_wheel(void* internal_instance,
                                        float wheel_delta)
 {
-    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) internal_instance;
+    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(internal_instance);
 
     if (!dropdown_ptr->visible)
     {
@@ -2451,7 +2463,7 @@ PUBLIC void ui_dropdown_on_mouse_wheel(void* internal_instance,
         }
 
         _ui_dropdown_update_entry_positions(dropdown_ptr);
-    } /* if (!dropdown_ptr->is_lbm_on) */
+    }
 }
 
 /* Please see header for spec */
@@ -2459,7 +2471,7 @@ PUBLIC void ui_dropdown_set_property(void*               dropdown,
                                      ui_control_property property,
                                      const void*         data)
 {
-    _ui_dropdown* dropdown_ptr = (_ui_dropdown*) dropdown;
+    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(dropdown);
 
     switch (property)
     {
@@ -2493,5 +2505,5 @@ PUBLIC void ui_dropdown_set_property(void*               dropdown,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }

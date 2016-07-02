@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -87,34 +87,35 @@ typedef struct
 } _ui_checkbox;
 
 /** Internal variables */
-static const char* ui_checkbox_fragment_shader_body = "#version 430 core\n"
-                                                      "\n"
-                                                      "in  vec2 uv;\n"
-                                                      "out vec3 result;\n"
-                                                      /* stop, rgb */
-                                                      "uniform dataFS\n"
-                                                      "{\n"
-                                                      "    float brightness;\n"
-                                                      "    vec2  border_width;\n"
-                                                      "    vec4  stop_data[4];\n"
-                                                      "    float text_brightness;\n"
-                                                      "};\n"
-                                                      "\n"
-                                                      "void main()\n"
-                                                      "{\n"
-                                                      "    if (uv.x >= border_width[0] * 21.0f)\n"
-                                                      "    {\n"
-                                                      "        result = vec3(text_brightness);\n"
-                                                      "    }\n"
-                                                      "    else\n"
-                                                      "    {\n"
-                                                      "        result = vec3(brightness);\n"
-                                                      "    }\n"
-                                                      /* Border? */
-                                                      "if (uv.x <  border_width[0] || uv.x > (1.0 - border_width[0]) ||\n"
-                                                      "    uv.y <  border_width[1] || uv.y > (1.0 - border_width[1]) ||\n"
-                                                      "    uv.x >= border_width[0] * 20.0f && uv.x <= border_width[0] * 21.0f) result = vec3(0.42f, 0.41f, 0.41f);\n"
-                                                      "}\n";
+static const char* ui_checkbox_fragment_shader_body =
+    "#version 430 core\n"
+    "\n"
+    "in  vec2 uv;\n"
+    "out vec3 result;\n"
+    /* stop, rgb */
+    "uniform dataFS\n"
+    "{\n"
+    "    float brightness;\n"
+    "    vec2  border_width;\n"
+    "    vec4  stop_data[4];\n"
+    "    float text_brightness;\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    if (uv.x >= border_width[0] * 21.0f)\n"
+    "    {\n"
+    "        result = vec3(text_brightness);\n"
+    "    }\n"
+    "    else\n"
+    "    {\n"
+    "        result = vec3(brightness);\n"
+    "    }\n"
+    /* Border? */
+    "if (uv.x <  border_width[0] || uv.x > (1.0 - border_width[0]) ||\n"
+    "    uv.y <  border_width[1] || uv.y > (1.0 - border_width[1]) ||\n"
+    "    uv.x >= border_width[0] * 20.0f && uv.x <= border_width[0] * 21.0f) result = vec3(0.42f, 0.41f, 0.41f);\n"
+    "}\n";
 
 /** TODO */
 PRIVATE void _ui_checkbox_init_program(ui            ui_instance,
@@ -122,8 +123,8 @@ PRIVATE void _ui_checkbox_init_program(ui            ui_instance,
 {
     /* Create all objects */
     ral_context context = ui_get_context(ui_instance);
-    ral_shader  fs      = NULL;
-    ral_shader  vs      = NULL;
+    ral_shader  fs      = nullptr;
+    ral_shader  vs      = nullptr;
 
     ral_shader_create_info  fs_create_info;
     ral_program_create_info program_create_info;
@@ -216,11 +217,11 @@ PRIVATE void _ui_checkbox_init_renderer_callback(ogl_context context,
                                                  void*       checkbox)
 {
     float         border_width[2] = {0};
-    _ui_checkbox* checkbox_ptr    = (_ui_checkbox*) checkbox;
+    _ui_checkbox* checkbox_ptr    = reinterpret_cast<_ui_checkbox*>(checkbox);
     raGL_program  program_raGL    = ral_context_get_program_gl(checkbox_ptr->context,
                                                                checkbox_ptr->program);
     GLuint        program_raGL_id = 0;
-    system_window window          = NULL;
+    system_window window          = nullptr;
     int           window_size[2]  = {0};
 
     raGL_program_get_property(program_raGL,
@@ -238,10 +239,10 @@ PRIVATE void _ui_checkbox_init_renderer_callback(ogl_context context,
     border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_size[1]);
 
     /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform_ral_ptr    = NULL;
-    const ral_program_variable* brightness_uniform_ral_ptr      = NULL;
-    const ral_program_variable* text_brightness_uniform_ral_ptr = NULL;
-    const ral_program_variable* x1y1x2y2_uniform_ral_ptr        = NULL;
+    const ral_program_variable* border_width_uniform_ral_ptr    = nullptr;
+    const ral_program_variable* brightness_uniform_ral_ptr      = nullptr;
+    const ral_program_variable* text_brightness_uniform_ral_ptr = nullptr;
+    const ral_program_variable* x1y1x2y2_uniform_ral_ptr        = nullptr;
 
     ral_program_get_block_variable_by_name(checkbox_ptr->program,
                                            system_hashed_ansi_string_create("dataFS"),
@@ -266,8 +267,8 @@ PRIVATE void _ui_checkbox_init_renderer_callback(ogl_context context,
     checkbox_ptr->program_x1y1x2y2_ub_offset        = x1y1x2y2_uniform_ral_ptr->block_offset;
 
     /* Set up uniform blocks */
-    ral_buffer ub_fs_bo_ral = NULL;
-    ral_buffer ub_vs_bo_ral = NULL;
+    ral_buffer ub_fs_bo_ral = nullptr;
+    ral_buffer ub_vs_bo_ral = nullptr;
 
     checkbox_ptr->program_ub_fs = ral_program_block_buffer_create(checkbox_ptr->context,
                                                                   checkbox_ptr->program,
@@ -323,7 +324,7 @@ PRIVATE void _ui_checkbox_update_text_location(_ui_checkbox* checkbox_ptr)
     int           text_height    = 0;
     int           text_xy[2]     = {0};
     int           text_width     = 0;
-    system_window window         = NULL;
+    system_window window         = nullptr;
     int           window_size[2] = {0};
     const float   x1y1[]         =
     {
@@ -395,7 +396,7 @@ PRIVATE void _ui_checkbox_update_x1y1x2y2(_ui_checkbox* checkbox_ptr)
 /** Please see header for specification */
 PUBLIC void ui_checkbox_deinit(void* internal_instance)
 {
-    _ui_checkbox* ui_checkbox_ptr = (_ui_checkbox*) internal_instance;
+    _ui_checkbox* ui_checkbox_ptr = reinterpret_cast<_ui_checkbox*>(internal_instance);
 
     varia_text_renderer_set(ui_checkbox_ptr->text_renderer,
                             ui_checkbox_ptr->text_index,
@@ -406,18 +407,18 @@ PUBLIC void ui_checkbox_deinit(void* internal_instance)
                                1, /* n_objects */
                                (const void**) &ui_checkbox_ptr->program);
 
-    if (ui_checkbox_ptr->program_ub_fs != NULL)
+    if (ui_checkbox_ptr->program_ub_fs != nullptr)
     {
         ral_program_block_buffer_release(ui_checkbox_ptr->program_ub_fs);
 
-        ui_checkbox_ptr->program_ub_fs = NULL;
+        ui_checkbox_ptr->program_ub_fs = nullptr;
     }
 
-    if (ui_checkbox_ptr->program_ub_vs != NULL)
+    if (ui_checkbox_ptr->program_ub_vs != nullptr)
     {
         ral_program_block_buffer_release(ui_checkbox_ptr->program_ub_vs);
 
-        ui_checkbox_ptr->program_ub_vs = NULL;
+        ui_checkbox_ptr->program_ub_vs = nullptr;
     }
 
     delete ui_checkbox_ptr;
@@ -426,7 +427,7 @@ PUBLIC void ui_checkbox_deinit(void* internal_instance)
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void ui_checkbox_draw(void* internal_instance)
 {
-    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
+    _ui_checkbox* checkbox_ptr = reinterpret_cast<_ui_checkbox*>(internal_instance);
     system_time   time_now     = system_time_now();
 
     /* Update brightness if necessary */
@@ -452,14 +453,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_checkbox_draw(void* internal_instance)
             if (brightness > FOCUSED_BRIGHTNESS)
             {
                 brightness = FOCUSED_BRIGHTNESS;
-            } /* if (brightness > FOCUSED_BRIGHTNESS) */
+            }
         }
         else
         {
             /* Past the transition time, make sure brightness is valid */
             brightness = FOCUSED_BRIGHTNESS;
         }
-    } /* if (button_ptr->is_hovering) */
+    }
     else
     {
         /* Are we transiting? */
@@ -480,7 +481,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_checkbox_draw(void* internal_instance)
             if (brightness < NONFOCUSED_BRIGHTNESS)
             {
                 brightness = NONFOCUSED_BRIGHTNESS;
-            } /* if (brightness < 0) */
+            }
         }
         else
         {
@@ -522,12 +523,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_checkbox_draw(void* internal_instance)
 
     /* Draw */
     GLuint      program_ub_fs_bo_id           = 0;
-    raGL_buffer program_ub_fs_bo_raGL         = NULL;
-    ral_buffer  program_ub_fs_bo_ral          = NULL;
+    raGL_buffer program_ub_fs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_fs_bo_ral          = nullptr;
     uint32_t    program_ub_fs_bo_start_offset = -1;
     GLuint      program_ub_vs_bo_id           = 0;
-    raGL_buffer program_ub_vs_bo_raGL         = NULL;
-    ral_buffer  program_ub_vs_bo_ral          = NULL;
+    raGL_buffer program_ub_vs_bo_raGL         = nullptr;
+    ral_buffer  program_ub_vs_bo_ral          = nullptr;
     uint32_t    program_ub_vs_bo_start_offset = -1;
 
     ral_program_block_buffer_get_property(checkbox_ptr->program_ub_fs,
@@ -575,22 +576,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_checkbox_draw(void* internal_instance)
 /** Please see header for specification */
 PUBLIC void ui_checkbox_get_property(const void*         checkbox,
                                      ui_control_property property,
-                                     void*               out_result)
+                                     void*               out_result_ptr)
 {
-    const _ui_checkbox* checkbox_ptr = (const _ui_checkbox*) checkbox;
+    const _ui_checkbox* checkbox_ptr = reinterpret_cast<const _ui_checkbox*>(checkbox);
 
     switch (property)
     {
         case UI_CONTROL_PROPERTY_CHECKBOX_CHECK_STATUS:
         {
-            *(bool*) out_result = checkbox_ptr->status;
+            *(bool*) out_result_ptr = checkbox_ptr->status;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
-            *(bool*) out_result = checkbox_ptr->visible;
+            *(bool*) out_result_ptr = checkbox_ptr->visible;
 
             break;
         }
@@ -600,7 +601,7 @@ PUBLIC void ui_checkbox_get_property(const void*         checkbox,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property property");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
@@ -614,10 +615,10 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
 {
     _ui_checkbox* new_checkbox_ptr = new (std::nothrow) _ui_checkbox;
 
-    ASSERT_ALWAYS_SYNC(new_checkbox_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_checkbox_ptr != nullptr,
                        "Out of memory");
 
-    if (new_checkbox_ptr != NULL)
+    if (new_checkbox_ptr != nullptr)
     {
         /* Initialize fields */
         memset(new_checkbox_ptr,
@@ -644,7 +645,7 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
 
         if (backend_type == RAL_BACKEND_TYPE_ES)
         {
-            const ogl_context_es_entrypoints* entry_points = NULL;
+            const ogl_context_es_entrypoints* entry_points = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_checkbox_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
@@ -660,7 +661,7 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
             ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
                               "Unrecognized context type");
 
-            const ogl_context_gl_entrypoints* entry_points = NULL;
+            const ogl_context_gl_entrypoints* entry_points = nullptr;
 
             ogl_context_get_property(ral_context_get_gl_context(new_checkbox_ptr->context),
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -689,20 +690,20 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
         new_checkbox_ptr->program = ui_get_registered_program(instance,
                                                              ui_checkbox_program_name);
 
-        if (new_checkbox_ptr->program == NULL)
+        if (new_checkbox_ptr->program == nullptr)
         {
             _ui_checkbox_init_program(instance,
                                       new_checkbox_ptr);
 
-            ASSERT_DEBUG_SYNC(new_checkbox_ptr->program != NULL,
+            ASSERT_DEBUG_SYNC(new_checkbox_ptr->program != nullptr,
                               "Could not initialize checkbox UI program");
-        } /* if (new_button->program == NULL) */
+        }
 
         /* Set up predefined values */
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_checkbox_ptr->context),
                                                          _ui_checkbox_init_renderer_callback,
                                                          new_checkbox_ptr);
-    } /* if (new_checkbox != NULL) */
+    }
 
     return (void*) new_checkbox_ptr;
 }
@@ -711,7 +712,7 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
 PUBLIC bool ui_checkbox_is_over(void*        internal_instance,
                                 const float* xy)
 {
-    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
+    _ui_checkbox* checkbox_ptr = reinterpret_cast<_ui_checkbox*>(internal_instance);
     float         inversed_y   = 1.0f - xy[1];
 
     if (xy[0]      >= checkbox_ptr->x1y1x2y2[0] && xy[0]      <= checkbox_ptr->x1y1x2y2[2] &&
@@ -722,7 +723,7 @@ PUBLIC bool ui_checkbox_is_over(void*        internal_instance,
             checkbox_ptr->start_hovering_brightness = checkbox_ptr->current_gpu_brightness_level;
             checkbox_ptr->start_hovering_time       = system_time_now();
             checkbox_ptr->is_hovering               = true;
-        } /* if (!checkbox_ptr->is_hovering) */
+        }
 
         return true;
     }
@@ -743,7 +744,7 @@ PUBLIC bool ui_checkbox_is_over(void*        internal_instance,
 PUBLIC void ui_checkbox_on_lbm_down(void*        internal_instance,
                                     const float* xy)
 {
-    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
+    _ui_checkbox* checkbox_ptr = reinterpret_cast<_ui_checkbox*>(internal_instance);
     float          inversed_y   = 1.0f - xy[1];
 
     if (xy[0]      >= checkbox_ptr->x1y1x2y2[0] && xy[0]      <= checkbox_ptr->x1y1x2y2[2] &&
@@ -758,14 +759,14 @@ PUBLIC void ui_checkbox_on_lbm_down(void*        internal_instance,
 PUBLIC void ui_checkbox_on_lbm_up(void*        internal_instance,
                                   const float* xy)
 {
-    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) internal_instance;
+    _ui_checkbox* checkbox_ptr = reinterpret_cast<_ui_checkbox*>(internal_instance);
 
     checkbox_ptr->is_lbm_on = false;
 
     if (ui_checkbox_is_over(internal_instance,
                             xy) )
     {
-        if (checkbox_ptr->pfn_fire_proc_ptr != NULL)
+        if (checkbox_ptr->pfn_fire_proc_ptr != nullptr)
         {
             system_thread_pool_task task = system_thread_pool_create_task_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
                                                                                        (PFNSYSTEMTHREADPOOLCALLBACKPROC) checkbox_ptr->pfn_fire_proc_ptr,
@@ -784,7 +785,7 @@ PUBLIC void ui_checkbox_set_property(void*               checkbox,
                                      ui_control_property property,
                                      const void*         data)
 {
-    _ui_checkbox* checkbox_ptr = (_ui_checkbox*) checkbox;
+    _ui_checkbox* checkbox_ptr = reinterpret_cast<_ui_checkbox*>(checkbox);
 
     switch (property)
     {
@@ -807,5 +808,5 @@ PUBLIC void ui_checkbox_set_property(void*               checkbox,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized ui_control_property value");
         }
-    } /* switch (property_value) */
+    }
 }
