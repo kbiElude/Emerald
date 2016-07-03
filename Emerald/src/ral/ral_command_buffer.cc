@@ -47,6 +47,7 @@ typedef struct _ral_command
     {
         ral_command_buffer_clear_rt_binding_command_info        clear_rt_binding_command;
         ral_command_buffer_copy_texture_to_texture_command_info copy_texture_to_texture_command;
+        ral_command_buffer_dispatch_command_info                dispatch_command;
         ral_command_buffer_draw_call_indexed_command_info       draw_call_indexed_command;
         ral_command_buffer_draw_call_indirect_command_info      draw_call_indirect_command;
         ral_command_buffer_draw_call_regular_command_info       draw_call_regular_command;
@@ -123,7 +124,7 @@ typedef struct _ral_command
 
             case RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
             {
-                ral_context_delete_objects( ((_ral_command_buffer*) execute_command_buffer_command.command_buffer)->context,
+                ral_context_delete_objects( (reinterpret_cast<_ral_command_buffer*>(execute_command_buffer_command.command_buffer))->context,
                                            RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                            1, /* n_objects */
                                            (const void**) &execute_command_buffer_command.command_buffer);
@@ -274,6 +275,7 @@ typedef struct _ral_command
 
             /* Dummy */
             case RAL_COMMAND_TYPE_CLEAR_RT_BINDING:
+            case RAL_COMMAND_TYPE_DISPATCH:
             case RAL_COMMAND_TYPE_DRAW_CALL_REGULAR:
             case RAL_COMMAND_TYPE_SET_SCISSOR_BOX:
             case RAL_COMMAND_TYPE_SET_VIEWPORT:
@@ -310,7 +312,7 @@ void _ral_command_buffer::clear_commands()
 /** TODO */
 PRIVATE void _ral_command_buffer_deinit_command(system_resource_pool_block block)
 {
-    _ral_command* command_ptr = (_ral_command*) block;
+    _ral_command* command_ptr = reinterpret_cast<_ral_command*>(block);
 
     command_ptr->deinit();
 }
@@ -318,7 +320,7 @@ PRIVATE void _ral_command_buffer_deinit_command(system_resource_pool_block block
 /** TODO */
 PRIVATE void _ral_command_buffer_deinit_command_buffer(system_resource_pool_block block)
 {
-    _ral_command_buffer* cmd_buffer_ptr = (_ral_command_buffer*) block; 
+    _ral_command_buffer* cmd_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(block); 
 
     if (cmd_buffer_ptr->callback_manager != nullptr)
     {
@@ -338,7 +340,7 @@ PRIVATE void _ral_command_buffer_deinit_command_buffer(system_resource_pool_bloc
 /** TODO */
 PRIVATE void _ral_command_buffer_init_command_buffer(system_resource_pool_block block)
 {
-    _ral_command_buffer* cmd_buffer_ptr = (_ral_command_buffer*) block; 
+    _ral_command_buffer* cmd_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(block); 
 
     cmd_buffer_ptr->callback_manager = system_callback_manager_create((_callback_id) RAL_COMMAND_BUFFER_CALLBACK_ID_COUNT);
     cmd_buffer_ptr->commands         = system_resizable_vector_create(N_MAX_PREALLOCED_COMMANDS);
@@ -370,7 +372,7 @@ PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                 
     }
 
     /* Carry on */
-    new_command_buffer_ptr = (_ral_command_buffer*) system_resource_pool_get_from_pool(command_buffer_pool);
+    new_command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(system_resource_pool_get_from_pool(command_buffer_pool) );
 
     if (new_command_buffer_ptr == nullptr)
     {
@@ -389,7 +391,7 @@ PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                 
     new_command_buffer_ptr->is_transient                            = create_info_ptr->is_transient;
 
 end:
-    return (ral_command_buffer) new_command_buffer_ptr;
+    return reinterpret_cast<ral_command_buffer>(new_command_buffer_ptr);
 }
 
 /** Please see header for specification */
@@ -407,41 +409,41 @@ PUBLIC void ral_command_buffer_get_property(ral_command_buffer          command_
                                             ral_command_buffer_property property,
                                             void*                       out_result_ptr)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(command_buffer);
 
     switch (property)
     {
         case RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES:
         {
-            *(ral_queue_bits*) out_result_ptr = command_buffer_ptr->compatible_queues;
+            *reinterpret_cast<ral_queue_bits*>(out_result_ptr) = command_buffer_ptr->compatible_queues;
 
             break;
         }
 
         case RAL_COMMAND_BUFFER_PROPERTY_CONTEXT:
         {
-            *(ral_context*) out_result_ptr = command_buffer_ptr->context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = command_buffer_ptr->context;
 
             break;
         }
 
         case RAL_COMMAND_BUFFER_PROPERTY_IS_INVOKABLE_FROM_OTHER_COMMAND_BUFFERS:
         {
-            *(bool*) out_result_ptr = command_buffer_ptr->is_invokable_from_other_command_buffers;
+            *reinterpret_cast<bool*>(out_result_ptr) = command_buffer_ptr->is_invokable_from_other_command_buffers;
 
             break;
         }
 
         case RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE:
         {
-            *(bool*) out_result_ptr = command_buffer_ptr->is_resettable;
+            *reinterpret_cast<bool*>(out_result_ptr) = command_buffer_ptr->is_resettable;
 
             break;
         }
 
         case RAL_COMMAND_BUFFER_PROPERTY_IS_TRANSIENT:
         {
-            *(bool*) out_result_ptr = command_buffer_ptr->is_transient;
+            *reinterpret_cast<bool*>(out_result_ptr) = command_buffer_ptr->is_transient;
 
             break;
         }
@@ -457,7 +459,7 @@ PUBLIC void ral_command_buffer_get_property(ral_command_buffer          command_
 
         case RAL_COMMAND_BUFFER_PROPERTY_STATUS:
         {
-            *(ral_command_buffer_status*) out_result_ptr = command_buffer_ptr->status;
+            *reinterpret_cast<ral_command_buffer_status*>(out_result_ptr) = command_buffer_ptr->status;
 
             break;
         }
@@ -476,7 +478,7 @@ PUBLIC bool ral_command_buffer_get_recorded_command(ral_command_buffer command_b
                                                     ral_command_type*  out_command_type_ptr,
                                                     const void**       out_command_ptr_ptr)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(command_buffer);
     _ral_command*        command_ptr        = nullptr;
     bool                 result             = false;
 
@@ -537,7 +539,7 @@ PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buf
                                                                  uint32_t                                                n_clear_ops,
                                                                  const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     if (command_buffer_ptr == nullptr)
@@ -590,7 +592,7 @@ PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buf
 
         if (is_command_valid)
         {
-            new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+            new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             memcpy(new_command_ptr->clear_rt_binding_command.clear_regions,
                    src_command.clear_regions,
@@ -615,7 +617,7 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
                                                               uint32_t                                                       n_copy_ops,
                                                               const ral_command_buffer_copy_texture_to_texture_command_info* copy_op_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     if (command_buffer_ptr == nullptr)
@@ -640,7 +642,7 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
     {
         const ral_command_buffer_copy_texture_to_texture_command_info& src_command = copy_op_ptrs[n_copy_op];
 
-        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.dst_size)      == sizeof(src_command.dst_size),      "");
         static_assert(sizeof(new_command_ptr->copy_texture_to_texture_command.dst_start_xyz) == sizeof(src_command.dst_start_xyz), "");
@@ -903,11 +905,58 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC void ral_command_buffer_record_dispatch(ral_command_buffer recording_command_buffer,
+                                               const uint32_t*    xyz)
+{
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    #ifdef _DEBUG
+    {
+        /* Sanity checks */
+        const uint32_t* max_xyz = nullptr;
+
+        ral_context_get_property(command_buffer_ptr->context,
+                                 RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_SIZE,
+                                &max_xyz);
+
+        ASSERT_DEBUG_SYNC((command_buffer_ptr->compatible_queues & RAL_QUEUE_COMPUTE_BIT) != 0,
+                          "Dispatch calls require a compute queue command buffer.");
+
+        ASSERT_DEBUG_SYNC(xyz[0] >= 1 && xyz[0] < max_xyz[0] &&
+                          xyz[1] >= 1 && xyz[1] < max_xyz[1] &&
+                          xyz[2] >= 1 && xyz[2] < max_xyz[2],
+                          "Invalid compute work group size requested in the dispatch call");
+    }
+    #endif
+
+    new_command_ptr                     = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool));
+    new_command_ptr->dispatch_command.x = xyz[0];
+    new_command_ptr->dispatch_command.y = xyz[1];
+    new_command_ptr->dispatch_command.z = xyz[2];
+    new_command_ptr->type               = RAL_COMMAND_TYPE_DISPATCH;
+
+    system_resizable_vector_push(command_buffer_ptr->commands,
+                                 new_command_ptr);
+
+end:
+    ;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer                                       recording_command_buffer,
                                                         uint32_t                                                 n_draw_calls,
                                                         const ral_command_buffer_draw_call_indexed_command_info* draw_call_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -932,7 +981,7 @@ PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer      
     {
         const ral_command_buffer_draw_call_indexed_command_info& src_command = draw_call_ptrs[n_draw_calls];
 
-        new_command_ptr                            = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr                            = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool));
         new_command_ptr->draw_call_indexed_command = src_command;
         new_command_ptr->type                      = RAL_COMMAND_TYPE_DRAW_CALL_INDEXED;
 
@@ -953,7 +1002,7 @@ PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buf
                                                                  uint32_t                                                  n_draw_calls,
                                                                  const ral_command_buffer_draw_call_indirect_command_info* draw_call_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -986,7 +1035,7 @@ PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buf
         }
         #endif
 
-        new_command_ptr                             = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr                             = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
         new_command_ptr->draw_call_indirect_command = src_command;
         new_command_ptr->type                       = RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT;
 
@@ -1007,7 +1056,7 @@ PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer      
                                                         uint32_t                                                 n_draw_calls,
                                                         const ral_command_buffer_draw_call_regular_command_info* draw_call_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1032,7 +1081,7 @@ PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer      
     {
         const ral_command_buffer_draw_call_regular_command_info& src_command = draw_call_ptrs[n_draw_call];
 
-        new_command_ptr                            = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr                            = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool));
         new_command_ptr->draw_call_regular_command = src_command;
         new_command_ptr->type                      = RAL_COMMAND_TYPE_DRAW_CALL_REGULAR;
 
@@ -1050,7 +1099,7 @@ PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer 
                                                              const ral_command_buffer_execute_command_buffer_command_info* command_ptrs)
 {
     ral_context          command_buffer_context = nullptr;
-    _ral_command_buffer* command_buffer_ptr     = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr     = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr        = nullptr;
 
     ASSERT_DEBUG_SYNC(recording_command_buffer != nullptr,
@@ -1079,18 +1128,18 @@ PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer 
         }
         #endif
 
-        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool));
 
         new_command_ptr->execute_command_buffer_command.command_buffer = src_command.command_buffer;
         new_command_ptr->type                                          = RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER;
 
         if (n_command == 0)
         {
-            command_buffer_context = ((_ral_command_buffer*) src_command.command_buffer)->context;
+            command_buffer_context = (reinterpret_cast<_ral_command_buffer*>(src_command.command_buffer) )->context;
         }
         else
         {
-            ASSERT_DEBUG_SYNC(((_ral_command_buffer*) src_command.command_buffer)->context == command_buffer_context,
+            ASSERT_DEBUG_SYNC((reinterpret_cast<_ral_command_buffer*>(src_command.command_buffer))->context == command_buffer_context,
                               "Scheduled command buffers use different rendering contexts.");
         }
 
@@ -1112,7 +1161,7 @@ PUBLIC void ral_command_buffer_record_invalidate_texture(ral_command_buffer reco
                                                          uint32_t           n_start_mip,
                                                          uint32_t           n_mips)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
     uint32_t             texture_n_mips     = 0;
 
@@ -1168,7 +1217,7 @@ PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer           
                                                    uint32_t                                     n_bindings,
                                                    ral_command_buffer_set_binding_command_info* binding_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1248,7 +1297,7 @@ PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer           
         }
         #endif
 
-        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         new_command_ptr->set_binding_command = src_command;
         new_command_ptr->type                = RAL_COMMAND_TYPE_SET_BINDING;
@@ -1290,7 +1339,7 @@ end:
 PUBLIC void ral_command_buffer_record_set_gfx_state(ral_command_buffer recording_command_buffer,
                                                     ral_gfx_state      gfx_state)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1312,7 +1361,7 @@ PUBLIC void ral_command_buffer_record_set_gfx_state(ral_command_buffer recording
     }
     #endif
 
-    new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+    new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     new_command_ptr->set_gfx_state_command.new_state = gfx_state;
     new_command_ptr->type                            = RAL_COMMAND_TYPE_SET_GFX_STATE;
@@ -1332,7 +1381,7 @@ end:
 PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_command_buffer,
                                                   ral_program        program)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1343,7 +1392,7 @@ PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_c
         goto end;
     }
 
-    new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+    new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     new_command_ptr->set_program_command.new_program = program;
     new_command_ptr->type                            = RAL_COMMAND_TYPE_SET_PROGRAM;
@@ -1364,7 +1413,7 @@ PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer
                                                               uint32_t                                                      n_rendertargets,
                                                               const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1388,7 +1437,7 @@ PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer
         }
         #endif
 
-        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         new_command_ptr->set_color_rendertarget_command = src_command;
         new_command_ptr->type                           = RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET;
@@ -1410,7 +1459,7 @@ PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer      
                                                         uint32_t                                               n_scissor_boxes,
                                                         const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1427,7 +1476,7 @@ PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer      
     {
         const ral_command_buffer_set_scissor_box_command_info& src_command = scissor_box_ptrs[n_scissor_box];
 
-        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         static_assert(sizeof(new_command_ptr->set_scissor_box_command.size) == sizeof(src_command.size), "");
         static_assert(sizeof(new_command_ptr->set_scissor_box_command.xy)   == sizeof(src_command.xy),   "");
@@ -1455,7 +1504,7 @@ PUBLIC void ral_command_buffer_record_set_vertex_buffers(ral_command_buffer     
                                                          uint32_t                                                 n_vertex_buffers,
                                                          const ral_command_buffer_set_vertex_buffer_command_info* vertex_buffer_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1489,7 +1538,7 @@ PUBLIC void ral_command_buffer_record_set_vertex_buffers(ral_command_buffer     
         }
         #endif
 
-        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         new_command_ptr->set_vertex_buffer_command = src_command;
         new_command_ptr->type                      = RAL_COMMAND_TYPE_SET_VERTEX_BUFFER;
@@ -1511,7 +1560,7 @@ PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer          
                                                     uint32_t                                            n_viewports,
                                                     const ral_command_buffer_set_viewport_command_info* viewport_ptrs)
 {
-    _ral_command_buffer* command_buffer_ptr = (_ral_command_buffer*) recording_command_buffer;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
     _ral_command*        new_command_ptr    = nullptr;
 
     ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
@@ -1528,7 +1577,7 @@ PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer          
     {
         const ral_command_buffer_set_viewport_command_info& src_command = viewport_ptrs[n_viewport];
 
-        new_command_ptr = (_ral_command*) system_resource_pool_get_from_pool(command_pool);
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         memcpy(new_command_ptr->set_viewport_command.size,
                src_command.size,
@@ -1555,6 +1604,6 @@ PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer)
                       "Input ral_command_buffer instance is NULL");
 
     system_resource_pool_return_to_pool(command_buffer_pool,
-                                        (system_resource_pool_block) command_buffer);
+                                        reinterpret_cast<system_resource_pool_block>(command_buffer) );
 }
 

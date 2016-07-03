@@ -661,17 +661,6 @@ PRIVATE void _postprocessing_blur_gaussian_init(_postprocessing_blur_gaussian* i
                                            false, /* async */
                                            true   /* sync_other_contexts */);
 
-    /* Set up GFX states */
-    const uint32_t            n_gfx_state_create_info_items = 2;
-    ral_gfx_state_create_info gfx_state_create_info_items[n_gfx_state_create_info_items];
-
-    gfx_state_create_info_items[0].primitive_type = RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP;
-
-    ral_context_create_gfx_states(instance_ptr->context,
-                                  n_gfx_state_create_info_items,
-                                  gfx_state_create_info_items,
-                                 &instance_ptr->gfx_state);
-
     /* Set up the PO */
     ral_shader result_shaders[2] =
     {
@@ -1041,6 +1030,45 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         }
     }
 
+    /* Set up GFX state */
+    {
+        ral_gfx_state_create_info                       gfx_state_create_info;
+        ral_command_buffer_set_scissor_box_command_info set_scissor_box_command_info;
+        ral_command_buffer_set_viewport_command_info    set_viewport_command_info;
+
+        if (blur_ptr->gfx_state != nullptr)
+        {
+            ral_gfx_state_release(blur_ptr->gfx_state);
+
+            blur_ptr->gfx_state = nullptr;
+        }
+
+        set_scissor_box_command_info.index   = 0;
+        set_scissor_box_command_info.size[0] = target_width;
+        set_scissor_box_command_info.size[1] = target_height;
+        set_scissor_box_command_info.xy  [0] = 0;
+        set_scissor_box_command_info.xy  [1] = 0;
+
+        set_viewport_command_info.depth_range[0] = 0.0;
+        set_viewport_command_info.depth_range[1] = 1.0;
+        set_viewport_command_info.index          = 0;
+        set_viewport_command_info.size[0]        = static_cast<float>(target_width);
+        set_viewport_command_info.size[1]        = static_cast<float>(target_height);
+        set_viewport_command_info.xy[0]          = 0;
+        set_viewport_command_info.xy[1]          = 0;
+
+        gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP;
+        gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+        gfx_state_create_info.static_scissor_boxes                 = &set_scissor_box_command_info;
+        gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+        gfx_state_create_info.static_viewports                     = &set_viewport_command_info;
+
+        ral_context_create_gfx_states(blur_ptr->context,
+                                      1,
+                                     &gfx_state_create_info,
+                                     &blur_ptr->gfx_state);
+    }
+
     /* Retrieve a 2D Array texture we will use for execution of the iterations */
     if (blur_ptr->ping_pong_rt != nullptr)
     {
@@ -1181,22 +1209,6 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                                             blur_ptr->po);
     ral_command_buffer_record_set_gfx_state(cmd_buffer,
                                             blur_ptr->gfx_state);
-
-    {
-        ral_command_buffer_set_viewport_command_info set_viewport_command_info;
-
-        set_viewport_command_info.depth_range[0] = 0.0;
-        set_viewport_command_info.depth_range[1] = 1.0;
-        set_viewport_command_info.index          = 0;
-        set_viewport_command_info.size[0]        = static_cast<float>(target_width);
-        set_viewport_command_info.size[1]        = static_cast<float>(target_height);
-        set_viewport_command_info.xy[0]          = 0;
-        set_viewport_command_info.xy[1]          = 0;
-
-        ral_command_buffer_record_set_viewports(cmd_buffer,
-                                                1, /* n_viewports */
-                                               &set_viewport_command_info);
-    }
 
     {
         ral_command_buffer_set_binding_command_info set_data_texture_binding_command_info;

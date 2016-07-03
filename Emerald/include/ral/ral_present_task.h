@@ -83,9 +83,12 @@ typedef struct
     uint32_t                                   n_ingroup_connections;
     const ral_present_task_ingroup_connection* ingroup_connections;
 
+    /* NOTE: One unique input can map to multiple present task inputs */
     uint32_t                              n_unique_inputs;
     const ral_present_task_group_mapping* unique_input_to_ingroup_task_mapping;
-    
+
+    /* NOTE: One unique output can take multiple present task inputs, if more than one
+     *       present task contributes to the result  */
     uint32_t                              n_unique_outputs;
     const ral_present_task_group_mapping* unique_output_to_ingroup_task_mapping;
 

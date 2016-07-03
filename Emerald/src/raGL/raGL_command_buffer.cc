@@ -113,6 +113,9 @@ typedef enum
     /* Command args stored in _raGL_command_disable_vertex_attrib_array_command_info */
     RAGL_COMMAND_TYPE_DISABLE_VERTEX_ATTRIB_ARRAY,
 
+    /* Command args stored in _raGL_command_dispatch_command_info */
+    RAGL_COMMAND_TYPE_DISPATCH,
+
     /* Command args stored in _raGL_command_draw_arrays_command_info */
     RAGL_COMMAND_TYPE_DRAW_ARRAYS,
 
@@ -395,6 +398,14 @@ typedef struct
 
 typedef struct
 {
+    GLuint x;
+    GLuint y;
+    GLuint z;
+
+} _raGL_command_dispatch_command_info;
+
+typedef struct
+{
     // mode - defined by bound gfx state
     GLsizei count;
     GLint   first;
@@ -674,6 +685,7 @@ typedef struct
         _raGL_command_depth_range_indexed_command_info                               depth_range_indexed_command_info;
         _raGL_command_disable_command_info                                           disable_command_info;
         _raGL_command_disable_vertex_attrib_array_command_info                       disable_vertex_attrib_array_command_info;
+        _raGL_command_dispatch_command_info                                          dispatch_command_info;
         _raGL_command_draw_arrays_command_info                                       draw_arrays_command_info;
         _raGL_command_draw_arrays_indirect_command_info                              draw_arrays_indirect_command_info;
         _raGL_command_draw_arrays_instanced_base_instance_command_info               draw_arrays_instanced_base_instance_command_info;
@@ -899,6 +911,7 @@ typedef struct _raGL_command_buffer
 
     void process_clear_rt_binding_command       (const ral_command_buffer_clear_rt_binding_command_info*        command_ral_ptr);
     void process_copy_texture_to_texture_command(const ral_command_buffer_copy_texture_to_texture_command_info* command_ral_ptr);
+    void process_dispatch_command               (const ral_command_buffer_dispatch_command_info*                command_ral_ptr);
     void process_draw_call_indexed_command      (const ral_command_buffer_draw_call_indexed_command_info*       command_ral_ptr);
     void process_draw_call_indirect_command     (const ral_command_buffer_draw_call_indirect_command_info*      command_ral_ptr);
     void process_draw_call_regular_command      (const ral_command_buffer_draw_call_regular_command_info*       command_ral_ptr);
@@ -1105,6 +1118,13 @@ void _raGL_command_buffer::bake_commands()
                 break;
             }
 
+            case RAL_COMMAND_TYPE_DISPATCH:
+            {
+                process_dispatch_command(reinterpret_cast<const ral_command_buffer_dispatch_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
             case RAL_COMMAND_TYPE_DRAW_CALL_INDEXED:
             {
                 process_draw_call_indexed_command(reinterpret_cast<const ral_command_buffer_draw_call_indexed_command_info*>(command_ral_raw_ptr) );
@@ -1201,35 +1221,36 @@ void _raGL_command_buffer::bake_commands()
 /** TODO */
 void _raGL_command_buffer::bake_gfx_state()
 {
-    bool                 alpha_to_coverage_enabled   = false;
-    bool                 alpha_to_one_enabled        = false;
-    bool                 culling_enabled             = false;
-    ral_cull_mode        cull_mode                   = RAL_CULL_MODE_NONE;
-    float                depth_bias_constant_factor  = 0.0f;
-    bool                 depth_bias_enabled          = false;
-    float                depth_bias_slope_factor     = 0.0f;
-    float                depth_bounds_max            = 0.0f;
-    float                depth_bounds_min            = 0.0f;
-    bool                 depth_bounds_test_enabled   = false;
-    bool                 depth_clamp_enabled         = false;
-    ral_compare_op       depth_compare_func          = RAL_COMPARE_OP_UNKNOWN;
-    bool                 depth_test_enabled          = false;
-    bool                 depth_writes_enabled        = false;
-    ral_front_face       front_face                  = RAL_FRONT_FACE_UNKNOWN;
-    float                line_width                  = 0.0f;
-    ral_logic_op         logic_op                    = RAL_LOGIC_OP_UNKNOWN;
-    bool                 logic_op_enabled            = false;
-    uint32_t             n_patch_control_points      = 0;
-    ral_polygon_mode     polygon_mode_back           = RAL_POLYGON_MODE_UNKNOWN;
-    ral_polygon_mode     polygon_mode_front          = RAL_POLYGON_MODE_UNKNOWN;
-    bool                 primitive_restart_enabled   = false;
-    ral_primitive_type   primitive_type              = RAL_PRIMITIVE_TYPE_UNKNOWN;
-    bool                 rasterizer_discard_enabled  = false;
-    bool                 sample_shading_enabled      = false;
-    float                sample_shading_min          = 0.0f;
-    bool                 scissor_test_enabled        = false;
+    bool                 alpha_to_coverage_enabled                  = false;
+    bool                 alpha_to_one_enabled                       = false;
+    bool                 culling_enabled                            = false;
+    ral_cull_mode        cull_mode                                  = RAL_CULL_MODE_NONE;
+    float                depth_bias_constant_factor                 = 0.0f;
+    bool                 depth_bias_enabled                         = false;
+    float                depth_bias_slope_factor                    = 0.0f;
+    float                depth_bounds_max                           = 0.0f;
+    float                depth_bounds_min                           = 0.0f;
+    bool                 depth_bounds_test_enabled                  = false;
+    bool                 depth_clamp_enabled                        = false;
+    ral_compare_op       depth_compare_func                         = RAL_COMPARE_OP_UNKNOWN;
+    bool                 depth_test_enabled                         = false;
+    bool                 depth_writes_enabled                       = false;
+    ral_front_face       front_face                                 = RAL_FRONT_FACE_UNKNOWN;
+    float                line_width                                 = 0.0f;
+    ral_logic_op         logic_op                                   = RAL_LOGIC_OP_UNKNOWN;
+    bool                 logic_op_enabled                           = false;
+    uint32_t             n_patch_control_points                     = 0;
+    ral_polygon_mode     polygon_mode_back                          = RAL_POLYGON_MODE_UNKNOWN;
+    ral_polygon_mode     polygon_mode_front                         = RAL_POLYGON_MODE_UNKNOWN;
+    bool                 primitive_restart_enabled                  = false;
+    ral_primitive_type   primitive_type                             = RAL_PRIMITIVE_TYPE_UNKNOWN;
+    bool                 rasterizer_discard_enabled                 = false;
+    bool                 sample_shading_enabled                     = false;
+    float                sample_shading_min                         = 0.0f;
+    bool                 scissor_test_enabled                       = false;
+    bool                 static_scissor_boxes_and_viewports_enabled = false;
     ral_stencil_op_state stencil_test_back;
-    bool                 stencil_test_enabled        = false;
+    bool                 stencil_test_enabled                       = false;
     ral_stencil_op_state stencil_test_front;
 
     struct
@@ -1238,36 +1259,37 @@ void _raGL_command_buffer::bake_gfx_state()
         void*                  out_result_ptr;
     } gfx_state_prop_to_var_mappings[] =
     {
-        {RAL_GFX_STATE_PROPERTY_ALPHA_TO_COVERAGE_ENABLED,  &alpha_to_coverage_enabled},
-        {RAL_GFX_STATE_PROPERTY_ALPHA_TO_ONE_ENABLED,       &alpha_to_one_enabled},
-        {RAL_GFX_STATE_PROPERTY_CULLING_ENABLED,            &culling_enabled},
-        {RAL_GFX_STATE_PROPERTY_CULL_MODE,                  &cull_mode},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_CONSTANT_FACTOR, &depth_bias_constant_factor},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_ENABLED,         &depth_bias_enabled},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_SLOPE_FACTOR,    &depth_bias_slope_factor},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_MAX,           &depth_bounds_max},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_MIN,           &depth_bounds_min},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_TEST_ENABLED,  &depth_bounds_test_enabled},    // <- not available as core func in gl
-        {RAL_GFX_STATE_PROPERTY_DEPTH_CLAMP_ENABLED,        &depth_clamp_enabled},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_COMPARE_FUNC,         &depth_compare_func},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_TEST_ENABLED,         &depth_test_enabled},
-        {RAL_GFX_STATE_PROPERTY_DEPTH_WRITES_ENABLED,       &depth_writes_enabled},
-        {RAL_GFX_STATE_PROPERTY_FRONT_FACE,                 &front_face},
-        {RAL_GFX_STATE_PROPERTY_LINE_WIDTH,                 &line_width},
-        {RAL_GFX_STATE_PROPERTY_LOGIC_OP,                   &logic_op},
-        {RAL_GFX_STATE_PROPERTY_LOGIC_OP_ENABLED,           &logic_op_enabled},
-        {RAL_GFX_STATE_PROPERTY_N_PATCH_CONTROL_POINTS,     &n_patch_control_points},
-        {RAL_GFX_STATE_PROPERTY_POLYGON_MODE_BACK,          &polygon_mode_back},
-        {RAL_GFX_STATE_PROPERTY_POLYGON_MODE_FRONT,         &polygon_mode_front},
-        {RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,             &primitive_type},
-        {RAL_GFX_STATE_PROPERTY_PRIMITIVE_RESTART_ENABLED,  &primitive_restart_enabled},
-        {RAL_GFX_STATE_PROPERTY_RASTERIZER_DISCARD_ENABLED, &rasterizer_discard_enabled},
-        {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_ENABLED,     &sample_shading_enabled},
-        {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_MIN,         &sample_shading_min},
-        {RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,       &scissor_test_enabled},
-        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_BACK,          &stencil_test_back},
-        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_ENABLED,       &stencil_test_enabled},
-        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_FRONT,         &stencil_test_front}
+        {RAL_GFX_STATE_PROPERTY_ALPHA_TO_COVERAGE_ENABLED,                  &alpha_to_coverage_enabled},
+        {RAL_GFX_STATE_PROPERTY_ALPHA_TO_ONE_ENABLED,                       &alpha_to_one_enabled},
+        {RAL_GFX_STATE_PROPERTY_CULLING_ENABLED,                            &culling_enabled},
+        {RAL_GFX_STATE_PROPERTY_CULL_MODE,                                  &cull_mode},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_CONSTANT_FACTOR,                 &depth_bias_constant_factor},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_ENABLED,                         &depth_bias_enabled},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BIAS_SLOPE_FACTOR,                    &depth_bias_slope_factor},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_MAX,                           &depth_bounds_max},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_MIN,                           &depth_bounds_min},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_BOUNDS_TEST_ENABLED,                  &depth_bounds_test_enabled},    // <- not available as core func in gl
+        {RAL_GFX_STATE_PROPERTY_DEPTH_CLAMP_ENABLED,                        &depth_clamp_enabled},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_COMPARE_FUNC,                         &depth_compare_func},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_TEST_ENABLED,                         &depth_test_enabled},
+        {RAL_GFX_STATE_PROPERTY_DEPTH_WRITES_ENABLED,                       &depth_writes_enabled},
+        {RAL_GFX_STATE_PROPERTY_FRONT_FACE,                                 &front_face},
+        {RAL_GFX_STATE_PROPERTY_LINE_WIDTH,                                 &line_width},
+        {RAL_GFX_STATE_PROPERTY_LOGIC_OP,                                   &logic_op},
+        {RAL_GFX_STATE_PROPERTY_LOGIC_OP_ENABLED,                           &logic_op_enabled},
+        {RAL_GFX_STATE_PROPERTY_N_PATCH_CONTROL_POINTS,                     &n_patch_control_points},
+        {RAL_GFX_STATE_PROPERTY_POLYGON_MODE_BACK,                          &polygon_mode_back},
+        {RAL_GFX_STATE_PROPERTY_POLYGON_MODE_FRONT,                         &polygon_mode_front},
+        {RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,                             &primitive_type},
+        {RAL_GFX_STATE_PROPERTY_PRIMITIVE_RESTART_ENABLED,                  &primitive_restart_enabled},
+        {RAL_GFX_STATE_PROPERTY_RASTERIZER_DISCARD_ENABLED,                 &rasterizer_discard_enabled},
+        {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_ENABLED,                     &sample_shading_enabled},
+        {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_MIN,                         &sample_shading_min},
+        {RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,                       &scissor_test_enabled},
+        {RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED, &static_scissor_boxes_and_viewports_enabled},
+        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_BACK,                          &stencil_test_back},
+        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_ENABLED,                       &stencil_test_enabled},
+        {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_FRONT,                         &stencil_test_front}
     };
     const uint32_t n_gfx_state_prop_to_var_mappings = sizeof(gfx_state_prop_to_var_mappings) / sizeof(gfx_state_prop_to_var_mappings[0]);
 
@@ -1619,6 +1641,76 @@ void _raGL_command_buffer::bake_gfx_state()
                                      enable_command_ptr);
         system_resizable_vector_push(commands,
                                      min_sample_shading_command_ptr);
+    }
+
+    /* Static scissor boxes & viewports
+     *
+     * This is not supported in core GL, so we need to emulate this by adjusting scissor box &
+     * viewport states with GL calls.
+     */
+    if (static_scissor_boxes_and_viewports_enabled)
+    {
+        uint32_t                                         n_viewports                  = 0;
+        bool                                             scissor_test_enabled         = false;
+        ral_command_buffer_set_scissor_box_command_info* set_scissor_box_commands_ral = nullptr;
+        ral_command_buffer_set_viewport_command_info*    set_viewport_commands_ral    = nullptr;
+
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_N_STATIC_SCISSOR_BOXES_AND_VIEWPORTS,
+                                  &n_viewports);
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,
+                                  &scissor_test_enabled);
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES,
+                                  &set_scissor_box_commands_ral);
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
+                                  &set_viewport_commands_ral);
+
+        /* TODO: We could use glDepthRangeArrayv() here instead. */
+        /* TODO: We could use glScissorArrayv() here instead.    */
+        /* TODO: We could use glViewportArrayv() here instead.   */
+        for (uint32_t n_viewport = 0;
+                      n_viewport < n_viewports;
+                    ++n_viewport)
+        {
+            _raGL_command* depth_range_indexed_command_raGL_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* set_viewport_command_raGL_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+            depth_range_indexed_command_raGL_ptr->depth_range_indexed_command_info.farVal  = set_viewport_commands_ral[n_viewport].depth_range[1];
+            depth_range_indexed_command_raGL_ptr->depth_range_indexed_command_info.index   = set_viewport_commands_ral[n_viewport].index;
+            depth_range_indexed_command_raGL_ptr->depth_range_indexed_command_info.nearVal = set_viewport_commands_ral[n_viewport].depth_range[0];
+            depth_range_indexed_command_raGL_ptr->type = RAGL_COMMAND_TYPE_DEPTH_RANGE_INDEXED;
+
+            set_viewport_command_raGL_ptr->viewport_indexedfv_command_info.index = set_viewport_commands_ral[n_viewport].index;
+            set_viewport_command_raGL_ptr->viewport_indexedfv_command_info.v[0]  = set_viewport_commands_ral[n_viewport].xy[0];
+            set_viewport_command_raGL_ptr->viewport_indexedfv_command_info.v[1]  = set_viewport_commands_ral[n_viewport].xy[1];
+            set_viewport_command_raGL_ptr->viewport_indexedfv_command_info.v[2]  = set_viewport_commands_ral[n_viewport].size[0];
+            set_viewport_command_raGL_ptr->viewport_indexedfv_command_info.v[3]  = set_viewport_commands_ral[n_viewport].size[1];
+            set_viewport_command_raGL_ptr->type                                  = RAGL_COMMAND_TYPE_VIEWPORT_INDEXEDFV;
+
+            system_resizable_vector_push(commands,
+                                         depth_range_indexed_command_raGL_ptr);
+
+            system_resizable_vector_push(commands,
+                                         set_viewport_command_raGL_ptr);
+
+            if (scissor_test_enabled)
+            {
+                _raGL_command* scissor_indexedv_command_raGL_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.index = set_scissor_box_commands_ral[n_viewport].index;
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[0]  = set_scissor_box_commands_ral[n_viewport].xy[0];
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[1]  = set_scissor_box_commands_ral[n_viewport].xy[1];
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[2]  = set_scissor_box_commands_ral[n_viewport].size[0];
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[3]  = set_scissor_box_commands_ral[n_viewport].size[1];
+                scissor_indexedv_command_raGL_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
+
+                system_resizable_vector_push(commands,
+                                             scissor_indexedv_command_raGL_ptr);
+            }
+        }
     }
 
     /* Stencil test */
@@ -2691,6 +2783,38 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
 }
 
 /** TODO */
+void _raGL_command_buffer::process_dispatch_command(const ral_command_buffer_dispatch_command_info* command_ral_ptr)
+{
+    _raGL_command* dispatch_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+    /* Sanity checks */
+    #ifdef _DEBUG
+    {
+        ral_program active_program_ral = nullptr;
+
+        ASSERT_DEBUG_SYNC(bake_state.active_program != nullptr,
+                          "No active program");
+
+        raGL_program_get_property(bake_state.active_program,
+                                  RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
+                                 &active_program_ral);
+
+        ASSERT_DEBUG_SYNC(ral_program_is_shader_stage_defined(active_program_ral,
+                                                              RAL_SHADER_TYPE_COMPUTE),
+                          "Active program does not define compute shader stage");
+    }
+    #endif
+
+    dispatch_command_ptr->dispatch_command_info.x = command_ral_ptr->x;
+    dispatch_command_ptr->dispatch_command_info.y = command_ral_ptr->y;
+    dispatch_command_ptr->dispatch_command_info.z = command_ral_ptr->z;
+    dispatch_command_ptr->type                    = RAGL_COMMAND_TYPE_DISPATCH;
+
+    system_resizable_vector_push(commands,
+                                 dispatch_command_ptr);
+}
+
+/** TODO */
 void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_buffer_draw_call_indexed_command_info* command_ral_ptr)
 {
     /* TODO: Coalesce multiple indexed draw calls into a single multi-draw call. */
@@ -3596,6 +3720,18 @@ void _raGL_command_buffer::process_set_viewport_command(const ral_command_buffer
     ASSERT_DEBUG_SYNC(command_ral_ptr->index < static_cast<uint32_t>(limits_ptr->max_viewports),
                       "Invalid viewport index");
 
+    if (bake_state.active_gfx_state != nullptr)
+    {
+        bool static_scissor_boxes_and_viewports_enabled;
+
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED,
+                                  &static_scissor_boxes_and_viewports_enabled);
+
+        ASSERT_DEBUG_SYNC(!static_scissor_boxes_and_viewports_enabled,
+                          "Illegal \"set viewport\" command request - bound gfx_state has the \"static scissor boxes and viewports\" mode enabled.");
+    }
+
     /* Enqueue the GL command */
     _raGL_command* depth_range_indexed_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
     _raGL_command* viewport_indexedfv_command_ptr  = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
@@ -3995,6 +4131,17 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
                 const _raGL_command_disable_vertex_attrib_array_command_info& command_args = command_ptr->disable_vertex_attrib_array_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLDisableVertexAttribArray(command_args.index);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_DISPATCH:
+            {
+                const _raGL_command_dispatch_command_info& command_args = command_ptr->dispatch_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLDispatchCompute(command_args.x,
+                                                                        command_args.y,
+                                                                        command_args.z);
 
                 break;
             }

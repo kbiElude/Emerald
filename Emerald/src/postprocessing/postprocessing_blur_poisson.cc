@@ -55,7 +55,7 @@ static const char* postprocessing_blur_poisson_uniform_blur_strength_body =
 static const char* postprocessing_blur_poisson_source_input_alpha_blur_strength_body =
     "vec2 get_blur_strength()\n"
     "{\n"
-    "    return texture(data, uv).aa;\n"
+    "    return textureLod(data, uv, 0.0).aa;\n"
     "}\n";
 
 static const char* postprocessing_blur_poisson_fragment_shader_body_preambule =
@@ -100,7 +100,7 @@ static const char* postprocessing_blur_poisson_fragment_shader_body_main =
     "\n"
     "   for (int i = 0; i < taps.length(); i += 2)\n"
     "   {\n"
-    "      temp_result += texture(data, uv + vec2(taps[i], taps[i+1]) / textureSize(data, 0) * get_blur_strength() );\n"
+    "      temp_result += textureLod(data, uv + vec2(taps[i], taps[i+1]) / textureSize(data, 0) * get_blur_strength(), 0.0);\n"
     "   }\n"
     "\n"
     "   result = temp_result / taps.length() * 2;\n"
@@ -195,11 +195,6 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
                                                                 system_hashed_ansi_string_get_buffer(name))
     };
 
-    /* Prepare a create info structure for the gfx state instance */
-    ral_gfx_state_create_info gfx_state_create_info;
-
-    gfx_state_create_info.primitive_type = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
-
     /* Instantiate the object */
     result_ptr = new (std::nothrow) _postprocessing_blur_poisson;
 
@@ -220,8 +215,6 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
     result_ptr->bluriness_source   = bluriness_source;
     result_ptr->context            = context;
     result_ptr->custom_shader_code = custom_shader_code;
-    result_ptr->gfx_state          = ral_gfx_state_create(context,
-                                                         &gfx_state_create_info);
     result_ptr->name               = name;
 
     ral_context_create_programs(context,
@@ -308,7 +301,7 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
 
     if (poisson_ptr->cached_present_task        != nullptr             &&
         poisson_ptr->cached_input_texture_view  == input_texture_view  &&
-        // ignore blur_strength here - the setting is set at run-time
+        // ignore blur_strength here - the setting is adjusted at run-time
         poisson_ptr->cached_result_texture_view == result_texture_view)
     {
         result = poisson_ptr->cached_present_task;
@@ -334,6 +327,41 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
                                          0, /* n_mipmap */
                                          RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                         &texture_width);
+
+    /* Instantiate a new gfx state */
+    ral_gfx_state_create_info                       gfx_state_create_info;
+    ral_command_buffer_set_scissor_box_command_info gfx_state_scissor_box;
+    ral_command_buffer_set_viewport_command_info    gfx_state_viewport;
+
+    gfx_state_scissor_box.index   = 0;
+    gfx_state_scissor_box.size[0] = texture_width;
+    gfx_state_scissor_box.size[1] = texture_height;
+    gfx_state_scissor_box.xy  [0] = 0;
+    gfx_state_scissor_box.xy  [1] = 0;
+
+    gfx_state_viewport.depth_range[0] = 0.0f;
+    gfx_state_viewport.depth_range[1] = 1.0f;
+    gfx_state_viewport.index          = 0;
+    gfx_state_viewport.size[0]        = texture_width;
+    gfx_state_viewport.size[1]        = texture_height;
+    gfx_state_viewport.xy  [0]        = 0;
+    gfx_state_viewport.xy  [1]        = 0;
+
+    if (poisson_ptr->gfx_state != nullptr)
+    {
+        ral_gfx_state_release(poisson_ptr->gfx_state);
+
+        poisson_ptr->gfx_state = nullptr;
+    }
+
+    gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+    gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+    gfx_state_create_info.static_scissor_boxes                 = &gfx_state_scissor_box;
+    gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+    gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
+
+    poisson_ptr->gfx_state = ral_gfx_state_create(poisson_ptr->context,
+                                                 &gfx_state_create_info);
 
     /* Cache UB properties */
     ral_buffer program_ub_bo      = nullptr;

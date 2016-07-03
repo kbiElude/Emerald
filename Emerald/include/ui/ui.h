@@ -71,11 +71,8 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
                                                      ral_texture               texture,
                                                      ui_texture_preview_type   preview_type);
 /** TODO */
-PUBLIC EMERALD_API ui ui_create(varia_text_renderer       text_renderer,
-                                system_hashed_ansi_string name);
-
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ui_draw(ui ui_instance);
+PUBLIC ui ui_create(varia_text_renderer       text_renderer,
+                    system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
@@ -87,6 +84,13 @@ PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
  *  TODO
  **/
 PUBLIC ral_context ui_get_context(ui ui_instance);
+
+/** TODO
+ *
+ *  It is caller's responsibility to release the present task when no longer needed.
+ */
+PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
+                                            ral_texture_view target_texture_view);
 
 /** INTERNAL USAGE ONLY.
  *
@@ -110,11 +114,11 @@ PUBLIC void ui_receive_control_callback(ui         ui_instance,
                                         void*      callback_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API void ui_register_control_callback(ui                        ui_instance,
-                                                     ui_control                control,
-                                                     int                       callback_id,
-                                                     PFNUIEVENTCALLBACKPROCPTR callback_proc_ptr,
-                                                     void*                     callback_proc_user_arg);
+PUBLIC void ui_register_control_callback(ui                        ui_instance,
+                                         ui_control                control,
+                                         int                       callback_id,
+                                         PFNUIEVENTCALLBACKPROCPTR callback_proc_ptr,
+                                         void*                     callback_proc_user_arg);
 
 /** INTERNAL USAGE ONLY.
  *
@@ -134,7 +138,7 @@ PUBLIC EMERALD_API void ui_set_control_property(ui_control          control,
                                                 const void*         data);
 
 /** TODO */
-PUBLIC EMERALD_API void ui_unlock(ui                                  ui,
-                                  system_read_write_mutex_access_type access_type);
+PUBLIC void ui_unlock(ui                                  ui,
+                      system_read_write_mutex_access_type access_type);
 
 #endif /* UI_MAIN_H */

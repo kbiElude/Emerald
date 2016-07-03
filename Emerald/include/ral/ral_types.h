@@ -1334,6 +1334,20 @@ typedef struct ral_gfx_state_create_info
     bool scissor_test;
     bool stencil_test;
 
+    /*
+     * If enabled, scissor boxes & viewports cannot be changed without switching to a different
+     * gfx state.
+     * If disabled, they must be configured with a ral_command_buffer_record_set_scissor_boxes()
+     * and .._set_viewports(), before the first draw call is recorded.
+     *
+     * Disabled by default.
+     **/
+    bool static_scissor_boxes_and_viewports; 
+
+    uint32_t                                                static_n_scissor_boxes_and_viewports;
+    struct ral_command_buffer_set_scissor_box_command_info* static_scissor_boxes;
+    struct ral_command_buffer_set_viewport_command_info*    static_viewports;
+
     /* Depth bias */
     float depth_bias_constant_factor;
     float depth_bias_slope_factor;
@@ -1386,6 +1400,8 @@ typedef struct ral_gfx_state_create_info
         sample_shading     = false;
         scissor_test       = false;
         stencil_test       = false;
+
+        static_scissor_boxes_and_viewports = false;
 
         cull_mode                         = RAL_CULL_MODE_BACK;
         depth_bias_constant_factor        = 0.0f;

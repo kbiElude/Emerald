@@ -4,13 +4,31 @@
  *
  */
 #include "shared.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_gfx_state.h"
 
 
-typedef struct
+typedef struct _ral_gfx_state
 {
     ral_context               context;
     ral_gfx_state_create_info create_info;
+
+    ~_ral_gfx_state()
+    {
+        if (create_info.static_scissor_boxes != nullptr)
+        {
+            delete [] create_info.static_scissor_boxes;
+
+            create_info.static_scissor_boxes = nullptr;
+        }
+
+        if (create_info.static_viewports != nullptr)
+        {
+            delete [] create_info.static_viewports;
+
+            create_info.static_viewports = nullptr;
+        }
+    }
 } _ral_gfx_state;
 
 
@@ -23,10 +41,44 @@ PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      conte
     ASSERT_ALWAYS_SYNC(gfx_state_ptr != nullptr,
                        "Out of memory");
 
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(!create_info_ptr->static_scissor_boxes_and_viewports && (create_info_ptr->static_n_scissor_boxes_and_viewports == 0        &&
+                                                                               create_info_ptr->static_scissor_boxes                 == nullptr  &&
+                                                                               create_info_ptr->static_viewports                     == nullptr) ||
+                       create_info_ptr->static_scissor_boxes_and_viewports && (create_info_ptr->static_n_scissor_boxes_and_viewports == 0        ||
+                                                                               create_info_ptr->static_n_scissor_boxes_and_viewports != 0        &&
+                                                                               create_info_ptr->static_scissor_boxes                 != nullptr  &&
+                                                                               create_info_ptr->static_viewports                     != nullptr),
+                      "Static scissor box+viewport state configuration is invalid");
+
+    /* Cache the user-specified info from @param create_info_ptr */
     if (gfx_state_ptr != nullptr)
     {
         gfx_state_ptr->context     = context;
         gfx_state_ptr->create_info = *create_info_ptr;
+
+        /* Static scissor box + viewport data needs extra care */
+        if (create_info_ptr->static_n_scissor_boxes_and_viewports != 0)
+        {
+            gfx_state_ptr->create_info.static_scissor_boxes = new (std::nothrow) ral_command_buffer_set_scissor_box_command_info[create_info_ptr->static_n_scissor_boxes_and_viewports];
+            gfx_state_ptr->create_info.static_viewports     = new (std::nothrow) ral_command_buffer_set_viewport_command_info   [create_info_ptr->static_n_scissor_boxes_and_viewports];
+
+            ASSERT_ALWAYS_SYNC(gfx_state_ptr->create_info.static_scissor_boxes != nullptr &&
+                               gfx_state_ptr->create_info.static_viewports     != nullptr,
+                               "Out of memory");
+
+            memcpy(gfx_state_ptr->create_info.static_scissor_boxes,
+                   create_info_ptr->static_scissor_boxes,
+                   sizeof(ral_command_buffer_set_scissor_box_command_info) * create_info_ptr->static_n_scissor_boxes_and_viewports);
+            memcpy(gfx_state_ptr->create_info.static_viewports,
+                   create_info_ptr->static_viewports,
+                   sizeof(ral_command_buffer_set_viewport_command_info) * create_info_ptr->static_n_scissor_boxes_and_viewports);
+        }
+        else
+        {
+            gfx_state_ptr->create_info.static_scissor_boxes = nullptr;
+            gfx_state_ptr->create_info.static_viewports     = nullptr;
+        }
     }
 
     return (ral_gfx_state) gfx_state_ptr;
@@ -233,6 +285,33 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
         case RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED:
         {
             *(bool*) out_result_ptr = gfx_state_ptr->create_info.scissor_test;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES:
+        {
+            ASSERT_DEBUG_SYNC(gfx_state_ptr->create_info.static_scissor_boxes_and_viewports,
+                              "Invalid RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES query");
+
+            *(ral_command_buffer_set_scissor_box_command_info**) out_result_ptr = gfx_state_ptr->create_info.static_scissor_boxes;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED:
+        {
+            *(bool*) out_result_ptr = gfx_state_ptr->create_info.static_scissor_boxes_and_viewports;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS:
+        {
+            ASSERT_DEBUG_SYNC(gfx_state_ptr->create_info.static_scissor_boxes_and_viewports,
+                              "Invalid RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS query");
+
+            *(ral_command_buffer_set_viewport_command_info**) out_result_ptr = gfx_state_ptr->create_info.static_viewports;
 
             break;
         }

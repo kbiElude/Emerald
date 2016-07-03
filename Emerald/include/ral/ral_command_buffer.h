@@ -220,6 +220,14 @@ typedef struct ral_command_buffer_clear_rt_binding_command_info
     uint32_t                                         n_rendertargets;
 } ral_command_buffer_clear_rt_binding_command_info;
 
+typedef struct ral_command_buffer_dispatch_command_info
+{
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+
+} ral_command_buffer_dispatch_command_info;
+
 typedef struct ral_command_buffer_draw_call_indexed_command_info
 {
     ral_buffer     index_buffer;
@@ -446,6 +454,7 @@ typedef enum
 {
     RAL_COMMAND_TYPE_CLEAR_RT_BINDING,
     RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE,
+    RAL_COMMAND_TYPE_DISPATCH,
     RAL_COMMAND_TYPE_DRAW_CALL_INDEXED,
     RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT,
     RAL_COMMAND_TYPE_DRAW_CALL_REGULAR,

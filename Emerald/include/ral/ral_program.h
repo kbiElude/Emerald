@@ -234,6 +234,10 @@ PUBLIC bool ral_program_is_shader_attached(ral_program program,
                                            ral_shader  shader);
 
 /** TODO */
+PUBLIC bool ral_program_is_shader_stage_defined(ral_program     program,
+                                                ral_shader_type stage);
+
+/** TODO */
 PUBLIC void ral_program_lock(ral_program program);
 
 /** TODO */
