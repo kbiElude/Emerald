@@ -133,6 +133,7 @@ typedef struct _postprocessing_blur_gaussian
     unsigned int              n_min_taps;
     ral_program               po;
 
+    ral_command_buffer                      cached_command_buffer;
     ral_present_task                        cached_present_task;
     postprocessing_blur_gaussian_resolution cached_present_task_blur_resolution;
     ral_texture_view                        cached_present_task_dst_src_texture_view;
@@ -166,6 +167,7 @@ typedef struct _postprocessing_blur_gaussian
         ASSERT_DEBUG_SYNC(in_n_min_taps <= in_n_max_taps,
                           "Invalid min/max tap argument values");
 
+        cached_command_buffer           = nullptr;
         cached_present_task             = nullptr;
         coeff_bo                        = nullptr;
         coeff_buffer_offset_for_value_1 = 0; /* always zero */
@@ -216,6 +218,13 @@ typedef struct _postprocessing_blur_gaussian
         const uint32_t n_gfx_states_to_release    = sizeof(gfx_states_to_release)    / sizeof(gfx_states_to_release   [0]);
         const uint32_t n_samplers_to_release      = sizeof(samplers_to_release)      / sizeof(samplers_to_release     [0]);
         const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release) / sizeof(texture_views_to_release[0]);
+
+        if (cached_command_buffer != nullptr)
+        {
+            ral_command_buffer_release(cached_command_buffer);
+
+            cached_command_buffer = nullptr;
+        }
 
         if (cached_present_task != nullptr)
         {
@@ -1179,14 +1188,19 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
     /* Start recording the command buffer.. */
     ral_command_buffer cmd_buffer;
 
-    cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
-    cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
-    cmd_buffer_create_info.is_resettable                           = false;
-    cmd_buffer_create_info.is_transient                            = false;
+    if (blur_ptr->cached_command_buffer == nullptr)
+    {
+        cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+        cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        cmd_buffer_create_info.is_resettable                           = true;
+        cmd_buffer_create_info.is_transient                            = false;
 
-    cmd_buffer = ral_command_buffer_create(blur_ptr->context,
-                                          &cmd_buffer_create_info);
+        blur_ptr->cached_command_buffer = ral_command_buffer_create(blur_ptr->context,
+                                                                   &cmd_buffer_create_info);
+    }
 
+    cmd_buffer = blur_ptr->cached_command_buffer;
+    
     ral_command_buffer_start_recording(cmd_buffer);
 
     /* Step 2): Set-up

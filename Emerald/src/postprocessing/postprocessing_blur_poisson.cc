@@ -30,10 +30,11 @@ typedef struct
     ral_context                                       context;
     const char*                                       custom_shader_code;
 
-    float            cached_blur_strength;
-    ral_texture_view cached_input_texture_view;
-    ral_present_task cached_present_task;
-    ral_texture_view cached_result_texture_view;
+    float              cached_blur_strength;
+    ral_command_buffer cached_command_buffer;
+    ral_texture_view   cached_input_texture_view;
+    ral_present_task   cached_present_task;
+    ral_texture_view   cached_result_texture_view;
 
     ral_gfx_state             gfx_state;
     system_hashed_ansi_string name;
@@ -122,6 +123,13 @@ PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
                                (const void**) &data_ptr->program);
+
+    if (data_ptr->cached_command_buffer != nullptr)
+    {
+        ral_command_buffer_release(data_ptr->cached_command_buffer);
+
+        data_ptr->cached_command_buffer = nullptr;
+    }
 
     if (data_ptr->gfx_state != nullptr)
     {
@@ -384,16 +392,21 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     set_ub_binding_command_info.uniform_buffer_binding.offset = 0;
     set_ub_binding_command_info.uniform_buffer_binding.size   = program_ub_bo_size;
 
-    cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
-    cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
-    cmd_buffer_create_info.is_resettable                           = false;
-    cmd_buffer_create_info.is_transient                            = false;
+    if (poisson_ptr->cached_command_buffer == nullptr)
+    {
+        cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+        cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        cmd_buffer_create_info.is_resettable                           = true;
+        cmd_buffer_create_info.is_transient                            = false;
 
-    cmd_buffer = ral_command_buffer_create(poisson_ptr->context,
-                                          &cmd_buffer_create_info);
+        poisson_ptr->cached_command_buffer = ral_command_buffer_create(poisson_ptr->context,
+                                                                      &cmd_buffer_create_info);
 
-    ASSERT_DEBUG_SYNC(cmd_buffer != nullptr,
-                      "Could not create a command buffer");
+        ASSERT_DEBUG_SYNC(poisson_ptr->cached_command_buffer != nullptr,
+                          "Could not create a command buffer");
+    }
+
+    cmd_buffer = poisson_ptr->cached_command_buffer;
 
     ral_command_buffer_start_recording(cmd_buffer);
     {

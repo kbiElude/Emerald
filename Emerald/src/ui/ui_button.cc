@@ -56,6 +56,7 @@ typedef struct
     ral_present_task last_present_task;
     ral_texture_view last_present_task_target_texture_view; /* do NOT release */
 
+    ral_command_buffer       cached_command_buffer;
     ral_context              context;
     ral_present_task         cpu_present_task;
     ral_gfx_state            gfx_state;
@@ -574,11 +575,36 @@ PUBLIC ral_present_task ui_button_get_present_task(void*            internal_ins
     }
     else
     {
+        uint32_t target_texture_view_height;
+        uint32_t target_texture_view_width;
+
+        ral_texture_view_get_mipmap_property(target_texture_view,
+                                             0, /* n_layer  */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                            &target_texture_view_height);
+        ral_texture_view_get_mipmap_property(target_texture_view,
+                                             0, /* n_layer  */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                            &target_texture_view_width);
+
+        /* What about the gfx state? */
         if (button_ptr->gfx_state != nullptr)
         {
-            ral_gfx_state_release(button_ptr->gfx_state);
+            ral_command_buffer_set_viewport_command_info* viewports;
 
-            button_ptr->gfx_state = nullptr;
+            ral_gfx_state_get_property(button_ptr->gfx_state,
+                                       RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
+                                      &viewports);
+
+            if (!(fabs(viewports[0].size[0] - target_texture_view_width)  < 1e-5f &&
+                  fabs(viewports[0].size[1] - target_texture_view_height) < 1e-5f))
+            {
+                ral_gfx_state_release(button_ptr->gfx_state);
+
+                button_ptr->gfx_state = nullptr;
+            }
         }
 
         if (button_ptr->last_present_task != nullptr)
@@ -595,58 +621,54 @@ PUBLIC ral_present_task ui_button_get_present_task(void*            internal_ins
                                               RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
                                              &ub_vs_bo);
 
-        /* Set up a GFX state instance */
-        ral_command_buffer_set_scissor_box_command_info gfx_state_scissor_box;
-        ral_gfx_state_create_info                       gfx_state_create_info;
-        ral_command_buffer_set_viewport_command_info    gfx_state_viewport;
-        uint32_t                                        target_texture_view_height;
-        uint32_t                                        target_texture_view_width;
+        /* Set up a GFX state instance, if needed */
+        if (button_ptr->gfx_state == nullptr)
+        {
+            ral_command_buffer_set_scissor_box_command_info gfx_state_scissor_box;
+            ral_gfx_state_create_info                       gfx_state_create_info;
+            ral_command_buffer_set_viewport_command_info    gfx_state_viewport;
 
-        ral_texture_view_get_mipmap_property(target_texture_view,
-                                             0, /* n_layer  */
-                                             0, /* n_mipmap */
-                                             RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                            &target_texture_view_height);
-        ral_texture_view_get_mipmap_property(target_texture_view,
-                                             0, /* n_layer  */
-                                             0, /* n_mipmap */
-                                             RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                            &target_texture_view_width);
+            gfx_state_scissor_box.index   = 0;
+            gfx_state_scissor_box.size[0] = target_texture_view_width;
+            gfx_state_scissor_box.size[1] = target_texture_view_height;
+            gfx_state_scissor_box.xy  [0] = 0;
+            gfx_state_scissor_box.xy  [1] = 0;
 
-        gfx_state_scissor_box.index   = 0;
-        gfx_state_scissor_box.size[0] = target_texture_view_width;
-        gfx_state_scissor_box.size[1] = target_texture_view_height;
-        gfx_state_scissor_box.xy  [0] = 0;
-        gfx_state_scissor_box.xy  [1] = 0;
+            gfx_state_viewport.depth_range[0] = 0.0f;
+            gfx_state_viewport.depth_range[1] = 1.0f;
+            gfx_state_viewport.index          = 0;
+            gfx_state_viewport.size[0]        = static_cast<float>(target_texture_view_width);
+            gfx_state_viewport.size[1]        = static_cast<float>(target_texture_view_height);
+            gfx_state_viewport.xy  [0]        = 0;
+            gfx_state_viewport.xy  [1]        = 0;
 
-        gfx_state_viewport.depth_range[0] = 0.0f;
-        gfx_state_viewport.depth_range[1] = 1.0f;
-        gfx_state_viewport.index          = 0;
-        gfx_state_viewport.size[0]        = static_cast<float>(target_texture_view_width);
-        gfx_state_viewport.size[1]        = static_cast<float>(target_texture_view_height);
-        gfx_state_viewport.xy  [0]        = 0;
-        gfx_state_viewport.xy  [1]        = 0;
+            gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+            gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+            gfx_state_create_info.static_scissor_boxes                 = &gfx_state_scissor_box;
+            gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+            gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
 
-        gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
-        gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
-        gfx_state_create_info.static_scissor_boxes                 = &gfx_state_scissor_box;
-        gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
-        gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
-
-        button_ptr->gfx_state = ral_gfx_state_create(button_ptr->context,
-                                                    &gfx_state_create_info);
+            button_ptr->gfx_state = ral_gfx_state_create(button_ptr->context,
+                                                        &gfx_state_create_info);
+        }
 
         /* Bake the draw command buffer */
-        ral_command_buffer             draw_command_buffer;
-        ral_command_buffer_create_info draw_command_buffer_create_info;
+        ral_command_buffer draw_command_buffer;
 
-        draw_command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
-        draw_command_buffer_create_info.is_invokable_from_other_command_buffers = false;
-        draw_command_buffer_create_info.is_resettable                           = false;
-        draw_command_buffer_create_info.is_transient                            = false;
+        if (button_ptr->cached_command_buffer == nullptr)
+        {
+            ral_command_buffer_create_info draw_command_buffer_create_info;
 
-        draw_command_buffer = ral_command_buffer_create(button_ptr->context,
-                                                       &draw_command_buffer_create_info);
+            draw_command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+            draw_command_buffer_create_info.is_invokable_from_other_command_buffers = false;
+            draw_command_buffer_create_info.is_resettable                           = true;
+            draw_command_buffer_create_info.is_transient                            = false;
+
+            button_ptr->cached_command_buffer = ral_command_buffer_create(button_ptr->context,
+                                                                         &draw_command_buffer_create_info);
+        }
+
+        draw_command_buffer = button_ptr->cached_command_buffer;
 
         ral_command_buffer_start_recording(draw_command_buffer);
         {

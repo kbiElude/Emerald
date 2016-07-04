@@ -100,10 +100,11 @@ typedef struct _postprocessing_motion_blur
 {
     ral_context context;
 
-    ral_texture_view cached_input_color_texture_view;
-    ral_texture_view cached_input_velocity_texture_view;
-    ral_texture_view cached_output_texture_view;
-    ral_present_task cached_present_task;
+    ral_command_buffer cached_command_buffer;
+    ral_texture_view   cached_input_color_texture_view;
+    ral_texture_view   cached_input_velocity_texture_view;
+    ral_texture_view   cached_output_texture_view;
+    ral_present_task   cached_present_task;
 
     postprocessing_motion_blur_image_type   image_type;
     unsigned int                            n_velocity_samples_max;
@@ -130,6 +131,7 @@ typedef struct _postprocessing_motion_blur
          po_binding_src_velocity_image(1), /* hard-coded in the CS */
          po_binding_dst_color_image   (2)  /* hard-coded in the CS */
     {
+        cached_command_buffer                              = nullptr;
         cached_input_color_texture_view                    = nullptr;
         cached_input_velocity_texture_view                 = nullptr;
         cached_output_texture_view                         = nullptr;
@@ -499,6 +501,13 @@ PRIVATE void _postprocessing_motion_blur_release(void* ptr)
                                1, /* n_objects */
                                (const void**) &motion_blur_ptr->sampler);
 
+    if (motion_blur_ptr->cached_command_buffer != nullptr)
+    {
+        ral_command_buffer_release(motion_blur_ptr->cached_command_buffer);
+
+        motion_blur_ptr->cached_command_buffer = nullptr;
+    }
+
     if (motion_blur_ptr->cached_present_task != nullptr)
     {
         ral_present_task_release(motion_blur_ptr->cached_present_task);
@@ -741,6 +750,7 @@ PUBLIC EMERALD_API ral_present_task postprocessing_motion_blur_get_present_task(
     #endif
 
     /* Record the commands */
+    if (motion_blur_ptr->cached_command_buffer == nullptr)
     {
         ral_command_buffer_create_info dispatch_command_buffer_create_info;
 
@@ -750,59 +760,61 @@ PUBLIC EMERALD_API ral_present_task postprocessing_motion_blur_get_present_task(
 
         dispatch_command_buffer_create_info.compatible_queues                       = RAL_QUEUE_COMPUTE_BIT;
         dispatch_command_buffer_create_info.is_invokable_from_other_command_buffers = false;
-        dispatch_command_buffer_create_info.is_resettable                           = false;
+        dispatch_command_buffer_create_info.is_resettable                           = true;
         dispatch_command_buffer_create_info.is_transient                            = false;
 
-        dispatch_command_buffer = ral_command_buffer_create(motion_blur_ptr->context,
-                                                          &dispatch_command_buffer_create_info);
-
-        ral_command_buffer_start_recording(dispatch_command_buffer);
-        {
-            uint32_t                                    dispatch_xyz[3];
-            ral_command_buffer_set_binding_command_info set_binding_commands[4];
-
-            /* Record commands */
-            if (input_color_texture_n_samples == 0)
-            {
-                input_color_texture_n_samples = 1;
-            }
-
-            set_binding_commands[0].binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
-            set_binding_commands[0].name                               = system_hashed_ansi_string_create("src_color_image");
-            set_binding_commands[0].sampled_image_binding.sampler      = motion_blur_ptr->sampler;
-            set_binding_commands[0].sampled_image_binding.texture_view = input_color_texture_view;
-
-            set_binding_commands[1].binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
-            set_binding_commands[1].name                               = system_hashed_ansi_string_create("src_velocity_image");
-            set_binding_commands[1].sampled_image_binding.sampler      = motion_blur_ptr->sampler;
-            set_binding_commands[1].sampled_image_binding.texture_view = input_velocity_texture_view;
-
-            set_binding_commands[2].binding_type                       = RAL_BINDING_TYPE_STORAGE_IMAGE;
-            set_binding_commands[2].name                               = system_hashed_ansi_string_create("dst_color_image");
-            set_binding_commands[2].storage_image_binding.access_bits  = RAL_IMAGE_ACCESS_WRITE;
-            set_binding_commands[2].storage_image_binding.texture_view = output_texture_view;
-
-            set_binding_commands[3].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
-            set_binding_commands[3].name                          = system_hashed_ansi_string_create("propsUB");
-            set_binding_commands[3].uniform_buffer_binding.buffer = po_props_ub_bo;
-            set_binding_commands[3].uniform_buffer_binding.offset = 0;
-            set_binding_commands[3].uniform_buffer_binding.size   = motion_blur_ptr->po_props_ub_bo_size;
-
-            dispatch_xyz[0] = 1 + (input_color_texture_view_mipmap_height * input_color_texture_view_mipmap_width * input_color_texture_n_samples / motion_blur_ptr->wg_local_size_x);
-            dispatch_xyz[1] = 1;
-            dispatch_xyz[2] = 1;
-
-
-            ral_command_buffer_record_set_bindings(dispatch_command_buffer,
-                                                   sizeof(set_binding_commands) / sizeof(set_binding_commands[0]),
-                                                   set_binding_commands);
-            ral_command_buffer_record_set_program (dispatch_command_buffer,
-                                                   motion_blur_ptr->po);
-            ral_command_buffer_record_dispatch    (dispatch_command_buffer,
-                                                   dispatch_xyz);
-        }
-        ral_command_buffer_stop_recording(dispatch_command_buffer);
+        motion_blur_ptr->cached_command_buffer = ral_command_buffer_create(motion_blur_ptr->context,
+                                                                          &dispatch_command_buffer_create_info);
     }
+
+    dispatch_command_buffer = motion_blur_ptr->cached_command_buffer;
+
+    ral_command_buffer_start_recording(dispatch_command_buffer);
+    {
+        uint32_t                                    dispatch_xyz[3];
+        ral_command_buffer_set_binding_command_info set_binding_commands[4];
+
+        /* Record commands */
+        if (input_color_texture_n_samples == 0)
+        {
+            input_color_texture_n_samples = 1;
+        }
+
+        set_binding_commands[0].binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
+        set_binding_commands[0].name                               = system_hashed_ansi_string_create("src_color_image");
+        set_binding_commands[0].sampled_image_binding.sampler      = motion_blur_ptr->sampler;
+        set_binding_commands[0].sampled_image_binding.texture_view = input_color_texture_view;
+
+        set_binding_commands[1].binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
+        set_binding_commands[1].name                               = system_hashed_ansi_string_create("src_velocity_image");
+        set_binding_commands[1].sampled_image_binding.sampler      = motion_blur_ptr->sampler;
+        set_binding_commands[1].sampled_image_binding.texture_view = input_velocity_texture_view;
+
+        set_binding_commands[2].binding_type                       = RAL_BINDING_TYPE_STORAGE_IMAGE;
+        set_binding_commands[2].name                               = system_hashed_ansi_string_create("dst_color_image");
+        set_binding_commands[2].storage_image_binding.access_bits  = RAL_IMAGE_ACCESS_WRITE;
+        set_binding_commands[2].storage_image_binding.texture_view = output_texture_view;
+
+        set_binding_commands[3].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        set_binding_commands[3].name                          = system_hashed_ansi_string_create("propsUB");
+        set_binding_commands[3].uniform_buffer_binding.buffer = po_props_ub_bo;
+        set_binding_commands[3].uniform_buffer_binding.offset = 0;
+        set_binding_commands[3].uniform_buffer_binding.size   = motion_blur_ptr->po_props_ub_bo_size;
+
+        dispatch_xyz[0] = 1 + (input_color_texture_view_mipmap_height * input_color_texture_view_mipmap_width * input_color_texture_n_samples / motion_blur_ptr->wg_local_size_x);
+        dispatch_xyz[1] = 1;
+        dispatch_xyz[2] = 1;
+
+
+        ral_command_buffer_record_set_bindings(dispatch_command_buffer,
+                                               sizeof(set_binding_commands) / sizeof(set_binding_commands[0]),
+                                               set_binding_commands);
+        ral_command_buffer_record_set_program (dispatch_command_buffer,
+                                               motion_blur_ptr->po);
+        ral_command_buffer_record_dispatch    (dispatch_command_buffer,
+                                               dispatch_xyz);
+    }
+    ral_command_buffer_stop_recording(dispatch_command_buffer);
 
     /* Create the present task */
     {
