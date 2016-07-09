@@ -5,16 +5,17 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "raGL/raGL_buffer.h"
-#include "raGL/raGL_program.h"
-#include "raGL/raGL_shader.h"
-#include "raGL/raGL_utils.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_gfx_state.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
+#include "ral/ral_sampler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -25,25 +26,29 @@
 #include "varia/varia_text_renderer.h"
 #include <string>
 
-#define UB_FS_BP_INDEX (0)
-#define UB_VS_BP_INDEX (1)
-
 
 const float _ui_texture_preview_text_color[] = {1, 1, 1, 1.0f};
 
 /** Internal types */
 typedef struct
 {
-    GLfloat blend_color[4];
-    GLenum  blend_equation_alpha;
-    GLenum  blend_equation_rgb;
-    GLenum  blend_function_dst_alpha;
-    GLenum  blend_function_dst_rgb;
-    GLenum  blend_function_src_alpha;
-    GLenum  blend_function_src_rgb;
-    bool    is_blending_enabled;
-    GLuint  layer_shown;
-    bool    visible;
+    float            blend_color[4];
+    ral_blend_factor blend_factor_dst_alpha;
+    ral_blend_factor blend_factor_dst_rgb;
+    ral_blend_factor blend_factor_src_alpha;
+    ral_blend_factor blend_factor_src_rgb;
+    ral_blend_op     blend_op_alpha;
+    ral_blend_op     blend_op_rgb;
+    bool             is_blending_enabled;
+    uint32_t         layer_shown;
+    bool             visible;
+
+    ral_command_buffer last_cached_command_buffer;
+    ral_gfx_state      last_cached_gfx_state;
+    bool               last_cached_gfx_state_dirty;
+    ral_present_task   last_cached_present_task;
+    ral_texture_view   last_cached_sampled_texture_view;
+    ral_texture_view   last_cached_target_texture_view;
 
     float                   border_width[2];
     float                   max_size[2];
@@ -53,38 +58,21 @@ typedef struct
     ral_context               context;
     system_hashed_ansi_string name;
     ral_program               program;
-    GLint                     program_border_width_ub_offset;
-    GLint                     program_layer_ub_offset;
-    GLint                     program_texture_ub_offset;
+    uint32_t                  program_border_width_ub_offset;
+    uint32_t                  program_layer_ub_offset;
+    uint32_t                  program_texture_ub_offset;
     ral_program_block_buffer  program_ub_fs;
-    GLuint                    program_ub_fs_bo_size;
+    uint32_t                  program_ub_fs_bo_size;
     ral_program_block_buffer  program_ub_vs;
-    GLuint                    program_ub_vs_bo_size;
-    GLint                     program_x1y1x2y2_ub_offset;
-    ral_texture               texture;
-    bool                      texture_initialized;
+    uint32_t                  program_ub_vs_bo_size;
+    uint32_t                  program_x1y1x2y2_ub_offset;
+    ral_sampler               sampler;
+    ral_texture_view          texture_view;
+    bool                      texture_view_initialized;
 
-    GLint               text_index;
+    uint32_t            text_index;
     varia_text_renderer text_renderer;
 
-    /* Cached func ptrs */
-    ral_backend_type                backend_type;
-    PFNGLBINDMULTITEXTUREEXTPROC    gl_pGLBindMultiTextureEXT;
-    PFNGLTEXTUREPARAMETERIEXTPROC   gl_pGLTextureParameteriEXT;
-    PFNGLACTIVETEXTUREPROC          pGLActiveTexture;
-    PFNGLBINDBUFFERRANGEPROC        pGLBindBufferRange;
-    PFNGLBINDSAMPLERPROC            pGLBindSampler;
-    PFNGLBINDTEXTUREPROC            pGLBindTexture;
-    PFNGLBLENDCOLORPROC             pGLBlendColor;
-    PFNGLBLENDEQUATIONSEPARATEPROC  pGLBlendEquationSeparate;
-    PFNGLBLENDFUNCSEPARATEPROC      pGLBlendFuncSeparate;
-    PFNGLDISABLEPROC                pGLDisable;
-    PFNGLDRAWARRAYSPROC             pGLDrawArrays;
-    PFNGLENABLEPROC                 pGLEnable;
-    PFNGLGETTEXLEVELPARAMETERIVPROC pGLGetTexLevelParameteriv;
-    PFNGLTEXPARAMETERIPROC          pGLTexParameteri;
-    PFNGLUNIFORMBLOCKBINDINGPROC    pGLUniformBlockBinding;
-    PFNGLUSEPROGRAMPROC             pGLUseProgram;
 } _ui_texture_preview;
 
 /** Internal variables */
@@ -125,6 +113,31 @@ static const char* ui_texture_preview_fragment_shader_body =
 static const char* ui_texture_preview_sampler2d_type      = "sampler2D";
 static const char* ui_texture_preview_sampler2darray_type = "sampler2DArray";
 
+
+/** TODO */
+PRIVATE void _ui_texture_preview_cpu_task_callback(void* texture_preview_raw_ptr)
+{
+    _ui_texture_preview* texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(texture_preview_raw_ptr);
+
+    /* Set up uniforms */
+    float layer_index = static_cast<float>(texture_preview_ptr->layer_shown);
+
+    ral_program_block_buffer_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
+                                                           texture_preview_ptr->program_border_width_ub_offset,
+                                                           texture_preview_ptr->border_width,
+                                                           sizeof(float) * 2);
+    ral_program_block_buffer_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_vs,
+                                                           texture_preview_ptr->program_x1y1x2y2_ub_offset,
+                                                           texture_preview_ptr->x1y1x2y2,
+                                                           sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
+                                                           texture_preview_ptr->program_layer_ub_offset,
+                                                          &layer_index,
+                                                           sizeof(float) );
+
+    ral_program_block_buffer_sync(texture_preview_ptr->program_ub_fs);
+    ral_program_block_buffer_sync(texture_preview_ptr->program_ub_vs);
+}
 
 /** TODO */
 PRIVATE const char* _ui_texture_preview_get_program_name(ui_texture_preview_type type)
@@ -323,22 +336,14 @@ PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
 }
 
 /** TODO */
-PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context context,
-                                                                void*       texture_preview)
+PRIVATE void _ui_texture_preview_init_texture(_ui_texture_preview* texture_preview_raw_ptr)
 {
-    _ui_texture_preview* texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(texture_preview);
-    const raGL_program   program_raGL        = ral_context_get_program_gl(texture_preview_ptr->context,
-                                                                          texture_preview_ptr->program);
-    GLuint               program_raGL_id     = 0;
+    _ui_texture_preview* texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(texture_preview_raw_ptr);
     system_window        window              = nullptr;
     int                  window_size[2]      = {0};
 
-    ASSERT_DEBUG_SYNC(!texture_preview_ptr->texture_initialized,
-                      "TO already initialized");
-
-    raGL_program_get_property(program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_raGL_id);
+    ASSERT_DEBUG_SYNC(!texture_preview_ptr->texture_view_initialized,
+                      "Texture view already initialized");
 
     ral_context_get_property  (texture_preview_ptr->context,
                                RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -348,37 +353,28 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
                                window_size);
 
     /* Determine preview size */
-    float            preview_height_ss = 0.0f;
-    float            preview_width_ss  = 0.0f;
-    int              texture_height_px = 0;
-    float            texture_height_ss = 0.0f;
-    float            texture_h_ratio   = 0.0f;
-    GLenum           texture_target    = GL_NONE;
-    ral_texture_type texture_type      = RAL_TEXTURE_TYPE_UNKNOWN;
-    int              texture_width_px  = 0;
-    float            texture_width_ss  = 0.0f;
-    float            texture_v_ratio   = 0.0f;
+    float preview_height_ss = 0.0f;
+    float preview_width_ss  = 0.0f;
+    int   texture_height_px = 0;
+    float texture_height_ss = 0.0f;
+    float texture_h_ratio   = 0.0f;
+    int   texture_width_px  = 0;
+    float texture_width_ss  = 0.0f;
+    float texture_v_ratio   = 0.0f;
 
-    ral_texture_get_property(texture_preview_ptr->texture,
-                             RAL_TEXTURE_PROPERTY_TYPE,
-                            &texture_type);
+    ral_texture_view_get_mipmap_property(texture_preview_ptr->texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                        &texture_height_px);
+    ral_texture_view_get_mipmap_property(texture_preview_ptr->texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                        &texture_width_px);
 
-    texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type);
-
-    texture_preview_ptr->pGLBindTexture(texture_target,
-                                        ral_context_get_texture_gl_id(texture_preview_ptr->context,
-                                                                      texture_preview_ptr->texture) );
-
-    texture_preview_ptr->pGLGetTexLevelParameteriv(texture_target,
-                                                   0,
-                                                   GL_TEXTURE_HEIGHT,
-                                                  &texture_height_px);
-    texture_preview_ptr->pGLGetTexLevelParameteriv(texture_target,
-                                                   0,
-                                                   GL_TEXTURE_WIDTH,
-                                                  &texture_width_px);
-
-    ASSERT_ALWAYS_SYNC(texture_height_px != 0 && texture_width_px != 0,
+    ASSERT_ALWAYS_SYNC(texture_height_px != 0 &&
+                       texture_width_px  != 0,
                        "Input texture is undefined!");
 
     texture_h_ratio   = float(texture_width_px)  / float(texture_height_px);
@@ -487,8 +483,6 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
 
     if (texture_preview_ptr->program_ub_fs == nullptr)
     {
-        static const uint32_t datafs_ub_fs_bp_index = UB_FS_BP_INDEX;
-
         texture_preview_ptr->program_ub_fs = ral_program_block_buffer_create(texture_preview_ptr->context,
                                                                              texture_preview_ptr->program,
                                                                              system_hashed_ansi_string_create("dataFS") );
@@ -499,16 +493,10 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
         ral_buffer_get_property                (ub_fs_bo_ral,
                                                 RAL_BUFFER_PROPERTY_SIZE,
                                                &texture_preview_ptr->program_ub_fs_bo_size);
-        raGL_program_set_block_property_by_name(program_raGL,
-                                                system_hashed_ansi_string_create("dataFS"),
-                                                RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                               &datafs_ub_fs_bp_index);
     }
 
     if (texture_preview_ptr->program_ub_vs == nullptr)
     {
-        static const uint32_t datafs_ub_vs_bp_index = UB_VS_BP_INDEX;
-
         texture_preview_ptr->program_ub_vs = ral_program_block_buffer_create(texture_preview_ptr->context,
                                                                              texture_preview_ptr->program,
                                                                              system_hashed_ansi_string_create("dataVS") );
@@ -519,14 +507,10 @@ PRIVATE void _ui_texture_preview_init_texture_renderer_callback(ogl_context cont
         ral_buffer_get_property              (ub_vs_bo_ral,
                                               RAL_BUFFER_PROPERTY_SIZE,
                                              &texture_preview_ptr->program_ub_vs_bo_size);
-        raGL_program_set_block_property_by_name(program_raGL,
-                                                system_hashed_ansi_string_create("dataVS"),
-                                                RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                               &datafs_ub_vs_bp_index);
     }
 
     /* All done */
-    texture_preview_ptr->texture_initialized = true;
+    texture_preview_ptr->texture_view_initialized = true;
 }
 
 /** Please see header for specification */
@@ -543,6 +527,20 @@ PUBLIC void ui_texture_preview_deinit(void* internal_instance)
                             ui_texture_preview_ptr->text_index,
                             "");
 
+    if (ui_texture_preview_ptr->last_cached_command_buffer != nullptr)
+    {
+        ral_command_buffer_release(ui_texture_preview_ptr->last_cached_command_buffer);
+
+        ui_texture_preview_ptr->last_cached_command_buffer = nullptr;
+    }
+
+    if (ui_texture_preview_ptr->last_cached_gfx_state != nullptr)
+    {
+        ral_gfx_state_release(ui_texture_preview_ptr->last_cached_gfx_state);
+
+        ui_texture_preview_ptr->last_cached_gfx_state = nullptr;
+    }
+
     if (ui_texture_preview_ptr->program_ub_fs != nullptr)
     {
         ral_program_block_buffer_release(ui_texture_preview_ptr->program_ub_fs);
@@ -557,182 +555,284 @@ PUBLIC void ui_texture_preview_deinit(void* internal_instance)
         ui_texture_preview_ptr->program_ub_vs = nullptr;
     }
 
+    if (ui_texture_preview_ptr->sampler != nullptr)
+    {
+        ral_sampler_release(ui_texture_preview_ptr->sampler);
+
+        ui_texture_preview_ptr->sampler = nullptr;
+    }
+
     delete ui_texture_preview_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ui_texture_preview_draw(void* internal_instance)
+PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            internal_instance,
+                                                            ral_texture_view target_texture_view)
 {
-    float                layer_index         = 0.0f;
-    _ui_texture_preview* texture_preview_ptr = reinterpret_cast<_ui_texture_preview*>(internal_instance);
-    GLenum               texture_target      = GL_ZERO;
-    ral_texture_type     texture_type        = RAL_TEXTURE_TYPE_UNKNOWN;
+    uint32_t             target_texture_view_height = 0;
+    uint32_t             target_texture_view_width  = 0;
+    _ui_texture_preview* texture_preview_ptr        = reinterpret_cast<_ui_texture_preview*>(internal_instance);
+    ral_buffer           ub_fs_bo                   = nullptr;
+    ral_buffer           ub_vs_bo                   = nullptr;
 
-    const raGL_program   program_raGL    = ral_context_get_program_gl(texture_preview_ptr->context,
-                                                                      texture_preview_ptr->program);
-    GLuint               program_raGL_id = 0;
+    ral_texture_view_get_mipmap_property(target_texture_view,
+                                         0, /* n_layer */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                        &target_texture_view_height);
+    ral_texture_view_get_mipmap_property(target_texture_view,
+                                         0, /* n_layer */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                        &target_texture_view_width);
 
-    raGL_program_get_property(program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_raGL_id);
-
-    /* Nothing to render if no TO is hooked up.. */
-    if (texture_preview_ptr->texture == nullptr)
+    /* Can we re-use the last cached present task? */
+    if ( texture_preview_ptr->last_cached_present_task                                              &&
+        !texture_preview_ptr->last_cached_gfx_state_dirty                                           &&
+         texture_preview_ptr->last_cached_sampled_texture_view == texture_preview_ptr->texture_view &&
+         texture_preview_ptr->last_cached_target_texture_view  == target_texture_view)
     {
         goto end;
     }
 
     /* If TO was not initialized, set it up now */
-    if (!texture_preview_ptr->texture_initialized)
+    if (!texture_preview_ptr->texture_view_initialized)
     {
-        _ui_texture_preview_init_texture_renderer_callback(ral_context_get_gl_context(texture_preview_ptr->context),
-                                                           texture_preview_ptr);
+        _ui_texture_preview_init_texture(texture_preview_ptr);
     }
 
-    /* Make sure user-requested texture is bound to zeroth texture unit before we continue */
-    texture_preview_ptr->pGLBindSampler(0,  /* unit    */
-                                        0); /* sampler */
-
-    if (texture_preview_ptr->backend_type == RAL_BACKEND_TYPE_GL)
+    /* Can we re-use the last cached gfx_state instance? */
+    if (texture_preview_ptr->last_cached_gfx_state != nullptr)
     {
-        texture_preview_ptr->gl_pGLBindMultiTextureEXT(GL_TEXTURE0,
-                                                       GL_TEXTURE_2D,
-                                                       ral_context_get_texture_gl_id(texture_preview_ptr->context,
-                                                                                     texture_preview_ptr->texture) );
-    }
-    else
-    {
-        texture_preview_ptr->pGLActiveTexture(GL_TEXTURE0);
-        texture_preview_ptr->pGLBindTexture  (GL_TEXTURE_2D,
-                                              ral_context_get_texture_gl_id(texture_preview_ptr->context,
-                                                                            texture_preview_ptr->texture) );
-    }
+        if (texture_preview_ptr->last_cached_gfx_state_dirty)
+        {
+            ral_gfx_state_release(texture_preview_ptr->last_cached_gfx_state);
 
-    /* For depth textures, make sure the "depth texture comparison mode" is toggled off before
-     * we proceed with sampling the mip-map */
-    ral_texture_get_property(texture_preview_ptr->texture,
-                             RAL_TEXTURE_PROPERTY_TYPE,
-                            &texture_type);
+            texture_preview_ptr->last_cached_gfx_state = nullptr;
+        }
+        else
+        {
+            ral_command_buffer_set_viewport_command_info gfx_state_viewport;
 
-    texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type);
+            ral_gfx_state_get_property(texture_preview_ptr->last_cached_gfx_state,
+                                       RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
+                                      &gfx_state_viewport);
 
-    if (texture_preview_ptr->backend_type == RAL_BACKEND_TYPE_GL)
-    {
-        texture_preview_ptr->gl_pGLTextureParameteriEXT(ral_context_get_texture_gl_id(texture_preview_ptr->context,
-                                                                                      texture_preview_ptr->texture),
-                                                        texture_target,
-                                                        GL_TEXTURE_COMPARE_MODE,
-                                                        GL_NONE);
-    }
-    else
-    {
-        texture_preview_ptr->pGLTexParameteri(texture_target,
-                                              GL_TEXTURE_COMPARE_MODE,
-                                              GL_NONE);
+            if (fabs(gfx_state_viewport.size[0] - target_texture_view_width)  > 1e-5f ||
+                fabs(gfx_state_viewport.size[1] - target_texture_view_height) > 1e-5f)
+            {
+                ral_gfx_state_release(texture_preview_ptr->last_cached_gfx_state);
+
+                texture_preview_ptr->last_cached_gfx_state = nullptr;
+            }
+        }
     }
 
-    /* Set up uniforms */
-    layer_index = static_cast<float>(texture_preview_ptr->layer_shown);
-
-    ral_program_block_buffer_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
-                                                           texture_preview_ptr->program_border_width_ub_offset,
-                                                           texture_preview_ptr->border_width,
-                                                           sizeof(float) * 2);
-    ral_program_block_buffer_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_vs,
-                                                           texture_preview_ptr->program_x1y1x2y2_ub_offset,
-                                                           texture_preview_ptr->x1y1x2y2,
-                                                           sizeof(float) * 4);
-    ral_program_block_buffer_set_nonarrayed_variable_value(texture_preview_ptr->program_ub_fs,
-                                                           texture_preview_ptr->program_layer_ub_offset,
-                                                          &layer_index,
-                                                           sizeof(float) );
-
-    /* Configure blending.
-     *
-     * NOTE: Since we're using a state cache, only those calls that modify current
-     *       context configuration will reach the driver */
-    if (texture_preview_ptr->is_blending_enabled)
+    if (texture_preview_ptr->last_cached_gfx_state == nullptr)
     {
-        texture_preview_ptr->pGLEnable(GL_BLEND);
+        ral_gfx_state_create_info                       gfx_state_create_info;
+        ral_command_buffer_set_scissor_box_command_info scissor;
+        ral_command_buffer_set_viewport_command_info    viewport;
+
+        scissor.index   = 0;
+        scissor.size[0] = target_texture_view_width;
+        scissor.size[1] = target_texture_view_height;
+        scissor.xy  [0] = 0;
+        scissor.xy  [1] = 0;
+
+        viewport.depth_range[0] = 0.0f;
+        viewport.depth_range[1] = 0.0f;
+        viewport.index          = 0;
+        viewport.size[0]        = static_cast<float>(target_texture_view_width);
+        viewport.size[1]        = static_cast<float>(target_texture_view_height);
+
+        gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+        gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+        gfx_state_create_info.static_scissor_boxes                 = &scissor;
+        gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+        gfx_state_create_info.static_viewports                     = &viewport;
+
+        texture_preview_ptr->last_cached_gfx_state = ral_gfx_state_create(texture_preview_ptr->context,
+                                                                         &gfx_state_create_info);
     }
-    else
-    {
-        texture_preview_ptr->pGLDisable(GL_BLEND);
-    }
 
-    texture_preview_ptr->pGLBlendColor           (texture_preview_ptr->blend_color[0],
-                                                  texture_preview_ptr->blend_color[1],
-                                                  texture_preview_ptr->blend_color[2],
-                                                  texture_preview_ptr->blend_color[3]);
-    texture_preview_ptr->pGLBlendEquationSeparate(texture_preview_ptr->blend_equation_rgb,
-                                                  texture_preview_ptr->blend_equation_alpha);
-    texture_preview_ptr->pGLBlendFuncSeparate    (texture_preview_ptr->blend_function_src_rgb,
-                                                  texture_preview_ptr->blend_function_dst_rgb,
-                                                  texture_preview_ptr->blend_function_src_alpha,
-                                                  texture_preview_ptr->blend_function_dst_alpha);
-
-    /* Draw */
-    GLuint      program_ub_fs_bo_id           = 0;
-    raGL_buffer program_ub_fs_bo_raGL         = nullptr;
-    ral_buffer  program_ub_fs_bo_ral          = nullptr;
-    uint32_t    program_ub_fs_bo_start_offset = -1;
-    GLuint      program_ub_vs_bo_id           = 0;
-    raGL_buffer program_ub_vs_bo_raGL         = nullptr;
-    ral_buffer  program_ub_vs_bo_ral          = nullptr;
-    uint32_t    program_ub_vs_bo_start_offset = -1;
-
+    /* Start baking a command buffer */
     ral_program_block_buffer_get_property(texture_preview_ptr->program_ub_fs,
                                           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &program_ub_fs_bo_ral);
+                                         &ub_fs_bo);
     ral_program_block_buffer_get_property(texture_preview_ptr->program_ub_vs,
                                           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &program_ub_vs_bo_ral);
+                                         &ub_vs_bo);
 
-    program_ub_fs_bo_raGL = ral_context_get_buffer_gl(texture_preview_ptr->context,
-                                                      program_ub_fs_bo_ral);
-    program_ub_vs_bo_raGL = ral_context_get_buffer_gl(texture_preview_ptr->context,
-                                                      program_ub_vs_bo_ral);
+    if (texture_preview_ptr->last_cached_command_buffer == nullptr)
+    {
+        ral_command_buffer_create_info command_buffer_create_info;
 
-    raGL_buffer_get_property(program_ub_fs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &program_ub_fs_bo_id);
-    raGL_buffer_get_property(program_ub_fs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &program_ub_fs_bo_start_offset);
-    raGL_buffer_get_property(program_ub_vs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &program_ub_vs_bo_id);
-    raGL_buffer_get_property(program_ub_vs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &program_ub_vs_bo_start_offset);
+        command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+        command_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        command_buffer_create_info.is_resettable                           = true;
+        command_buffer_create_info.is_transient                            = false;
 
-    texture_preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                            UB_FS_BP_INDEX,
-                                            program_ub_fs_bo_id,
-                                            program_ub_fs_bo_start_offset,
-                                            texture_preview_ptr->program_ub_fs_bo_size);
-    texture_preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                            UB_VS_BP_INDEX,
-                                            program_ub_vs_bo_id,
-                                            program_ub_vs_bo_start_offset,
-                                            texture_preview_ptr->program_ub_vs_bo_size);
+        texture_preview_ptr->last_cached_command_buffer = ral_command_buffer_create(texture_preview_ptr->context,
+                                                                                   &command_buffer_create_info);
+    }
 
-    ral_program_block_buffer_sync(texture_preview_ptr->program_ub_fs);
-    ral_program_block_buffer_sync(texture_preview_ptr->program_ub_vs);
+    ral_command_buffer_start_recording(texture_preview_ptr->last_cached_command_buffer);
+    {
+        if (texture_preview_ptr->texture_view != nullptr)
+        {
+            ral_command_buffer_set_binding_command_info            bindings[3];
+            ral_command_buffer_draw_call_regular_command_info      draw_call_info;
+            ral_command_buffer_set_color_rendertarget_command_info rt_info;
 
-    texture_preview_ptr->pGLUseProgram(program_raGL_id);
-    texture_preview_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                       0,
-                                       4);
+            bindings[0].binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
+            bindings[0].name                               = system_hashed_ansi_string_create("texture");
+            bindings[0].sampled_image_binding.sampler      = texture_preview_ptr->sampler;
+            bindings[0].sampled_image_binding.texture_view = texture_preview_ptr->texture_view;
+
+            bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+            bindings[1].name                          = system_hashed_ansi_string_create("dataFS");
+            bindings[1].uniform_buffer_binding.buffer = ub_fs_bo;
+            bindings[1].uniform_buffer_binding.offset = 0;
+            bindings[1].uniform_buffer_binding.size   = texture_preview_ptr->program_ub_fs_bo_size;
+
+            bindings[2].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+            bindings[2].name                          = system_hashed_ansi_string_create("dataVS");
+            bindings[2].uniform_buffer_binding.buffer = ub_vs_bo;
+            bindings[2].uniform_buffer_binding.offset = 0;
+            bindings[2].uniform_buffer_binding.size   = texture_preview_ptr->program_ub_vs_bo_size;
+
+            draw_call_info.base_instance = 0;
+            draw_call_info.base_vertex   = 0;
+            draw_call_info.n_instances   = 1;
+            draw_call_info.n_vertices    = 4;
+
+            rt_info.blend_enabled          = texture_preview_ptr->is_blending_enabled;
+            rt_info.blend_op_alpha         = texture_preview_ptr->blend_op_alpha;
+            rt_info.blend_op_color         = texture_preview_ptr->blend_op_rgb;
+            rt_info.dst_alpha_blend_factor = texture_preview_ptr->blend_factor_dst_alpha;
+            rt_info.dst_color_blend_factor = texture_preview_ptr->blend_factor_dst_rgb;
+            rt_info.rendertarget_index     = 0;
+            rt_info.src_alpha_blend_factor = texture_preview_ptr->blend_factor_src_alpha;
+            rt_info.src_color_blend_factor = texture_preview_ptr->blend_factor_src_rgb;
+            rt_info.texture_view           = target_texture_view;
+
+            memcpy(rt_info.blend_constant.f32,
+                   texture_preview_ptr->blend_color,
+                    sizeof(texture_preview_ptr->blend_color) );
+
+
+            ral_command_buffer_record_set_bindings           (texture_preview_ptr->last_cached_command_buffer,
+                                                              sizeof(bindings) / sizeof(bindings[0]),
+                                                              bindings);
+            ral_command_buffer_record_set_color_rendertargets(texture_preview_ptr->last_cached_command_buffer,
+                                                              1, /* n_rendertargets */
+                                                             &rt_info);
+            ral_command_buffer_record_set_program            (texture_preview_ptr->last_cached_command_buffer,
+                                                              texture_preview_ptr->program);
+
+            ral_command_buffer_record_draw_call_regular(texture_preview_ptr->last_cached_command_buffer,
+                                                        1, /* n_draw_calls */
+                                                       &draw_call_info);
+        }
+    }
+    ral_command_buffer_stop_recording(texture_preview_ptr->last_cached_command_buffer);
+
+    /* Form present task */
+    ral_present_task                    cpu_present_task;
+    ral_present_task_cpu_create_info    cpu_present_task_create_info;
+    ral_present_task_io                 cpu_present_task_outputs[2];
+    ral_present_task                    draw_present_task;
+    ral_present_task_gpu_create_info    draw_present_task_create_info;
+    ral_present_task_io                 draw_present_task_inputs[3];
+    ral_present_task_io                 draw_present_task_output;
+    ral_present_task                    present_tasks[2];
+    ral_present_task_group_create_info  result_present_task_create_info;
+    ral_present_task_ingroup_connection result_present_task_ingroup_connections[2];
+    ral_present_task_group_mapping      result_present_task_input_mapping;
+    ral_present_task_group_mapping      result_present_task_output_mapping;
+
+    cpu_present_task_outputs[0].buffer       = ub_fs_bo;
+    cpu_present_task_outputs[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+    cpu_present_task_outputs[1].buffer       = ub_vs_bo;
+    cpu_present_task_outputs[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_create_info.cpu_task_callback_user_arg = texture_preview_ptr;
+    cpu_present_task_create_info.n_unique_inputs            = 0;
+    cpu_present_task_create_info.n_unique_outputs           = sizeof(cpu_present_task_outputs) / sizeof(cpu_present_task_outputs[0]);
+    cpu_present_task_create_info.pfn_cpu_task_callback_proc = _ui_texture_preview_cpu_task_callback;
+    cpu_present_task_create_info.unique_inputs              = nullptr;
+    cpu_present_task_create_info.unique_outputs             = cpu_present_task_outputs;
+
+    cpu_present_task = ral_present_task_create_cpu(system_hashed_ansi_string_create("Texture preview: UB update"),
+                                                  &cpu_present_task_create_info);
+
+
+    draw_present_task_inputs[0].buffer       = ub_fs_bo;
+    draw_present_task_inputs[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+    draw_present_task_inputs[1].buffer       = ub_vs_bo;
+    draw_present_task_inputs[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+    draw_present_task_inputs[2].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    draw_present_task_inputs[2].texture_view = target_texture_view;
+
+    draw_present_task_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    draw_present_task_output.texture_view = target_texture_view;
+
+    draw_present_task_create_info.command_buffer   = texture_preview_ptr->last_cached_command_buffer;
+    draw_present_task_create_info.n_unique_inputs  = sizeof(draw_present_task_inputs) / sizeof(draw_present_task_inputs[0]);
+    draw_present_task_create_info.n_unique_outputs = 1;
+    draw_present_task_create_info.unique_inputs    = draw_present_task_inputs;
+    draw_present_task_create_info.unique_outputs   = &draw_present_task_output;
+
+    draw_present_task = ral_present_task_create_gpu(system_hashed_ansi_string_create("UI texture preview: rasterization"),
+                                                   &draw_present_task_create_info);
+
+
+    present_tasks[0] = cpu_present_task;
+    present_tasks[1] = draw_present_task;
+
+    result_present_task_ingroup_connections[0].input_present_task_index     = 1;
+    result_present_task_ingroup_connections[0].input_present_task_io_index  = 0;
+    result_present_task_ingroup_connections[0].output_present_task_index    = 0;
+    result_present_task_ingroup_connections[0].output_present_task_io_index = 0;
+
+    result_present_task_ingroup_connections[1].input_present_task_index     = 1;
+    result_present_task_ingroup_connections[1].input_present_task_io_index  = 1;
+    result_present_task_ingroup_connections[1].output_present_task_index    = 0;
+    result_present_task_ingroup_connections[1].output_present_task_io_index = 1;
+
+    result_present_task_input_mapping.io_index       = 2; /* target_texture_view */
+    result_present_task_input_mapping.n_present_task = 1;
+
+    result_present_task_output_mapping.io_index       = 0; /* target_texture_view */
+    result_present_task_output_mapping.n_present_task = 1;
+
+    result_present_task_create_info.ingroup_connections                   = result_present_task_ingroup_connections;
+    result_present_task_create_info.n_ingroup_connections                 = sizeof(result_present_task_ingroup_connections) / sizeof(result_present_task_ingroup_connections[0]);
+    result_present_task_create_info.n_present_tasks                       = sizeof(present_tasks)                           / sizeof(present_tasks                          [0]);
+    result_present_task_create_info.n_unique_inputs                       = 1;
+    result_present_task_create_info.n_unique_outputs                      = 1;
+    result_present_task_create_info.present_tasks                         = present_tasks;
+    result_present_task_create_info.unique_input_to_ingroup_task_mapping  = &result_present_task_input_mapping;
+    result_present_task_create_info.unique_output_to_ingroup_task_mapping = &result_present_task_output_mapping;
+
+    texture_preview_ptr->last_cached_present_task         = ral_present_task_create_group(&result_present_task_create_info);
+    texture_preview_ptr->last_cached_sampled_texture_view = texture_preview_ptr->texture_view;
+    texture_preview_ptr->last_cached_target_texture_view  = target_texture_view;
+
+    ral_present_task_release(cpu_present_task);
+    ral_present_task_release(draw_present_task);
 
 end:
-    ;
+    ral_present_task_retain(texture_preview_ptr->last_cached_present_task);
+
+    return texture_preview_ptr->last_cached_present_task;
 }
 
 /** Please see header for specification */
 PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
                                             ui_control_property property,
-                                            void*               out_result)
+                                            void*               out_result_ptr)
 {
     _ui_texture_preview* texture_preview_ptr = (_ui_texture_preview*) texture_preview;
 
@@ -740,65 +840,65 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
     {
         case UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
-            *reinterpret_cast<bool*>(out_result) = texture_preview_ptr->visible;
+            *reinterpret_cast<bool*>(out_result_ptr) = texture_preview_ptr->visible;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    texture_preview_ptr->blend_color,
                    sizeof(texture_preview_ptr->blend_color) );
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_DST_ALPHA:
         {
-            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_equation_alpha;
+            *reinterpret_cast<ral_blend_factor*>(out_result_ptr) = texture_preview_ptr->blend_factor_dst_alpha;
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_DST_RGB:
         {
-            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_equation_rgb;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = texture_preview_ptr->blend_factor_dst_rgb;
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_SRC_ALPHA:
         {
-            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_dst_alpha;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = texture_preview_ptr->blend_factor_src_alpha;
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_SRC_RGB:
         {
-            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_dst_rgb;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = texture_preview_ptr->blend_factor_src_rgb;
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_OP_ALPHA:
         {
-            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_src_alpha;
+            *reinterpret_cast<ral_blend_op*>(out_result_ptr) = texture_preview_ptr->blend_op_alpha;
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_OP_RGB:
         {
-            *reinterpret_cast<GLenum*>(out_result) = texture_preview_ptr->blend_function_src_rgb;
+            *reinterpret_cast<ral_blend_op*>(out_result_ptr) = texture_preview_ptr->blend_op_rgb;
 
             break;
         }
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
-            *reinterpret_cast<bool*>(out_result) = texture_preview_ptr->is_blending_enabled;
+            *reinterpret_cast<bool*>(out_result_ptr) = texture_preview_ptr->is_blending_enabled;
 
             break;
         }
@@ -808,14 +908,14 @@ PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
             varia_text_renderer_get_text_string_property(texture_preview_ptr->text_renderer,
                                                          VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
                                                          texture_preview_ptr->text_index,
-                                                         out_result);
+                                                         out_result_ptr);
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_VIEW_RAL:
         {
-            *reinterpret_cast<ral_texture*>(out_result) = texture_preview_ptr->texture;
+            *reinterpret_cast<ral_texture_view*>(out_result_ptr) = texture_preview_ptr->texture_view;
 
             break;
         }
@@ -834,7 +934,7 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
                                      system_hashed_ansi_string name,
                                      const float*              x1y1,
                                      const float*              max_size,
-                                     ral_texture               to,
+                                     ral_texture_view          texture_view,
                                      ui_texture_preview_type   preview_type)
 {
     _ui_texture_preview* new_texture_preview_ptr = new (std::nothrow) _ui_texture_preview;
@@ -852,101 +952,38 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
                max_size,
                sizeof(float) * 2);
 
-        new_texture_preview_ptr->x1y1x2y2[0]         =     x1y1[0];
-        new_texture_preview_ptr->x1y1x2y2[1]         = 1 - x1y1[1];
+        new_texture_preview_ptr->x1y1x2y2[0] =     x1y1[0];
+        new_texture_preview_ptr->x1y1x2y2[1] = 1 - x1y1[1];
 
-        new_texture_preview_ptr->context             = ui_get_context(instance);
-        new_texture_preview_ptr->backend_type        = RAL_BACKEND_TYPE_UNKNOWN;
-        new_texture_preview_ptr->layer_shown         = 1;
-        new_texture_preview_ptr->name                = name;
-        new_texture_preview_ptr->preview_type        = preview_type;
-        new_texture_preview_ptr->text_renderer       = text_renderer;
-        new_texture_preview_ptr->text_index          = varia_text_renderer_add_string(text_renderer);
-        new_texture_preview_ptr->texture             = to;
-        new_texture_preview_ptr->texture_initialized = false;
-        new_texture_preview_ptr->visible             = true;
+        new_texture_preview_ptr->context                  = ui_get_context(instance);
+        new_texture_preview_ptr->layer_shown              = 1;
+        new_texture_preview_ptr->name                     = name;
+        new_texture_preview_ptr->preview_type             = preview_type;
+        new_texture_preview_ptr->text_renderer            = text_renderer;
+        new_texture_preview_ptr->text_index               = varia_text_renderer_add_string(text_renderer);
+        new_texture_preview_ptr->texture_view             = texture_view;
+        new_texture_preview_ptr->texture_view_initialized = false;
+        new_texture_preview_ptr->visible                  = true;
 
-        /* Set blending states */
+        /* Set default blending states */
         memset(new_texture_preview_ptr->blend_color,
                0,
                sizeof(new_texture_preview_ptr->blend_color) );
 
-        new_texture_preview_ptr->blend_equation_alpha     = GL_FUNC_ADD;
-        new_texture_preview_ptr->blend_equation_rgb       = GL_FUNC_ADD;
-        new_texture_preview_ptr->blend_function_dst_alpha = GL_ZERO;
-        new_texture_preview_ptr->blend_function_dst_rgb   = GL_ZERO;
-        new_texture_preview_ptr->blend_function_src_alpha = GL_ONE;
-        new_texture_preview_ptr->blend_function_src_rgb   = GL_ONE;
-        new_texture_preview_ptr->is_blending_enabled      = false;
+        new_texture_preview_ptr->blend_factor_dst_alpha = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        new_texture_preview_ptr->blend_factor_dst_rgb   = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        new_texture_preview_ptr->blend_factor_src_alpha = RAL_BLEND_FACTOR_SRC_ALPHA;
+        new_texture_preview_ptr->blend_factor_src_rgb   = RAL_BLEND_FACTOR_SRC_ALPHA;
+        new_texture_preview_ptr->blend_op_alpha         = RAL_BLEND_OP_ADD;
+        new_texture_preview_ptr->blend_op_rgb           = RAL_BLEND_OP_ADD;
+        new_texture_preview_ptr->is_blending_enabled    = false;
 
-        /* Cache GL func pointers */
-        ral_context_get_property(new_texture_preview_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                                &new_texture_preview_ptr->backend_type);
+        /* Set up the sampler */
+        ral_sampler_create_info sampler_create_info;
 
-        if (new_texture_preview_ptr->backend_type == RAL_BACKEND_TYPE_ES)
-        {
-            ogl_context                       context_es       = nullptr;
-            const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
-
-            context_es = ral_context_get_gl_context(new_texture_preview_ptr->context);
-
-            ogl_context_get_property(context_es,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entry_points_ptr);
-
-            new_texture_preview_ptr->gl_pGLBindMultiTextureEXT  = nullptr;
-            new_texture_preview_ptr->gl_pGLTextureParameteriEXT = nullptr;
-            new_texture_preview_ptr->pGLActiveTexture           = entry_points_ptr->pGLActiveTexture;
-            new_texture_preview_ptr->pGLBindBufferRange         = entry_points_ptr->pGLBindBufferRange;
-            new_texture_preview_ptr->pGLBindSampler             = entry_points_ptr->pGLBindSampler;
-            new_texture_preview_ptr->pGLBindTexture             = entry_points_ptr->pGLBindTexture;
-            new_texture_preview_ptr->pGLBlendColor              = entry_points_ptr->pGLBlendColor;
-            new_texture_preview_ptr->pGLBlendEquationSeparate   = entry_points_ptr->pGLBlendEquationSeparate;
-            new_texture_preview_ptr->pGLBlendFuncSeparate       = entry_points_ptr->pGLBlendFuncSeparate;
-            new_texture_preview_ptr->pGLDisable                 = entry_points_ptr->pGLDisable;
-            new_texture_preview_ptr->pGLDrawArrays              = entry_points_ptr->pGLDrawArrays;
-            new_texture_preview_ptr->pGLEnable                  = entry_points_ptr->pGLEnable;
-            new_texture_preview_ptr->pGLGetTexLevelParameteriv  = entry_points_ptr->pGLGetTexLevelParameteriv;
-            new_texture_preview_ptr->pGLTexParameteri           = entry_points_ptr->pGLTexParameteri;
-            new_texture_preview_ptr->pGLUniformBlockBinding     = entry_points_ptr->pGLUniformBlockBinding;
-            new_texture_preview_ptr->pGLUseProgram              = entry_points_ptr->pGLUseProgram;
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(new_texture_preview_ptr->backend_type == RAL_BACKEND_TYPE_GL,
-                              "Unrecognized context type");
-
-            ogl_context                                               context_gl           = nullptr;
-            const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points_ptr = nullptr;
-            const ogl_context_gl_entrypoints*                         entry_points_ptr     = nullptr;
-
-            context_gl = ral_context_get_gl_context(new_texture_preview_ptr->context);
-
-            ogl_context_get_property(context_gl,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entry_points_ptr);
-            ogl_context_get_property(context_gl,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                                    &dsa_entry_points_ptr);
-
-            new_texture_preview_ptr->gl_pGLBindMultiTextureEXT  = dsa_entry_points_ptr->pGLBindMultiTextureEXT;
-            new_texture_preview_ptr->gl_pGLTextureParameteriEXT = dsa_entry_points_ptr->pGLTextureParameteriEXT;
-            new_texture_preview_ptr->pGLActiveTexture           = entry_points_ptr->pGLActiveTexture;
-            new_texture_preview_ptr->pGLBindBufferRange         = entry_points_ptr->pGLBindBufferRange;
-            new_texture_preview_ptr->pGLBindSampler             = entry_points_ptr->pGLBindSampler;
-            new_texture_preview_ptr->pGLBindTexture             = entry_points_ptr->pGLBindTexture;
-            new_texture_preview_ptr->pGLBlendColor              = entry_points_ptr->pGLBlendColor;
-            new_texture_preview_ptr->pGLBlendEquationSeparate   = entry_points_ptr->pGLBlendEquationSeparate;
-            new_texture_preview_ptr->pGLBlendFuncSeparate       = entry_points_ptr->pGLBlendFuncSeparate;
-            new_texture_preview_ptr->pGLDisable                 = entry_points_ptr->pGLDisable;
-            new_texture_preview_ptr->pGLDrawArrays              = entry_points_ptr->pGLDrawArrays;
-            new_texture_preview_ptr->pGLEnable                  = entry_points_ptr->pGLEnable;
-            new_texture_preview_ptr->pGLGetTexLevelParameteriv  = entry_points_ptr->pGLGetTexLevelParameteriv;
-            new_texture_preview_ptr->pGLTexParameteri           = entry_points_ptr->pGLTexParameteri;
-            new_texture_preview_ptr->pGLUniformBlockBinding     = entry_points_ptr->pGLUniformBlockBinding;
-            new_texture_preview_ptr->pGLUseProgram              = entry_points_ptr->pGLUseProgram;
-        }
+        new_texture_preview_ptr->sampler = ral_sampler_create(new_texture_preview_ptr->context,
+                                                              name,
+                                                             &sampler_create_info);
 
         /* Retrieve the rendering program */
         new_texture_preview_ptr->program = ui_get_registered_program(instance,
@@ -961,13 +998,11 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
                               "Could not initialize texture preview UI program");
         }
 
-        /* Set up rendering program. This must not be called if the requested TO
+        /* Set up rendering program. This must not be called if the specified texture view
          * is NULL.*/
-        if (to != nullptr)
+        if (texture_view != nullptr)
         {
-            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_texture_preview_ptr->context),
-                                                             _ui_texture_preview_init_texture_renderer_callback,
-                                                             new_texture_preview_ptr);
+            _ui_texture_preview_init_texture(new_texture_preview_ptr);
         }
     }
 
@@ -985,54 +1020,98 @@ PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
     {
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
         {
-            memcpy(texture_preview_ptr->blend_color,
-                   data,
-                   sizeof(texture_preview_ptr->blend_color) );
+            if (memcmp(texture_preview_ptr->blend_color,
+                       data,
+                       sizeof(texture_preview_ptr->blend_color) ) != 0)
+            {
+                memcpy(texture_preview_ptr->blend_color,
+                       data,
+                       sizeof(texture_preview_ptr->blend_color) );
+
+                texture_preview_ptr->last_cached_gfx_state_dirty = true;
+            }
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_DST_ALPHA:
         {
-            texture_preview_ptr->blend_equation_alpha = *reinterpret_cast<const GLenum*>(data);
+            const ral_blend_factor in_factor = *reinterpret_cast<const ral_blend_factor*>(data);
+
+            if (texture_preview_ptr->blend_factor_dst_alpha != in_factor)
+            {
+                texture_preview_ptr->blend_factor_dst_alpha      = in_factor;
+                texture_preview_ptr->last_cached_gfx_state_dirty = true;
+            }
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_DST_RGB:
         {
-            texture_preview_ptr->blend_equation_rgb = *reinterpret_cast<const GLenum*>(data);
+            const ral_blend_factor in_factor = *reinterpret_cast<const ral_blend_factor*>(data);
+
+            if (texture_preview_ptr->blend_factor_dst_rgb != in_factor)
+            {
+                texture_preview_ptr->blend_factor_dst_rgb        = in_factor;
+                texture_preview_ptr->last_cached_gfx_state_dirty = true;
+            }
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_SRC_ALPHA:
         {
-            texture_preview_ptr->blend_function_dst_alpha = *reinterpret_cast<const GLenum*>(data);
+            const ral_blend_factor in_factor = *reinterpret_cast<const ral_blend_factor*>(data);
+
+            if (texture_preview_ptr->blend_factor_src_alpha != in_factor)
+            {
+                texture_preview_ptr->blend_factor_src_alpha      = in_factor;
+                texture_preview_ptr->last_cached_gfx_state_dirty = true;
+            }
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_SRC_RGB:
         {
-            texture_preview_ptr->blend_function_dst_rgb = *reinterpret_cast<const GLenum*>(data);
+            const ral_blend_factor in_factor = *reinterpret_cast<const ral_blend_factor*>(data);
+
+            if (texture_preview_ptr->blend_factor_src_rgb != in_factor)
+            {
+                texture_preview_ptr->blend_factor_src_rgb        = in_factor;
+                texture_preview_ptr->last_cached_gfx_state_dirty = true;
+            }
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_OP_ALPHA:
         {
-            texture_preview_ptr->blend_function_src_alpha = *reinterpret_cast<const GLenum*>(data);
+            const ral_blend_op in_op = *reinterpret_cast<const ral_blend_op*>(data);
+
+            if (texture_preview_ptr->blend_op_alpha != in_op)
+            {
+                texture_preview_ptr->blend_op_alpha              = in_op;
+                texture_preview_ptr->last_cached_gfx_state_dirty = true;
+            }
 
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_OP_RGB:
         {
-            texture_preview_ptr->blend_function_src_rgb = *reinterpret_cast<const GLenum*>(data);
+            const ral_blend_op in_op = *reinterpret_cast<const ral_blend_op*>(data);
+
+            if (texture_preview_ptr->blend_op_rgb != in_op)
+            {
+                texture_preview_ptr->blend_op_rgb                = in_op;
+                texture_preview_ptr->last_cached_gfx_state_dirty = true;
+            }
 
             break;
         }
+
 
         case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
@@ -1058,10 +1137,10 @@ PUBLIC void ui_texture_preview_set_property(void*               texture_preview,
             break;
         }
 
-        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL:
+        case UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_VIEW_RAL:
         {
-            texture_preview_ptr->texture             = *reinterpret_cast<const ral_texture*>(data);
-            texture_preview_ptr->texture_initialized = false;
+            texture_preview_ptr->texture_view             = *reinterpret_cast<const ral_texture_view*>(data);
+            texture_preview_ptr->texture_view_initialized = false;
 
             break;
         }

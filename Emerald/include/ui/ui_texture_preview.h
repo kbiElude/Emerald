@@ -17,12 +17,14 @@
 PUBLIC void ui_texture_preview_deinit(void* internal_instance);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ui_texture_preview_draw(void* internal_instance);
+PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            internal_instance,
+                                                            ral_texture_view target_texture_view);
+
 
 /** TODO */
 PUBLIC void ui_texture_preview_get_property(const void*         texture_preview,
                                             ui_control_property property,
-                                            void*               out_result);
+                                            void*               out_result_ptr);
 
 /** TODO */
 PUBLIC void* ui_texture_preview_init(ui                        instance,
@@ -30,7 +32,7 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
                                      system_hashed_ansi_string name,
                                      const float*              x1y1,
                                      const float*              max_size,
-                                     ral_texture               to,
+                                     ral_texture_view          texture_view,
                                      ui_texture_preview_type   preview_type);
 
 /** TODO */

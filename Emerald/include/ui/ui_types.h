@@ -134,26 +134,26 @@ typedef enum
 
                         /* texture_preview-specific */
 
-    /* settable, GLfloat[4] */
+    /* settable, float[4] */
     UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR,
 
-    /* settable, GLenum */
-    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA,
+    /* settable, ral_blend_op */
+    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_OP_ALPHA,
 
-    /* settable, GLenum */
-    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB,
+    /* settable, ral_blend_op */
+    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_OP_RGB,
 
-    /* settable, GLenum */
-    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA,
+    /* settable, ral_blend_factor */
+    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_DST_ALPHA,
 
-    /* settable, GLenum */
-    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB,
+    /* settable, ral_blend_factor */
+    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_DST_RGB,
 
-    /* settable, GLenum */
-    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA,
+    /* settable, ral_blend_factor */
+    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_SRC_ALPHA,
 
-    /* settable, GLenum */
-    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB,
+    /* settable, ral_blend_factor */
+    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FACTOR_SRC_RGB,
 
     /* settable, bool */
     UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED,
@@ -164,8 +164,8 @@ typedef enum
     /* settable, bool */
     UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME,
 
-    /* settable, ral_texture */
-    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_RAL,
+    /* settable, ral_texture_view */
+    UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE_VIEW_RAL,
 } ui_control_property;
 
 typedef enum _ui_control_type

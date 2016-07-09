@@ -17,12 +17,9 @@
  */
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
-#include "ogl/ogl_context.h"
-#include "raGL/raGL_buffer.h"
-#include "raGL/raGL_program.h"
-#include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_rendering_handler.h"
