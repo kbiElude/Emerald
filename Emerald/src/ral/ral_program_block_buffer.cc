@@ -34,7 +34,7 @@ typedef struct _ral_program_block_buffer
      *               uploading its contents just once, and then using gl*Sub*() calls
      *               to update relevant target buffer regions for ultra-fast performance.
      *
-     * Sticking to brute-force implementation for testing purposes, for the time being.
+     * Sticking to brute-force implementation for the time being.
      */
     unsigned int dirty_offset_end;
     unsigned int dirty_offset_start;

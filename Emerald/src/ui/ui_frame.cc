@@ -156,6 +156,22 @@ PRIVATE void _ui_frame_init_program(ui         ui_instance,
                                (const void**) shaders_to_release);
 }
 
+/** TODO */
+PRIVATE void _ui_frame_update_ub_props_cpu_task_callback(void* frame_raw_ptr)
+{
+    _ui_frame* frame_ptr = reinterpret_cast<_ui_frame*>(frame_raw_ptr);
+
+    /* Update uniforms */
+    ral_program_block_buffer_set_nonarrayed_variable_value(frame_ptr->program_ub,
+                                                           frame_ptr->program_x1y1x2y2_ub_offset,
+                                                           frame_ptr->x1y1x2y2,
+                                                           sizeof(float) * 4);
+
+    ral_program_block_buffer_sync(frame_ptr->program_ub);
+
+}
+
+
 /** Please see header for specification */
 PUBLIC void ui_frame_deinit(void* internal_instance)
 {
@@ -188,20 +204,6 @@ PUBLIC void ui_frame_deinit(void* internal_instance)
     }
 
     delete ui_frame_ptr;
-}
-
-PRIVATE void _ui_frame_update_ub_props_cpu_task_callback(void* frame_raw_ptr)
-{
-    _ui_frame* frame_ptr = reinterpret_cast<_ui_frame*>(frame_raw_ptr);
-
-    /* Update uniforms */
-    ral_program_block_buffer_set_nonarrayed_variable_value(frame_ptr->program_ub,
-                                                           frame_ptr->program_x1y1x2y2_ub_offset,
-                                                           frame_ptr->x1y1x2y2,
-                                                           sizeof(float) * 4);
-
-    ral_program_block_buffer_sync(frame_ptr->program_ub);
-
 }
 
 /** Please see header for specification */
