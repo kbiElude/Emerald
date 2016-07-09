@@ -24,7 +24,9 @@ enum
 PUBLIC void ui_dropdown_deinit(void* internal_instance);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance);
+PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_instance,
+                                                     ral_texture_view target_texture_view);
+
 
 /** TODO */
 PUBLIC void ui_dropdown_get_property(const void*         dropdown,

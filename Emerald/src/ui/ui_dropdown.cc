@@ -5,14 +5,16 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "raGL/raGL_buffer.h"
-#include "raGL/raGL_program.h"
-#include "raGL/raGL_shader.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_gfx_state.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
+#include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -34,9 +36,6 @@
 #define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(250) )
 #define SLIDER_Y_SEPARATOR_PX                 (4)
 #define SLIDER_WIDTH_PX                       (7)
-
-#define UB_FSDATA_BP (0)
-#define UB_VSDATA_BP (1)
 
 const float _ui_dropdown_label_text_color[] = {1,     1,     1,     0.5f};
 const float _ui_dropdown_slider_color[]     = {0.25f, 0.25f, 0.25f, 0.5f};
@@ -118,45 +117,53 @@ typedef struct
     float       start_hovering_brightness;
     system_time start_hovering_time;
 
+    ral_command_buffer last_cached_command_buffer;
+    ral_command_buffer last_cached_command_buffer_dummy;
+    ral_gfx_state      last_cached_gfx_state;
+    ral_present_task   last_cached_present_task;
+    ral_present_task   last_cached_present_task_dummy;
+    bool               last_cached_present_task_is_droparea_visible;
+    ral_texture_view   last_cached_present_task_target_texture_view;
+
     ral_context               context;
     ral_program               program;
-    GLint                     program_border_width_ub_offset;
-    GLint                     program_button_start_u_ub_offset;
-    GLint                     program_brightness_ub_offset;
-    GLint                     program_stop_data_ub_offset;
-    GLint                     program_x1y1x2y2_ub_offset;
+    uint32_t                  program_border_width_ub_offset;
+    uint32_t                  program_button_start_u_ub_offset;
+    uint32_t                  program_brightness_ub_offset;
+    uint32_t                  program_stop_data_ub_offset;
+    uint32_t                  program_x1y1x2y2_ub_offset;
     ral_program_block_buffer  program_ub_fs;
-    GLuint                    program_ub_fs_bo_size;
+    uint32_t                  program_ub_fs_bo_size;
     ral_program_block_buffer  program_ub_vs;
-    GLuint                    program_ub_vs_bo_size;
+    uint32_t                  program_ub_vs_bo_size;
 
     ral_program               program_bg;
-    GLint                     program_bg_border_width_ub_offset;
-    GLint                     program_bg_highlighted_v1v2_ub_offset;
-    GLint                     program_bg_selected_v1v2_ub_offset;
-    GLint                     program_bg_x1y1x2y2_ub_offset;
+    uint32_t                  program_bg_border_width_ub_offset;
+    uint32_t                  program_bg_highlighted_v1v2_ub_offset;
+    uint32_t                  program_bg_selected_v1v2_ub_offset;
+    uint32_t                  program_bg_x1y1x2y2_ub_offset;
     ral_program_block_buffer  program_bg_ub_fs;
-    GLuint                    program_bg_ub_fs_bo_size;
+    uint32_t                  program_bg_ub_fs_bo_size;
     ral_program_block_buffer  program_bg_ub_vs;
-    GLuint                    program_bg_ub_vs_bo_size;
+    uint32_t                  program_bg_ub_vs_bo_size;
 
     ral_program               program_label_bg;
-    GLuint                    program_label_bg_x1y1x2y2_ub_offset;
+    uint32_t                  program_label_bg_x1y1x2y2_ub_offset;
     ral_program_block_buffer  program_label_bg_ub_vs;
-    GLuint                    program_label_bg_ub_vs_bo_size;
+    uint32_t                  program_label_bg_ub_vs_bo_size;
 
     ral_program               program_separator;
     ral_program_block_buffer  program_separator_ub_vs;
-    GLuint                    program_separator_ub_vs_bo_size;
-    GLint                     program_separator_x1_x2_y_ub_offset;
+    uint32_t                  program_separator_ub_vs_bo_size;
+    uint32_t                  program_separator_x1_x2_y_ub_offset;
 
     ral_program               program_slider;
-    GLint                     program_slider_color_ub_offset;
-    GLint                     program_slider_x1y1x2y2_ub_offset;
+    uint32_t                  program_slider_color_ub_offset;
+    uint32_t                  program_slider_x1y1x2y2_ub_offset;
     ral_program_block_buffer  program_slider_ub_fs;
-    GLuint                    program_slider_ub_fs_bo_size;
+    uint32_t                  program_slider_ub_fs_bo_size;
     ral_program_block_buffer  program_slider_ub_vs;
-    GLuint                    program_slider_ub_vs_bo_size;
+    uint32_t                  program_slider_ub_vs_bo_size;
 
     varia_text_renderer_text_string_id current_entry_string_id;
     system_resizable_vector            entries;
@@ -168,14 +175,6 @@ typedef struct
     ui_control owner_control; /* this object, as visible for applications */
 
     bool visible;
-
-    /* Cached func ptrs */
-    PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
-    PFNGLDISABLEPROC             pGLDisable;
-    PFNGLDRAWARRAYSPROC          pGLDrawArrays;
-    PFNGLENABLEPROC              pGLEnable;
-    PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
-    PFNGLUSEPROGRAMPROC          pGLUseProgram;
 } _ui_dropdown;
 
 /** Internal variables */
@@ -670,310 +669,6 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
                                (const void**) shaders_to_release);
 }
 
-/** TODO */
-PRIVATE void _ui_dropdown_init_renderer_callback(ogl_context context,
-                                                 void*       dropdown)
-{
-    float                border_width_bg[2]        = {0};
-    float                border_width[2]           = {0};
-    _ui_dropdown*        dropdown_ptr              = reinterpret_cast<_ui_dropdown*>(dropdown);
-    raGL_program         program_bg_raGL           = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                                dropdown_ptr->program_bg);
-    GLuint               program_bg_raGL_id        = 0;
-    raGL_program         program_raGL              = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                                dropdown_ptr->program);
-    GLuint               program_raGL_id           = 0;
-    raGL_program         program_label_bg_raGL     = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                                dropdown_ptr->program_label_bg);
-    GLuint               program_label_bg_raGL_id  = 0;
-    raGL_program         program_separator_raGL    = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                                dropdown_ptr->program_separator);
-    GLuint               program_separator_raGL_id = 0;
-    raGL_program         program_slider_raGL       = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                                dropdown_ptr->program_slider);
-    GLuint               program_slider_raGL_id    = 0;
-    static const GLfloat stop_data[]               = {0,     174.0f / 255.0f * 0.35f, 188.0f / 255.0f * 0.35f, 191.0f / 255.0f * 0.35f,
-                                                      0.5f,  110.0f / 255.0f * 0.35f, 119.0f / 255.0f * 0.35f, 116.0f / 255.0f * 0.35f,
-                                                      0.51f, 10.0f  / 255.0f * 0.35f, 14.0f  / 255.0f * 0.35f, 10.0f  / 255.0f * 0.35f,
-                                                      1.0f,  10.0f  / 255.0f * 0.35f, 8.0f   / 255.0f * 0.35f, 9.0f   / 255.0f * 0.35f};
-    system_window        window                    = nullptr;
-    int                  window_size[2]            = {0};
-
-    raGL_program_get_property(program_bg_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_bg_raGL_id);
-    raGL_program_get_property(program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_raGL_id);
-    raGL_program_get_property(program_label_bg_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_label_bg_raGL_id);
-    raGL_program_get_property(program_separator_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_separator_raGL_id);
-    raGL_program_get_property(program_slider_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_slider_raGL_id);
-
-    ral_context_get_property  (dropdown_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
-                              &window);
-    system_window_get_property(window,
-                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                               window_size);
-
-    border_width_bg[0] =  1.0f / (float)((dropdown_ptr->drop_x1y2x2y1[2] - dropdown_ptr->drop_x1y2x2y1[0]) * window_size[0]);
-    border_width_bg[1] = -1.0f / (float)((dropdown_ptr->drop_x1y2x2y1[3] - dropdown_ptr->drop_x1y2x2y1[1]) * window_size[1]);
-    border_width   [0] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [2] - dropdown_ptr->x1y1x2y2     [0]) * window_size[0]);
-    border_width   [1] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1]) * window_size[1]);
-
-    /* Retrieve UBOs */
-    ral_buffer program_bg_ub_fs_bo_ral        = nullptr;
-    ral_buffer program_bg_ub_vs_bo_ral        = nullptr;
-    ral_buffer program_label_bg_ub_vs_bo_ral  = nullptr;
-    ral_buffer program_separator_ub_vs_bo_ral = nullptr;
-    ral_buffer program_slider_ub_fs_bo_ral    = nullptr;
-    ral_buffer program_slider_ub_vs_bo_ral    = nullptr;
-    ral_buffer program_ub_fs_bo_ral           = nullptr;
-    ral_buffer program_ub_vs_bo_ral           = nullptr;
-
-    dropdown_ptr->program_ub_fs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                  dropdown_ptr->program,
-                                                                  system_hashed_ansi_string_create("dataFS") );
-    dropdown_ptr->program_ub_vs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                  dropdown_ptr->program,
-                                                                  system_hashed_ansi_string_create("dataVS") );
-
-    dropdown_ptr->program_bg_ub_fs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                     dropdown_ptr->program_bg,
-                                                                     system_hashed_ansi_string_create("dataFS") );
-    dropdown_ptr->program_bg_ub_vs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                     dropdown_ptr->program_bg,
-                                                                     system_hashed_ansi_string_create("dataVS") );
-
-    dropdown_ptr->program_label_bg_ub_vs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                           dropdown_ptr->program_label_bg,
-                                                                           system_hashed_ansi_string_create("dataVS") );
-
-    dropdown_ptr->program_separator_ub_vs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                            dropdown_ptr->program_separator,
-                                                                            system_hashed_ansi_string_create("dataVS") );
-
-    dropdown_ptr->program_slider_ub_fs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                         dropdown_ptr->program_slider,
-                                                                         system_hashed_ansi_string_create("dataFS") );
-    dropdown_ptr->program_slider_ub_vs = ral_program_block_buffer_create(dropdown_ptr->context,
-                                                                         dropdown_ptr->program_slider,
-                                                                         system_hashed_ansi_string_create("dataVS") );
-
-    ral_program_block_buffer_get_property(dropdown_ptr->program_bg_ub_fs,        RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_bg_ub_fs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_bg_ub_vs,        RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_bg_ub_vs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs,  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_label_bg_ub_vs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_separator_ub_vs, RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_separator_ub_vs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_slider_ub_fs,    RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_slider_ub_fs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_slider_ub_vs,    RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_slider_ub_vs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_ub_fs,           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_ub_fs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_ub_vs,           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_ub_vs_bo_ral);
-
-    ral_buffer_get_property(program_ub_fs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_ub_fs_bo_size);
-    ral_buffer_get_property(program_ub_vs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_ub_vs_bo_size);
-
-    ral_buffer_get_property(program_bg_ub_fs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_bg_ub_fs_bo_size);
-    ral_buffer_get_property(program_bg_ub_vs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_bg_ub_vs_bo_size);
-
-    ral_buffer_get_property(program_label_bg_ub_vs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_label_bg_ub_vs_bo_size);
-
-    ral_buffer_get_property(program_separator_ub_vs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_separator_ub_vs_bo_size);
-
-    ral_buffer_get_property(program_slider_ub_fs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_slider_ub_fs_bo_size);
-    ral_buffer_get_property(program_slider_ub_vs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &dropdown_ptr->program_slider_ub_vs_bo_size);
-
-    /* Set up uniform block->buffer binding points mappings.
-     *
-     * This actually needs not be repeated more than once, but the cost is negligible.
-     */
-    const ral_program programs[] =
-    {
-        dropdown_ptr->program,
-        dropdown_ptr->program_bg,
-        dropdown_ptr->program_label_bg,
-        dropdown_ptr->program_separator,
-        dropdown_ptr->program_slider
-    };
-    const unsigned int n_programs = sizeof(programs) / sizeof(programs[0]);
-
-    for (unsigned int n_program = 0;
-                      n_program < n_programs;
-                    ++n_program)
-    {
-        const ral_program     current_program         = programs[n_program];
-        const raGL_program    current_program_raGL    = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                                   current_program);
-        uint32_t              current_program_raGL_id = 0;
-        static const uint32_t fs_ub_bp                = UB_FSDATA_BP;
-        static const uint32_t vs_ub_bp                = UB_VSDATA_BP;
-
-        if (ral_program_is_block_defined(current_program,
-                                         system_hashed_ansi_string_create("dataFS") ))
-        {
-            raGL_program_set_block_property_by_name(current_program_raGL,
-                                                    system_hashed_ansi_string_create("dataFS"),
-                                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                                   &fs_ub_bp);
-        }
-
-        if (ral_program_is_block_defined(current_program,
-                                         system_hashed_ansi_string_create("dataVS") ))
-        {
-            raGL_program_set_block_property_by_name(current_program_raGL,
-                                                    system_hashed_ansi_string_create("dataVS"),
-                                                    RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                                   &vs_ub_bp);
-        }
-    }
-
-    /* Retrieve uniform locations */
-    const ral_program_variable* border_width_uniform_ral_ptr              = nullptr;
-    const ral_program_variable* border_width_bg_uniform_ral_ptr           = nullptr;
-    const ral_program_variable* brightness_uniform_ral_ptr                = nullptr;
-    const ral_program_variable* button_start_u_uniform_ral_ptr            = nullptr;
-    const ral_program_variable* button_start_uv_uniform_ral_ptr           = nullptr;
-    const ral_program_variable* color_uniform_ral_ptr                     = nullptr;
-    const ral_program_variable* highlighted_v1v2_uniform_ral_ptr          = nullptr;
-    const ral_program_variable* selected_v1v2_uniform_ral_ptr             = nullptr;
-    const ral_program_variable* stop_data_uniform_ral_ptr                 = nullptr;
-    const ral_program_variable* x1_x2_y_uniform_ral_ptr                   = nullptr;
-    const ral_program_variable* x1y1x2y2_program_bg_uniform_ral_ptr       = nullptr;
-    const ral_program_variable* x1y1x2y2_program_label_bg_uniform_ral_ptr = nullptr;
-    const ral_program_variable* x1y1x2y2_program_slider_uniform_ral_ptr   = nullptr;
-    const ral_program_variable* x1y1x2y2_program_uniform_ral_ptr          = nullptr;
-
-    ral_program_get_block_variable_by_name(dropdown_ptr->program,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("border_width"),
-                                          &border_width_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("button_start_u"),
-                                          &button_start_u_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("brightness"),
-                                          &brightness_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("stop_data[0]"),
-                                          &stop_data_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program,
-                                           system_hashed_ansi_string_create("dataVS"),
-                                           system_hashed_ansi_string_create("x1y1x2y2"),
-                                          &x1y1x2y2_program_uniform_ral_ptr);
-
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("border_width"),
-                                          &border_width_bg_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("button_start_uv"),
-                                          &button_start_uv_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("highlighted_v1v2"),
-                                          &highlighted_v1v2_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("selected_v1v2"),
-                                          &selected_v1v2_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_bg,
-                                           system_hashed_ansi_string_create("dataVS"),
-                                           system_hashed_ansi_string_create("x1y1x2y2"),
-                                          &x1y1x2y2_program_bg_uniform_ral_ptr);
-
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_label_bg,
-                                           system_hashed_ansi_string_create("dataVS"),
-                                           system_hashed_ansi_string_create("x1y1x2y2"),
-                                          &x1y1x2y2_program_label_bg_uniform_ral_ptr);
-
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_separator,
-                                           system_hashed_ansi_string_create("dataVS"),
-                                           system_hashed_ansi_string_create("x1_x2_y"),
-                                          &x1_x2_y_uniform_ral_ptr);
-
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_slider,
-                                           system_hashed_ansi_string_create("dataFS"),
-                                           system_hashed_ansi_string_create("color"),
-                                          &color_uniform_ral_ptr);
-    ral_program_get_block_variable_by_name(dropdown_ptr->program_slider,
-                                           system_hashed_ansi_string_create("dataVS"),
-                                           system_hashed_ansi_string_create("x1y1x2y2"),
-                                          &x1y1x2y2_program_slider_uniform_ral_ptr);
-
-    dropdown_ptr->program_bg_border_width_ub_offset     = border_width_bg_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_bg_highlighted_v1v2_ub_offset = highlighted_v1v2_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_bg_selected_v1v2_ub_offset    = selected_v1v2_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_bg_x1y1x2y2_ub_offset         = x1y1x2y2_program_bg_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_border_width_ub_offset        = border_width_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_brightness_ub_offset          = brightness_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_button_start_u_ub_offset      = button_start_u_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset   = x1y1x2y2_program_label_bg_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_separator_x1_x2_y_ub_offset   = x1_x2_y_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_slider_color_ub_offset        = color_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_slider_x1y1x2y2_ub_offset     = x1y1x2y2_program_slider_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_stop_data_ub_offset           = stop_data_uniform_ral_ptr->block_offset;
-    dropdown_ptr->program_x1y1x2y2_ub_offset            = x1y1x2y2_program_uniform_ral_ptr->block_offset;
-
-    /* Set them up */
-    const float button_start_uv[] =
-    {
-        1.0f - BUTTON_WIDTH_PX * border_width[0],
-        1.0f - BUTTON_WIDTH_PX * border_width[1]
-    };
-
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                           button_start_u_uniform_ral_ptr->block_offset,
-                                                          &button_start_uv[0],
-                                                           sizeof(float) );
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                           button_start_uv_uniform_ral_ptr->block_offset,
-                                                           button_start_uv,
-                                                           sizeof(float) * 2);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                           border_width_uniform_ral_ptr->block_offset,
-                                                           border_width,
-                                                           sizeof(float) * 2);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                           border_width_bg_uniform_ral_ptr->block_offset,
-                                                           border_width_bg,
-                                                           sizeof(float) * 2);
-
-    ral_program_block_buffer_set_arrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                        stop_data_uniform_ral_ptr->block_offset,
-                                                        stop_data,
-                                                        sizeof(float) * 4 /* vec4 */ * 4 /* array items */,
-                                                        0,                /* dst_array_start_index */
-                                                        4);               /* dst_array_item_count */
-
-    dropdown_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
-
-}
-
 /* TODO */
 PRIVATE void _ui_dropdown_update_entry_positions(_ui_dropdown* dropdown_ptr)
 {
@@ -1356,7 +1051,32 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
     _ui_dropdown*     ui_dropdown_ptr  = reinterpret_cast<_ui_dropdown*>(internal_instance);
     const static bool visibility_false = false;
 
-    ral_program       programs_to_release[] =
+    ral_program_block_buffer* block_buffers_to_release[] =
+    {
+        &ui_dropdown_ptr->program_ub_fs,
+        &ui_dropdown_ptr->program_ub_vs,
+        &ui_dropdown_ptr->program_bg_ub_fs,
+        &ui_dropdown_ptr->program_bg_ub_vs,
+        &ui_dropdown_ptr->program_label_bg_ub_vs,
+        &ui_dropdown_ptr->program_separator_ub_vs,
+        &ui_dropdown_ptr->program_slider_ub_fs,
+        &ui_dropdown_ptr->program_slider_ub_vs,
+    };
+    ral_command_buffer* command_buffers_to_release[] =
+    {
+        &ui_dropdown_ptr->last_cached_command_buffer,
+        &ui_dropdown_ptr->last_cached_command_buffer_dummy
+    };
+    ral_gfx_state* gfx_states_to_release[] =
+    {
+        &ui_dropdown_ptr->last_cached_gfx_state,
+    };
+    ral_present_task* present_tasks_to_release[] =
+    {
+        &ui_dropdown_ptr->last_cached_present_task,
+        &ui_dropdown_ptr->last_cached_present_task_dummy
+    };
+    ral_program programs_to_release[] =
     {
         ui_dropdown_ptr->program,
         ui_dropdown_ptr->program_bg,
@@ -1364,7 +1084,12 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
         ui_dropdown_ptr->program_separator,
         ui_dropdown_ptr->program_slider
     };
-    const uint32_t n_programs_to_release = sizeof(programs_to_release) / sizeof(programs_to_release[0]);
+
+    const uint32_t n_block_buffers_to_release   = sizeof(block_buffers_to_release)   / sizeof(block_buffers_to_release  [0]);
+    const uint32_t n_command_buffers_to_release = sizeof(command_buffers_to_release) / sizeof(command_buffers_to_release[0]);
+    const uint32_t n_present_tasks_to_release   = sizeof(present_tasks_to_release)   / sizeof(present_tasks_to_release  [0]);
+    const uint32_t n_programs_to_release        = sizeof(programs_to_release)        / sizeof(programs_to_release       [0]);
+    const uint32_t n_gfx_states_to_release      = sizeof(gfx_states_to_release)      / sizeof(gfx_states_to_release     [0]);
 
     ral_context_delete_objects(ui_dropdown_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -1394,54 +1119,65 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
     system_resizable_vector_release(ui_dropdown_ptr->entries);
     ui_dropdown_ptr->entries = nullptr;
 
-    ral_program_block_buffer block_buffers[] =
-    {
-        ui_dropdown_ptr->program_ub_fs,
-        ui_dropdown_ptr->program_ub_vs,
-        ui_dropdown_ptr->program_bg_ub_fs,
-        ui_dropdown_ptr->program_bg_ub_vs,
-        ui_dropdown_ptr->program_label_bg_ub_vs,
-        ui_dropdown_ptr->program_separator_ub_vs,
-        ui_dropdown_ptr->program_slider_ub_fs,
-        ui_dropdown_ptr->program_slider_ub_vs,
-    };
-    const uint32_t n_block_buffers = sizeof(block_buffers) / sizeof(block_buffers[0]);
-
+    /* Release other stuff */
     for (uint32_t n_block_buffer = 0;
-                  n_block_buffer < n_block_buffers;
+                  n_block_buffer < n_block_buffers_to_release;
                 ++n_block_buffer)
     {
-        if (block_buffers[n_block_buffer] != nullptr)
+        if (*block_buffers_to_release[n_block_buffer] != nullptr)
         {
-            ral_program_block_buffer_release(block_buffers[n_block_buffer]);
+            ral_program_block_buffer_release(*block_buffers_to_release[n_block_buffer]);
+
+            *block_buffers_to_release[n_block_buffer] = nullptr;
+        }
+    }
+
+    for (uint32_t n_command_buffer = 0;
+                  n_command_buffer < n_command_buffers_to_release;
+                ++n_command_buffer)
+    {
+        if (*command_buffers_to_release[n_command_buffer] != nullptr)
+        {
+            ral_command_buffer_release(*command_buffers_to_release[n_command_buffer]);
+
+            *command_buffers_to_release[n_command_buffer] = nullptr;
+        }
+    }
+
+    for (uint32_t n_gfx_state = 0;
+                  n_gfx_state < n_gfx_states_to_release;
+                ++n_gfx_state)
+    {
+        if (*gfx_states_to_release[n_gfx_state] != nullptr)
+        {
+            ral_gfx_state_release(*gfx_states_to_release[n_gfx_state]);
+
+            *gfx_states_to_release[n_gfx_state] = nullptr;
+        }
+    }
+
+    for (uint32_t n_present_task = 0;
+                  n_present_task < n_present_tasks_to_release;
+                ++n_present_task)
+    {
+        if (*present_tasks_to_release[n_present_task] != nullptr)
+        {
+            ral_present_task_release(*present_tasks_to_release[n_present_task]);
+
+            *present_tasks_to_release[n_present_task] = nullptr;
         }
     }
 
     delete ui_dropdown_ptr;
 }
 
-/** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
+PRIVATE void _ui_dropdown_cpu_task_callback(void* dropdown_raw_ptr)
 {
-    _ui_dropdown* dropdown_ptr = reinterpret_cast<_ui_dropdown*>(internal_instance);
-    system_time   time_now     = system_time_now();
-    system_window window       = nullptr;
-    int           window_size[2];
-
-    ral_context_get_property  (dropdown_ptr->context,
-                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
-                              &window);
-    system_window_get_property(window,
-                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                               window_size);
-
-    if (!dropdown_ptr->visible)
-    {
-        return;
-    }
-
-    /* Prepare for rendeirng */
-    dropdown_ptr->pGLDisable(GL_DEPTH_TEST);
+    _ui_dropdown*     dropdown_ptr        = reinterpret_cast<_ui_dropdown*>(dropdown_raw_ptr);
+    float             highlighted_v1v2[2];
+    float             selected_v1v2   [2];
+    float             slider_x1y1x2y2  [4];
+    const system_time time_now            = system_time_now();
 
     /* Update brightness if necessary */
     float brightness = dropdown_ptr->current_gpu_brightness_level;
@@ -1497,46 +1233,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
         }
     }
 
-    /* Update uniforms */
-    float              highlighted_v1v2[2];
-    float              selected_v1v2   [2];
-    const raGL_program program_bg_raGL           = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                              dropdown_ptr->program_bg);
-    GLuint             program_bg_raGL_id        = 0;
-    const raGL_program program_raGL              = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                              dropdown_ptr->program);
-    GLuint             program_raGL_id           = 0;
-    const raGL_program program_label_bg_raGL     = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                              dropdown_ptr->program_label_bg);
-    GLuint             program_label_bg_raGL_id  = 0;
-    const raGL_program program_separator_raGL    = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                              dropdown_ptr->program_separator);
-    GLuint             program_separator_raGL_id = 0;
-    const raGL_program program_slider_raGL       = ral_context_get_program_gl(dropdown_ptr->context,
-                                                                              dropdown_ptr->program_slider);
-    GLuint             program_slider_raGL_id    = 0;
-    uint32_t           n_entries                 = 0;
-
-    raGL_program_get_property(program_bg_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_bg_raGL_id);
-    raGL_program_get_property(program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_raGL_id);
-    raGL_program_get_property(program_label_bg_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_label_bg_raGL_id);
-    raGL_program_get_property(program_separator_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_separator_raGL_id);
-    raGL_program_get_property(program_slider_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_slider_raGL_id);
-
-    system_resizable_vector_get_property(dropdown_ptr->entries,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_entries);
-
     _ui_dropdown_get_highlighted_v1v2(dropdown_ptr, false, highlighted_v1v2);
     _ui_dropdown_get_selected_v1v2   (dropdown_ptr,        selected_v1v2);
 
@@ -1560,7 +1256,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
         dropdown_ptr->force_gpu_brightness_update  = false;
     }
 
+    _ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
+                                 slider_x1y1x2y2);
+
+
+    bool        is_cursor_over_slider        = (dropdown_ptr->hover_ss[0] >= slider_x1y1x2y2[0] && dropdown_ptr->hover_ss[0] <= slider_x1y1x2y2[2] &&
+                                                dropdown_ptr->hover_ss[1] >= slider_x1y1x2y2[3] && dropdown_ptr->hover_ss[1] <= slider_x1y1x2y2[1] ||
+                                                dropdown_ptr->is_slider_lbm);
     const float new_brightness_uniform_value = brightness * ((dropdown_ptr->is_lbm_on && dropdown_ptr->is_button_lbm) ? CLICK_BRIGHTNESS_MODIFIER : 1);
+    const float slider_color[4]              =
+    {
+        is_cursor_over_slider ? 1.0f : 0.5f,
+        is_cursor_over_slider ? 1.0f : 0.5f,
+        is_cursor_over_slider ? 1.0f : 0.5f,
+        1.0f
+    };
 
     ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
                                                            dropdown_ptr->program_brightness_ub_offset,
@@ -1586,79 +1296,245 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
                                                            dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset,
                                                            dropdown_ptr->label_bg_x1y1x2y2,
                                                            sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_fs,
+                                                           dropdown_ptr->program_slider_color_ub_offset,
+                                                           slider_color,
+                                                           sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_vs,
+                                                           dropdown_ptr->program_slider_x1y1x2y2_ub_offset,
+                                                           slider_x1y1x2y2,
+                                                           sizeof(float) * 4);
+
+    ral_program_block_buffer_sync(dropdown_ptr->program_bg_ub_fs);
+    ral_program_block_buffer_sync(dropdown_ptr->program_bg_ub_vs);
+    ral_program_block_buffer_sync(dropdown_ptr->program_label_bg_ub_vs);
+    ral_program_block_buffer_sync(dropdown_ptr->program_slider_ub_fs);
+    ral_program_block_buffer_sync(dropdown_ptr->program_slider_ub_vs);
+    ral_program_block_buffer_sync(dropdown_ptr->program_ub_fs);
+    ral_program_block_buffer_sync(dropdown_ptr->program_ub_vs);
+}
+
+/** Please see header for specification */
+PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_instance,
+                                                     ral_texture_view target_texture_view)
+{
+    _ui_dropdown*    dropdown_ptr                   = reinterpret_cast<_ui_dropdown*>(internal_instance);
+    ral_buffer       program_bg_ub_fs_bo_ral        = nullptr;
+    ral_buffer       program_bg_ub_vs_bo_ral        = nullptr;
+    ral_buffer       program_label_bg_ub_vs_bo_ral  = nullptr;
+    ral_buffer       program_slider_ub_fs_bo_ral    = nullptr;
+    ral_buffer       program_slider_ub_vs_bo_ral    = nullptr;
+    ral_buffer       program_ub_fs_bo_ral           = nullptr;
+    ral_buffer       program_ub_vs_bo_ral           = nullptr;
+    ral_present_task result                         = nullptr;
+    uint32_t         target_texture_view_size[2];
+    system_window    window                         = nullptr;
+    int              window_size[2];
+
+    ral_context_get_property  (dropdown_ptr->context,
+                               RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
+
+    ral_texture_view_get_mipmap_property(target_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                         target_texture_view_size + 0);
+    ral_texture_view_get_mipmap_property(target_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                         target_texture_view_size + 1);
+
+    /* Can we re-use last present task ? */
+    if (dropdown_ptr->last_cached_present_task                     != nullptr                           &&
+        dropdown_ptr->last_cached_present_task_is_droparea_visible == dropdown_ptr->is_droparea_visible &&
+        dropdown_ptr->last_cached_present_task_target_texture_view == target_texture_view)
+    {
+        if (!dropdown_ptr->visible)
+        {
+            result = dropdown_ptr->last_cached_present_task_dummy;
+        }
+        else
+        {
+            result = dropdown_ptr->last_cached_present_task;
+        }
+
+        goto end;
+    }
+
+    if (dropdown_ptr->last_cached_present_task != nullptr)
+    {
+        ral_present_task_release(dropdown_ptr->last_cached_present_task);
+
+        dropdown_ptr->last_cached_present_task = nullptr;
+    }
+
+    if (dropdown_ptr->last_cached_present_task_dummy != nullptr)
+    {
+        ral_present_task_release(dropdown_ptr->last_cached_present_task_dummy);
+
+        dropdown_ptr->last_cached_present_task_dummy = nullptr;
+    }
+
+    /* Can we re-use recently used gfx state? */
+    if (dropdown_ptr->last_cached_gfx_state != nullptr)
+    {
+        ral_command_buffer_set_viewport_command_info gfx_state_viewport;
+
+        ral_gfx_state_get_property(dropdown_ptr->last_cached_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
+                                  &gfx_state_viewport);
+
+        if (gfx_state_viewport.size[0] != target_texture_view_size[0] ||
+            gfx_state_viewport.size[1] != target_texture_view_size[1])
+        {
+            ral_gfx_state_release(dropdown_ptr->last_cached_gfx_state);
+
+            dropdown_ptr->last_cached_gfx_state = nullptr;
+        }
+    }
+
+    /* Bake gfx_state instance if needed .. */
+    if (dropdown_ptr->last_cached_gfx_state == nullptr)
+    {
+        ral_gfx_state_create_info                       gfx_state_create_info;
+        ral_command_buffer_set_scissor_box_command_info scissor_box;
+        ral_command_buffer_set_viewport_command_info    viewport;
+
+        scissor_box.index   = 0;
+        scissor_box.size[0] = target_texture_view_size[0];
+        scissor_box.size[1] = target_texture_view_size[1];
+        scissor_box.xy  [0] = 0;
+        scissor_box.xy  [1] = 0;
+
+        viewport.depth_range[0] = 0.0f;
+        viewport.depth_range[1] = 1.0f;
+        viewport.index          = 0;
+        viewport.size[0]        = static_cast<float>(target_texture_view_size[0]);
+        viewport.size[1]        = static_cast<float>(target_texture_view_size[1]);
+        viewport.xy  [0]        = 0;
+        viewport.xy  [1]        = 0;
+
+        gfx_state_create_info.primitive_type = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+
+        gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+        gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
+        gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+        gfx_state_create_info.static_viewports                     = &viewport;
+
+        dropdown_ptr->last_cached_gfx_state = ral_gfx_state_create(dropdown_ptr->context,
+                                                                  &gfx_state_create_info);
+    }
+
+    /* Start recording the draw command buffer */
+    ral_command_buffer draw_command_buffer;
+
+    if (dropdown_ptr->last_cached_command_buffer == nullptr)
+    {
+        ral_command_buffer_create_info draw_command_buffer_create_info;
+
+        draw_command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+        draw_command_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        draw_command_buffer_create_info.is_resettable                           = true;
+        draw_command_buffer_create_info.is_transient                            = false;
+
+        dropdown_ptr->last_cached_command_buffer = ral_command_buffer_create(dropdown_ptr->context,
+                                                                            &draw_command_buffer_create_info);
+    }
+
+    draw_command_buffer = dropdown_ptr->last_cached_command_buffer;
 
     /* Draw */
+    ral_command_buffer_draw_call_regular_command_info      draw_call;
+    ral_command_buffer_set_color_rendertarget_command_info rt_blend_off_info = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+    ral_command_buffer_set_color_rendertarget_command_info rt_blend_on_info  = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+
+    ral_program_block_buffer_get_property(dropdown_ptr->program_bg_ub_fs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_bg_ub_fs_bo_ral);
+    ral_program_block_buffer_get_property(dropdown_ptr->program_bg_ub_vs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_bg_ub_vs_bo_ral);
+    ral_program_block_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_label_bg_ub_vs_bo_ral);
+    ral_program_block_buffer_get_property(dropdown_ptr->program_slider_ub_fs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_slider_ub_fs_bo_ral);
+    ral_program_block_buffer_get_property(dropdown_ptr->program_slider_ub_vs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_slider_ub_vs_bo_ral);
+    ral_program_block_buffer_get_property(dropdown_ptr->program_ub_fs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_ub_fs_bo_ral);
+    ral_program_block_buffer_get_property(dropdown_ptr->program_ub_vs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &program_ub_vs_bo_ral);
+
+    draw_call.base_instance = 0;
+    draw_call.base_vertex   = 0;
+    draw_call.n_instances   = 1;
+    draw_call.n_vertices    = 4;
+
+    rt_blend_off_info.rendertarget_index = 0;
+    rt_blend_off_info.texture_view       = target_texture_view;
+
+    rt_blend_on_info.blend_enabled      = true;
+    rt_blend_on_info.rendertarget_index = 0;
+    rt_blend_on_info.texture_view       = target_texture_view;
+
+    ral_command_buffer_start_recording(draw_command_buffer);
+
+    ral_command_buffer_record_set_color_rendertargets(draw_command_buffer,
+                                                      1, /* n_rendertargets */
+                                                     &rt_blend_off_info);
+    ral_command_buffer_record_set_gfx_state          (draw_command_buffer,
+                                                      dropdown_ptr->last_cached_gfx_state);
+
     if (dropdown_ptr->is_droparea_visible)
     {
-        GLuint      program_bg_ub_fs_bo_id                  = 0;
-        raGL_buffer program_bg_ub_fs_bo_raGL                = nullptr;
-        ral_buffer  program_bg_ub_fs_bo_ral                 = nullptr;
-        uint32_t    program_bg_ub_fs_bo_start_offset        = -1;
-        GLuint      program_bg_ub_vs_bo_id                  = 0;
-        raGL_buffer program_bg_ub_vs_bo_raGL                = nullptr;
-        ral_buffer  program_bg_ub_vs_bo_ral                 = nullptr;
-        uint32_t    program_bg_ub_vs_bo_start_offset        = -1;
-        GLuint      program_separator_ub_vs_bo_id           = 0;
-        raGL_buffer program_separator_ub_vs_bo_raGL         = nullptr;
-        ral_buffer  program_separator_ub_vs_bo_ral          = nullptr;
-        uint32_t    program_separator_ub_vs_bo_start_offset = -1;
+        /* Background first */
+        ral_command_buffer_set_binding_command_info bg_program_bindings[2];
 
-        ral_program_block_buffer_get_property(dropdown_ptr->program_bg_ub_fs,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &program_bg_ub_fs_bo_ral);
-        ral_program_block_buffer_get_property(dropdown_ptr->program_bg_ub_vs,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &program_bg_ub_vs_bo_ral);
+        bg_program_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        bg_program_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
+        bg_program_bindings[0].uniform_buffer_binding.buffer = program_bg_ub_fs_bo_ral;
+        bg_program_bindings[0].uniform_buffer_binding.offset = 0;
+        bg_program_bindings[0].uniform_buffer_binding.size   = dropdown_ptr->program_bg_ub_fs_bo_size;
+
+        bg_program_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        bg_program_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
+        bg_program_bindings[1].uniform_buffer_binding.buffer = program_bg_ub_vs_bo_ral;
+        bg_program_bindings[1].uniform_buffer_binding.offset = 0;
+        bg_program_bindings[1].uniform_buffer_binding.size   = dropdown_ptr->program_bg_ub_vs_bo_size;
+
+        ral_command_buffer_record_set_program      (draw_command_buffer,
+                                                    dropdown_ptr->program_bg);
+        ral_command_buffer_record_set_bindings     (draw_command_buffer,
+                                                    sizeof(bg_program_bindings) / sizeof(bg_program_bindings[0]),
+                                                    bg_program_bindings);
+        ral_command_buffer_record_draw_call_regular(draw_command_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call);
+
+#if 0
+        TODO: modify the approach so that separator line data is transferred once from the cpu task
+
+        uint32_t n_entries = 0;
+
+        system_resizable_vector_get_property(dropdown_ptr->entries,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_entries);
+
+        ral_buffer program_separator_ub_vs_bo_ral = nullptr;
+
         ral_program_block_buffer_get_property(dropdown_ptr->program_separator_ub_vs,
                                               RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
                                              &program_separator_ub_vs_bo_ral);
-
-        program_bg_ub_fs_bo_raGL        = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                                    program_bg_ub_fs_bo_ral);
-        program_bg_ub_vs_bo_raGL        = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                                    program_bg_ub_vs_bo_ral);
-        program_separator_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                                    program_separator_ub_vs_bo_ral);
-
-        raGL_buffer_get_property(program_bg_ub_fs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &program_bg_ub_fs_bo_id);
-        raGL_buffer_get_property(program_bg_ub_fs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &program_bg_ub_fs_bo_start_offset);
-        raGL_buffer_get_property(program_bg_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &program_bg_ub_vs_bo_id);
-        raGL_buffer_get_property(program_bg_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &program_bg_ub_vs_bo_start_offset);
-
-        raGL_buffer_get_property(program_separator_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &program_separator_ub_vs_bo_id);
-        raGL_buffer_get_property(program_separator_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &program_separator_ub_vs_bo_start_offset);
-
-        /* Background first */
-        dropdown_ptr->pGLUseProgram     (program_bg_raGL_id);
-        dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         UB_FSDATA_BP,
-                                         program_bg_ub_fs_bo_id,
-                                         program_bg_ub_fs_bo_start_offset,
-                                         dropdown_ptr->program_bg_ub_fs_bo_size);
-        dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         UB_VSDATA_BP,
-                                         program_bg_ub_vs_bo_id,
-                                         program_bg_ub_vs_bo_start_offset,
-                                         dropdown_ptr->program_bg_ub_vs_bo_size);
-
-        ral_program_block_buffer_sync(dropdown_ptr->program_bg_ub_fs);
-        ral_program_block_buffer_sync(dropdown_ptr->program_bg_ub_vs);
-
-        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                    0, /* first */
-                                    4);/* count */
 
         /* Follow with separators */
         dropdown_ptr->pGLUseProgram     (program_separator_raGL_id);
@@ -1711,180 +1587,228 @@ PUBLIC RENDERING_CONTEXT_CALL void ui_dropdown_draw(void* internal_instance)
                 }
             }
         }
+#else
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO");
+#endif
 
         /* Draw the slider */
-        GLuint      program_slider_ub_fs_bo_id           = 0;
-        raGL_buffer program_slider_ub_fs_bo_raGL         = nullptr;
-        ral_buffer  program_slider_ub_fs_bo_ral          = nullptr;
-        uint32_t    program_slider_ub_fs_bo_start_offset = -1;
-        GLuint      program_slider_ub_vs_bo_id           = 0;
-        raGL_buffer program_slider_ub_vs_bo_raGL         = nullptr;
-        ral_buffer  program_slider_ub_vs_bo_ral          = nullptr;
-        uint32_t    program_slider_ub_vs_bo_start_offset = -1;
-        float       slider_x1y1x2y2[4];
+        ral_command_buffer_set_binding_command_info slider_program_bindings[2];
 
-        ral_program_block_buffer_get_property(dropdown_ptr->program_slider_ub_fs,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &program_slider_ub_fs_bo_ral);
-        ral_program_block_buffer_get_property(dropdown_ptr->program_slider_ub_vs,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &program_slider_ub_vs_bo_ral);
+        slider_program_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        slider_program_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
+        slider_program_bindings[0].uniform_buffer_binding.buffer = program_slider_ub_fs_bo_ral;
+        slider_program_bindings[0].uniform_buffer_binding.offset = 0;
+        slider_program_bindings[0].uniform_buffer_binding.size   = dropdown_ptr->program_slider_ub_fs_bo_size;
 
-        program_slider_ub_fs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                                 program_slider_ub_fs_bo_ral);
-        program_slider_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                                 program_slider_ub_vs_bo_ral);
+        slider_program_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        slider_program_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
+        slider_program_bindings[1].uniform_buffer_binding.buffer = program_slider_ub_vs_bo_ral;
+        slider_program_bindings[1].uniform_buffer_binding.offset = 0;
+        slider_program_bindings[1].uniform_buffer_binding.size   = dropdown_ptr->program_slider_ub_vs_bo_size;
 
-        raGL_buffer_get_property(program_slider_ub_fs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &program_slider_ub_fs_bo_id);
-        raGL_buffer_get_property(program_slider_ub_fs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &program_slider_ub_fs_bo_start_offset);
-        raGL_buffer_get_property(program_slider_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &program_slider_ub_vs_bo_id);
-        raGL_buffer_get_property(program_slider_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &program_slider_ub_vs_bo_start_offset);
-
-        _ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
-                                         slider_x1y1x2y2);
-
-        bool        is_cursor_over_slider = (dropdown_ptr->hover_ss[0] >= slider_x1y1x2y2[0] && dropdown_ptr->hover_ss[0] <= slider_x1y1x2y2[2] &&
-                                             dropdown_ptr->hover_ss[1] >= slider_x1y1x2y2[3] && dropdown_ptr->hover_ss[1] <= slider_x1y1x2y2[1] ||
-                                             dropdown_ptr->is_slider_lbm);
-        const float slider_color[4] =
-        {
-            is_cursor_over_slider ? 1.0f : 0.5f,
-            is_cursor_over_slider ? 1.0f : 0.5f,
-            is_cursor_over_slider ? 1.0f : 0.5f,
-            1.0f
-        };
-
-        dropdown_ptr->pGLUseProgram     (program_slider_raGL_id);
-        dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         UB_FSDATA_BP,
-                                         program_slider_ub_fs_bo_id,
-                                         program_slider_ub_fs_bo_start_offset,
-                                         dropdown_ptr->program_slider_ub_fs_bo_size);
-        dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         UB_VSDATA_BP,
-                                         program_slider_ub_vs_bo_id,
-                                         program_slider_ub_vs_bo_start_offset,
-                                         dropdown_ptr->program_slider_ub_vs_bo_size);
-
-        ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_fs,
-                                                               dropdown_ptr->program_slider_color_ub_offset,
-                                                               slider_color,
-                                                               sizeof(float) * 4);
-        ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_vs,
-                                                               dropdown_ptr->program_slider_x1y1x2y2_ub_offset,
-                                                               slider_x1y1x2y2,
-                                                               sizeof(float) * 4);
-
-        ral_program_block_buffer_sync(dropdown_ptr->program_slider_ub_fs);
-        ral_program_block_buffer_sync(dropdown_ptr->program_slider_ub_vs);
-
-        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                    0,  /* first */
-                                    4); /* count */
+        ral_command_buffer_record_set_program      (draw_command_buffer,
+                                                    dropdown_ptr->program_slider);
+        ral_command_buffer_record_set_bindings     (draw_command_buffer,
+                                                    sizeof(slider_program_bindings) / sizeof(slider_program_bindings[0]),
+                                                    slider_program_bindings);
+        ral_command_buffer_record_draw_call_regular(draw_command_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call);
     }
 
     /* Draw the bar */
-    GLuint      program_ub_fs_bo_id           = 0;
-    raGL_buffer program_ub_fs_bo_raGL         = nullptr;
-    ral_buffer  program_ub_fs_bo_ral          = nullptr;
-    uint32_t    program_ub_fs_bo_start_offset = -1;
-    GLuint      program_ub_vs_bo_id           = 0;
-    raGL_buffer program_ub_vs_bo_raGL         = nullptr;
-    ral_buffer  program_ub_vs_bo_ral          = nullptr;
-    uint32_t    program_ub_vs_bo_start_offset = -1;
+    ral_command_buffer_set_binding_command_info program_bindings[2];
 
-    ral_program_block_buffer_get_property(dropdown_ptr->program_ub_fs,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &program_ub_fs_bo_ral);
-    ral_program_block_buffer_get_property(dropdown_ptr->program_ub_vs,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &program_ub_vs_bo_ral);
+    program_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+    program_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
+    program_bindings[0].uniform_buffer_binding.buffer = program_ub_fs_bo_ral;
+    program_bindings[0].uniform_buffer_binding.offset = 0;
+    program_bindings[0].uniform_buffer_binding.size   = dropdown_ptr->program_ub_fs_bo_size;
 
-    program_ub_fs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                      program_ub_fs_bo_ral);
-    program_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                      program_ub_vs_bo_ral);
+    program_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+    program_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
+    program_bindings[1].uniform_buffer_binding.buffer = program_ub_vs_bo_ral;
+    program_bindings[1].uniform_buffer_binding.offset = 0;
+    program_bindings[1].uniform_buffer_binding.size   = dropdown_ptr->program_ub_vs_bo_size;
 
-    raGL_buffer_get_property(program_ub_fs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &program_ub_fs_bo_id);
-    raGL_buffer_get_property(program_ub_fs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &program_ub_fs_bo_start_offset);
-    raGL_buffer_get_property(program_ub_vs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &program_ub_vs_bo_id);
-    raGL_buffer_get_property(program_ub_vs_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &program_ub_vs_bo_start_offset);
-
-    dropdown_ptr->pGLUseProgram     (program_raGL_id);
-    dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                     UB_FSDATA_BP,
-                                     program_ub_fs_bo_id,
-                                     program_ub_fs_bo_start_offset,
-                                     dropdown_ptr->program_ub_fs_bo_size);
-    dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                     UB_VSDATA_BP,
-                                     program_ub_vs_bo_id,
-                                     program_ub_vs_bo_start_offset,
-                                     dropdown_ptr->program_ub_vs_bo_size);
-
-    ral_program_block_buffer_sync(dropdown_ptr->program_ub_fs);
-    ral_program_block_buffer_sync(dropdown_ptr->program_ub_vs);
-
-    dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                0,  /* first */
-                                4); /* count */
+    ral_command_buffer_record_set_program      (draw_command_buffer,
+                                                dropdown_ptr->program);
+    ral_command_buffer_record_set_bindings     (draw_command_buffer,
+                                                sizeof(program_bindings) / sizeof(program_bindings[0]),
+                                                program_bindings);
+    ral_command_buffer_record_draw_call_regular(draw_command_buffer,
+                                                1, /* n_draw_calls */
+                                               &draw_call);
 
     /* Draw the label background */
-    dropdown_ptr->pGLEnable(GL_BLEND);
+    ral_command_buffer_set_binding_command_info program_label_binding;
+
+    program_label_binding.binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+    program_label_binding.name                          = system_hashed_ansi_string_create("dataVS");
+    program_label_binding.uniform_buffer_binding.buffer = program_label_bg_ub_vs_bo_ral;
+    program_label_binding.uniform_buffer_binding.offset = 0;
+    program_label_binding.uniform_buffer_binding.size   = dropdown_ptr->program_label_bg_ub_vs_bo_size;
+
+    ral_command_buffer_record_set_color_rendertargets(draw_command_buffer,
+                                                      1, /* n_rendertargets */
+                                                     &rt_blend_on_info);
+    ral_command_buffer_record_set_program            (draw_command_buffer,
+                                                      dropdown_ptr->program_label_bg);
+    ral_command_buffer_record_set_bindings           (draw_command_buffer,
+                                                      1, /* n_bindings */
+                                                     &program_label_binding);
+    ral_command_buffer_record_draw_call_regular      (draw_command_buffer,
+                                                      1, /* n_draw_calls */
+                                                     &draw_call);
+
+    ral_command_buffer_stop_recording(draw_command_buffer);
+
+    /* That's it. We're also going to need a dummy present task which is going to be executed
+     * if the dropdown is invisible */
+    if (dropdown_ptr->last_cached_command_buffer_dummy == nullptr)
     {
-        GLuint      program_label_bg_ub_vs_bo_id                = 0;
-        raGL_buffer program_label_bg_ub_vs_bo_raGL              = nullptr;
-        uint32_t    program_label_bg_ub_vs_bo_raGL_start_offset = -1;
-        ral_buffer  program_label_bg_ub_vs_bo_ral               = nullptr;
-        uint32_t    program_label_bg_ub_vs_bo_ral_start_offset  = -1;
+        ral_command_buffer_create_info dummy_cmd_buffer_create_info;
 
-        ral_program_block_buffer_get_property(dropdown_ptr->program_label_bg_ub_vs,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &program_label_bg_ub_vs_bo_ral);
+        dummy_cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_COMPUTE_BIT | RAL_QUEUE_GRAPHICS_BIT | RAL_QUEUE_TRANSFER_BIT;
+        dummy_cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        dummy_cmd_buffer_create_info.is_resettable                           = false;
+        dummy_cmd_buffer_create_info.is_transient                            = false;
 
-        program_label_bg_ub_vs_bo_raGL = ral_context_get_buffer_gl(dropdown_ptr->context,
-                                                                   program_label_bg_ub_vs_bo_ral);
+        dropdown_ptr->last_cached_command_buffer_dummy = ral_command_buffer_create(dropdown_ptr->context,
+                                                                                  &dummy_cmd_buffer_create_info);
 
-        raGL_buffer_get_property(program_label_bg_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &program_label_bg_ub_vs_bo_id);
-        raGL_buffer_get_property(program_label_bg_ub_vs_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &program_label_bg_ub_vs_bo_raGL_start_offset);
-        ral_buffer_get_property (program_label_bg_ub_vs_bo_ral,
-                                 RAL_BUFFER_PROPERTY_START_OFFSET,
-                                &program_label_bg_ub_vs_bo_ral_start_offset);
-
-        dropdown_ptr->pGLUseProgram     (program_label_bg_raGL_id);
-        dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         UB_VSDATA_BP,
-                                         program_label_bg_ub_vs_bo_id,
-                                         program_label_bg_ub_vs_bo_raGL_start_offset + program_label_bg_ub_vs_bo_ral_start_offset,
-                                         dropdown_ptr->program_label_bg_ub_vs_bo_size);
-
-        ral_program_block_buffer_sync(dropdown_ptr->program_label_bg_ub_vs);
-
-        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                    0,  /* first */
-                                    4); /* count */
+        ral_command_buffer_start_recording(dropdown_ptr->last_cached_command_buffer_dummy);
+        ral_command_buffer_stop_recording (dropdown_ptr->last_cached_command_buffer_dummy);
     }
-    dropdown_ptr->pGLDisable(GL_BLEND);
+
+    /* Form the result present tasks */
+    ral_present_task_gpu_create_info    dummy_gpu_present_task_create_info;
+    ral_present_task_io                 dummy_gpu_present_task_unique_io;
+
+    ral_present_task                    cpu_present_task;
+    ral_present_task_cpu_create_info    cpu_present_task_create_info;
+    ral_present_task_io                 cpu_present_task_unique_outputs[7];
+    ral_present_task                    gpu_present_task;
+    ral_present_task_gpu_create_info    gpu_present_task_create_info;
+    ral_present_task_io                 gpu_present_task_unique_inputs[8];
+    ral_present_task_io                 gpu_present_task_unique_output;
+    ral_present_task                    group_present_task;
+    ral_present_task_group_create_info  group_present_task_create_info;
+    ral_present_task_ingroup_connection group_present_task_ingroup_connections[7];
+    ral_present_task_group_mapping      group_present_task_input_mapping;
+    ral_present_task_group_mapping      group_present_task_output_mapping;
+    ral_present_task                    group_present_task_present_tasks[2];
+
+    cpu_present_task_unique_outputs[0].buffer      = program_bg_ub_fs_bo_ral;
+    cpu_present_task_unique_outputs[0].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_unique_outputs[1].buffer      = program_bg_ub_vs_bo_ral;
+    cpu_present_task_unique_outputs[1].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_unique_outputs[2].buffer      = program_label_bg_ub_vs_bo_ral;
+    cpu_present_task_unique_outputs[2].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_unique_outputs[3].buffer      = program_slider_ub_fs_bo_ral;
+    cpu_present_task_unique_outputs[3].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_unique_outputs[4].buffer      = program_slider_ub_vs_bo_ral;
+    cpu_present_task_unique_outputs[4].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_unique_outputs[5].buffer      = program_ub_fs_bo_ral;
+    cpu_present_task_unique_outputs[5].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_unique_outputs[6].buffer      = program_ub_vs_bo_ral;
+    cpu_present_task_unique_outputs[6].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_present_task_create_info.cpu_task_callback_user_arg = dropdown_ptr;
+    cpu_present_task_create_info.n_unique_inputs            = 0;
+    cpu_present_task_create_info.n_unique_outputs           = sizeof(cpu_present_task_unique_outputs) / sizeof(cpu_present_task_unique_outputs[0]);
+    cpu_present_task_create_info.pfn_cpu_task_callback_proc = _ui_dropdown_cpu_task_callback;
+    cpu_present_task_create_info.unique_inputs              = nullptr;
+    cpu_present_task_create_info.unique_outputs             = cpu_present_task_unique_outputs;
+
+    cpu_present_task = ral_present_task_create_cpu(system_hashed_ansi_string_create("UI dropdown control: UBs update"),
+                                                  &cpu_present_task_create_info);
+
+
+    gpu_present_task_unique_inputs[0] = cpu_present_task_unique_outputs[0];
+    gpu_present_task_unique_inputs[1] = cpu_present_task_unique_outputs[1];
+    gpu_present_task_unique_inputs[2] = cpu_present_task_unique_outputs[2];
+    gpu_present_task_unique_inputs[3] = cpu_present_task_unique_outputs[3];
+    gpu_present_task_unique_inputs[4] = cpu_present_task_unique_outputs[4];
+    gpu_present_task_unique_inputs[5] = cpu_present_task_unique_outputs[5];
+    gpu_present_task_unique_inputs[6] = cpu_present_task_unique_outputs[6];
+
+    gpu_present_task_unique_inputs[7].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    gpu_present_task_unique_inputs[7].texture_view = target_texture_view;
+
+    gpu_present_task_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    gpu_present_task_unique_output.texture_view = target_texture_view;
+
+    group_present_task_input_mapping.io_index        = 7; /* texture_view */
+    group_present_task_input_mapping.n_present_task  = 1;
+    group_present_task_output_mapping                = group_present_task_input_mapping;
+
+    gpu_present_task_create_info.command_buffer   = draw_command_buffer;
+    gpu_present_task_create_info.n_unique_inputs  = sizeof(gpu_present_task_unique_inputs) / sizeof(gpu_present_task_unique_inputs[0]);
+    gpu_present_task_create_info.n_unique_outputs = 1;
+    gpu_present_task_create_info.unique_inputs    =  gpu_present_task_unique_inputs;
+    gpu_present_task_create_info.unique_outputs   = &gpu_present_task_unique_output;
+
+    gpu_present_task = ral_present_task_create_gpu(system_hashed_ansi_string_create("UI dropdown control: Rasterization"),
+                                                  &gpu_present_task_create_info);
+
+
+    group_present_task_present_tasks[0] = cpu_present_task;
+    group_present_task_present_tasks[1] = gpu_present_task;
+
+    for (uint32_t n_connection = 0;
+                  n_connection < 7;
+                ++n_connection)
+    {
+        group_present_task_ingroup_connections[n_connection].input_present_task_index     = 0;
+        group_present_task_ingroup_connections[n_connection].input_present_task_io_index  = n_connection;
+        group_present_task_ingroup_connections[n_connection].output_present_task_index    = 1;
+        group_present_task_ingroup_connections[n_connection].output_present_task_io_index = n_connection;
+    }
+
+    group_present_task_create_info.ingroup_connections                   = group_present_task_ingroup_connections;
+    group_present_task_create_info.n_ingroup_connections                 = sizeof(group_present_task_ingroup_connections) / sizeof(group_present_task_ingroup_connections[0]);
+    group_present_task_create_info.n_present_tasks                       = sizeof(group_present_task_present_tasks)       / sizeof(group_present_task_present_tasks      [0]);
+    group_present_task_create_info.n_unique_inputs                       = 1;
+    group_present_task_create_info.n_unique_outputs                      = 1;
+    group_present_task_create_info.present_tasks                         = group_present_task_present_tasks;
+    group_present_task_create_info.unique_input_to_ingroup_task_mapping  = &group_present_task_input_mapping;
+    group_present_task_create_info.unique_output_to_ingroup_task_mapping = &group_present_task_output_mapping;
+
+    group_present_task                     = ral_present_task_create_group(&group_present_task_create_info);
+    dropdown_ptr->last_cached_present_task = group_present_task;
+
+
+    dummy_gpu_present_task_unique_io.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    dummy_gpu_present_task_unique_io.texture_view = target_texture_view;
+
+    dummy_gpu_present_task_create_info.command_buffer   = dropdown_ptr->last_cached_command_buffer_dummy;
+    dummy_gpu_present_task_create_info.n_unique_inputs  = 1;
+    dummy_gpu_present_task_create_info.n_unique_outputs = 1;
+    dummy_gpu_present_task_create_info.unique_inputs    = &dummy_gpu_present_task_unique_io;
+    dummy_gpu_present_task_create_info.unique_outputs   = &dummy_gpu_present_task_unique_io;
+
+    dropdown_ptr->last_cached_present_task_dummy = ral_present_task_create_gpu(system_hashed_ansi_string("UI dropdown control: Dummy"),
+                                                                              &dummy_gpu_present_task_create_info);
+
+
+    ral_present_task_release(cpu_present_task);
+    ral_present_task_release(gpu_present_task);
+
+    dropdown_ptr->last_cached_present_task_is_droparea_visible = dropdown_ptr->is_droparea_visible;
+    dropdown_ptr->last_cached_present_task_target_texture_view = target_texture_view;
+
+end:
+    ral_present_task_retain(result);
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -2041,47 +1965,6 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
         new_dropdown_ptr->ui_instance         = instance;
         new_dropdown_ptr->visible             = true;
 
-        /* Cache GL func pointers */
-        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-
-        ral_context_get_property(new_dropdown_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                                &backend_type);
-
-        if (backend_type == RAL_BACKEND_TYPE_ES)
-        {
-            const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
-
-            ogl_context_get_property(ral_context_get_gl_context(new_dropdown_ptr->context),
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entry_points_ptr);
-
-            new_dropdown_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
-            new_dropdown_ptr->pGLDisable             = entry_points_ptr->pGLDisable;
-            new_dropdown_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
-            new_dropdown_ptr->pGLEnable              = entry_points_ptr->pGLEnable;
-            new_dropdown_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
-            new_dropdown_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
-                              "Unrecognized context type");
-
-            const ogl_context_gl_entrypoints* entry_points_ptr = nullptr;
-
-            ogl_context_get_property(ral_context_get_gl_context(new_dropdown_ptr->context),
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entry_points_ptr);
-
-            new_dropdown_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
-            new_dropdown_ptr->pGLDisable             = entry_points_ptr->pGLDisable;
-            new_dropdown_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
-            new_dropdown_ptr->pGLEnable              = entry_points_ptr->pGLEnable;
-            new_dropdown_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
-            new_dropdown_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;
-        }
-
         /* Initialize entries */
         system_window window         = nullptr;
         int           window_size[2] = {0};
@@ -2169,9 +2052,218 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
         }
 
         /* Set up predefined values */
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_dropdown_ptr->context),
-                                                         _ui_dropdown_init_renderer_callback,
-                                                         new_dropdown_ptr);
+        float              border_width_bg[2] = {0};
+        float              border_width[2]    = {0};
+        static const float stop_data[]        = {0,     174.0f / 255.0f * 0.35f, 188.0f / 255.0f * 0.35f, 191.0f / 255.0f * 0.35f,
+                                                 0.5f,  110.0f / 255.0f * 0.35f, 119.0f / 255.0f * 0.35f, 116.0f / 255.0f * 0.35f,
+                                                 0.51f, 10.0f  / 255.0f * 0.35f, 14.0f  / 255.0f * 0.35f, 10.0f  / 255.0f * 0.35f,
+                                                 1.0f,  10.0f  / 255.0f * 0.35f, 8.0f   / 255.0f * 0.35f, 9.0f   / 255.0f * 0.35f};
+
+        border_width_bg[0] =  1.0f / (float)((new_dropdown_ptr->drop_x1y2x2y1[2] - new_dropdown_ptr->drop_x1y2x2y1[0]) * window_size[0]);
+        border_width_bg[1] = -1.0f / (float)((new_dropdown_ptr->drop_x1y2x2y1[3] - new_dropdown_ptr->drop_x1y2x2y1[1]) * window_size[1]);
+        border_width   [0] =  1.0f / (float)((new_dropdown_ptr->x1y1x2y2     [2] - new_dropdown_ptr->x1y1x2y2     [0]) * window_size[0]);
+        border_width   [1] =  1.0f / (float)((new_dropdown_ptr->x1y1x2y2     [3] - new_dropdown_ptr->x1y1x2y2     [1]) * window_size[1]);
+
+        /* Retrieve UBOs */
+        ral_buffer program_bg_ub_fs_bo_ral        = nullptr;
+        ral_buffer program_bg_ub_vs_bo_ral        = nullptr;
+        ral_buffer program_label_bg_ub_vs_bo_ral  = nullptr;
+        ral_buffer program_separator_ub_vs_bo_ral = nullptr;
+        ral_buffer program_slider_ub_fs_bo_ral    = nullptr;
+        ral_buffer program_slider_ub_vs_bo_ral    = nullptr;
+        ral_buffer program_ub_fs_bo_ral           = nullptr;
+        ral_buffer program_ub_vs_bo_ral           = nullptr;
+
+        new_dropdown_ptr->program_ub_fs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                          new_dropdown_ptr->program,
+                                                                          system_hashed_ansi_string_create("dataFS") );
+        new_dropdown_ptr->program_ub_vs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                          new_dropdown_ptr->program,
+                                                                          system_hashed_ansi_string_create("dataVS") );
+
+        new_dropdown_ptr->program_bg_ub_fs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                             new_dropdown_ptr->program_bg,
+                                                                             system_hashed_ansi_string_create("dataFS") );
+        new_dropdown_ptr->program_bg_ub_vs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                             new_dropdown_ptr->program_bg,
+                                                                             system_hashed_ansi_string_create("dataVS") );
+
+        new_dropdown_ptr->program_label_bg_ub_vs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                                   new_dropdown_ptr->program_label_bg,
+                                                                                   system_hashed_ansi_string_create("dataVS") );
+
+        new_dropdown_ptr->program_separator_ub_vs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                                    new_dropdown_ptr->program_separator,
+                                                                                    system_hashed_ansi_string_create("dataVS") );
+
+        new_dropdown_ptr->program_slider_ub_fs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                                 new_dropdown_ptr->program_slider,
+                                                                                 system_hashed_ansi_string_create("dataFS") );
+        new_dropdown_ptr->program_slider_ub_vs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+                                                                                 new_dropdown_ptr->program_slider,
+                                                                                 system_hashed_ansi_string_create("dataVS") );
+
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_bg_ub_fs,        RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_bg_ub_fs_bo_ral);
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_bg_ub_vs,        RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_bg_ub_vs_bo_ral);
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_label_bg_ub_vs,  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_label_bg_ub_vs_bo_ral);
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_separator_ub_vs, RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_separator_ub_vs_bo_ral);
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_slider_ub_fs,    RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_slider_ub_fs_bo_ral);
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_slider_ub_vs,    RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_slider_ub_vs_bo_ral);
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_ub_fs,           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_ub_fs_bo_ral);
+        ral_program_block_buffer_get_property(new_dropdown_ptr->program_ub_vs,           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_ub_vs_bo_ral);
+
+        ral_buffer_get_property(program_ub_fs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_ub_fs_bo_size);
+        ral_buffer_get_property(program_ub_vs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_ub_vs_bo_size);
+
+        ral_buffer_get_property(program_bg_ub_fs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_bg_ub_fs_bo_size);
+        ral_buffer_get_property(program_bg_ub_vs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_bg_ub_vs_bo_size);
+
+        ral_buffer_get_property(program_label_bg_ub_vs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_label_bg_ub_vs_bo_size);
+
+        ral_buffer_get_property(program_separator_ub_vs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_separator_ub_vs_bo_size);
+
+        ral_buffer_get_property(program_slider_ub_fs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_slider_ub_fs_bo_size);
+        ral_buffer_get_property(program_slider_ub_vs_bo_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &new_dropdown_ptr->program_slider_ub_vs_bo_size);
+
+        /* Retrieve uniform locations */
+        const ral_program_variable* border_width_uniform_ral_ptr              = nullptr;
+        const ral_program_variable* border_width_bg_uniform_ral_ptr           = nullptr;
+        const ral_program_variable* brightness_uniform_ral_ptr                = nullptr;
+        const ral_program_variable* button_start_u_uniform_ral_ptr            = nullptr;
+        const ral_program_variable* button_start_uv_uniform_ral_ptr           = nullptr;
+        const ral_program_variable* color_uniform_ral_ptr                     = nullptr;
+        const ral_program_variable* highlighted_v1v2_uniform_ral_ptr          = nullptr;
+        const ral_program_variable* selected_v1v2_uniform_ral_ptr             = nullptr;
+        const ral_program_variable* stop_data_uniform_ral_ptr                 = nullptr;
+        const ral_program_variable* x1_x2_y_uniform_ral_ptr                   = nullptr;
+        const ral_program_variable* x1y1x2y2_program_bg_uniform_ral_ptr       = nullptr;
+        const ral_program_variable* x1y1x2y2_program_label_bg_uniform_ral_ptr = nullptr;
+        const ral_program_variable* x1y1x2y2_program_slider_uniform_ral_ptr   = nullptr;
+        const ral_program_variable* x1y1x2y2_program_uniform_ral_ptr          = nullptr;
+
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("border_width"),
+                                              &border_width_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("button_start_u"),
+                                              &button_start_u_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("brightness"),
+                                              &brightness_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("stop_data[0]"),
+                                              &stop_data_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program,
+                                               system_hashed_ansi_string_create("dataVS"),
+                                               system_hashed_ansi_string_create("x1y1x2y2"),
+                                              &x1y1x2y2_program_uniform_ral_ptr);
+
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_bg,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("border_width"),
+                                              &border_width_bg_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_bg,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("button_start_uv"),
+                                              &button_start_uv_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_bg,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("highlighted_v1v2"),
+                                              &highlighted_v1v2_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_bg,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("selected_v1v2"),
+                                              &selected_v1v2_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_bg,
+                                               system_hashed_ansi_string_create("dataVS"),
+                                               system_hashed_ansi_string_create("x1y1x2y2"),
+                                              &x1y1x2y2_program_bg_uniform_ral_ptr);
+
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_label_bg,
+                                               system_hashed_ansi_string_create("dataVS"),
+                                               system_hashed_ansi_string_create("x1y1x2y2"),
+                                              &x1y1x2y2_program_label_bg_uniform_ral_ptr);
+
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_separator,
+                                               system_hashed_ansi_string_create("dataVS"),
+                                               system_hashed_ansi_string_create("x1_x2_y"),
+                                              &x1_x2_y_uniform_ral_ptr);
+
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_slider,
+                                               system_hashed_ansi_string_create("dataFS"),
+                                               system_hashed_ansi_string_create("color"),
+                                              &color_uniform_ral_ptr);
+        ral_program_get_block_variable_by_name(new_dropdown_ptr->program_slider,
+                                               system_hashed_ansi_string_create("dataVS"),
+                                               system_hashed_ansi_string_create("x1y1x2y2"),
+                                              &x1y1x2y2_program_slider_uniform_ral_ptr);
+
+        new_dropdown_ptr->program_bg_border_width_ub_offset     = border_width_bg_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_bg_highlighted_v1v2_ub_offset = highlighted_v1v2_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_bg_selected_v1v2_ub_offset    = selected_v1v2_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_bg_x1y1x2y2_ub_offset         = x1y1x2y2_program_bg_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_border_width_ub_offset        = border_width_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_brightness_ub_offset          = brightness_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_button_start_u_ub_offset      = button_start_u_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset   = x1y1x2y2_program_label_bg_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_separator_x1_x2_y_ub_offset   = x1_x2_y_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_slider_color_ub_offset        = color_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_slider_x1y1x2y2_ub_offset     = x1y1x2y2_program_slider_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_stop_data_ub_offset           = stop_data_uniform_ral_ptr->block_offset;
+        new_dropdown_ptr->program_x1y1x2y2_ub_offset            = x1y1x2y2_program_uniform_ral_ptr->block_offset;
+
+        /* Set them up */
+        const float button_start_uv[] =
+        {
+            1.0f - BUTTON_WIDTH_PX * border_width[0],
+            1.0f - BUTTON_WIDTH_PX * border_width[1]
+        };
+
+        ral_program_block_buffer_set_nonarrayed_variable_value(new_dropdown_ptr->program_ub_fs,
+                                                               button_start_u_uniform_ral_ptr->block_offset,
+                                                              &button_start_uv[0],
+                                                               sizeof(float) );
+        ral_program_block_buffer_set_nonarrayed_variable_value(new_dropdown_ptr->program_bg_ub_fs,
+                                                               button_start_uv_uniform_ral_ptr->block_offset,
+                                                               button_start_uv,
+                                                               sizeof(float) * 2);
+        ral_program_block_buffer_set_nonarrayed_variable_value(new_dropdown_ptr->program_ub_fs,
+                                                               border_width_uniform_ral_ptr->block_offset,
+                                                               border_width,
+                                                               sizeof(float) * 2);
+        ral_program_block_buffer_set_nonarrayed_variable_value(new_dropdown_ptr->program_bg_ub_fs,
+                                                               border_width_bg_uniform_ral_ptr->block_offset,
+                                                               border_width_bg,
+                                                               sizeof(float) * 2);
+
+        ral_program_block_buffer_set_arrayed_variable_value(new_dropdown_ptr->program_ub_fs,
+                                                            stop_data_uniform_ral_ptr->block_offset,
+                                                            stop_data,
+                                                            sizeof(float) * 4 /* vec4 */ * 4 /* array items */,
+                                                            0,                /* dst_array_start_index */
+                                                            4);               /* dst_array_item_count */
+
+        new_dropdown_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
     }
 
     return (void*) new_dropdown_ptr;
