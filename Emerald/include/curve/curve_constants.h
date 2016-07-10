@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef CURVE_CONSTANTS_H

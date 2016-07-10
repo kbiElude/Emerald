@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef CURVE_CONTAINER_H
@@ -10,7 +10,8 @@
 #include "system/system_types.h"
 
 
-REFCOUNT_INSERT_DECLARATIONS(curve_container, curve_container)
+REFCOUNT_INSERT_DECLARATIONS(curve_container,
+                             curve_container)
 
 /* Adds a new non-tcb node to a curve segment. This function will work with static/lerp segments only.
  *
@@ -164,8 +165,8 @@ PUBLIC EMERALD_API bool curve_container_get_default_value(curve_container curve,
 PUBLIC EMERALD_API bool curve_container_get_general_node_data(curve_container       curve,
                                                               curve_segment_id      segment_id,
                                                               curve_segment_node_id node_id,
-                                                              system_time*          node_time,
-                                                              system_variant        node_value);
+                                                              system_time*          out_node_time_ptr,
+                                                              system_variant        out_node_value);
 
 /** Retrieves id of a node with given index, looking from the beginning of the curve segment.
  *
@@ -184,7 +185,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_at(curve_container 
 /** TODO */
 PUBLIC EMERALD_API void curve_container_get_property(curve_container          curve,
                                                      curve_container_property curve_property,
-                                                     void*                    out_result);
+                                                     void*                    out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API curve_segment curve_container_get_segment(curve_container  curve,
@@ -240,7 +241,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_property(curve_container       
 PUBLIC EMERALD_API bool curve_container_get_segment_property(curve_container                  curve,
                                                              curve_segment_id                 segment_id,
                                                              curve_container_segment_property segment_property,
-                                                             void*                            out_result);
+                                                             void*                            out_result_ptr);
 
 /** Retrieves value for a given time point and dimension of the curve container.
  *
@@ -306,7 +307,7 @@ PUBLIC EMERALD_API void curve_container_set_property(curve_container          cu
 PUBLIC EMERALD_API void curve_container_set_segment_property(curve_container                  curve,
                                                              curve_segment_id                 segment_id,
                                                              curve_container_segment_property segment_property,
-                                                             void*                            value_ptr);
+                                                             const void*                      value_ptr);
 
 /* Changes times of a given segment of user-proivided curve container's dimension
  *

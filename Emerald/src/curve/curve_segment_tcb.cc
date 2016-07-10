@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -35,16 +35,16 @@ typedef struct
 
 
 /** TODO */
-double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
-                                system_time              time,
-                                curve_segment_node_id*   out_node_id,
-                                curve_segment_node_id*   out_next_node_id)
+PRIVATE double _curve_segment_tcb_get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
+                                                          system_time              time,
+                                                          curve_segment_node_id*   out_node_id_ptr,
+                                                          curve_segment_node_id*   out_next_node_id_ptr)
 {
     uint32_t                      n_nodes_order_elements                = 0;
     curve_segment_node_id         last_nodes_order_id                   = 0;
     curve_segment_node_id         first_nodes_order_id;
-    _curve_segment_data_tcb_node* node_at_last_node_in_nodes_order_ptr  = NULL;
-    _curve_segment_data_tcb_node* node_at_first_node_in_nodes_order_ptr = NULL;
+    _curve_segment_data_tcb_node* node_at_last_node_in_nodes_order_ptr  = nullptr;
+    _curve_segment_data_tcb_node* node_at_first_node_in_nodes_order_ptr = nullptr;
 
     system_resizable_vector_get_property(segment_data_ptr->nodes_order,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -79,7 +79,7 @@ double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
     while (n_next_node_iterator != n_nodes_order_elements)
     {
         curve_segment_node_id         next_node_id  = 0;
-        _curve_segment_data_tcb_node* next_node_ptr = NULL;
+        _curve_segment_data_tcb_node* next_node_ptr = nullptr;
 
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                n_next_node_iterator,
@@ -94,7 +94,7 @@ double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
         if (time <= next_node_start_time)
         {
             curve_segment_node_id         node_id  = 0;
-            _curve_segment_data_tcb_node* node_ptr = NULL;
+            _curve_segment_data_tcb_node* node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_node_iterator,
@@ -112,12 +112,12 @@ double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
 
             is_interval_found = true;
             break;
-        } /* if (time <= next_node_start_time) */
+        }
 
         n_node_iterator      ++;
         n_next_node_iterator ++;
         n_node               ++;
-    } /* while (n_next_node_iterator != n_nodes_order_elements) */
+    }
 
     if (!is_interval_found)
     {
@@ -139,8 +139,8 @@ double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
             /* Move one node backwards, since we're dealing with last nodes here */
             n_next_node_iterator = n_node;
             n_node_iterator      = n_nodes_order_elements - 2;
-        } /* if (last_node_id == end_node_id) */
-    } /* if (!is_interval_found) */
+        }
+    }
     else
     {
         if (next_node_start_time == node_start_time)
@@ -159,8 +159,8 @@ double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
             /* node_iterator contains the start segment, get the normalized time */
             curve_segment_node_id         node_id       = 0;
             curve_segment_node_id         next_node_id  = 0;
-            _curve_segment_data_tcb_node* node_ptr      = NULL;
-            _curve_segment_data_tcb_node* next_node_ptr = NULL;
+            _curve_segment_data_tcb_node* node_ptr      = nullptr;
+            _curve_segment_data_tcb_node* next_node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_node_iterator,
@@ -183,18 +183,18 @@ double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
         }
     }
 
-    if (out_node_id != NULL)
+    if (out_node_id_ptr != nullptr)
     {
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                n_node_iterator,
-                                               out_node_id);
+                                               out_node_id_ptr);
     }
 
-    if (out_next_node_id != NULL)
+    if (out_next_node_id_ptr != nullptr)
     {
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                n_next_node_iterator,
-                                               out_next_node_id);
+                                               out_next_node_id_ptr);
     }
 
     ASSERT_DEBUG_SYNC(result_time >= 0.0f &&
@@ -205,30 +205,7 @@ double _get_curve_time_for_time(_curve_segment_data_tcb* segment_data_ptr,
 }
 
 /** TODO */
-PRIVATE bool _get_nodes_in_order(_curve_segment_data_tcb* segment_data_ptr,
-                                 uint32_t                 n_node,
-                                 curve_segment_node_id*   out_node_id)
-{
-    unsigned int n_nodes_order = 0;
-
-    system_resizable_vector_get_property(segment_data_ptr->nodes,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_nodes_order);
-
-    if (n_nodes_order < n_node)
-    {
-        ASSERT_DEBUG_SYNC(false, "");
-
-        return false;
-    }
-
-    return system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
-                                                  n_node,
-                                                  out_node_id);
-}
-
-/** TODO */
-PRIVATE void _init_curve_segment_data_tcb(curve_segment_data* segment_data,
+PRIVATE void _curve_segment_data_tcb_init(curve_segment_data* segment_data,
                                           curve_container     curve,
                                           system_time         start_time,
                                           float*              start_tcb,
@@ -240,20 +217,21 @@ PRIVATE void _init_curve_segment_data_tcb(curve_segment_data* segment_data,
 {
     _curve_segment_data_tcb* new_segment = new (std::nothrow) _curve_segment_data_tcb;
 
-    ASSERT_ALWAYS_SYNC(new_segment != NULL,
+    ASSERT_ALWAYS_SYNC(new_segment != nullptr,
                        "Could not allocate tcb curve segment!");
-    if (new_segment != NULL)
+
+    if (new_segment != nullptr)
     {
-        _curve_segment_data_tcb* data_ptr = (_curve_segment_data_tcb*) new_segment;
+        _curve_segment_data_tcb* data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(new_segment);
 
         data_ptr->curve           = curve;
         data_ptr->id              = segment_id;
         data_ptr->nodes           = system_resizable_vector_create(START_NODES_AMOUNT);
         data_ptr->nodes_order     = system_resizable_vector_create(START_NODES_AMOUNT);
 
-        ASSERT_DEBUG_SYNC(data_ptr->nodes != NULL,
+        ASSERT_DEBUG_SYNC(data_ptr->nodes != nullptr,
                           "Could not create nodes resizable vector");
-        ASSERT_DEBUG_SYNC(data_ptr->nodes != NULL,
+        ASSERT_DEBUG_SYNC(data_ptr->nodes != nullptr,
                           "Could not create nodes order resizable vector.");
 
         /* Add start & end nodes. */
@@ -324,9 +302,9 @@ PRIVATE void _init_curve_segment_data_tcb(curve_segment_data* segment_data,
 }
 
 /** TODO */
-PRIVATE void _init_curve_segment_data_tcb_node(_curve_segment_data_tcb_node* ptr,
-                                               system_time                   time,
-                                               float                         value)
+PRIVATE void _curve_segment_tcb_node_init(_curve_segment_data_tcb_node* ptr,
+                                          system_time                   time,
+                                          float                         value)
 {
     ptr->time       = time;
     ptr->value      = value;
@@ -341,7 +319,7 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
                                        system_variant         node_value,
                                        curve_segment_node_id* out_node_id)
 {
-    _curve_segment_data_tcb* segment_data_ptr      = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb* segment_data_ptr      = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
     uint32_t                 n_node_elements       = 0;
     uint32_t                 n_node_order_elements = 0;
     bool                     result                = false;
@@ -364,7 +342,7 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
                     ++n_order_node_id)
         {
             curve_segment_node_id         current_node_id = -1;
-            _curve_segment_data_tcb_node* current_node_ptr = NULL;
+            _curve_segment_data_tcb_node* current_node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_order_node_id,
@@ -380,7 +358,7 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
             }
 
             previous_time = current_node_ptr->time;
-        } /* for (all order node ids) */
+        }
     }
     #endif
 
@@ -389,7 +367,7 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
                   n_node < n_node_elements;
                 ++n_node)
     {
-        _curve_segment_data_tcb_node* node_ptr = NULL;
+        _curve_segment_data_tcb_node* node_ptr = nullptr;
 
         system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                n_node,
@@ -432,16 +410,16 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
     float                         new_node_value = 0;
     _curve_segment_data_tcb_node* new_node_ptr   = new (std::nothrow) _curve_segment_data_tcb_node;
 
-    ASSERT_DEBUG_SYNC(new_node_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_node_ptr != nullptr,
                       "Could not allocate space for new TCB node structure.");
 
-    if (new_node_ptr != NULL)
+    if (new_node_ptr != nullptr)
     {
-        system_variant_get_float         (node_value,
-                                         &new_node_value);
-        _init_curve_segment_data_tcb_node(new_node_ptr,
-                                          node_time,
-                                          new_node_value);
+        system_variant_get_float    (node_value,
+                                    &new_node_value);
+        _curve_segment_tcb_node_init(new_node_ptr,
+                                     node_time,
+                                     new_node_value);
 
         /* POTENTIAL CULPRIT: WE DO NOT MODIFY TCB AT THIS POINT AS OPPOSED TO ORIGINAL IMPL */
 
@@ -453,7 +431,7 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
         /* Insert nodes order entry */
         system_resizable_vector_insert_element_at(segment_data_ptr->nodes_order,
                                                   n_node_order_to_place_at,
-                                                  (void*) (intptr_t) node_id);
+                                                  reinterpret_cast<void*>(static_cast<intptr_t>(node_id) ));
 
         #ifdef _DEBUG
         {
@@ -470,7 +448,7 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
                         ++n_order_node_id)
             {
                 curve_segment_node_id         current_node_id = -1;
-                _curve_segment_data_tcb_node* current_node_ptr = NULL;
+                _curve_segment_data_tcb_node* current_node_ptr = nullptr;
 
                 system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                        n_order_node_id,
@@ -486,15 +464,15 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
                 }
 
                 previous_time = current_node_ptr->time;
-            } /* for (all order node ids) */
+            }
         }
         #endif
 
         /* Update segment if the start or end time are about to change */
         if (n_node_order_elements > 1)
         {
-            ASSERT_DEBUG_SYNC(segment_data_ptr->curve != NULL,
-                              "Curve is NULL.");
+            ASSERT_DEBUG_SYNC(segment_data_ptr->curve != nullptr,
+                              "Curve is nullptr.");
 
             if (n_node_order_to_place_at == 0)
             {
@@ -511,7 +489,7 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
                                                      CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME,
                                                      &node_time);
             }
-        } /* if (n_node_order_elements > 1) */
+        }
 
         result = true;
     }
@@ -523,10 +501,10 @@ PUBLIC bool curve_segment_tcb_add_node(curve_segment_data     segment_data,
 PUBLIC bool curve_segment_tcb_delete_node(curve_segment_data    segment_data,
                                           curve_segment_node_id node_id)
 {
-    _curve_segment_data_tcb*      segment_data_ptr      = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb*      segment_data_ptr      = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
     uint32_t                      n_node_elements       = 0;
     uint32_t                      n_node_order_elements = 0;
-    _curve_segment_data_tcb_node* node_ptr              = NULL;
+    _curve_segment_data_tcb_node* node_ptr              = nullptr;
 
     system_resizable_vector_get_property(segment_data_ptr->nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -544,7 +522,7 @@ PUBLIC bool curve_segment_tcb_delete_node(curve_segment_data    segment_data,
         return false;
     }
 
-    if (node_ptr != NULL)
+    if (node_ptr != nullptr)
     {
         curve_segment_node_id node_id_at_nodes_order_0    = 0;
         curve_segment_node_id node_id_at_last_nodes_order = 0;
@@ -577,7 +555,7 @@ PUBLIC bool curve_segment_tcb_delete_node(curve_segment_data    segment_data,
         if (node_id_at_last_nodes_order == node_id)
         {
             curve_segment_node_id         node_id_at_last_before_last_nodes_order  = 0;
-            _curve_segment_data_tcb_node* node_at_last_before_last_nodes_order_ptr = NULL;
+            _curve_segment_data_tcb_node* node_at_last_before_last_nodes_order_ptr = nullptr;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_node_order_elements - 2,
@@ -593,7 +571,7 @@ PUBLIC bool curve_segment_tcb_delete_node(curve_segment_data    segment_data,
         }
 
         delete node_ptr;
-        node_ptr = NULL;
+        node_ptr = nullptr;
 
         system_resizable_vector_delete_element_at(segment_data_ptr->nodes,
                                                   node_id);
@@ -635,7 +613,7 @@ PUBLIC bool curve_segment_tcb_delete_node(curve_segment_data    segment_data,
 
                 system_resizable_vector_set_element_at(segment_data_ptr->nodes_order,
                                                        n_order_node,
-                                                       (void*) (intptr_t) iterated_node_id);
+                                                       reinterpret_cast<void*>(static_cast<intptr_t>(iterated_node_id) ));
             }
         }
 
@@ -651,7 +629,7 @@ PUBLIC bool curve_segment_tcb_delete_node(curve_segment_data    segment_data,
 PUBLIC bool curve_segment_tcb_deinit(curve_segment_data segment_data)
 {
     unsigned int             n_nodes          = 0;
-    _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb* segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
 
     system_resizable_vector_get_property(segment_data_ptr->nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -659,7 +637,7 @@ PUBLIC bool curve_segment_tcb_deinit(curve_segment_data segment_data)
 
     while (n_nodes > 0)
     {
-        _curve_segment_data_tcb_node* node_ptr = NULL;
+        _curve_segment_data_tcb_node* node_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                    0,
@@ -686,7 +664,7 @@ PUBLIC bool curve_segment_tcb_deinit(curve_segment_data segment_data)
 PUBLIC bool curve_segment_tcb_get_amount_of_nodes(curve_segment_data segment_data,
                                                   uint32_t*          out_result)
 {
-    _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb* segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
 
     system_resizable_vector_get_property(segment_data_ptr->nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -701,9 +679,9 @@ PUBLIC bool curve_segment_tcb_get_node(curve_segment_data    segment_data,
                                        system_time*          out_node_time,
                                        system_variant        out_node_value)
 {
-    _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb*      segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
     uint32_t                      n_node_elements  = 0;
-    _curve_segment_data_tcb_node* node_ptr         = NULL;
+    _curve_segment_data_tcb_node* node_ptr         = nullptr;
 
     system_resizable_vector_get_property(segment_data_ptr->nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -713,14 +691,14 @@ PUBLIC bool curve_segment_tcb_get_node(curve_segment_data    segment_data,
                                            node_id,
                                           &node_ptr);
 
-    if (node_ptr != NULL)
+    if (node_ptr != nullptr)
     {
-        if (out_node_time != NULL)
+        if (out_node_time != nullptr)
         {
             *out_node_time = node_ptr->time;
         }
 
-        if (out_node_value != NULL)
+        if (out_node_value != nullptr)
         {
             system_variant_set_float_forced(out_node_value,
                                             node_ptr->value);
@@ -743,7 +721,7 @@ PUBLIC bool curve_segment_tcb_get_node_id_for_node_index(curve_segment_data     
                                                          curve_segment_node_id* out_node_id)
 {
     unsigned int             n_nodes          = 0;
-    _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb* segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
 
     system_resizable_vector_get_property(segment_data_ptr->nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -767,7 +745,7 @@ PUBLIC bool curve_segment_tcb_get_node_id_for_node_in_order(curve_segment_data  
                                                             curve_segment_node_id* out_node_id)
 {
     unsigned int             n_nodes_order    = 0;
-    _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb* segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
 
     system_resizable_vector_get_property(segment_data_ptr->nodes_order,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -775,7 +753,8 @@ PUBLIC bool curve_segment_tcb_get_node_id_for_node_in_order(curve_segment_data  
 
     if (n_nodes_order < node_index)
     {
-        ASSERT_DEBUG_SYNC(false, "Invalid node index requested.");
+        ASSERT_DEBUG_SYNC(false,
+                          "Invalid node index requested.");
 
         return false;
     }
@@ -794,18 +773,18 @@ PUBLIC bool curve_segment_tcb_get_node_property(curve_segment_data          segm
                                                 system_variant              value)
 {
     bool                          result           = true;
-    _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
-    _curve_segment_data_tcb_node* node_ptr         = NULL;
+    _curve_segment_data_tcb*      segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
+    _curve_segment_data_tcb_node* node_ptr         = nullptr;
 
     system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                            node_id,
                                           &node_ptr);
 
-    ASSERT_DEBUG_SYNC(node_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_ptr != nullptr,
                       "Could not retrieve node with id [%d]",
                       node_id);
 
-    if (node_ptr != NULL)
+    if (node_ptr != nullptr)
     {
         switch(node_property)
         {
@@ -853,9 +832,9 @@ PUBLIC bool curve_segment_tcb_get_property(curve_segment_data     segment_data,
                                            system_variant         out_variant)
 {
     curve_segment_node_id         node_id          = 0;
-    _curve_segment_data_tcb_node* node_ptr         = NULL;
+    _curve_segment_data_tcb_node* node_ptr         = nullptr;
     bool                          result           = true;
-    _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb*      segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
     uint32_t                      n_nodes          = 0;
 
     system_resizable_vector_get_property(segment_data_ptr->nodes_order,
@@ -973,7 +952,7 @@ PUBLIC bool curve_segment_tcb_get_value(curve_segment_data segment_data,
                                         system_variant     out_result,
                                         bool               should_force)
 {
-    _curve_segment_data_tcb* segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb* segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
 
     /* Sanity check */
     unsigned int n_nodes                = 0;
@@ -994,21 +973,21 @@ PUBLIC bool curve_segment_tcb_get_value(curve_segment_data segment_data,
     curve_segment_node_id         node_id                       = 0;
     curve_segment_node_id         next_node_id                  = 0;
     curve_segment_node_id         next_next_node_id             = 0;
-    _curve_segment_data_tcb_node* prev_node_ptr                 = NULL;
+    _curve_segment_data_tcb_node* prev_node_ptr                 = nullptr;
     uint32_t                      prev_node_order_iterator      = n_nodes_order_elements;
-    _curve_segment_data_tcb_node* node_ptr                      = NULL;
+    _curve_segment_data_tcb_node* node_ptr                      = nullptr;
     uint32_t                      node_order_iterator           = n_nodes_order_elements;
-    _curve_segment_data_tcb_node* next_node_ptr                 = NULL;
+    _curve_segment_data_tcb_node* next_node_ptr                 = nullptr;
     uint32_t                      next_node_order_iterator      = n_nodes_order_elements;
-    _curve_segment_data_tcb_node* next_next_node_ptr            = NULL;
+    _curve_segment_data_tcb_node* next_next_node_ptr            = nullptr;
     uint32_t                      next_next_node_order_iterator = n_nodes_order_elements;
     float                         in;
     float                         out;
 
-    double                        curve_time = _get_curve_time_for_time(segment_data_ptr,
-                                                                        time,
-                                                                       &node_id,
-                                                                       &next_node_id);
+    double curve_time = _curve_segment_tcb_get_curve_time_for_time(segment_data_ptr,
+                                                                   time,
+                                                                  &node_id,
+                                                                  &next_node_id);
 
     system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                            node_id,
@@ -1041,12 +1020,12 @@ PUBLIC bool curve_segment_tcb_get_value(curve_segment_data segment_data,
                 if (next_node_order_iterator + 1 != n_nodes_order_elements)
                 {
                     next_next_node_order_iterator = next_node_order_iterator + 1;
-                } /* if (next_node_order_iterator + 1 != n_nodes_order_elements) */
-            } /* if (node_order_iterator + 1 != n_nodes_order_elements) */
+                }
+            }
 
             break;
-        } /* if (node_order_id == node_id) */
-    } /* for (node_order_iterator = 0; node_order_iterator < n_nodes_order_elements; ++node_order_iterator) */
+        }
+    }
 
     /* Outgoing tangent */
     float  a = (1.0f - node_ptr->tension) * (1.0f + node_ptr->continuity) * (1.0f + node_ptr->bias);
@@ -1125,7 +1104,7 @@ PUBLIC bool curve_segment_tcb_init(curve_segment_data* segment_data,
                                    system_variant      end_value,
                                    curve_segment_id    segment_id)
 {
-    _init_curve_segment_data_tcb(segment_data,
+    _curve_segment_data_tcb_init(segment_data,
                                  curve,
                                  start_time,
                                  start_tcb,
@@ -1145,18 +1124,18 @@ PUBLIC bool curve_segment_tcb_modify_node_property(curve_segment_data          s
                                                    system_variant              value)
 {
     bool                          result           = true;
-    _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
-    _curve_segment_data_tcb_node* node_ptr         = NULL;
+    _curve_segment_data_tcb*      segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
+    _curve_segment_data_tcb_node* node_ptr         = nullptr;
 
     system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                            node_id,
                                           &node_ptr);
 
-    ASSERT_DEBUG_SYNC(node_ptr != NULL,
+    ASSERT_DEBUG_SYNC(node_ptr != nullptr,
                       "Could not retrieve node with id [%d]",
                       node_id);
 
-    if (node_ptr != NULL)
+    if (node_ptr != nullptr)
     {
         switch(node_property)
         {
@@ -1203,9 +1182,9 @@ PUBLIC bool curve_segment_tcb_modify_node_time(curve_segment_data    segment_dat
                                                curve_segment_node_id node_id,
                                                system_time           new_node_time)
 {
-    _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb*      segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
     uint32_t                      n_node_elements  = 0;
-    _curve_segment_data_tcb_node* node_ptr         = NULL;
+    _curve_segment_data_tcb_node* node_ptr         = nullptr;
 
     system_resizable_vector_get_property  (segment_data_ptr->nodes,
                                            SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1214,7 +1193,7 @@ PUBLIC bool curve_segment_tcb_modify_node_time(curve_segment_data    segment_dat
                                            node_id,
                                           &node_ptr);
 
-    if (node_ptr != NULL)
+    if (node_ptr != nullptr)
     {
         system_time former_time = node_ptr->time;
 
@@ -1223,13 +1202,13 @@ PUBLIC bool curve_segment_tcb_modify_node_time(curve_segment_data    segment_dat
                       n_node < n_node_elements;
                     ++n_node)
         {
-            _curve_segment_data_tcb_node* tested_node_ptr = NULL;
+            _curve_segment_data_tcb_node* tested_node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                    n_node,
                                                   &tested_node_ptr);
 
-            if (tested_node_ptr       != NULL &&
+            if (tested_node_ptr       != nullptr &&
                 tested_node_ptr->time == new_node_time)
             {
                 return true;
@@ -1257,8 +1236,8 @@ PUBLIC bool curve_segment_tcb_modify_node_time(curve_segment_data    segment_dat
 
         if (is_start_node || is_end_node)
         {
-            _curve_segment_data_tcb_node* nodes_order_0_node_ptr    = NULL;
-            _curve_segment_data_tcb_node* nodes_order_last_node_ptr = NULL;
+            _curve_segment_data_tcb_node* nodes_order_0_node_ptr    = nullptr;
+            _curve_segment_data_tcb_node* nodes_order_last_node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                    nodes_order_at_0,
@@ -1306,8 +1285,8 @@ PUBLIC bool curve_segment_tcb_modify_node_time(curve_segment_data    segment_dat
         {
             curve_segment_node_id         order_node_id       = 0;
             curve_segment_node_id         order_next_node_id  = 0;
-            _curve_segment_data_tcb_node* order_node_ptr      = NULL;
-            _curve_segment_data_tcb_node* order_next_node_ptr = NULL;
+            _curve_segment_data_tcb_node* order_node_ptr      = nullptr;
+            _curve_segment_data_tcb_node* order_next_node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_order_node,
@@ -1343,10 +1322,10 @@ PUBLIC bool curve_segment_tcb_modify_node_time(curve_segment_data    segment_dat
 
                 system_resizable_vector_set_element_at(segment_data_ptr->nodes_order,
                                                        n_order_node,
-                                                       (void*) (intptr_t) order_next_node_id);
+                                                       reinterpret_cast<void*>(static_cast<intptr_t>(order_next_node_id) ));
                 system_resizable_vector_set_element_at(segment_data_ptr->nodes_order,
                                                        n_order_next_node,
-                                                       (void*) (intptr_t) order_node_id);
+                                                       reinterpret_cast<void*>(static_cast<intptr_t>(order_node_id) ));
 
                 break;
             }
@@ -1368,9 +1347,9 @@ PUBLIC bool curve_segment_tcb_modify_node_time_value(curve_segment_data    segme
                                                      bool                  force)
 {
     float                         new_node_value_float;
-    _curve_segment_data_tcb_node* node_ptr         = NULL;
+    _curve_segment_data_tcb_node* node_ptr         = nullptr;
     bool                          result           = false;
-    _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb*      segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
 
     system_variant_get_float              (new_node_value,
                                           &new_node_value_float);
@@ -1378,7 +1357,7 @@ PUBLIC bool curve_segment_tcb_modify_node_time_value(curve_segment_data    segme
                                            node_id,
                                           &node_ptr);
 
-    if (node_ptr != NULL)
+    if (node_ptr != nullptr)
     {
         node_ptr->value = new_node_value_float;
 
@@ -1396,9 +1375,9 @@ PUBLIC bool curve_segment_tcb_set_property(curve_segment_data     segment_data,
                                            system_variant         value)
 {
     curve_segment_node_id         node_id          = 0;
-    _curve_segment_data_tcb_node* node_ptr         = NULL;
+    _curve_segment_data_tcb_node* node_ptr         = nullptr;
     bool                          result           = true;
-    _curve_segment_data_tcb*      segment_data_ptr = (_curve_segment_data_tcb*) segment_data;
+    _curve_segment_data_tcb*      segment_data_ptr = reinterpret_cast<_curve_segment_data_tcb*>(segment_data);
     uint32_t                      n_nodes          = 0;
 
     system_resizable_vector_get_property(segment_data_ptr->nodes_order,

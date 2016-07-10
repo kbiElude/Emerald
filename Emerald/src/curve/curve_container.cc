@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -71,47 +71,47 @@ typedef _curve_container*         _curve_container_ptr;
 typedef _curve_container_segment* _curve_container_segment_ptr;
 
 /** Forward declarations */
-PRIVATE uint32_t             _curve_container_find_appropriate_place_for_segment_at_time( _curve_container_data*,
-                                                                                          system_time);
-PRIVATE bool                 _curve_container_get_pre_post_behavior_value               ( curve_container,
-                                                                                          _curve_container_data*,
-                                                                                          bool,
-                                                                                          system_time,
-                                                                                         system_variant);
-PRIVATE system_time          _curve_container_get_range                                 ( system_time,
-                                                                                          system_time,
-                                                                                          system_time);
-PRIVATE void                 _curve_container_on_curve_segment_changed                  ( void*);
-PRIVATE void                 _curve_container_on_new_segment_start_time                 ( curve_container,
-                                                                                          uint32_t,
-                                                                                          curve_segment_id,
-                                                                                          system_time);
-PRIVATE void                 _curve_container_on_new_segment_end_time                   ( curve_container,
-                                                                                          uint32_t,
-                                                                                          curve_segment_id,
-                                                                                          system_time);
-PRIVATE void                 _curve_container_recalculate_curve_length                  ( curve_container);
-PRIVATE void                 _deinit_curve_container                                    (_curve_container_ptr   container);
-PRIVATE void                 _deinit_curve_container_data                               (_curve_container_data* data);
-PRIVATE void                 _init_curve_container_data                                 (_curve_container_data* data,
-                                                                                         system_variant_type    data_type);
+PRIVATE uint32_t    _curve_container_find_appropriate_place_for_segment_at_time( _curve_container_data*,
+                                                                                 system_time);
+PRIVATE bool        _curve_container_get_pre_post_behavior_value               ( curve_container,
+                                                                                 _curve_container_data*,
+                                                                                 bool,
+                                                                                 system_time,
+                                                                                system_variant);
+PRIVATE system_time _curve_container_get_range                                 ( system_time,
+                                                                                 system_time,
+                                                                                 system_time);
+PRIVATE void        _curve_container_on_curve_segment_changed                  ( void*);
+PRIVATE void        _curve_container_on_new_segment_start_time                 ( curve_container,
+                                                                                 uint32_t,
+                                                                                 curve_segment_id,
+                                                                                 system_time);
+PRIVATE void        _curve_container_on_new_segment_end_time                   ( curve_container,
+                                                                                 uint32_t,
+                                                                                 curve_segment_id,
+                                                                                 system_time);
+PRIVATE void        _curve_container_recalculate_curve_length                  ( curve_container);
+PRIVATE void        _deinit_curve_container_data                               (_curve_container_data* data);
+PRIVATE void        _init_curve_container_data                                 (_curve_container_data* data,
+                                                                                system_variant_type    data_type);
 
 
 /** Structure de-/initializers */
+
 /** TODO **/
 PRIVATE bool _curve_container_add_segment_shared(curve_container   curve,
                                                  system_time       start_time,
                                                  system_time       end_time,
                                                  curve_segment     segment,
-                                                 curve_segment_id* out_segment_id)
+                                                 curve_segment_id* out_segment_id_ptr)
 {
-    _curve_container_ptr curve_ptr = (_curve_container_ptr) curve;
+    _curve_container_ptr curve_ptr = reinterpret_cast<_curve_container_ptr>(curve);
 
     ASSERT_DEBUG_SYNC(!curve_ptr->data.pre_post_behavior_status,
                       "Segments should not be modified while pre/post-behavior support is enabled");
     ASSERT_DEBUG_SYNC(start_time < end_time,
                       "Requested segment start time is smaller than end time");
-    ASSERT_DEBUG_SYNC(segment != NULL,
+    ASSERT_DEBUG_SYNC(segment != nullptr,
                       "Segment data cannot be null");
 
     if (curve_container_is_range_defined(curve,
@@ -146,18 +146,18 @@ PRIVATE bool _curve_container_add_segment_shared(curve_container   curve,
         system_resizable_vector_insert_element_at(curve_ptr->data.segments_order,
                                                   _curve_container_find_appropriate_place_for_segment_at_time(&curve_ptr->data,
                                                                                                               start_time),
-                                                  (void*) (intptr_t) new_segment_id);
+                                                  reinterpret_cast<void*>(static_cast<intptr_t>(new_segment_id)) );
         system_hash64map_insert                   (curve_ptr->data.segments,
-                                                  (system_hash64) new_segment_id,
+                                                  static_cast<system_hash64>(new_segment_id),
                                                   new_segment,
-                                                  NULL,
-                                                  NULL);
+                                                  nullptr,
+                                                  nullptr);
 
         _curve_container_recalculate_curve_length(curve);
 
-        if (out_segment_id != NULL)
+        if (out_segment_id_ptr != nullptr)
         {
-            *out_segment_id = new_segment_id;
+            *out_segment_id_ptr = new_segment_id;
         }
 
         curve_ptr->data.last_read_time = -1;
@@ -171,7 +171,7 @@ PRIVATE bool _curve_container_add_segment_shared(curve_container   curve,
 /** Releases a curve container. The curve container must have been created using curve_container_create()
  *  function. Do not use the container after calling this function.
  *
- *  @param curve_container Curve container to release. Cannot be NULL.
+ *  @param curve_container Curve container to release. Cannot be nullptr.
  */
 PRIVATE void _curve_container_release(void* container)
 {
@@ -182,7 +182,7 @@ PRIVATE void _curve_container_release(void* container)
     /* Inform any subscribers about the event */
     system_callback_manager_call_back(system_callback_manager_get(),
                                       CALLBACK_ID_CURVE_CONTAINER_DELETED,
-                                      NULL);
+                                      nullptr);
 }
 
 /* TODO */
@@ -199,7 +199,7 @@ PRIVATE void _deinit_curve_container_data(_curve_container_data* data)
                     n_segment < n_segments;
                   ++n_segment)
         {
-            curve_segment segment      = NULL;
+            curve_segment segment      = nullptr;
             system_hash64 segment_hash = 0;
             bool          result       = system_hash64map_get_element_at(data->segments,
                                                                          n_segment,
@@ -216,8 +216,8 @@ PRIVATE void _deinit_curve_container_data(_curve_container_data* data)
 
                 curve_segment_release(curve_container_segment_ptr->segment);
             }
-        } /* for (all segments) */
-    } /* if (n_segments != 0) */
+        }
+    }
 
     system_variant_release         (data->default_value);
     system_variant_release         (data->last_read_value);
@@ -296,7 +296,7 @@ PRIVATE void _init_curve_container_data(_curve_container_data* data,
                                "Unrecognized variant type requested [%d]",
                                data_type);
         }
-    } /* switch (data_type) */
+    }
 }
 
 /* TODO */
@@ -305,7 +305,7 @@ PRIVATE void _init_curve_container_segment(_curve_container_segment_ptr segment,
                                            system_time                  end_time)
 {
     segment->end_time   = end_time;
-    segment->segment    = NULL;
+    segment->segment    = nullptr;
     segment->start_time = start_time;
     segment->threshold  = 0.5f;
 }
@@ -325,7 +325,7 @@ PUBLIC EMERALD_API bool curve_container_add_general_node(curve_container        
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_WRITE);
     {
-        curve_segment segment = NULL;
+        curve_segment segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -338,17 +338,17 @@ PUBLIC EMERALD_API bool curve_container_add_general_node(curve_container        
         {
             _curve_container_segment_ptr curve_segment_ptr = (_curve_container_segment_ptr) segment;
 
-            ASSERT_DEBUG_SYNC(curve_segment_ptr->segment != NULL,
+            ASSERT_DEBUG_SYNC(curve_segment_ptr->segment != nullptr,
                               "Segment data is null!");
 
-            if (curve_segment_ptr->segment != NULL)
+            if (curve_segment_ptr->segment != nullptr)
             {
                 result = curve_segment_add_node(segment,
                                                 time,
                                                 value,
                                                 out_node_id);
-            } /* if (curve_segment_ptr->segment != NULL) */
-        } /* if (result) */
+            }
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_WRITE);
@@ -362,15 +362,15 @@ PUBLIC EMERALD_API bool curve_container_add_lerp_segment(curve_container   curve
                                                          system_time       end_time,
                                                          system_variant    start_value,
                                                          system_variant    end_value,
-                                                         curve_segment_id* out_segment_id)
+                                                         curve_segment_id* out_segment_id_ptr)
 {
-    _curve_container* curve_ptr   = (_curve_container*) curve;
+    _curve_container* curve_ptr   = reinterpret_cast<_curve_container*>(curve);
     curve_segment     new_segment = curve_segment_create_linear(start_time,
                                                                 start_value,
                                                                 end_time,
                                                                 end_value);
 
-    if (new_segment != NULL)
+    if (new_segment != nullptr)
     {
         curve_segment_set_on_segment_changed_callback(new_segment,
                                                       _curve_container_on_curve_segment_changed,
@@ -380,8 +380,8 @@ PUBLIC EMERALD_API bool curve_container_add_lerp_segment(curve_container   curve
                                                    start_time,
                                                    end_time,
                                                    new_segment,
-                                                   out_segment_id);
-    } /* if (new_segment != NULL) */
+                                                   out_segment_id_ptr);
+    }
     else
     {
         return false;
@@ -393,12 +393,12 @@ PUBLIC EMERALD_API bool curve_container_add_static_value_segment(curve_container
                                                                  system_time       start_time,
                                                                  system_time       end_time,
                                                                  system_variant    value,
-                                                                 curve_segment_id* out_segment_id)
+                                                                 curve_segment_id* out_segment_id_ptr)
 {
-    _curve_container* curve_ptr   = (_curve_container*) curve;
+    _curve_container* curve_ptr   = reinterpret_cast<_curve_container*>(curve);
     curve_segment     new_segment = curve_segment_create_static(value);
 
-    if (new_segment != NULL)
+    if (new_segment != nullptr)
     {
         curve_segment_set_on_segment_changed_callback(new_segment,
                                                       _curve_container_on_curve_segment_changed,
@@ -408,8 +408,8 @@ PUBLIC EMERALD_API bool curve_container_add_static_value_segment(curve_container
                                                    start_time,
                                                    end_time,
                                                    new_segment,
-                                                   out_segment_id);
-    } /* if (new_segment != NULL) */
+                                                   out_segment_id_ptr);
+    }
     else
     {
         return false;
@@ -426,14 +426,14 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(curve_container        curv
                                                      float                  bias,
                                                      curve_segment_node_id* out_node_id)
 {
-    _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_data_ptr  = &curve_container->data;
     bool                   result          = false;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_WRITE);
     {
-        curve_segment segment = NULL;
+        curve_segment segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -446,10 +446,10 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(curve_container        curv
         {
             _curve_container_segment_ptr curve_segment_ptr = (_curve_container_segment_ptr) segment;
 
-            ASSERT_DEBUG_SYNC(curve_segment_ptr->segment != NULL,
+            ASSERT_DEBUG_SYNC(curve_segment_ptr->segment != nullptr,
                               "Segment data is null!");
 
-            if (curve_segment_ptr->segment != NULL)
+            if (curve_segment_ptr->segment != nullptr)
             {
                 result = curve_segment_add_node(curve_segment_ptr->segment,
                                                 time,
@@ -482,9 +482,9 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(curve_container        curv
                                                        property_variant);
 
                     system_variant_release(property_variant);
-                } /* if (result) */
-            } /* if (curve_segment_ptr->segment != NULL) */
-        } /* if (result) */
+                }
+            }
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_WRITE);
@@ -526,7 +526,7 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_segment(curve_container   curve,
                                                          curve,
                                                          curve_container_data->last_used_segment_id + 1);
 
-    if (new_segment != NULL)
+    if (new_segment != nullptr)
     {
         curve_segment_set_on_segment_changed_callback(new_segment,
                                                       _curve_container_on_curve_segment_changed,
@@ -537,7 +537,7 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_segment(curve_container   curve,
                                                    end_time,
                                                    new_segment,
                                                    out_segment_id);
-    } /* if (new_segment != NULL) */
+    }
     else
     {
         return false;
@@ -551,17 +551,17 @@ PUBLIC EMERALD_API curve_container curve_container_create(system_hashed_ansi_str
 {
     _curve_container* new_container = new (std::nothrow) _curve_container;
 
-    ASSERT_DEBUG_SYNC(new_container != NULL,
+    ASSERT_DEBUG_SYNC(new_container != nullptr,
                       "Could not allocate _curve_container");
 
-    if (new_container != NULL)
+    if (new_container != nullptr)
     {
         _init_curve_container( (_curve_container_ptr) new_container,
                                data_type,
                                name);
 
         _curve_container_recalculate_curve_length( (curve_container) new_container);
-    } /* if (new_container != NULL) */
+    }
 
     /* Register the container */
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_container,
@@ -573,7 +573,7 @@ PUBLIC EMERALD_API curve_container curve_container_create(system_hashed_ansi_str
 
     system_callback_manager_call_back(system_callback_manager_get(),
                                       CALLBACK_ID_CURVE_CONTAINER_ADDED,
-                                      NULL); /* callback_proc_data */
+                                      nullptr); /* callback_proc_data */
 
     /* Return the container */
     return (curve_container) new_container;
@@ -591,7 +591,7 @@ PUBLIC EMERALD_API bool curve_container_delete_node(curve_container       curve,
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        _curve_container_segment_ptr curve_segment = NULL;
+        _curve_container_segment_ptr curve_segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -602,10 +602,10 @@ PUBLIC EMERALD_API bool curve_container_delete_node(curve_container       curve,
 
         if (result)
         {
-            ASSERT_DEBUG_SYNC(curve_segment->segment != NULL,
+            ASSERT_DEBUG_SYNC(curve_segment->segment != nullptr,
                               "Segment is null.");
 
-            if (curve_segment->segment != NULL)
+            if (curve_segment->segment != nullptr)
             {
                 result = curve_segment_delete_node(curve_segment->segment,
                                                    node_id);
@@ -614,7 +614,7 @@ PUBLIC EMERALD_API bool curve_container_delete_node(curve_container       curve,
             {
                 result = false;
             }
-        } /* if (result) */
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
@@ -649,11 +649,11 @@ PUBLIC EMERALD_API bool curve_container_delete_segment(curve_container  curve,
                                                ACCESS_WRITE);
 
                 goto end;
-            } /* if (segment is recognized) */
+            }
 
             // Remove the segment from order vector.
             size_t order_item_iterator = system_resizable_vector_find(curve_data_ptr->segments_order,
-                                                                      (void*) (intptr_t) segment_id);
+                                                                      reinterpret_cast<void*>(static_cast<intptr_t>(segment_id) ));
 
             if (order_item_iterator != ITEM_NOT_FOUND)
             {
@@ -672,7 +672,7 @@ PUBLIC EMERALD_API bool curve_container_delete_segment(curve_container  curve,
         }
         system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                        ACCESS_WRITE);
-    } /* if (!curve_data_ptr->pre_post_behavior_status) */
+    }
 
 end:
     return result;
@@ -697,7 +697,7 @@ PUBLIC EMERALD_API bool curve_container_get_default_value(curve_container curve,
 PUBLIC EMERALD_API bool curve_container_get_general_node_data(curve_container       curve,
                                                               curve_segment_id      segment_id,
                                                               curve_segment_node_id node_id,
-                                                              system_time*          out_node_time,
+                                                              system_time*          out_node_time_ptr,
                                                               system_variant        out_node_value)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
@@ -707,7 +707,7 @@ PUBLIC EMERALD_API bool curve_container_get_general_node_data(curve_container   
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        curve_segment segment = NULL;
+        curve_segment segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -720,22 +720,22 @@ PUBLIC EMERALD_API bool curve_container_get_general_node_data(curve_container   
         {
             _curve_container_segment_ptr curve_segment = (_curve_container_segment_ptr) segment;
 
-            ASSERT_DEBUG_SYNC(curve_segment->segment != NULL,
+            ASSERT_DEBUG_SYNC(curve_segment->segment != nullptr,
                               "Null segment with id [%d] encountered",
                               segment_id);
 
-            if (curve_segment->segment != NULL)
+            if (curve_segment->segment != nullptr)
             {
                 result = curve_segment_get_node(curve_segment->segment,
                                                 node_id,
-                                                out_node_time,
+                                                out_node_time_ptr,
                                                 out_node_value);
             }
             else
             {
                 result = false;
             }
-        } /* if (result) */
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
@@ -752,7 +752,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_at(curve_container 
     curve_segment segment = curve_container_get_segment(curve,
                                                         segment_id);
 
-    if (segment != NULL)
+    if (segment != nullptr)
     {
         return curve_segment_get_node_by_index(segment,
                                                n_node,
@@ -760,7 +760,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_at(curve_container 
     }
     else
     {
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -768,7 +768,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_at(curve_container 
 PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_in_order(curve_container        curve,
                                                                       curve_segment_id       segment_id,
                                                                       uint32_t               node_index,
-                                                                      curve_segment_node_id* out_node_id)
+                                                                      curve_segment_node_id* out_node_id_ptr)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
     _curve_container_data* curve_data_ptr  = &curve_container->data;
@@ -778,7 +778,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_in_order(curve_cont
                                  ACCESS_READ);
     {
         uint32_t                     n_node        = 0;
-        _curve_container_segment_ptr curve_segment = NULL;
+        _curve_container_segment_ptr curve_segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -787,7 +787,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_id_for_node_in_order(curve_cont
         {
             result = curve_segment_get_node_in_order(curve_segment->segment,
                                                      n_node,
-                                                     out_node_id);
+                                                     out_node_id_ptr);
         }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
@@ -810,7 +810,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_property(curve_container       
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        curve_segment segment = NULL;
+        curve_segment segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -823,11 +823,11 @@ PUBLIC EMERALD_API bool curve_container_get_node_property(curve_container       
         {
             _curve_container_segment_ptr curve_segment = (_curve_container_segment_ptr) segment;
 
-            ASSERT_DEBUG_SYNC(curve_segment->segment != NULL,
+            ASSERT_DEBUG_SYNC(curve_segment->segment != nullptr,
                               "Null segment with id [%d] encountered",
                               segment_id);
 
-            if (curve_segment->segment != NULL)
+            if (curve_segment->segment != nullptr)
             {
                 result = curve_segment_get_node_property(curve_segment->segment,
                                                          node_id,
@@ -838,7 +838,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_property(curve_container       
             {
                 result = false;
             }
-        } /* if (result) */
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
@@ -849,22 +849,22 @@ PUBLIC EMERALD_API bool curve_container_get_node_property(curve_container       
 /** Please see header for spec */
 PUBLIC EMERALD_API void curve_container_get_property(curve_container          curve,
                                                      curve_container_property property,
-                                                     void*                    out_result)
+                                                     void*                    out_result_ptr)
 {
-    _curve_container* curve_ptr = (_curve_container*) curve;
+    _curve_container* curve_ptr = reinterpret_cast<_curve_container*>(curve);
 
     switch (property)
     {
         case CURVE_CONTAINER_PROPERTY_DATA_TYPE:
         {
-            *(system_variant_type*) out_result = curve_ptr->data_type;
+            *reinterpret_cast<system_variant_type*>(out_result_ptr) = curve_ptr->data_type;
 
             break;
         }
 
         case CURVE_CONTAINER_PROPERTY_LENGTH:
         {
-            *(system_time*) out_result = curve_ptr->data.length;
+            *reinterpret_cast<system_time*>(out_result_ptr) = curve_ptr->data.length;
 
             break;
         }
@@ -876,7 +876,7 @@ PUBLIC EMERALD_API void curve_container_get_property(curve_container          cu
             {
                 system_hash64map_get_property(curve_ptr->data.segments,
                                               SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                              out_result);
+                                              out_result_ptr);
             }
             system_read_write_mutex_unlock(curve_ptr->data.segments_read_write_mutex,
                                            ACCESS_READ);
@@ -886,28 +886,28 @@ PUBLIC EMERALD_API void curve_container_get_property(curve_container          cu
 
         case CURVE_CONTAINER_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = ((_curve_container_ptr) curve)->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = (reinterpret_cast<_curve_container_ptr>(curve))->name;
 
             break;
         }
 
         case CURVE_CONTAINER_PROPERTY_POST_BEHAVIOR:
         {
-            *(curve_container_envelope_boundary_behavior*) out_result = curve_ptr->data.post_behavior;
+            *reinterpret_cast<curve_container_envelope_boundary_behavior*>(out_result_ptr) = curve_ptr->data.post_behavior;
 
             break;
         }
 
         case CURVE_CONTAINER_PROPERTY_PRE_BEHAVIOR:
         {
-            *(curve_container_envelope_boundary_behavior*) out_result = curve_ptr->data.pre_behavior;
+            *reinterpret_cast<curve_container_envelope_boundary_behavior*>(out_result_ptr) = curve_ptr->data.pre_behavior;
 
             break;
         }
 
         case CURVE_CONTAINER_PROPERTY_PRE_POST_BEHAVIOR_STATUS:
         {
-            *(bool*) out_result = curve_ptr->data.pre_post_behavior_status;
+            *reinterpret_cast<bool*>(out_result_ptr) = curve_ptr->data.pre_post_behavior_status;
 
             break;
         }
@@ -928,14 +928,14 @@ PUBLIC EMERALD_API void curve_container_get_property(curve_container          cu
                 curve_segment_id start_segment_id = 0;
                 bool             result_get       = false;
 
-                result_get = (curve_segment_id) system_resizable_vector_get_element_at(curve_ptr->data.segments_order,
-                                                                                       0,
-                                                                                      &start_segment_id);
+                result_get = static_cast<curve_segment_id>(system_resizable_vector_get_element_at(curve_ptr->data.segments_order,
+                                                                                                  0,
+                                                                                                 &start_segment_id) );
 
                 ASSERT_DEBUG_SYNC(result_get,
                                   "Could not retrieve start segment id.");
 
-                _curve_container_segment_ptr curve_segment = NULL;
+                _curve_container_segment_ptr curve_segment = nullptr;
                 bool                         result        = system_hash64map_get(curve_ptr->data.segments,
                                                                                   start_segment_id,
                                                                                  &curve_segment);
@@ -943,26 +943,26 @@ PUBLIC EMERALD_API void curve_container_get_property(curve_container          cu
                 ASSERT_DEBUG_SYNC(result,
                                   "Could not obtain start segment descriptor");
 
-                *(system_time*) out_result = curve_segment->start_time;
+                *reinterpret_cast<system_time*>(out_result_ptr) = curve_segment->start_time;
             }
 
             break;
-        } /* case CURVE_CONTAINER_PROPERTY_START_TIME: */
+        }
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized curve_container_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool curve_container_get_segment_id_for_nth_segment(curve_container   curve,
                                                                        uint32_t          n_segment,
-                                                                       curve_segment_id* out_segment_id)
+                                                                       curve_segment_id* out_segment_id_ptr)
 {
-    _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_data_ptr  = &curve_container->data;
     bool                   result          = false;
 
@@ -980,7 +980,7 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_for_nth_segment(curve_con
         {
             system_resizable_vector_get_element_at(curve_data_ptr->segments_order,
                                                    n_segment,
-                                                   out_segment_id);
+                                                   out_segment_id_ptr);
 
             result = true;
         }
@@ -1003,13 +1003,13 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool    
 
     if (time >= 0)
     {
-        _curve_container_ptr   curve_container     = (_curve_container_ptr) curve;
+        _curve_container_ptr   curve_container     = reinterpret_cast<_curve_container_ptr>(curve);
         _curve_container_data* curve_data_ptr      = &curve_container->data;
         size_t                 n_segments          = 0;
         bool                   has_found_segment   = false;
         uint32_t               segment_id_iterator = 0;
         uint32_t               n_segment_ids       = 0;
-        curve_segment_id       segment_id          = (curve_segment_id) -1;
+        curve_segment_id       segment_id          = static_cast<curve_segment_id>(-1);
 
         system_hash64map_get_property(curve_data_ptr->segments,
                                       SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
@@ -1023,12 +1023,12 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool    
              segment_id_iterator < n_segment_ids;
            ++segment_id_iterator)
         {
-            _curve_container_segment_ptr curve_segment = NULL;
+            _curve_container_segment_ptr curve_segment = nullptr;
             bool                         result_get    = false;
 
-            result_get = (curve_segment_id) system_resizable_vector_get_element_at(curve_data_ptr->segments_order,
-                                                                                   segment_id_iterator,
-                                                                                  &segment_id);
+            result_get = static_cast<curve_segment_id>(system_resizable_vector_get_element_at(curve_data_ptr->segments_order,
+                                                                                              segment_id_iterator,
+                                                                                             &segment_id) );
             ASSERT_DEBUG_SYNC(result_get,
                               "Could not retrieve segment id.");
 
@@ -1036,7 +1036,7 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool    
                                  segment_id,
                                 &curve_segment);
 
-            if (curve_segment != NULL)
+            if (curve_segment != nullptr)
             {
                 if (time       >= curve_segment->start_time &&
                     time       <= curve_segment->end_time   &&
@@ -1046,15 +1046,15 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool    
 
                     break;
                 }
-            } /* if (curve_segment != NULL) */
+            }
             else
             {
-                ASSERT_DEBUG_SYNC(curve_segment != NULL,
+                ASSERT_DEBUG_SYNC(curve_segment != nullptr,
                                   "Curve segment extracted from segments hash64map is null.");
 
                 goto end;
             }
-        } /* for (; segment_id_iterator < n_segment_ids; ++segment_id_iterator) */
+        }
 
         if (has_found_segment)
         {
@@ -1062,7 +1062,7 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool    
             result          = true;
 
             goto end;
-        } /* if (has_found_segment) */
+        }
         else
         if (n_segments > 0 && should_move)
         {
@@ -1070,7 +1070,7 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool    
 
             while (true)
             {
-                _curve_container_segment_ptr curve_segment = NULL;
+                _curve_container_segment_ptr curve_segment = nullptr;
                 bool                         result_get    = false;
 
                 result_get = system_resizable_vector_get_element_at(curve_data_ptr->segments_order,
@@ -1110,9 +1110,9 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(bool    
                         break;
                     }
                 }
-            } /* while (true) */
-        } /* if (n_segments > 0 && should_move) */
-    } /* if (time >= 0) */
+            }
+        }
+    }
 
 end:
     return result;
@@ -1122,21 +1122,21 @@ end:
 PUBLIC EMERALD_API curve_segment curve_container_get_segment(curve_container  curve,
                                                              curve_segment_id segment_id)
 {
-    _curve_container*         curve_ptr      = (_curve_container*) curve;
+    _curve_container*         curve_ptr      = reinterpret_cast<_curve_container*>(curve);
     _curve_container_data*    curve_data_ptr = &curve_ptr->data;
-    _curve_container_segment* result         = NULL;
+    _curve_container_segment* result         = nullptr;
 
     system_hash64map_get(curve_data_ptr->segments,
                          segment_id,
                         &result);
 
-    if (result != NULL)
+    if (result != nullptr)
     {
         return result->segment;
     }
     else
     {
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -1144,16 +1144,16 @@ PUBLIC EMERALD_API curve_segment curve_container_get_segment(curve_container  cu
 PUBLIC EMERALD_API bool curve_container_get_segment_property(curve_container                  container,
                                                              curve_segment_id                 segment_id,
                                                              curve_container_segment_property property,
-                                                             void*                            out_result)
+                                                             void*                            out_result_ptr)
 {
-    _curve_container_ptr   curve_container = (_curve_container_ptr) container;
+    _curve_container_ptr   curve_container = reinterpret_cast<_curve_container_ptr>(container);
     _curve_container_data* curve_data_ptr  = &curve_container->data;
     bool                   result          = true;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        _curve_container_segment_ptr curve_segment = NULL;
+        _curve_container_segment_ptr curve_segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -1166,21 +1166,21 @@ PUBLIC EMERALD_API bool curve_container_get_segment_property(curve_container    
                 case CURVE_CONTAINER_SEGMENT_PROPERTY_N_NODES:
                 {
                     curve_segment_get_amount_of_nodes(curve_segment->segment,
-                                                      (uint32_t*) out_result);
+                                                      reinterpret_cast<uint32_t*>(out_result_ptr) );
 
                     break;
                 }
 
                 case CURVE_CONTAINER_SEGMENT_PROPERTY_START_TIME:
                 {
-                    *(system_time*) out_result = curve_segment->start_time;
+                    *reinterpret_cast<system_time*>(out_result_ptr) = curve_segment->start_time;
 
                     break;
                 }
 
                 case CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME:
                 {
-                    *(system_time*) out_result = curve_segment->end_time;
+                    *reinterpret_cast<system_time*>(out_result_ptr) = curve_segment->end_time;
 
                     break;
                 }
@@ -1188,14 +1188,14 @@ PUBLIC EMERALD_API bool curve_container_get_segment_property(curve_container    
                 case CURVE_CONTAINER_SEGMENT_PROPERTY_TYPE:
                 {
                     curve_segment_get_type(curve_segment->segment,
-                                           (curve_segment_type*) out_result);
+                                           static_cast<curve_segment_type*>(out_result_ptr) );
 
                     break;
                 }
 
                 case CURVE_CONTAINER_SEGMENT_PROPERTY_THRESHOLD:
                 {
-                    *(float*) out_result = curve_segment->threshold;
+                    *reinterpret_cast<float*>(out_result_ptr) = curve_segment->threshold;
 
                     break;
                 }
@@ -1205,8 +1205,8 @@ PUBLIC EMERALD_API bool curve_container_get_segment_property(curve_container    
                     ASSERT_DEBUG_SYNC(false,
                                       "Unrecognized curve_container_segment_property value");
                 }
-            } /* switch (property) */
-        } /* if (result) */
+            }
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
@@ -1220,7 +1220,7 @@ PUBLIC EMERALD_API bool curve_container_get_value(curve_container curve,
                                                   bool            should_force,
                                                   system_variant  out_value)
 {
-    _curve_container_ptr   curve_container_ptr      = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container_ptr      = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_data_ptr           = &curve_container_ptr->data;
     bool                   should_get_default_value = true;
     bool                   result                   = true;
@@ -1248,7 +1248,7 @@ PUBLIC EMERALD_API bool curve_container_get_value(curve_container curve,
                     ++segments_order_iterator)
         {
             curve_segment_id             curve_segmentid = 0;
-            _curve_container_segment_ptr curve_segment   = NULL;
+            _curve_container_segment_ptr curve_segment   = nullptr;
             bool                         result_get      = false;
 
             result_get = system_resizable_vector_get_element_at(curve_data_ptr->segments_order,
@@ -1272,15 +1272,15 @@ PUBLIC EMERALD_API bool curve_container_get_value(curve_container curve,
                 should_get_default_value = false;
 
                 break;
-            } /* if (curve_segment->start_time <= time && curve_segment->end_time >= time) */
-        } /* for (uint32_t segments_order_iterator = 0; segments_order_iterator < n_segments_order; ++segments_order_iterator) */
+            }
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
 
     if (should_get_default_value)
     {
-        _curve_container_segment_ptr start_curve_segment = NULL;
+        _curve_container_segment_ptr start_curve_segment = nullptr;
         unsigned int                 n_segments_order    = 0;
 
         system_resizable_vector_get_property(curve_data_ptr->segments_order,
@@ -1301,7 +1301,7 @@ PUBLIC EMERALD_API bool curve_container_get_value(curve_container curve,
             system_hash64map_get(curve_data_ptr->segments,
                                  start_segment_id,
                                 &start_curve_segment);
-        } /* if (n of ordered segments > 0) */
+        }
 
         if (!curve_data_ptr->pre_post_behavior_status                          ||
             (start_curve_segment != 0 && start_curve_segment->end_time > time))
@@ -1315,10 +1315,10 @@ PUBLIC EMERALD_API bool curve_container_get_value(curve_container curve,
         }
         else
         {
-            ASSERT_DEBUG_SYNC(start_curve_segment != NULL,
+            ASSERT_DEBUG_SYNC(start_curve_segment != nullptr,
                              "Start curve segment is null!");
 
-            if (start_curve_segment != NULL)
+            if (start_curve_segment != nullptr)
             {
                 result = _curve_container_get_pre_post_behavior_value( (curve_container) curve_container_ptr,
                                                                        curve_data_ptr,
@@ -1329,7 +1329,7 @@ PUBLIC EMERALD_API bool curve_container_get_value(curve_container curve,
                                   "Could not get pre/post-behavior value.");
             }
         }
-    } /* if (should_get_default_value) */
+    }
 
     /* Cache the result */
     if (result)
@@ -1349,8 +1349,8 @@ PUBLIC EMERALD_API bool curve_container_is_equal(curve_container curve_a,
                                                  curve_container curve_b)
 {
     bool                 result      = true;
-    _curve_container_ptr curve_a_ptr = (_curve_container_ptr) curve_a;
-    _curve_container_ptr curve_b_ptr = (_curve_container_ptr) curve_b;
+    _curve_container_ptr curve_a_ptr = reinterpret_cast<_curve_container_ptr>(curve_a);
+    _curve_container_ptr curve_b_ptr = reinterpret_cast<_curve_container_ptr>(curve_b);
 
     if (curve_a_ptr->data_type == curve_b_ptr->data_type)
     {
@@ -1369,7 +1369,7 @@ PUBLIC EMERALD_API bool curve_container_is_equal(curve_container curve_a,
         {
             result = false;
         }
-    } /* if (curve_a_ptr->data_type == curve_b_ptr->data_type) */
+    }
     else
     {
         result = false;
@@ -1385,14 +1385,14 @@ PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
                                                     system_time           new_node_time,
                                                     system_variant        new_node_value)
 {
-    _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_data_ptr  = &curve_container->data;
     bool                   result          = false;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_WRITE);
     {
-        _curve_container_segment_ptr curve_segment = NULL;
+        _curve_container_segment_ptr curve_segment = nullptr;
 
         result = system_hash64map_get(curve_data_ptr->segments,
                                       segment_id,
@@ -1403,7 +1403,7 @@ PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
 
         if (result)
         {
-            result = (curve_segment->segment != NULL);
+            result = (curve_segment->segment != nullptr);
 
             ASSERT_DEBUG_SYNC(result,
                               "Curve segment is null!");
@@ -1420,7 +1420,8 @@ PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
                 {
                     curve_segment_type segment_type = CURVE_SEGMENT_UNDEFINED;
 
-                    curve_segment_get_type(curve_segment->segment, &segment_type);
+                    curve_segment_get_type(curve_segment->segment,
+                                          &segment_type);
 
                     if (segment_type == CURVE_SEGMENT_LERP)
                     {
@@ -1433,7 +1434,7 @@ PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
                             {
                                 curve_segment->start_time = new_node_time;
                             }
-                        } /* if (node_id == 0) */
+                        }
                         else
                         {
                             ASSERT_DEBUG_SYNC(node_id == 1,
@@ -1448,10 +1449,10 @@ PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
                                 curve_segment->end_time = new_node_time;
                             }
                         }
-                    } /* if (segment_type == CURVE_SEGMENT_LERP) */
-                } /* if (result) */
-            } /* if (result) */
-        } /* if (result) */
+                    }
+                }
+            }
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_WRITE);
@@ -1463,7 +1464,7 @@ PUBLIC EMERALD_API bool curve_container_modify_node(curve_container       curve,
 PUBLIC EMERALD_API bool curve_container_set_default_value(curve_container curve,
                                                           system_variant  value)
 {
-    _curve_container_ptr   curve_container      = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container      = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_container_data = &curve_container->data;
 
     system_variant_set(curve_container_data->default_value,
@@ -1478,27 +1479,27 @@ PUBLIC EMERALD_API void curve_container_set_property(curve_container          co
                                                      curve_container_property property,
                                                      const void*              data)
 {
-    _curve_container* container_ptr = (_curve_container*) container;
+    _curve_container* container_ptr = reinterpret_cast<_curve_container*>(container);
 
     switch (property)
     {
         case CURVE_CONTAINER_PROPERTY_POST_BEHAVIOR:
         {
-            container_ptr->data.post_behavior = *(curve_container_envelope_boundary_behavior*) data;
+            container_ptr->data.post_behavior = *reinterpret_cast<const curve_container_envelope_boundary_behavior*>(data);
 
             break;
         }
 
         case CURVE_CONTAINER_PROPERTY_PRE_BEHAVIOR:
         {
-            container_ptr->data.pre_behavior = *(curve_container_envelope_boundary_behavior*) data;
+            container_ptr->data.pre_behavior = *reinterpret_cast<const curve_container_envelope_boundary_behavior*>(data);
 
             break;
         }
 
         case CURVE_CONTAINER_PROPERTY_PRE_POST_BEHAVIOR_STATUS:
         {
-            if (*(bool*) data)
+            if (*reinterpret_cast<const bool*>(data) )
             {
                 uint32_t n_segments = 0;
 
@@ -1526,42 +1527,42 @@ PUBLIC EMERALD_API void curve_container_set_property(curve_container          co
             }
 
             break;
-        } /* case CURVE_CONTAINER_PROPERTY_PRE_POST_BEHAVIOR_STATUS: */
+        }
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized curve_container_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void curve_container_set_segment_property(curve_container                  curve,
                                                              curve_segment_id                 segment_id,
                                                              curve_container_segment_property property,
-                                                             void*                            in_data)
+                                                             const void*                      in_data)
 {
-    _curve_container_ptr         curve_container_ptr  = (_curve_container_ptr) curve;
+    _curve_container_ptr         curve_container_ptr  = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data*       curve_container_data = &curve_container_ptr->data;
     bool                         result               = false;
-    _curve_container_segment_ptr segment_ptr          = NULL;
+    _curve_container_segment_ptr segment_ptr          = nullptr;
 
     system_hash64map_get(curve_container_data->segments,
                          segment_id,
                         &segment_ptr);
 
-    ASSERT_DEBUG_SYNC(segment_ptr != NULL,
+    ASSERT_DEBUG_SYNC(segment_ptr != nullptr,
                       "Could not retrieve segment of id [%d]",
                       segment_id);
 
-    if (segment_ptr != NULL)
+    if (segment_ptr != nullptr)
     {
         switch (property)
         {
             case CURVE_CONTAINER_SEGMENT_PROPERTY_START_TIME:
             {
-                segment_ptr->start_time = *(system_time*) in_data;
+                segment_ptr->start_time = *reinterpret_cast<const system_time*>(in_data);
 
                 break;
             }
@@ -1580,14 +1581,14 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(curve_container    
                                                   segment_ptr->start_time,
                                                   *(system_time*) in_data);
 #endif
-                segment_ptr->end_time = *(system_time*) in_data;
+                segment_ptr->end_time = *reinterpret_cast<const system_time*>(in_data);
 
                 break;
             }
 
             case CURVE_CONTAINER_SEGMENT_PROPERTY_THRESHOLD:
             {
-                segment_ptr->threshold = *(float*) in_data;
+                segment_ptr->threshold = *reinterpret_cast<const float*>(in_data);
 
                 break;
             }
@@ -1597,8 +1598,8 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(curve_container    
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized curve_container_segment_property value");
             }
-        } /* switch (property) */
-    } /* if (segment_ptr != NULL) */
+        }
+    }
 }
 
 /** Please see header for specification */
@@ -1607,18 +1608,18 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
                                                           system_time      new_segment_start_time,
                                                           system_time      new_segment_end_time)
 {
-    _curve_container_segment_ptr curr_place_segment           = NULL;
+    _curve_container_segment_ptr curr_place_segment           = nullptr;
     size_t                       curr_segments_order_iterator = -1;
-    _curve_container_ptr         curve_container              = (_curve_container_ptr) curve;
+    _curve_container_ptr         curve_container              = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data*       curve_container_data         = &curve_container->data;
-    system_resizable_vector      internal_node_order          = NULL;
+    system_resizable_vector      internal_node_order          = nullptr;
     system_time                  former_start_time            = 0;
     system_time                  former_end_time              = 0;
     uint32_t                     n_nodes                      = 0;
     size_t                       n_segment_orders             = 0;
     bool                         needs_update                 = false;
     bool                         result                       = false;
-    curve_segment                segment                      = NULL;
+    curve_segment                segment                      = nullptr;
 
     if (curve_container_data->is_set_segment_times_call_in_place)
     {
@@ -1635,13 +1636,14 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
                                  ACCESS_WRITE);
 
     curr_segments_order_iterator = system_resizable_vector_find(curve_container_data->segments_order,
-                                                                (void*) (intptr_t) segment_id);
+                                                                reinterpret_cast<void*>(static_cast<intptr_t>(segment_id)));
 
     system_resizable_vector_get_property(curve_container_data->segments_order,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_segment_orders);
 
-    ASSERT_DEBUG_SYNC(curr_segments_order_iterator != ITEM_NOT_FOUND, "Could not find requested segment [%d]",
+    ASSERT_DEBUG_SYNC(curr_segments_order_iterator != ITEM_NOT_FOUND,
+                      "Could not find requested segment [%d]",
                       segment_id);
 
     if (curr_segments_order_iterator == ITEM_NOT_FOUND)
@@ -1706,8 +1708,8 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
                           "curve_segment_get_node_in_order() failed.");
 
         system_resizable_vector_push(internal_node_order,
-                                     (void*) (intptr_t) n_ordered_node);
-    } /* for (all segment nodes) */
+                                     reinterpret_cast<void*>(static_cast<intptr_t>(n_ordered_node) ));
+    }
 
     for (uint32_t n_internal_order_node = 0;
                   n_internal_order_node < n_nodes;
@@ -1737,7 +1739,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
             result = curve_segment_get_node(segment,
                                             node_id,
                                            &node_time,
-                                            NULL);
+                                            nullptr);
             ASSERT_DEBUG_SYNC(result,
                               "Could not get node info [id=%d]",
                               node_id);
@@ -1768,16 +1770,16 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
                 if (!result)
                 {
                     goto end;
-                } /* if (!result) */
-            } /* if (result) */
-        } /* if (result) */
-    } /* for (all internal nodes)*/
+                }
+            }
+        }
+    }
 
     // Verify that the segment order we have at the moment is still correct.
     if (curr_segments_order_iterator != 0)
     {
         curve_segment_id             prev_segment_id    = 0;
-        _curve_container_segment_ptr prev_curve_segment = NULL;
+        _curve_container_segment_ptr prev_curve_segment = nullptr;
         bool                         result_get         = false;
 
         result_get = system_resizable_vector_get_element_at(curve_container_data->segments_order,
@@ -1795,13 +1797,13 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
         {
             needs_update = true;
         }
-    } /* if (curr_segments_order_iterator != 0) */
+    }
 
     if (!needs_update &&
         (curr_segments_order_iterator + 1 != n_segment_orders) )
     {
         curve_segment_id             next_segment_id    = 0;
-        _curve_container_segment_ptr next_curve_segment = NULL;
+        _curve_container_segment_ptr next_curve_segment = nullptr;
         bool                         result_get         = false;
 
         result_get = system_resizable_vector_get_element_at(curve_container_data->segments_order,
@@ -1819,7 +1821,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
         {
             needs_update = true;
         }
-    } /* if (update is needed or (curr_segments_order_iterator + 1 != n_segment_orders) ) */
+    }
 
     // If segment start & end times have not changed during node update, update the times manually.
     if (former_start_time == curr_place_segment->start_time)
@@ -1848,7 +1850,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
                   ++n_segment)
         {
             system_hash64                curve_segment_id = 0;
-            _curve_container_segment_ptr curve_segment    = NULL;
+            _curve_container_segment_ptr curve_segment    = nullptr;
 
             result = system_hash64map_get_element_at(curve_container_data->segments,
                                                      n_segment,
@@ -1863,9 +1865,9 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(curve_container  curve
 
             system_resizable_vector_insert_element_at(curve_container_data->segments_order,
                                                       new_location,
-                                                      (void*) (intptr_t) curve_segment_id);
-        } /* for (all segments) */
-    } /* if (needs_update) */
+                                                      reinterpret_cast<void*>(static_cast<intptr_t>(curve_segment_id) ));
+        }
+    }
 
     // Dealloc objects we allocated if this point is reached.
     system_resizable_vector_release(internal_node_order);
@@ -1883,7 +1885,7 @@ end:
 /** TODO */
 PRIVATE void _curve_container_recalculate_curve_length(curve_container curve)
 {
-    _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_data_ptr  = &curve_container->data;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
@@ -1907,7 +1909,7 @@ PRIVATE void _curve_container_recalculate_curve_length(curve_container curve)
             ASSERT_DEBUG_SYNC(result_get,
                               "Could not retrieve start segment id");
 
-            _curve_container_segment_ptr start_segment = (_curve_container_segment_ptr) NULL;
+            _curve_container_segment_ptr start_segment = nullptr;
             bool                         result        = system_hash64map_get(curve_data_ptr->segments,
                                                                               start_segment_id,
                                                                              &start_segment);
@@ -1922,7 +1924,7 @@ PRIVATE void _curve_container_recalculate_curve_length(curve_container curve)
                           n_segment < n_segments;
                         ++n_segment)
             {
-                _curve_container_segment_ptr curve_segment    = NULL;
+                _curve_container_segment_ptr curve_segment    = nullptr;
                 system_hash64                curve_segment_id = 0;
 
                 result = system_hash64map_get_element_at(curve_data_ptr->segments,
@@ -1942,10 +1944,10 @@ PRIVATE void _curve_container_recalculate_curve_length(curve_container curve)
                 {
                     max_segment_end_time = curve_segment->end_time;
                 }
-            } /* for (all segments) */
+            }
 
             curve_data_ptr->length = max_segment_end_time - min_segment_start_time;
-        } /* if (n_segments > 0) */
+        }
         else
         {
             curve_data_ptr->length = 0;
@@ -1960,13 +1962,13 @@ PRIVATE void _curve_container_on_new_segment_start_time(curve_container  curve,
                                                         curve_segment_id segment_id,
                                                         system_time      new_start_time)
 {
-    _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_data_ptr  = &curve_container->data;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        _curve_container_segment_ptr curve_segment = NULL;
+        _curve_container_segment_ptr curve_segment = nullptr;
         bool                         result        = system_hash64map_get(curve_data_ptr->segments,
                                                                           segment_id,
                                                                          &curve_segment);
@@ -1988,13 +1990,13 @@ PRIVATE void _curve_container_on_new_segment_end_time(curve_container  curve,
                                                       curve_segment_id segment_id,
                                                       system_time      new_end_time)
 {
-    _curve_container_ptr   curve_container = (_curve_container_ptr) curve;
+    _curve_container_ptr   curve_container = reinterpret_cast<_curve_container_ptr>(curve);
     _curve_container_data* curve_data_ptr  = &curve_container->data;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        _curve_container_segment_ptr curve_segment = NULL;
+        _curve_container_segment_ptr curve_segment = nullptr;
         bool                         result        = system_hash64map_get(curve_data_ptr->segments,
                                                                           segment_id,
                                                                          &curve_segment);
@@ -2036,7 +2038,7 @@ PRIVATE uint32_t _curve_container_find_appropriate_place_for_segment_at_time(_cu
         ASSERT_DEBUG_SYNC(result_get,
                           "Could not retrieve curve segment id");
 
-        _curve_container_segment_ptr curve_segment = NULL;
+        _curve_container_segment_ptr curve_segment = nullptr;
         bool                         result        = system_hash64map_get(curve_data_ptr->segments,
                                                                           curve_segmentid,
                                                                          &curve_segment);
@@ -2050,7 +2052,7 @@ PRIVATE uint32_t _curve_container_find_appropriate_place_for_segment_at_time(_cu
 
             break;
         }
-    } /* for (all ordered segments) */
+    }
 
     return place_iterator;
 }
@@ -2079,13 +2081,13 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(curve_container       
                                                 0.0f);
 
                 break;
-            } /* case CURVE_CONTAINER_BOUNDARY_BEHAVIOR_RESET: */
+            }
 
             case CURVE_CONTAINER_BOUNDARY_BEHAVIOR_REPEAT:
             {
                 system_time                  first_node_time     = 0;
                 system_time                  last_node_time      = 0;
-                _curve_container_segment_ptr first_curve_segment = NULL;
+                _curve_container_segment_ptr first_curve_segment = nullptr;
                 curve_segment_id             segment_id          = 0;
                 bool                         result_get          = false;
 
@@ -2124,12 +2126,12 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(curve_container       
                                                    out_result);
 
                 break;
-            } /* case CURVE_CONTAINER_BOUNDARY_BEHAVIOR_REPEAT: */
+            }
 
             case CURVE_CONTAINER_BOUNDARY_BEHAVIOR_CONSTANT:
             {
                 system_time                  node_time           = 0;
-                _curve_container_segment_ptr first_curve_segment = NULL;
+                _curve_container_segment_ptr first_curve_segment = nullptr;
                 curve_segment_id             segment_id          = 0;
                 bool                         result_get          = false;
 
@@ -2166,7 +2168,7 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(curve_container       
                                   "Could not get node data.");
 
                 break;
-            } /* case CURVE_CONTAINER_BOUNDARY_BEHAVIOR_CONSTANT:*/
+            }
 
             default:
             {
@@ -2183,8 +2185,8 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(curve_container       
                                        curve_data->post_behavior);
                 }
             }
-        } /* switch(curve_data->pre_behavior) */
-    } /* if (curve_dimension->pre_post_behavior_status) */
+        }
+    }
 
     return result;
 }
@@ -2196,7 +2198,7 @@ PUBLIC bool curve_container_is_range_defined(curve_container  curve,
                                              curve_segment_id excluded_segment_id)
 {
     bool                   result         = false;
-    _curve_container*      curve_ptr      = (_curve_container*) curve;
+    _curve_container*      curve_ptr      = reinterpret_cast<_curve_container*>(curve);
     _curve_container_data* curve_data_ptr = &curve_ptr->data;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
@@ -2212,7 +2214,7 @@ PUBLIC bool curve_container_is_range_defined(curve_container  curve,
                     n_segment < n_segments;
                   ++n_segment)
         {
-            _curve_container_segment_ptr curve_segment = NULL;
+            _curve_container_segment_ptr curve_segment = nullptr;
             system_hash64                segment_id    = 0;
 
             bool b_result = system_hash64map_get_element_at(curve_data_ptr->segments,
@@ -2229,8 +2231,8 @@ PUBLIC bool curve_container_is_range_defined(curve_container  curve,
                 continue;
             }
 
-            ASSERT_DEBUG_SYNC(curve_segment != NULL,
-                              "Curve segment is NULL!");
+            ASSERT_DEBUG_SYNC(curve_segment != nullptr,
+                              "Curve segment is nullptr!");
 
             if (MAX(start_time,                end_time)                > MIN(curve_segment->start_time, curve_segment->end_time) &&
                 MAX(curve_segment->start_time, curve_segment->end_time) > MIN(start_time,                end_time) )
@@ -2239,7 +2241,7 @@ PUBLIC bool curve_container_is_range_defined(curve_container  curve,
 
                 break;
             }
-        } /* for (uint32_t n_segment = 0; n_segment < n_segments; ++n_segment) */
+        }
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
@@ -2266,7 +2268,7 @@ PRIVATE system_time _curve_container_get_range(system_time v,
 /* TODO */
 PRIVATE void _curve_container_on_curve_segment_changed(void* user_arg)
 {
-    _curve_container_data* data_ptr = (_curve_container_data*) user_arg;
+    _curve_container_data* data_ptr = reinterpret_cast<_curve_container_data*>(user_arg);
 
     /* Reset the 'read time' so that we force the value to be probed on next "get" call */
     data_ptr->last_read_time = -1;

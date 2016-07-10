@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -43,11 +43,11 @@ typedef _curve_segment* _curve_segment_ptr;
 
 /** (De-)-initializers */
 /** TODO */
-PRIVATE void deinit_curve_segment(curve_segment segment)
+PRIVATE void _curve_segment_deinit(curve_segment segment)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
-    if (curve_segment_ptr->pfn_deinit != NULL)
+    if (curve_segment_ptr->pfn_deinit != nullptr)
     {
         curve_segment_ptr->pfn_deinit(curve_segment_ptr->segment_data);
     }
@@ -56,79 +56,56 @@ PRIVATE void deinit_curve_segment(curve_segment segment)
 }
 
 /** TODO */
-PRIVATE void init_curve_segment(curve_segment* segment)
+PRIVATE void _curve_segment_init(curve_segment* segment)
 {
     _curve_segment* new_curve_segment = new (std::nothrow) _curve_segment;
 
-    ASSERT_ALWAYS_SYNC(new_curve_segment != NULL, "Could not allocate memory for curvesegment data!");
-    if (new_curve_segment != NULL)
+    ASSERT_ALWAYS_SYNC(new_curve_segment != nullptr,
+                       "Could not allocate memory for curve segment data!");
+
+    if (new_curve_segment != nullptr)
     {
-        _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) new_curve_segment;
+        _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(new_curve_segment);
 
         curve_segment_ptr->modification_time             = system_time_now();
-        curve_segment_ptr->pfn_add_node                  = NULL;
-        curve_segment_ptr->pfn_callback_on_curve_changed = NULL;
-        curve_segment_ptr->pfn_deinit                    = NULL;
-        curve_segment_ptr->pfn_delete_node               = NULL;
-        curve_segment_ptr->pfn_get_amount_of_nodes       = NULL;
-        curve_segment_ptr->pfn_get_node                  = NULL;
-        curve_segment_ptr->pfn_get_node_by_index         = NULL;
-        curve_segment_ptr->pfn_get_node_in_order         = NULL;
-        curve_segment_ptr->pfn_get_node_property         = NULL;
-        curve_segment_ptr->pfn_get_value                 = NULL;
-        curve_segment_ptr->pfn_modify_node_property      = NULL;
-        curve_segment_ptr->pfn_modify_node_time          = NULL;
-        curve_segment_ptr->pfn_modify_node_time_value    = NULL;
-        curve_segment_ptr->pfn_set_property              = NULL;
-        curve_segment_ptr->segment_data                  = NULL;
+        curve_segment_ptr->pfn_add_node                  = nullptr;
+        curve_segment_ptr->pfn_callback_on_curve_changed = nullptr;
+        curve_segment_ptr->pfn_deinit                    = nullptr;
+        curve_segment_ptr->pfn_delete_node               = nullptr;
+        curve_segment_ptr->pfn_get_amount_of_nodes       = nullptr;
+        curve_segment_ptr->pfn_get_node                  = nullptr;
+        curve_segment_ptr->pfn_get_node_by_index         = nullptr;
+        curve_segment_ptr->pfn_get_node_in_order         = nullptr;
+        curve_segment_ptr->pfn_get_node_property         = nullptr;
+        curve_segment_ptr->pfn_get_value                 = nullptr;
+        curve_segment_ptr->pfn_modify_node_property      = nullptr;
+        curve_segment_ptr->pfn_modify_node_time          = nullptr;
+        curve_segment_ptr->pfn_modify_node_time_value    = nullptr;
+        curve_segment_ptr->pfn_set_property              = nullptr;
+        curve_segment_ptr->segment_data                  = nullptr;
     }
 
-    *segment = (curve_segment) new_curve_segment;
+    *segment = reinterpret_cast<curve_segment>(new_curve_segment);
 }
 
 /** Please see header for specification */
-PUBLIC void curve_segment_release(curve_segment segment)
+PUBLIC EMERALD_API bool curve_segment_add_node(curve_segment          segment,
+                                               system_time            node_time,
+                                               system_variant         node_value,
+                                               curve_segment_node_id* out_node_id_ptr)
 {
-    deinit_curve_segment(segment);
-}
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
+    bool               result            = curve_segment_ptr->pfn_add_node(curve_segment_ptr->segment_data,
+                                                                           node_time,
+                                                                           node_value,
+                                                                           out_node_id_ptr);
 
-/** Please see header for specification */
-PUBLIC curve_segment curve_segment_create_static(system_variant value)
-{
-    curve_segment result_curve_segment = NULL;
-
-    init_curve_segment(&result_curve_segment);
-    
-    if (result_curve_segment != NULL)
+    if (result)
     {
-        _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) result_curve_segment;
-
-        curve_segment_ptr->node_value_variant_type     = system_variant_get_type(value);
-        curve_segment_ptr->pfn_add_node                = curve_segment_static_add_node;
-        curve_segment_ptr->pfn_deinit                  = curve_segment_static_deinit;
-        curve_segment_ptr->pfn_delete_node             = curve_segment_static_delete_node;
-        curve_segment_ptr->pfn_get_amount_of_nodes     = curve_segment_static_get_amount_of_nodes;
-        curve_segment_ptr->pfn_get_node                = curve_segment_static_get_node;
-        curve_segment_ptr->pfn_get_node_by_index       = curve_segment_static_get_node_in_order;
-        curve_segment_ptr->pfn_get_node_in_order       = curve_segment_static_get_node_in_order;
-        curve_segment_ptr->pfn_get_node_property       = NULL;
-        curve_segment_ptr->pfn_get_value               = curve_segment_static_get_value;
-        curve_segment_ptr->pfn_modify_node_property    = NULL;
-        curve_segment_ptr->pfn_modify_node_time        = curve_segment_static_modify_node_time;
-        curve_segment_ptr->pfn_modify_node_time_value  = curve_segment_static_modify_node_time_value;
-        curve_segment_ptr->pfn_set_property            = curve_segment_static_set_property;
-        curve_segment_ptr->segment_type                = CURVE_SEGMENT_STATIC;
-
-        if (!curve_segment_static_init(&curve_segment_ptr->segment_data, value) )
-        {
-            LOG_ERROR("Could not init static segment data!");
-
-            deinit_curve_segment(result_curve_segment);
-            result_curve_segment = NULL;
-        }
+        curve_segment_ptr->modification_time = system_time_now();
     }
 
-    return result_curve_segment;
+    return result;
 }
 
 /** Please see header for specification */
@@ -137,17 +114,18 @@ PUBLIC curve_segment curve_segment_create_linear(system_time    start_time,
                                                  system_time    end_time,
                                                  system_variant end_value)
 {
-    curve_segment result_curve_segment = NULL;
+    curve_segment result_curve_segment = nullptr;
 
-    init_curve_segment(&result_curve_segment);
+    _curve_segment_init(&result_curve_segment);
 
-    if (result_curve_segment != NULL)
+    if (result_curve_segment != nullptr)
     {
-        _curve_segment_ptr  curve_segment_ptr     = (_curve_segment_ptr) result_curve_segment;
+        _curve_segment_ptr  curve_segment_ptr     = reinterpret_cast<_curve_segment_ptr>(result_curve_segment);
         system_variant_type start_value_data_type = system_variant_get_type(start_value);
         system_variant_type end_value_data_type   = system_variant_get_type(end_value);
 
-        ASSERT_DEBUG_SYNC(start_value_data_type == end_value_data_type, "Start and end value data types must match");
+        ASSERT_DEBUG_SYNC(start_value_data_type == end_value_data_type,
+                          "Start and end value data types must match");
 
         curve_segment_ptr->node_value_variant_type     = start_value_data_type;
         curve_segment_ptr->pfn_add_node                = curve_segment_linear_add_node;
@@ -157,9 +135,9 @@ PUBLIC curve_segment curve_segment_create_linear(system_time    start_time,
         curve_segment_ptr->pfn_get_node                = curve_segment_linear_get_node;
         curve_segment_ptr->pfn_get_node_by_index       = curve_segment_linear_get_node_in_order;
         curve_segment_ptr->pfn_get_node_in_order       = curve_segment_linear_get_node_in_order;
-        curve_segment_ptr->pfn_get_node_property       = NULL;
+        curve_segment_ptr->pfn_get_node_property       = nullptr;
         curve_segment_ptr->pfn_get_value               = curve_segment_linear_get_value;
-        curve_segment_ptr->pfn_modify_node_property    = NULL;
+        curve_segment_ptr->pfn_modify_node_property    = nullptr;
         curve_segment_ptr->pfn_modify_node_time        = curve_segment_linear_modify_node_time;
         curve_segment_ptr->pfn_modify_node_time_value  = curve_segment_linear_modify_node_time_value;
         curve_segment_ptr->pfn_set_property            = curve_segment_linear_set_property;
@@ -175,8 +153,50 @@ PUBLIC curve_segment curve_segment_create_linear(system_time    start_time,
         {
             LOG_ERROR("Could not init LERP segment data!");
 
-            deinit_curve_segment(result_curve_segment);
-            result_curve_segment = NULL;
+            _curve_segment_deinit(result_curve_segment);
+
+            result_curve_segment = nullptr;
+        }
+    }
+
+    return result_curve_segment;
+}
+
+/** Please see header for specification */
+PUBLIC curve_segment curve_segment_create_static(system_variant value)
+{
+    curve_segment result_curve_segment = nullptr;
+
+    _curve_segment_init(&result_curve_segment);
+
+    if (result_curve_segment != nullptr)
+    {
+        _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(result_curve_segment);
+
+        curve_segment_ptr->node_value_variant_type     = system_variant_get_type(value);
+        curve_segment_ptr->pfn_add_node                = curve_segment_static_add_node;
+        curve_segment_ptr->pfn_deinit                  = curve_segment_static_deinit;
+        curve_segment_ptr->pfn_delete_node             = curve_segment_static_delete_node;
+        curve_segment_ptr->pfn_get_amount_of_nodes     = curve_segment_static_get_amount_of_nodes;
+        curve_segment_ptr->pfn_get_node                = curve_segment_static_get_node;
+        curve_segment_ptr->pfn_get_node_by_index       = curve_segment_static_get_node_in_order;
+        curve_segment_ptr->pfn_get_node_in_order       = curve_segment_static_get_node_in_order;
+        curve_segment_ptr->pfn_get_node_property       = nullptr;
+        curve_segment_ptr->pfn_get_value               = curve_segment_static_get_value;
+        curve_segment_ptr->pfn_modify_node_property    = nullptr;
+        curve_segment_ptr->pfn_modify_node_time        = curve_segment_static_modify_node_time;
+        curve_segment_ptr->pfn_modify_node_time_value  = curve_segment_static_modify_node_time_value;
+        curve_segment_ptr->pfn_set_property            = curve_segment_static_set_property;
+        curve_segment_ptr->segment_type                = CURVE_SEGMENT_STATIC;
+
+        if (!curve_segment_static_init(&curve_segment_ptr->segment_data,
+                                       value) )
+        {
+            LOG_ERROR("Could not init static segment data!");
+
+            _curve_segment_deinit(result_curve_segment);
+
+            result_curve_segment = nullptr;
         }
     }
 
@@ -193,17 +213,18 @@ PUBLIC curve_segment curve_segment_create_tcb(system_time      start_time,
                                               curve_container  curve,
                                               curve_segment_id segment_id)
 {
-    curve_segment result_curve_segment = NULL;
+    curve_segment result_curve_segment = nullptr;
 
-    init_curve_segment(&result_curve_segment);
-    
-    if (result_curve_segment != NULL)
+    _curve_segment_init(&result_curve_segment);
+
+    if (result_curve_segment != nullptr)
     {
-        _curve_segment_ptr  curve_segment_ptr     = (_curve_segment_ptr) result_curve_segment;
+        _curve_segment_ptr  curve_segment_ptr     = reinterpret_cast<_curve_segment_ptr>(result_curve_segment);
         system_variant_type start_value_data_type = system_variant_get_type(start_value);
         system_variant_type end_value_data_type   = system_variant_get_type(end_value);
 
-        ASSERT_DEBUG_SYNC(start_value_data_type == end_value_data_type, "Start and end value data types must match");
+        ASSERT_DEBUG_SYNC(start_value_data_type == end_value_data_type,
+                          "Start and end value data types must match");
 
         curve_segment_ptr->node_value_variant_type     = start_value_data_type;
         curve_segment_ptr->pfn_add_node                = curve_segment_tcb_add_node;
@@ -234,8 +255,9 @@ PUBLIC curve_segment curve_segment_create_tcb(system_time      start_time,
         {
             LOG_ERROR("Could not init LERP segment data!");
 
-            deinit_curve_segment(result_curve_segment);
-            result_curve_segment = NULL;
+            _curve_segment_deinit(result_curve_segment);
+
+            result_curve_segment = nullptr;
         }
     }
 
@@ -243,44 +265,10 @@ PUBLIC curve_segment curve_segment_create_tcb(system_time      start_time,
 }
 
 /** Please see header for specification */
-PUBLIC bool curve_segment_get_value(curve_segment  segment,
-                                    system_time    time,
-                                    bool           should_force,
-                                    system_variant out_result)
-{
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
-
-    return curve_segment_ptr->pfn_get_value(curve_segment_ptr->segment_data,
-                                            time,
-                                            out_result,
-                                            should_force);
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_add_node(curve_segment          segment,
-                                               system_time            node_time,
-                                               system_variant         node_value,
-                                               curve_segment_node_id* out_node_id)
-{
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
-    bool               result            = curve_segment_ptr->pfn_add_node(curve_segment_ptr->segment_data,
-                                                                           node_time,
-                                                                           node_value,
-                                                                           out_node_id);
-
-    if (result)
-    {
-        curve_segment_ptr->modification_time = system_time_now();
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API bool curve_segment_delete_node(curve_segment         segment,
                                                   curve_segment_node_id node_id)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
     bool               result            = curve_segment_ptr->pfn_delete_node(curve_segment_ptr->segment_data,
                                                                               node_id);
 
@@ -294,142 +282,42 @@ PUBLIC EMERALD_API bool curve_segment_delete_node(curve_segment         segment,
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool curve_segment_get_amount_of_nodes(curve_segment segment,
-                                                          uint32_t*     out_result)
+                                                          uint32_t*     out_result_ptr)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
     return curve_segment_ptr->pfn_get_amount_of_nodes(curve_segment_ptr->segment_data,
-                                                      out_result);
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_get_node(curve_segment         segment,
-                                               curve_segment_node_id segment_node_id,
-                                               system_time*          out_nodetime,
-                                               system_variant        out_node_value)
-{
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
-
-    return curve_segment_ptr->pfn_get_node(curve_segment_ptr->segment_data,
-                                           segment_node_id,
-                                           out_nodetime,
-                                           out_node_value);
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_get_node_property(curve_segment               segment,
-                                                        curve_segment_node_id       node_id,
-                                                        curve_segment_node_property node_property,
-                                                        system_variant              out_result)
-{
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
-    bool               result            = false;
-
-    if (curve_segment_ptr->pfn_get_node_property != NULL)
-    {
-        result = curve_segment_ptr->pfn_get_node_property(curve_segment_ptr->segment_data,
-                                                          node_id,
-                                                          node_property,
-                                                          out_result);
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_modify_node_property(curve_segment               segment,
-                                                           curve_segment_node_id       node_id,
-                                                           curve_segment_node_property node_property,
-                                                           system_variant              value)
-{
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
-    bool               result            = false;
-
-    if (curve_segment_ptr->pfn_modify_node_property != NULL)
-    {
-        result = curve_segment_ptr->pfn_modify_node_property(curve_segment_ptr->segment_data,
-                                                             node_id,
-                                                             node_property,
-                                                             value);
-    }
-
-    if (result)
-    {
-        curve_segment_ptr->modification_time = system_time_now();
-
-        if (curve_segment_ptr->pfn_callback_on_curve_changed != NULL)
-        {
-            curve_segment_ptr->pfn_callback_on_curve_changed(curve_segment_ptr->callback_on_curve_changed_user_arg);
-        }
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_modify_node_time(curve_segment         segment,
-                                                       curve_segment_node_id segment_node_id,
-                                                       system_time           new_node_time)
-{
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
-    bool               result            = curve_segment_ptr->pfn_modify_node_time(curve_segment_ptr->segment_data,
-                                                                                   segment_node_id,
-                                                                                   new_node_time);
-
-    if (result)
-    {
-        curve_segment_ptr->modification_time = system_time_now();
-
-        if (curve_segment_ptr->pfn_callback_on_curve_changed != NULL)
-        {
-            curve_segment_ptr->pfn_callback_on_curve_changed(curve_segment_ptr->callback_on_curve_changed_user_arg);
-        }
-    }
-    
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(curve_segment         segment,
-                                                             curve_segment_node_id segment_node_id,
-                                                             system_time           new_node_time,
-                                                             system_variant        new_node_value,
-                                                             bool                  should_force)
-{
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
-    bool               result            = curve_segment_ptr->pfn_modify_node_time_value(curve_segment_ptr->segment_data,
-                                                                                         segment_node_id,
-                                                                                         new_node_time,
-                                                                                         new_node_value,
-                                                                                         should_force);
-
-    if (result)
-    {
-        curve_segment_ptr->modification_time = system_time_now();
-
-        if (curve_segment_ptr->pfn_callback_on_curve_changed != NULL)
-        {
-            curve_segment_ptr->pfn_callback_on_curve_changed(curve_segment_ptr->callback_on_curve_changed_user_arg);
-        }
-    }
-
-    return result;
+                                                      out_result_ptr);
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API system_time curve_segment_get_modification_time(curve_segment segment)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
     return curve_segment_ptr->modification_time;
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool curve_segment_get_node(curve_segment         segment,
+                                               curve_segment_node_id segment_node_id,
+                                               system_time*          out_node_time_ptr,
+                                               system_variant        out_node_value)
+{
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
+
+    return curve_segment_ptr->pfn_get_node(curve_segment_ptr->segment_data,
+                                           segment_node_id,
+                                           out_node_time_ptr,
+                                           out_node_value);
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool curve_segment_get_node_at_time(curve_segment          segment,
                                                        system_time            node_time,
-                                                       curve_segment_node_id* out_node_id)
+                                                       curve_segment_node_id* out_node_id_ptr)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment*) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment*>(segment);
     unsigned int       n_current_node    = 0;
     bool               result            = true;
 
@@ -453,7 +341,7 @@ PUBLIC EMERALD_API bool curve_segment_get_node_at_time(curve_segment          se
         if (!curve_segment_ptr->pfn_get_node(curve_segment_ptr->segment_data,
                                              current_node_id,
                                             &current_node_time,
-                                             NULL) )
+                                             nullptr) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "pfn_get_node() failed");
@@ -464,14 +352,14 @@ PUBLIC EMERALD_API bool curve_segment_get_node_at_time(curve_segment          se
 
         if (current_node_time == node_time)
         {
-            *out_node_id = current_node_id;
+            *out_node_id_ptr = current_node_id;
 
             break;
         }
 
         /* Iterate */
         n_current_node++;
-    } /* while (true) */
+    }
 
     return result;
 }
@@ -479,45 +367,167 @@ PUBLIC EMERALD_API bool curve_segment_get_node_at_time(curve_segment          se
 /** Please see header for specification */
 PUBLIC bool curve_segment_get_node_by_index(curve_segment          segment,
                                             uint32_t               node_index,
-                                            curve_segment_node_id* out_node_id)
+                                            curve_segment_node_id* out_node_id_ptr)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
     return curve_segment_ptr->pfn_get_node_by_index(curve_segment_ptr->segment_data,
                                                     node_index,
-                                                    out_node_id);
+                                                    out_node_id_ptr);
 }
 
 /** Please see header for specification */
 PUBLIC bool curve_segment_get_node_in_order(curve_segment          segment,
                                             uint32_t               node_index,
-                                            curve_segment_node_id* out_ordered_node_id)
+                                            curve_segment_node_id* out_ordered_node_id_ptr)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
     return curve_segment_ptr->pfn_get_node_in_order(curve_segment_ptr->segment_data,
                                                     node_index,
-                                                    out_ordered_node_id);
+                                                    out_ordered_node_id_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool curve_segment_get_node_property(curve_segment               segment,
+                                                        curve_segment_node_id       node_id,
+                                                        curve_segment_node_property node_property,
+                                                        system_variant              out_result)
+{
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
+    bool               result            = false;
+
+    if (curve_segment_ptr->pfn_get_node_property != nullptr)
+    {
+        result = curve_segment_ptr->pfn_get_node_property(curve_segment_ptr->segment_data,
+                                                          node_id,
+                                                          node_property,
+                                                          out_result);
+    }
+
+    return result;
 }
 
 /** Please see header for specification */
 PUBLIC bool curve_segment_get_node_value_variant_type(curve_segment        segment,
-                                                      system_variant_type* out_type)
+                                                      system_variant_type* out_type_ptr)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
-    *out_type = curve_segment_ptr->node_value_variant_type;
+    *out_type_ptr = curve_segment_ptr->node_value_variant_type;
+
     return true;
 }
 
 /** Please see header for specification */
 PUBLIC bool curve_segment_get_type(curve_segment       segment,
-                                   curve_segment_type* out_segment_type)
+                                   curve_segment_type* out_segment_type_ptr)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
-    *out_segment_type = curve_segment_ptr->segment_type;
+    *out_segment_type_ptr = curve_segment_ptr->segment_type;
+
     return true;
+}
+
+/** Please see header for specification */
+PUBLIC bool curve_segment_get_value(curve_segment  segment,
+                                    system_time    time,
+                                    bool           should_force,
+                                    system_variant out_result)
+{
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
+
+    return curve_segment_ptr->pfn_get_value(curve_segment_ptr->segment_data,
+                                            time,
+                                            out_result,
+                                            should_force);
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool curve_segment_modify_node_property(curve_segment               segment,
+                                                           curve_segment_node_id       node_id,
+                                                           curve_segment_node_property node_property,
+                                                           system_variant              value)
+{
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
+    bool               result            = false;
+
+    if (curve_segment_ptr->pfn_modify_node_property != nullptr)
+    {
+        result = curve_segment_ptr->pfn_modify_node_property(curve_segment_ptr->segment_data,
+                                                             node_id,
+                                                             node_property,
+                                                             value);
+    }
+
+    if (result)
+    {
+        curve_segment_ptr->modification_time = system_time_now();
+
+        if (curve_segment_ptr->pfn_callback_on_curve_changed != nullptr)
+        {
+            curve_segment_ptr->pfn_callback_on_curve_changed(curve_segment_ptr->callback_on_curve_changed_user_arg);
+        }
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool curve_segment_modify_node_time(curve_segment         segment,
+                                                       curve_segment_node_id segment_node_id,
+                                                       system_time           new_node_time)
+{
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
+    bool               result            = curve_segment_ptr->pfn_modify_node_time(curve_segment_ptr->segment_data,
+                                                                                   segment_node_id,
+                                                                                   new_node_time);
+
+    if (result)
+    {
+        curve_segment_ptr->modification_time = system_time_now();
+
+        if (curve_segment_ptr->pfn_callback_on_curve_changed != nullptr)
+        {
+            curve_segment_ptr->pfn_callback_on_curve_changed(curve_segment_ptr->callback_on_curve_changed_user_arg);
+        }
+    }
+    
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool curve_segment_modify_node_time_value(curve_segment         segment,
+                                                             curve_segment_node_id segment_node_id,
+                                                             system_time           new_node_time,
+                                                             system_variant        new_node_value,
+                                                             bool                  should_force)
+{
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
+    bool               result            = curve_segment_ptr->pfn_modify_node_time_value(curve_segment_ptr->segment_data,
+                                                                                         segment_node_id,
+                                                                                         new_node_time,
+                                                                                         new_node_value,
+                                                                                         should_force);
+
+    if (result)
+    {
+        curve_segment_ptr->modification_time = system_time_now();
+
+        if (curve_segment_ptr->pfn_callback_on_curve_changed != nullptr)
+        {
+            curve_segment_ptr->pfn_callback_on_curve_changed(curve_segment_ptr->callback_on_curve_changed_user_arg);
+        }
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC void curve_segment_release(curve_segment segment)
+{
+    _curve_segment_deinit(segment);
 }
 
 /** Please see header for specification */
@@ -525,7 +535,7 @@ PUBLIC void curve_segment_set_on_segment_changed_callback(curve_segment         
                                                           PFNCURVESEGMENTONCURVECHANGED callback_proc,
                                                           void*                         user_arg)
 {
-    _curve_segment_ptr curve_segment_ptr = (_curve_segment_ptr) segment;
+    _curve_segment_ptr curve_segment_ptr = reinterpret_cast<_curve_segment_ptr>(segment);
 
     curve_segment_ptr->callback_on_curve_changed_user_arg = user_arg;
     curve_segment_ptr->pfn_callback_on_curve_changed      = callback_proc;

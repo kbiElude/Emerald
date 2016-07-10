@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -16,49 +16,47 @@ typedef struct
 
 typedef _curve_segment_data_static* _curve_segment_data_static_ptr;
 
-/***************************************** (De-)-initializers *********************************************************************/
-/** Initializes internal curve segment data storage for a static segment.
- *
- *  @param segment_data *segment_data will be used to store a _curve_segment_data_static instance. CANNOT be null.
- *  @param data_type    Data type to use for value storage.
- **/
-PRIVATE void init_curve_segment_data_static(curve_segment_data* segment_data,
-                                            system_variant      value)
-{
-    _curve_segment_data_static* new_segment_data = new (std::nothrow) _curve_segment_data_static;
-
-    ASSERT_ALWAYS_SYNC(new_segment_data != NULL,
-                       "Could not allocate static curve segment!");
-
-    if (new_segment_data != NULL)
-    {
-        _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) new_segment_data;
-
-        data_ptr->value = system_variant_create(system_variant_get_type(value) );
-
-        system_variant_set(data_ptr->value,
-                           value,
-                           false);
-    }
-
-    *segment_data = (curve_segment_data) new_segment_data;
-}
 
 /** Deinitializes a previously initialized instance of _curve_segment_data_static structure.
  *
  *  @param segment_data Pointer to where the instance is located. DO NOT use this pointer after
  *                      calling this function.
  **/
-PRIVATE void deinit_curve_segment_data_static(curve_segment_data segment_data)
+PRIVATE void _curve_segment_data_static_deinit(curve_segment_data segment_data)
 {
-    _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) segment_data;
+    _curve_segment_data_static_ptr data_ptr = reinterpret_cast<_curve_segment_data_static_ptr>(segment_data);
 
     system_variant_release(data_ptr->value);
 
-    delete (_curve_segment_data_static_ptr) segment_data;
+    delete reinterpret_cast<_curve_segment_data_static_ptr>(segment_data);
 }
 
-/******************************************************** PUBLIC FUNCTIONS *********************************************************/
+/** Initializes internal curve segment data storage for a static segment.
+ *
+ *  @param segment_data *segment_data will be used to store a _curve_segment_data_static instance. CANNOT be null.
+ *  @param data_type    Data type to use for value storage.
+ **/
+PRIVATE void _curve_segment_data_static_init(curve_segment_data* segment_data,
+                                             system_variant      value)
+{
+    _curve_segment_data_static* new_segment_data_ptr = new (std::nothrow) _curve_segment_data_static;
+
+    ASSERT_ALWAYS_SYNC(new_segment_data_ptr != nullptr,
+                       "Could not allocate static curve segment!");
+
+    if (new_segment_data_ptr != nullptr)
+    {
+        new_segment_data_ptr->value = system_variant_create(system_variant_get_type(value) );
+
+        system_variant_set(new_segment_data_ptr->value,
+                           value,
+                           false);
+    }
+
+    *segment_data = reinterpret_cast<curve_segment_data>(new_segment_data_ptr);
+}
+
+
 /** Please see header for specification */
 PUBLIC bool curve_segment_static_add_node(curve_segment_data     segment_data,
                                           system_time            node_time,
@@ -78,7 +76,7 @@ PUBLIC bool curve_segment_static_delete_node(curve_segment_data    segment_data,
 /** Please see header for specification */
 PUBLIC bool curve_segment_static_deinit(curve_segment_data segment_data)
 {
-    deinit_curve_segment_data_static(segment_data);
+    _curve_segment_data_static_deinit(segment_data);
 
     return true;
 }
@@ -101,16 +99,17 @@ PUBLIC bool curve_segment_static_get_node(curve_segment_data    segment_data,
     ASSERT_DEBUG_SYNC(node_id == 0,
                       "Invalid node id (%d) requested",
                       node_id);
+
     if (node_id == 0)
     {
-        _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) segment_data;
+        _curve_segment_data_static_ptr data_ptr = reinterpret_cast<_curve_segment_data_static_ptr>(segment_data);
 
-        if (out_node_time != NULL)
+        if (out_node_time != nullptr)
         {
             *out_node_time = 0;
         }
 
-        if (out_node_value != NULL)
+        if (out_node_value != nullptr)
         {
             system_variant_set(out_node_value,
                                data_ptr->value,
@@ -126,7 +125,7 @@ PUBLIC bool curve_segment_static_get_node(curve_segment_data    segment_data,
 /** Please see header for specification */
 PUBLIC bool curve_segment_static_get_node_in_order(curve_segment_data    segment_data,
                                                    uint32_t               node_index,
-                                                   curve_segment_node_id* out_node_id)
+                                                   curve_segment_node_id* out_node_id_ptr)
 {
     bool result = false;
 
@@ -137,11 +136,23 @@ PUBLIC bool curve_segment_static_get_node_in_order(curve_segment_data    segment
 
     if (node_index >= 0 && node_index <= 1)
     {
-        *out_node_id = node_index;
-        result       = true;
+        *out_node_id_ptr = node_index;
+        result           = true;
     }
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC bool curve_segment_static_get_property(curve_segment_data     segment_data,
+                                              curve_segment_property segment_property,
+                                              system_variant         value)
+{
+    /* Should not be called */
+    ASSERT_DEBUG_SYNC(false,
+                      "curve_segment_static_get_property() should never be called - other means exist to query the segment's properties.");
+
+    return false;
 }
 
 /** Please see header for specification */
@@ -150,7 +161,7 @@ PUBLIC bool curve_segment_static_get_value(curve_segment_data segment_data,
                                            system_variant     out_result,
                                            bool               should_force)
 {
-    _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) segment_data;
+    _curve_segment_data_static_ptr data_ptr = reinterpret_cast<_curve_segment_data_static_ptr>(segment_data);
 
     system_variant_set(out_result,
                        data_ptr->value,
@@ -163,8 +174,8 @@ PUBLIC bool curve_segment_static_get_value(curve_segment_data segment_data,
 PUBLIC bool curve_segment_static_init(curve_segment_data* segment_data,
                                       system_variant      value)
 {
-    init_curve_segment_data_static(segment_data,
-                                   value);
+    _curve_segment_data_static_init(segment_data,
+                                    value);
 
     return true;
 }
@@ -182,9 +193,9 @@ PUBLIC bool curve_segment_static_modify_node_time_value(curve_segment_data    se
                                                         curve_segment_node_id node_id,
                                                         system_time           new_node_time,
                                                         system_variant        new_node_value,
-                                                        bool)
+                                                        bool                  unused)
 {
-    _curve_segment_data_static_ptr data_ptr = (_curve_segment_data_static_ptr) segment_data;
+    _curve_segment_data_static_ptr data_ptr = reinterpret_cast<_curve_segment_data_static_ptr>(segment_data);
 
     system_variant_set(data_ptr->value,
                        new_node_value,
@@ -205,13 +216,3 @@ PUBLIC bool curve_segment_static_set_property(curve_segment_data     segment_dat
     return false;
 }
 
-/** Please see header for specification */
-PUBLIC bool curve_segment_static_get_property(curve_segment_data,
-                                              curve_segment_property,
-                                              system_variant)
-{
-    /* Should not be called */
-    ASSERT_DEBUG_SYNC(false, "curve_segment_static_get_property() should never be called - other means exist to query the segment's properties.");
-
-    return false;
-}
