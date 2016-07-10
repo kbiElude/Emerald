@@ -1069,8 +1069,9 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &set_scissor_box_command_info;
-        gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+        gfx_state_create_info.static_scissor_boxes_enabled         = true;
         gfx_state_create_info.static_viewports                     = &set_viewport_command_info;
+        gfx_state_create_info.static_viewports_enabled             = true;
 
         ral_context_create_gfx_states(blur_ptr->context,
                                       1,

@@ -8,6 +8,9 @@ typedef enum
     /* not settable; ral_texture_aspect */
     RAL_TEXTURE_VIEW_PROPERTY_ASPECT,
 
+    /* not settable; ral_texture_component[4] */
+    RAL_TEXTURE_VIEW_PROPERTY_COMPONENT_ORDER,
+
     /* not settable; ral_context */
     RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
 

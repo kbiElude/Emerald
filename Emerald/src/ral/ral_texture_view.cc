@@ -43,6 +43,7 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
     uint32_t           parent_texture_n_layers       = 0;
     uint32_t           parent_texture_n_mips         = 0;
     ral_texture_type   parent_texture_type           = RAL_TEXTURE_TYPE_UNKNOWN;
+    bool               swizzle_valid                 = true;
     bool               texture_aspect_valid          = true;
     bool               texture_format_valid          = true;
     bool               texture_type_valid            = true;
@@ -373,6 +374,94 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
         goto end;
     }
 
+    if (view_format_has_color_comps)
+    {
+        uint32_t n_color_comps = 0;
+
+        ral_utils_get_format_property(create_info_ptr->format,
+                                      RAL_FORMAT_PROPERTY_N_COMPONENTS,
+                                     &n_color_comps);
+
+        for (uint32_t n_component = 0;
+                      n_component < sizeof(create_info_ptr->component_order) / sizeof(create_info_ptr->component_order[0]);
+                    ++n_component)
+        {
+            const ral_texture_component current_component = create_info_ptr->component_order[n_component];
+
+            switch (n_color_comps)
+            {
+                case 1:
+                {
+                    swizzle_valid &= (current_component == RAL_TEXTURE_COMPONENT_IDENTITY ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ONE      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_RED      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ZERO);
+
+                    break;
+                }
+
+                case 2:
+                {
+                    swizzle_valid &= (current_component == RAL_TEXTURE_COMPONENT_GREEN    ||
+                                      current_component == RAL_TEXTURE_COMPONENT_IDENTITY ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ONE      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_RED      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ZERO);
+
+                    break;
+                }
+
+                case 3:
+                {
+                    swizzle_valid &= (current_component == RAL_TEXTURE_COMPONENT_BLUE     ||
+                                      current_component == RAL_TEXTURE_COMPONENT_GREEN    ||
+                                      current_component == RAL_TEXTURE_COMPONENT_IDENTITY ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ONE      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_RED      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ZERO);
+
+                    break;
+                }
+
+                case 4:
+                {
+                    swizzle_valid &= (current_component == RAL_TEXTURE_COMPONENT_ALPHA    ||
+                                      current_component == RAL_TEXTURE_COMPONENT_BLUE     ||
+                                      current_component == RAL_TEXTURE_COMPONENT_GREEN    ||
+                                      current_component == RAL_TEXTURE_COMPONENT_IDENTITY ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ONE      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_RED      ||
+                                      current_component == RAL_TEXTURE_COMPONENT_ZERO);
+
+                    break;
+                }
+            }
+        }
+    }
+
+    if (view_format_has_depth_comps   ||
+        view_format_has_stencil_comps)
+    {
+        for (uint32_t n_component = 0;
+                      n_component < sizeof(create_info_ptr->component_order) / sizeof(create_info_ptr->component_order[0]);
+                    ++n_component)
+        {
+            const ral_texture_component current_component = create_info_ptr->component_order[n_component];
+
+            swizzle_valid &= (current_component == RAL_TEXTURE_COMPONENT_IDENTITY ||
+                              current_component == RAL_TEXTURE_COMPONENT_ONE      ||
+                              current_component == RAL_TEXTURE_COMPONENT_ZERO);
+        }
+    }
+
+    if (!swizzle_valid)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Invalid component order specified for the texture view.");
+
+        goto end;
+    }
+
     /* Safe to create the texture view */
     texture_view_ptr = new _ral_texture_view(create_info_ptr);
 
@@ -438,74 +527,76 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
                                                       ral_texture_view_property property,
                                                       void*                     out_result_ptr)
 {
-    _ral_texture_view* texture_view_ptr = (_ral_texture_view*) texture_view;
+    _ral_texture_view* texture_view_ptr = reinterpret_cast<_ral_texture_view*>(texture_view);
 
     switch (property)
     {
         case RAL_TEXTURE_VIEW_PROPERTY_ASPECT:
         {
-            *(ral_texture_aspect*) out_result_ptr = texture_view_ptr->create_info.aspect;
+            *reinterpret_cast<ral_texture_aspect*>(out_result_ptr) = texture_view_ptr->create_info.aspect;
+
+            break;
+        }
+
+        case RAL_TEXTURE_VIEW_PROPERTY_COMPONENT_ORDER:
+        {
+            *reinterpret_cast<ral_texture_component**>(out_result_ptr) = texture_view_ptr->create_info.component_order;
 
             break;
         }
 
         case RAL_TEXTURE_VIEW_PROPERTY_CONTEXT:
         {
-            *(ral_context*) out_result_ptr = texture_view_ptr->context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = texture_view_ptr->context;
 
             break;
         }
 
         case RAL_TEXTURE_VIEW_PROPERTY_FORMAT:
         {
-            *(ral_format*) out_result_ptr = texture_view_ptr->create_info.format;
+            *reinterpret_cast<ral_format*>(out_result_ptr) = texture_view_ptr->create_info.format;
 
             break;
         }
 
         case RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER:
         {
-            *(uint32_t*) out_result_ptr = texture_view_ptr->create_info.n_base_layer;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = texture_view_ptr->create_info.n_base_layer;
 
             break;
         }
 
-        /* not settable; uint32_t */
         case RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP:
         {
-            *(uint32_t*) out_result_ptr = texture_view_ptr->create_info.n_base_mip;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = texture_view_ptr->create_info.n_base_mip;
 
             break;
         }
 
-        /* not settable; uint32_t */
         case RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS:
         {
-            *(uint32_t*) out_result_ptr = texture_view_ptr->create_info.n_layers;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = texture_view_ptr->create_info.n_layers;
 
             break;
         }
 
-        /* not settable; uint32_t */
         case RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS:
         {
-            *(uint32_t*) out_result_ptr = texture_view_ptr->create_info.n_mips;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = texture_view_ptr->create_info.n_mips;
 
             break;
         }
 
-        /* not settable; ral_texture */
         case RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE:
         {
-            *(ral_texture*) out_result_ptr = texture_view_ptr->create_info.texture;
+            *reinterpret_cast<ral_texture*>(out_result_ptr) = texture_view_ptr->create_info.texture;
 
             break;
         }
 
-        /* not settable; ral_texture_type */
         case RAL_TEXTURE_VIEW_PROPERTY_TYPE:
         {
-            *(ral_texture_type*) out_result_ptr = texture_view_ptr->create_info.type;
+            *reinterpret_cast<ral_texture_type*>(out_result_ptr) = texture_view_ptr->create_info.type;
 
             break;
         }
@@ -521,5 +612,5 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
 /** Please see header for specification */
 PUBLIC void ral_texture_view_release(ral_texture_view texture_view)
 {
-    delete (_ral_texture_view*) texture_view;
+    delete reinterpret_cast<_ral_texture_view*>(texture_view);
 }

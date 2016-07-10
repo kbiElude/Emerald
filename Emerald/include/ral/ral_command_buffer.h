@@ -573,14 +573,16 @@ PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer          
                                                     uint32_t                                            n_viewports,
                                                     const ral_command_buffer_set_viewport_command_info* viewport_ptrs);
 
-/** TODO */
-PUBLIC void ral_command_buffer_record_sync_point(ral_command_buffer recording_command_buffer,
-                                                 uint32_t*          out_sync_point_id);
-
-/** TODO */
-PUBLIC void ral_command_buffer_record_wait_for_sync_point(ral_command_buffer       recording_command_buffer,
-                                                          const ral_command_buffer sync_point_parent_command_buffer,
-                                                          uint32_t                 sync_point_id);
+/** TODO
+ *
+ *  @param data Data to update with. Will be cached at call time, so that @param data
+ *              can be freed after the call leaves.
+ */
+PUBLIC void ral_command_buffer_record_update_buffer(ral_command_buffer recording_command_buffer,
+                                                    ral_buffer         buffer,
+                                                    uint32_t           start_offset,
+                                                    uint32_t           n_data_bytes,
+                                                    const void*        data);
 
 /** TODO */
 PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer);

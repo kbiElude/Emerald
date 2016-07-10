@@ -1423,8 +1423,9 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
 
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
-        gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+        gfx_state_create_info.static_scissor_boxes_enabled         = true;
         gfx_state_create_info.static_viewports                     = &viewport;
+        gfx_state_create_info.static_viewports_enabled             = true;
 
         dropdown_ptr->last_cached_gfx_state = ral_gfx_state_create(dropdown_ptr->context,
                                                                   &gfx_state_create_info);

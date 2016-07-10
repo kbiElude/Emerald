@@ -100,16 +100,19 @@ typedef enum
 
     /* not settable; ral_command_buffer_set_scissor_box_command_info[RAL_GFX_STATE_PROPERTY_N_STATIC_SCISSOR_BOXES_AND_VIEWPORTS]
      *
-     * Will generate an assertion failure if RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED is false */
+     * Will generate an assertion failure if RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_ENABLED is false */
     RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES,
 
     /* not settable; bool */
-    RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED,
+    RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_ENABLED,
 
     /* not settable; ral_command_buffer_set_viewport_command_info[RAL_GFX_STATE_PROPERTY_N_STATIC_SCISSOR_BOXES_AND_VIEWPORTS]
      *
-     * Will generate an assertion failure if RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED is false */
+     * Will generate an assertion failure if RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS_ENABLED is false */
     RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
+
+    /* not settable; bool */
+    RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS_ENABLED,
 
     /* not settable; ral_stencil_op_state */
     RAL_GFX_STATE_PROPERTY_STENCIL_TEST_BACK,

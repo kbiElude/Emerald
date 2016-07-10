@@ -365,8 +365,9 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
     gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
     gfx_state_create_info.static_scissor_boxes                 = &gfx_state_scissor_box;
-    gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+    gfx_state_create_info.static_scissor_boxes_enabled         = true;
     gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
+    gfx_state_create_info.static_viewports_enabled             = true;
 
     poisson_ptr->gfx_state = ral_gfx_state_create(poisson_ptr->context,
                                                  &gfx_state_create_info);

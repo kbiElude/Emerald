@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
@@ -475,7 +476,7 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
         }
         else
         {
-            /* Not an array! We can again go away with a single memcpy */
+            /* Not an array! We can again get away with a single memcpy */
             ASSERT_DEBUG_SYNC(variable_ral_ptr->size == 1,
                               "Sanity check failed");
 
@@ -633,7 +634,7 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
 end:
     if (!is_successful)
     {
-        ral_program_block_buffer_release( (ral_program_block_buffer) new_block_buffer_ptr);
+        ral_program_block_buffer_release( reinterpret_cast<ral_program_block_buffer>(new_block_buffer_ptr) );
 
         new_block_buffer_ptr = nullptr;
     }
@@ -646,7 +647,7 @@ PUBLIC EMERALD_API void ral_program_block_buffer_get_property(ral_program_block_
                                                               ral_program_block_buffer_property property,
                                                               void*                             out_result_ptr)
 {
-    _ral_program_block_buffer* block_buffer_ptr = (_ral_program_block_buffer*) block_buffer;
+    _ral_program_block_buffer* block_buffer_ptr = reinterpret_cast<_ral_program_block_buffer*>(block_buffer);
 
     if (block_buffer == nullptr)
     {
@@ -660,7 +661,7 @@ PUBLIC EMERALD_API void ral_program_block_buffer_get_property(ral_program_block_
     {
         case RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL:
         {
-            *(ral_buffer*) out_result_ptr = block_buffer_ptr->buffer_ral;
+            *reinterpret_cast<ral_buffer*>(out_result_ptr) = block_buffer_ptr->buffer_ral;
 
             break;
         }
@@ -678,7 +679,7 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API void ral_program_block_buffer_release(ral_program_block_buffer block_buffer)
 {
-    delete (_ral_program_block_buffer*) block_buffer;
+    delete reinterpret_cast<_ral_program_block_buffer*>(block_buffer);
 }
 
 /* Please see header for spec */
@@ -689,7 +690,7 @@ PUBLIC EMERALD_API void ral_program_block_buffer_set_arrayed_variable_value(ral_
                                                                             unsigned int             dst_array_start_index,
                                                                             unsigned int             dst_array_item_count)
 {
-    _ral_program_block_buffer_set_variable_value((_ral_program_block_buffer*) block_buffer,
+    _ral_program_block_buffer_set_variable_value(reinterpret_cast<_ral_program_block_buffer*>(block_buffer),
                                                  block_variable_offset,
                                                  src_data,
                                                  src_data_size,
@@ -703,7 +704,7 @@ PUBLIC EMERALD_API void ral_program_block_buffer_set_nonarrayed_variable_value(r
                                                                                const void*              src_data,
                                                                                unsigned int             src_data_size)
 {
-    _ral_program_block_buffer_set_variable_value((_ral_program_block_buffer*) block_buffer,
+    _ral_program_block_buffer_set_variable_value(reinterpret_cast<_ral_program_block_buffer*>(block_buffer),
                                                  block_variable_offset,
                                                  src_data,
                                                  src_data_size,
@@ -712,9 +713,9 @@ PUBLIC EMERALD_API void ral_program_block_buffer_set_nonarrayed_variable_value(r
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ral_program_block_buffer_sync(ral_program_block_buffer block_buffer)
+PUBLIC EMERALD_API void ral_program_block_buffer_sync_immediately(ral_program_block_buffer block_buffer)
 {
-    _ral_program_block_buffer*                                           block_buffer_ptr = (_ral_program_block_buffer*) block_buffer;
+    _ral_program_block_buffer*                                           block_buffer_ptr = reinterpret_cast<_ral_program_block_buffer*>(block_buffer);
     ral_buffer_client_sourced_update_info                                bo_update_info;
     std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
 
@@ -750,6 +751,44 @@ PUBLIC EMERALD_API void ral_program_block_buffer_sync(ral_program_block_buffer b
         block_ptr->pGLFinish();
     }
 #endif
+
+    /* Reset the offsets */
+    block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
+    block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
+
+    /* All done */
+end:
+    ;
+}
+
+/* Please see header for spec */
+PUBLIC EMERALD_API void ral_program_block_buffer_sync_via_command_buffer(ral_program_block_buffer block_buffer,
+                                                                         ral_command_buffer       command_buffer)
+{
+    _ral_program_block_buffer* block_buffer_ptr = reinterpret_cast<_ral_program_block_buffer*>(block_buffer);
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(block_buffer_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
+                      block_buffer_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED,
+                      "Sanity check failed");
+
+    ASSERT_DEBUG_SYNC(command_buffer != nullptr,
+                      "Specified command buffer is null");
+
+    /* Anything to refresh? */
+    if (block_buffer_ptr->dirty_offset_end   == DIRTY_OFFSET_UNUSED &&
+        block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED)
+    {
+        /* Nothing to synchronize */
+        goto end;
+    }
+
+    /* Record a "update command buffer" command into the user-specified command buffer */
+    ral_command_buffer_record_update_buffer(command_buffer,
+                                            block_buffer_ptr->buffer_ral,
+                                            block_buffer_ptr->dirty_offset_start,                                       /* start_offset */
+                                            block_buffer_ptr->dirty_offset_end - block_buffer_ptr->dirty_offset_start,  /* n_data_bytes */
+                                            block_buffer_ptr->data             + block_buffer_ptr->dirty_offset_start); /* data         */
 
     /* Reset the offsets */
     block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;

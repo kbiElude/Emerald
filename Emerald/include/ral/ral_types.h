@@ -1025,6 +1025,9 @@ typedef enum
     /* The value accessible under the component should be set to zero. */
     RAL_TEXTURE_COMPONENT_ZERO,
 
+    /* The value accessible under the component should correspond to the original texture layout */
+    RAL_TEXTURE_COMPONENT_IDENTITY,
+
     /* Always last */
     RAL_TEXTURE_COMPONENT_COUNT,
     RAL_TEXTURE_COMPONENT_UNKNOWN = RAL_TEXTURE_COMPONENT_COUNT,
@@ -1335,14 +1338,24 @@ typedef struct ral_gfx_state_create_info
     bool stencil_test;
 
     /*
-     * If enabled, scissor boxes & viewports cannot be changed without switching to a different
-     * gfx state.
+     * If enabled, scissor boxes cannot be changed without switching to a different gfx state.
+     *
      * If disabled, they must be configured with a ral_command_buffer_record_set_scissor_boxes()
-     * and .._set_viewports(), before the first draw call is recorded.
+     * before the first draw call is recorded.
      *
      * Disabled by default.
      **/
-    bool static_scissor_boxes_and_viewports; 
+    bool static_scissor_boxes_enabled; 
+
+    /*
+     * If enabled, scissor boxes cannot be changed without switching to a different gfx state.
+     *
+     * If disabled, they must be configured with a ral_command_buffer_record_set_scissor_boxes()
+     * before the first draw call is recorded.
+     *
+     * Disabled by default.
+     **/
+    bool static_viewports_enabled; 
 
     uint32_t                                                static_n_scissor_boxes_and_viewports;
     struct ral_command_buffer_set_scissor_box_command_info* static_scissor_boxes;
@@ -1401,7 +1414,8 @@ typedef struct ral_gfx_state_create_info
         scissor_test       = false;
         stencil_test       = false;
 
-        static_scissor_boxes_and_viewports = false;
+        static_scissor_boxes = false;
+        static_viewports     = false;
 
         cull_mode                         = RAL_CULL_MODE_BACK;
         depth_bias_constant_factor        = 0.0f;
@@ -1436,16 +1450,22 @@ typedef struct ral_texture_view_create_info
     uint32_t n_layers;
     uint32_t n_mips;
 
+    ral_texture_component component_order[4];
+
     ral_texture_view_create_info()
     {
-        aspect       = static_cast<ral_texture_aspect>(0);
-        format       = RAL_FORMAT_UNKNOWN;
-        n_base_layer = -1;
-        n_base_mip   = -1;
-        n_layers     = 0;
-        n_mips       = 0;
-        texture      = nullptr;
-        type         = RAL_TEXTURE_TYPE_UNKNOWN;
+        aspect             = static_cast<ral_texture_aspect>(0);
+        component_order[0] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        component_order[1] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        component_order[2] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        component_order[3] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        format             = RAL_FORMAT_UNKNOWN;
+        n_base_layer       = -1;
+        n_base_mip         = -1;
+        n_layers           = 0;
+        n_mips             = 0;
+        texture            = nullptr;
+        type               = RAL_TEXTURE_TYPE_UNKNOWN;
     }
 } ral_texture_view_create_info;
 

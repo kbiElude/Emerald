@@ -34,7 +34,12 @@ typedef enum
      * Also takes TEXT_STRING_ID_DEFAULT as string id */
     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
 
-    /* settable, GLint[4]. (-1, -1, -1, -1) disables the scissor test for the string.
+    /* settable, int32_t[4]. (-1, -1, -1, -1) disables the scissor test for the string.
+     *
+     * [0]: x
+     * [1]: y
+     * [2]: width
+     * [3]: height
      *
      * Scissor test is disabled by default
      */
@@ -57,19 +62,15 @@ typedef enum
 PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_string(varia_text_renderer text);
 
 /** TODO */
-PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_ansi_string name,
-                                                                  ral_context               context,
-                                                                  gfx_bfg_font_table        font_table,
-                                                                  uint32_t                  screen_width,
-                                                                  uint32_t                  screen_height);
+PUBLIC varia_text_renderer varia_text_renderer_create(system_hashed_ansi_string name,
+                                                      ral_context               context,
+                                                      gfx_bfg_font_table        font_table,
+                                                      uint32_t                  screen_width,
+                                                      uint32_t                  screen_height);
 
 /** TODO */
 PUBLIC EMERALD_API void varia_text_renderer_delete_string(varia_text_renderer                text,
                                                           varia_text_renderer_text_string_id text_id);
-
-/** TODO */
-PUBLIC EMERALD_API void varia_text_renderer_draw(ral_context         context,
-                                                 varia_text_renderer text);
 
 /** TODO */
 PUBLIC EMERALD_API const unsigned char* varia_text_renderer_get(varia_text_renderer                text,
@@ -79,7 +80,8 @@ PUBLIC EMERALD_API const unsigned char* varia_text_renderer_get(varia_text_rende
 PUBLIC EMERALD_API uint32_t varia_text_renderer_get_added_strings_counter(varia_text_renderer instance);
 
 /** TODO */
-PUBLIC EMERALD_API ral_context varia_text_renderer_get_context(varia_text_renderer text);
+PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer text,
+                                                             ral_texture_view    target_texture_view);
 
 /** TODO */
 PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_renderer                      text,

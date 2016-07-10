@@ -649,8 +649,9 @@ PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            int
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &scissor;
-        gfx_state_create_info.static_scissor_boxes_and_viewports   = true;
+        gfx_state_create_info.static_scissor_boxes_enabled         = true;
         gfx_state_create_info.static_viewports                     = &viewport;
+        gfx_state_create_info.static_viewports_enabled             = true;
 
         texture_preview_ptr->last_cached_gfx_state = ral_gfx_state_create(texture_preview_ptr->context,
                                                                          &gfx_state_create_info);

@@ -37,6 +37,11 @@ PUBLIC EMERALD_API void ral_program_block_buffer_set_nonarrayed_variable_value(r
                                                                                const void*              src_data,
                                                                                unsigned int             src_data_size);
 
-PUBLIC EMERALD_API void ral_program_block_buffer_sync(ral_program_block_buffer block_buffer);
+/** TODO */
+PUBLIC EMERALD_API void ral_program_block_buffer_sync_immediately(ral_program_block_buffer block_buffer);
+
+/** TODO */
+PUBLIC EMERALD_API void ral_program_block_buffer_sync_via_command_buffer(ral_program_block_buffer block_buffer,
+                                                                         ral_command_buffer       command_buffer);
 
 #endif /* RAL_PROGRAM_BLOCK_BUFFER_H */

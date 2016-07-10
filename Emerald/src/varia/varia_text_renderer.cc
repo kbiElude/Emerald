@@ -18,13 +18,17 @@
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_gfx_state.h"
 #include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_rendering_handler.h"
+#include "ral/ral_sampler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -33,7 +37,6 @@
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
 #include "varia/varia_text_renderer.h"
-#include <map>
 
 #define DEFAULT_COLOR_R (1)
 #define DEFAULT_COLOR_G (0)
@@ -52,24 +55,29 @@ typedef struct
 
     ral_buffer data_buffer;
 
-    GLuint                   fsdata_index;
     ral_program_block_buffer fsdata_ub;
-    GLuint                   vsdata_index;
     ral_program_block_buffer vsdata_ub;
+
+    ral_command_buffer last_cached_command_buffer;
+    ral_gfx_state      last_cached_gfx_state;
+    ral_present_task   last_cached_present_task;
+    bool               last_cached_present_task_dirty;
+    ral_texture_view   last_cached_present_task_target_texture_view; /* do NOT release */
 
     float default_color[3];
     float default_scale;
 
     system_critical_section   draw_cs;
-    GLuint                    draw_text_fragment_shader_color_ub_offset;
-    GLuint                    draw_text_fragment_shader_font_table_location;
+    uint32_t                  draw_text_fragment_shader_color_ub_offset;
     ral_program               draw_text_program;
     ral_program_block_buffer  draw_text_program_data_ssb;
-    GLuint                    draw_text_vertex_shader_n_origin_character_ub_offset;
-    GLuint                    draw_text_vertex_shader_scale_ub_offset;
+    uint32_t                  draw_text_vertex_shader_n_origin_character_ub_offset;
+    uint32_t                  draw_text_vertex_shader_scale_ub_offset;
 
     gfx_bfg_font_table        font_table;
-    ral_texture               font_table_to;
+    ral_texture               font_table_texture;
+    ral_texture_view          font_table_texture_view;
+    ral_sampler               sampler;
 
     system_hashed_ansi_string name;
     ral_context               owner_context;
@@ -77,31 +85,7 @@ typedef struct
     uint32_t                  screen_width;
     system_resizable_vector   strings;
 
-    ral_context  context;
-
-    /* GL function pointers cache */
-    PFNGLPOLYGONMODEPROC           gl_pGLPolygonMode;
-    PFNGLTEXTUREPARAMETERIEXTPROC  gl_pGLTextureParameteriEXT;
-    PFNGLACTIVETEXTUREPROC         pGLActiveTexture;
-    PFNGLBINDBUFFERPROC            pGLBindBuffer;
-    PFNGLBINDBUFFERRANGEPROC       pGLBindBufferRange;
-    PFNGLBINDSAMPLERPROC           pGLBindSampler;
-    PFNGLBINDTEXTUREPROC           pGLBindTexture;
-    PFNGLBINDVERTEXARRAYPROC       pGLBindVertexArray;
-    PFNGLBLENDEQUATIONPROC         pGLBlendEquation;
-    PFNGLBLENDFUNCPROC             pGLBlendFunc;
-    PFNGLDELETEVERTEXARRAYSPROC    pGLDeleteVertexArrays;
-    PFNGLDISABLEPROC               pGLDisable;
-    PFNGLDRAWARRAYSPROC            pGLDrawArrays;
-    PFNGLENABLEPROC                pGLEnable;
-    PFNGLGENVERTEXARRAYSPROC       pGLGenVertexArrays;
-    PFNGLGENERATEMIPMAPPROC        pGLGenerateMipmap;
-    PFNGLPROGRAMUNIFORM1IPROC      pGLProgramUniform1i;
-    PFNGLSCISSORPROC               pGLScissor;
-    PFNGLTEXBUFFERRANGEPROC        pGLTexBufferRange;
-    PFNGLTEXPARAMETERIPROC         pGLTexParameteri;
-    PFNGLUSEPROGRAMPROC            pGLUseProgram;
-    PFNGLVIEWPORTPROC              pGLViewport;
+    ral_context context;
 
     REFCOUNT_INSERT_VARIABLES
 } _varia_text_renderer;
@@ -109,11 +93,11 @@ typedef struct
 typedef struct
 {
     bool           visible;
-    GLfloat        color[3];
+    float          color[3];
     unsigned int   height_px;
     float          position[2];
     float          scale;
-    GLint          scissor_box[4];
+    int32_t        scissor_box[4];
     unsigned char* string;
     unsigned int   string_buffer_length;
     unsigned int   string_length;
@@ -204,42 +188,115 @@ static const char* vertex_shader_template = "#ifdef GL_ES\n"
                                             "}\n";
 
 
-/* Private forward declarations */
-PRIVATE void _varia_text_renderer_construction_callback_from_renderer        (ogl_context context,
-                                                                              void*       text);
-PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(ogl_context context,
-                                                                              void*       text);
-PRIVATE void _varia_text_renderer_destruction_callback_from_renderer         (ogl_context context,
-                                                                              void*       text);
-PRIVATE void _varia_text_renderer_draw_callback_from_renderer                (ogl_context context,
-                                                                              void*       text);
-PRIVATE void _varia_text_renderer_release                                    (void*       text);
-PRIVATE void _varia_text_renderer_update_vram_data_storage                   (ogl_context context,
-                                                                              void*       text);
-
 /* Private functions */
 
-/** TODO */
-PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_context context,
-                                                                      void*       text)
+/** Please see header for specification */
+PRIVATE void _varia_text_renderer_create_font_table_to(_varia_text_renderer* text_ptr)
 {
-    raGL_program          draw_text_program_raGL    = nullptr;
-    GLuint                draw_text_program_raGL_id = -1;
-    _varia_text_renderer* text_ptr                  = (_varia_text_renderer*) text;
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
 
-    if (context == nullptr)
-    {
-        context = ral_context_get_gl_context(text_ptr->context);
-    }
+    ral_context_get_property(text_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
 
+    /* Retrieve font table properties */
+    const unsigned char* font_table_data_ptr = gfx_bfg_font_table_get_data_pointer(text_ptr->font_table);
+    uint32_t             font_table_height   = 0;
+    uint32_t             font_table_width    = 0;
+
+    gfx_bfg_font_table_get_data_properties(text_ptr->font_table,
+                                          &font_table_width,
+                                          &font_table_height);
+
+    /* Create a RAL texture for the font table */
+    ral_texture_create_info         texture_create_info;
+    const system_hashed_ansi_string texture_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
+                                                                                                          system_hashed_ansi_string_get_buffer(text_ptr->name) );
+
+    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> texture_update_ptr(new ral_texture_mipmap_client_sourced_update_info() );
+
+    texture_create_info.base_mipmap_depth      = 1;
+    texture_create_info.base_mipmap_height     = font_table_height;
+    texture_create_info.base_mipmap_width      = font_table_width;
+    texture_create_info.fixed_sample_locations = false;
+    texture_create_info.format                 = RAL_FORMAT_RGB8_UNORM;
+    texture_create_info.n_layers               = 1;
+    texture_create_info.n_samples              = 1;
+    texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    texture_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
+    texture_create_info.use_full_mipmap_chain  = false;
+
+    texture_update_ptr->data                    = font_table_data_ptr;
+    texture_update_ptr->data_row_alignment      = 1;
+    texture_update_ptr->data_size               = 3 * font_table_width * font_table_height;
+    texture_update_ptr->data_type               = RAL_TEXTURE_DATA_TYPE_UBYTE;
+    texture_update_ptr->pfn_delete_handler_proc = nullptr;
+    texture_update_ptr->n_layer                 = 0;
+    texture_update_ptr->n_mipmap                = 0;
+    texture_update_ptr->region_size[0]          = font_table_width;
+    texture_update_ptr->region_size[1]          = font_table_height;
+    texture_update_ptr->region_size[2]          = 0;
+    texture_update_ptr->region_start_offset[0]  = 0;
+    texture_update_ptr->region_start_offset[1]  = 0;
+    texture_update_ptr->region_start_offset[2]  = 0;
+
+    ral_context_create_textures                   (text_ptr->context,
+                                                   1, /* n_textures */
+                                                  &texture_create_info,
+                                                  &text_ptr->font_table_texture);
+    ral_texture_set_mipmap_data_from_client_memory(text_ptr->font_table_texture,
+                                                   1, /* n_updates */
+                                                  &texture_update_ptr,
+                                                   true /* async */);
+
+    /* Create a font table texture view. Note that we need to swizzle R channel with B,
+     * because the original data uses BGR layout.
+     */
+    ral_texture_view_create_info texture_view_create_info;
+
+    texture_view_create_info.aspect             = RAL_TEXTURE_ASPECT_COLOR_BIT;
+    texture_view_create_info.component_order[0] = RAL_TEXTURE_COMPONENT_BLUE;
+    texture_view_create_info.component_order[1] = RAL_TEXTURE_COMPONENT_GREEN;
+    texture_view_create_info.component_order[2] = RAL_TEXTURE_COMPONENT_RED;
+    texture_view_create_info.format             = RAL_FORMAT_RGB8_UNORM;
+    texture_view_create_info.n_base_layer       = 0;
+    texture_view_create_info.n_base_mip         = 0;
+    texture_view_create_info.n_layers           = 1;
+    texture_view_create_info.n_mips             = 1;
+    texture_view_create_info.texture            = text_ptr->font_table_texture;
+    texture_view_create_info.type               = RAL_TEXTURE_TYPE_2D;
+
+    ral_context_create_texture_views(text_ptr->context,
+                                     1, /* n_texture_views */
+                                    &texture_view_create_info,
+                                    &text_ptr->font_table_texture_view);
+
+    /* Create a sampler we will use for sampling the texture view */
+    ral_sampler_create_info sampler_create_info;
+
+    sampler_create_info.mag_filter  = RAL_TEXTURE_FILTER_LINEAR;
+    sampler_create_info.min_filter  = RAL_TEXTURE_FILTER_LINEAR;
+    sampler_create_info.mipmap_mode = RAL_TEXTURE_MIPMAP_MODE_NEAREST;
+    sampler_create_info.wrap_s      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
+    sampler_create_info.wrap_t      = RAL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE;
+
+    ral_context_create_samplers(text_ptr->context,
+                                1, /* n_create_info_items */
+                                &sampler_create_info,
+                                &text_ptr->sampler);
+}
+
+/** TODO */
+PRIVATE void _varia_text_renderer_init_programs(_varia_text_renderer* text_ptr)
+{
     const ral_shader_create_info draw_text_fs_create_info =
     {
-        system_hashed_ansi_string_create("ogl_text fragment shader"),
+        system_hashed_ansi_string_create("varia_text_renderer fragment shader"),
         RAL_SHADER_TYPE_FRAGMENT
     };
     const ral_shader_create_info draw_text_vs_create_info =
     {
-        system_hashed_ansi_string_create("ogl_text vertex shader"),
+        system_hashed_ansi_string_create("varia_text_renderer vertex shader"),
         RAL_SHADER_TYPE_VERTEX
     };
     const ral_shader_create_info shader_create_info_items[] =
@@ -253,7 +310,7 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
     const ral_program_create_info draw_text_program_create_info =
     {
         RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX,
-        system_hashed_ansi_string_create("ogl_text program")
+        system_hashed_ansi_string_create("varia_text_renderer program")
     };
 
 
@@ -308,7 +365,7 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
                    << vertex_shader_template;
     }
 
-    /* Assign the bodies to the shaders */
+    /* Assign bodies to the shaders */
     const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create(fs_sstream.str().c_str() );
     const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(vs_sstream.str().c_str() );
 
@@ -331,17 +388,9 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
     }
 
     /* Retrieve uniform locations */
-    const ral_program_variable*   fragment_shader_color_ral_ptr            = nullptr;
-    const _raGL_program_variable* fragment_shader_font_table_raGL_ptr      = nullptr;
-    const ral_program_variable*   vertex_shader_n_origin_character_ral_ptr = nullptr;
-    const ral_program_variable*   vertex_shader_scale_ral_ptr              = nullptr;
-
-    draw_text_program_raGL = ral_context_get_program_gl(text_ptr->context,
-                                                        text_ptr->draw_text_program);
-
-    raGL_program_get_property(draw_text_program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &draw_text_program_raGL_id);
+    const ral_program_variable* fragment_shader_color_ral_ptr            = nullptr;
+    const ral_program_variable* vertex_shader_n_origin_character_ral_ptr = nullptr;
+    const ral_program_variable* vertex_shader_scale_ral_ptr              = nullptr;
 
     if (!ral_program_get_block_variable_by_name(text_ptr->draw_text_program,
                                                 system_hashed_ansi_string_create("FSData"),
@@ -350,14 +399,6 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not retrieve color uniform descriptor.");
-    }
-
-    if (!raGL_program_get_uniform_by_name(draw_text_program_raGL,
-                                          system_hashed_ansi_string_create("font_table"),
-                                         &fragment_shader_font_table_raGL_ptr) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not retrieve font table uniform descriptor.");
     }
 
     if (!ral_program_get_block_variable_by_name(text_ptr->draw_text_program,
@@ -383,7 +424,6 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
                                                                            system_hashed_ansi_string_create("dataSSB") );
 
     text_ptr->draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_ral_ptr->block_offset;
-    text_ptr->draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_raGL_ptr->location;
     text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_ral_ptr->block_offset;
     text_ptr->draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_ral_ptr->block_offset;
 
@@ -393,11 +433,6 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
                       "VSData n_origin_character UB offset is -1");
     ASSERT_DEBUG_SYNC(text_ptr->draw_text_vertex_shader_scale_ub_offset != -1,
                       "VSData scale UB offset is -1");
-
-    /* Set up samplers */
-    text_ptr->pGLProgramUniform1i(draw_text_program_raGL_id,
-                                  text_ptr->draw_text_fragment_shader_font_table_location,
-                                  1);
 
     /* Delete the shader objects */
     ral_context_delete_objects(text_ptr->context,
@@ -412,111 +447,10 @@ PRIVATE void _varia_text_renderer_construction_callback_from_renderer(ogl_contex
     text_ptr->vsdata_ub = ral_program_block_buffer_create(text_ptr->context,
                                                           text_ptr->draw_text_program,
                                                           system_hashed_ansi_string_create("VSData") );
-
-    raGL_program_get_block_property_by_name(draw_text_program_raGL,
-                                            system_hashed_ansi_string_create("FSData"),
-                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                           &text_ptr->fsdata_index);
-    raGL_program_get_block_property_by_name(draw_text_program_raGL,
-                                            system_hashed_ansi_string_create("VSData"),
-                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                           &text_ptr->vsdata_index);
-
-    ASSERT_DEBUG_SYNC(text_ptr->fsdata_index != text_ptr->vsdata_index,
-                      "BPs match");
 }
 
 /** Please see header for specification */
-PRIVATE void _varia_text_renderer_create_font_table_to_callback_from_renderer(ogl_context context,
-                                                                              void*       text)
-{
-    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
-
-    ral_context_get_property(text_ptr->context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                            &backend_type);
-
-    /* Retrieve font table properties */
-    const unsigned char* font_table_data_ptr = gfx_bfg_font_table_get_data_pointer(text_ptr->font_table);
-    uint32_t             font_table_height   = 0;
-    uint32_t             font_table_width    = 0;
-
-    gfx_bfg_font_table_get_data_properties(text_ptr->font_table,
-                                          &font_table_width,
-                                          &font_table_height);
-
-    /* Create the descriptor */
-    ral_texture_create_info         to_create_info;
-    const system_hashed_ansi_string to_name = system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
-                                                                                                     system_hashed_ansi_string_get_buffer(text_ptr->name) );
-
-    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info> to_update_ptr(new ral_texture_mipmap_client_sourced_update_info() );
-
-    to_create_info.base_mipmap_depth      = 1;
-    to_create_info.base_mipmap_height     = font_table_height;
-    to_create_info.base_mipmap_width      = font_table_width;
-    to_create_info.fixed_sample_locations = false;
-    to_create_info.format                 = RAL_TEXTURE_FORMAT_RGB8_UNORM;
-    to_create_info.n_layers               = 1;
-    to_create_info.n_samples              = 1;
-    to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
-    to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
-    to_create_info.use_full_mipmap_chain  = false;
-
-    to_update_ptr->data                    = font_table_data_ptr;
-    to_update_ptr->data_row_alignment      = 1;
-    to_update_ptr->data_size               = 3 * font_table_width * font_table_height;
-    to_update_ptr->data_type               = RAL_TEXTURE_DATA_TYPE_UBYTE;
-    to_update_ptr->pfn_delete_handler_proc = nullptr;
-    to_update_ptr->n_layer                 = 0;
-    to_update_ptr->n_mipmap                = 0;
-    to_update_ptr->region_size[0]          = font_table_width;
-    to_update_ptr->region_size[1]          = font_table_height;
-    to_update_ptr->region_size[2]          = 0;
-    to_update_ptr->region_start_offset[0]  = 0;
-    to_update_ptr->region_start_offset[1]  = 0;
-    to_update_ptr->region_start_offset[2]  = 0;
-
-    ral_context_create_textures                   (text_ptr->context,
-                                                   1, /* n_textures */
-                                                  &to_create_info,
-                                                  &text_ptr->font_table_to);
-    ral_texture_set_mipmap_data_from_client_memory(text_ptr->font_table_to,
-                                                   1, /* n_updates */
-                                                  &to_update_ptr,
-                                                   true /* async */);
-
-    text_ptr->pGLBindTexture   (GL_TEXTURE_2D,
-                                ral_context_get_texture_gl_id(text_ptr->context,
-                                                              text_ptr->font_table_to) );
-    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                GL_TEXTURE_WRAP_S,
-                                GL_CLAMP_TO_EDGE);
-    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                GL_TEXTURE_WRAP_T,
-                                GL_CLAMP_TO_EDGE);
-    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                GL_TEXTURE_MAG_FILTER,
-                                GL_LINEAR);
-    text_ptr->pGLTexParameteri (GL_TEXTURE_2D,
-                                GL_TEXTURE_MIN_FILTER,
-                                GL_LINEAR);
-
-    /* Note that texture data is stored in BGR order. We would have just gone with GL_BGR
-     * format under GL context, but this is not supported under ES. What we can do, however,
-     * is use GL_TEXTURE_SWIZZLE parameters of the texture object. */
-    text_ptr->pGLTexParameteri(GL_TEXTURE_2D,
-                               GL_TEXTURE_SWIZZLE_R,
-                               GL_BLUE);
-    text_ptr->pGLTexParameteri(GL_TEXTURE_2D,
-                               GL_TEXTURE_SWIZZLE_B,
-                               GL_RED);
-}
-
-/** Please see header for specification */
-PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context context,
-                                                                     void*       text)
+PRIVATE void _varia_text_renderer_release(void* text)
 {
     _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
 
@@ -546,15 +480,15 @@ PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context
     }
 
     /* Get rid of all the shaders and programs */
-    ral_context_delete_objects(text_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                               1, /* n_objects */
-                               (const void**) &text_ptr->draw_text_program);
+    if (text_ptr->draw_text_program != nullptr)
+    {
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   (const void**) &text_ptr->draw_text_program);
 
-    ral_context_delete_objects(text_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                               1, /* n_textures */
-                               (const void**) &text_ptr->font_table_to);
+        text_ptr->draw_text_program = nullptr;
+    }
 
     if (text_ptr->draw_text_program_data_ssb != nullptr)
     {
@@ -563,259 +497,9 @@ PRIVATE void _varia_text_renderer_destruction_callback_from_renderer(ogl_context
         text_ptr->draw_text_program_data_ssb = nullptr;
     }
 
-    text_ptr->draw_text_program                                    = nullptr;
     text_ptr->draw_text_fragment_shader_color_ub_offset            = -1;
-    text_ptr->draw_text_fragment_shader_font_table_location        = -1;
     text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset = -1;
     text_ptr->draw_text_vertex_shader_scale_ub_offset              = -1;
-}
-
-/** Please see header for specification */
-PRIVATE void _varia_text_renderer_draw_callback_from_renderer(ogl_context context,
-                                                              void*       text)
-{
-    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    uint32_t              fb_resolution[2];
-    uint32_t              n_strings    = 0;
-    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
-
-    const raGL_program program_raGL    = ral_context_get_program_gl(text_ptr->context,
-                                                                    text_ptr->draw_text_program);
-    GLuint             program_raGL_id = 0;
-
-    raGL_program_get_property(program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_raGL_id);
-
-    ral_context_get_property            (text_ptr->context,
-                                         RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE,
-                                         fb_resolution);
-    ral_context_get_property            (text_ptr->context,
-                                         RAL_CONTEXT_PROPERTY_BACKEND,
-                                        &backend_type);
-    system_resizable_vector_get_property(text_ptr->strings,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_strings);
-
-    system_critical_section_enter(text_ptr->draw_cs);
-    {
-        text_ptr->pGLViewport(0,
-                              0,
-                              fb_resolution[0],
-                              fb_resolution[1]);
-
-        /* Update underlying helper data buffer contents - only if the "dirty flag" is on */
-        if (text_ptr->dirty)
-        {
-            _varia_text_renderer_update_vram_data_storage(context,
-                                                          text);
-
-            text_ptr->dirty = false;
-        }
-
-        /* Carry on */
-        if (n_strings > 0)
-        {
-            GLuint vao_id = 0;
-
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
-                                    &vao_id);
-
-            /* Mark the text drawing program as active */
-            if (backend_type == RAL_BACKEND_TYPE_GL)
-            {
-                text_ptr->gl_pGLPolygonMode(GL_FRONT_AND_BACK,
-                                            GL_FILL);
-            }
-
-            text_ptr->pGLUseProgram (program_raGL_id);
-
-            /* Bind data BO to the 0-th SSBO BP */
-            GLuint      data_buffer_id                = 0;
-            raGL_buffer data_buffer_raGL              = nullptr;
-            uint32_t    data_buffer_raGL_start_offset = -1;
-            uint32_t    data_buffer_ral_start_offset  = -1;
-
-            data_buffer_raGL = ral_context_get_buffer_gl(text_ptr->context,
-                                                         text_ptr->data_buffer);
-
-            raGL_buffer_get_property(data_buffer_raGL,
-                                     RAGL_BUFFER_PROPERTY_ID,
-                                    &data_buffer_id);
-            raGL_buffer_get_property(data_buffer_raGL,
-                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &data_buffer_raGL_start_offset);
-            ral_buffer_get_property (text_ptr->data_buffer,
-                                     RAL_BUFFER_PROPERTY_START_OFFSET,
-                                    &data_buffer_ral_start_offset);
-
-            text_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                         0, /* index */
-                                         data_buffer_id,
-                                         data_buffer_raGL_start_offset + data_buffer_ral_start_offset,
-                                         text_ptr->data_buffer_contents_size);
-
-            /* Set up texture units */
-            text_ptr->pGLActiveTexture(GL_TEXTURE1);
-            text_ptr->pGLBindSampler  (1,  /* unit   */
-                                       0); /* sampler*/
-            text_ptr->pGLBindTexture  (GL_TEXTURE_2D,
-                                       ral_context_get_texture_gl_id(text_ptr->context,
-                                                                     text_ptr->font_table_to) );
-
-            /* Draw! */
-            GLuint      ub_fsdata_bo_id                =  0;
-            raGL_buffer ub_fsdata_bo_raGL              = nullptr;
-            uint32_t    ub_fsdata_bo_raGL_start_offset = -1;
-            ral_buffer  ub_fsdata_bo_ral               = nullptr;
-            uint32_t    ub_fsdata_bo_ral_start_offset  = -1;
-            uint32_t    ub_fsdata_bo_size              =  0;
-            GLuint      ub_vsdata_bo_id                =  0;
-            raGL_buffer ub_vsdata_bo_raGL              = nullptr;
-            uint32_t    ub_vsdata_bo_raGL_start_offset = -1;
-            ral_buffer  ub_vsdata_bo_ral               = nullptr;
-            uint32_t    ub_vsdata_bo_ral_start_offset  = -1;
-            uint32_t    ub_vsdata_bo_size              =  0;
-
-            ral_program_block_buffer_get_property(text_ptr->fsdata_ub,
-                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                                 &ub_fsdata_bo_ral);
-            ral_program_block_buffer_get_property(text_ptr->vsdata_ub,
-                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                                 &ub_vsdata_bo_ral);
-
-            ub_fsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
-                                                          ub_fsdata_bo_ral);
-            ub_vsdata_bo_raGL = ral_context_get_buffer_gl(text_ptr->context,
-                                                          ub_vsdata_bo_ral);
-
-            raGL_buffer_get_property(ub_fsdata_bo_raGL,
-                                     RAGL_BUFFER_PROPERTY_ID,
-                                    &ub_fsdata_bo_id);
-            raGL_buffer_get_property(ub_fsdata_bo_raGL,
-                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &ub_fsdata_bo_raGL_start_offset);
-            raGL_buffer_get_property(ub_vsdata_bo_raGL,
-                                     RAGL_BUFFER_PROPERTY_ID,
-                                    &ub_vsdata_bo_id);
-            raGL_buffer_get_property(ub_vsdata_bo_raGL,
-                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                    &ub_vsdata_bo_raGL_start_offset);
-
-            ral_buffer_get_property(ub_fsdata_bo_ral,
-                                    RAL_BUFFER_PROPERTY_SIZE,
-                                   &ub_fsdata_bo_size);
-            ral_buffer_get_property(ub_fsdata_bo_ral,
-                                    RAL_BUFFER_PROPERTY_START_OFFSET,
-                                   &ub_fsdata_bo_ral_start_offset);
-            ral_buffer_get_property(ub_vsdata_bo_ral,
-                                    RAL_BUFFER_PROPERTY_SIZE,
-                                   &ub_vsdata_bo_size);
-            ral_buffer_get_property(ub_vsdata_bo_ral,
-                                    RAL_BUFFER_PROPERTY_START_OFFSET,
-                                   &ub_vsdata_bo_ral_start_offset);
-
-            text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         text_ptr->fsdata_index,
-                                         ub_fsdata_bo_id,
-                                         ub_fsdata_bo_raGL_start_offset + ub_fsdata_bo_ral_start_offset,
-                                         ub_fsdata_bo_size);
-            text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         text_ptr->vsdata_index,
-                                         ub_vsdata_bo_id,
-                                         ub_vsdata_bo_raGL_start_offset + ub_vsdata_bo_ral_start_offset,
-                                         ub_vsdata_bo_size);
-
-            text_ptr->pGLBindVertexArray(vao_id);
-            text_ptr->pGLEnable         (GL_BLEND);
-            text_ptr->pGLDisable        (GL_DEPTH_TEST);
-            text_ptr->pGLBlendEquation  (GL_FUNC_ADD);
-            text_ptr->pGLBlendFunc      (GL_ONE,
-                                         GL_ONE_MINUS_SRC_ALPHA);
-            {
-                bool     has_enabled_scissor_test  = false;
-                uint32_t n_characters_drawn_so_far = 0;
-
-                for (uint32_t n_string = 0;
-                              n_string < n_strings;
-                            ++n_string)
-                {
-                    _varia_text_renderer_text_string* string_ptr = nullptr;
-
-                    system_resizable_vector_get_element_at(text_ptr->strings,
-                                                           n_string,
-                                                          &string_ptr);
-
-                    if (string_ptr->visible)
-                    {
-                        if (string_ptr->scissor_box[0] == -1 &&
-                            string_ptr->scissor_box[1] == -1 &&
-                            string_ptr->scissor_box[2] == -1 &&
-                            string_ptr->scissor_box[3] == -1)
-                        {
-                            text_ptr->pGLDisable(GL_SCISSOR_TEST);
-
-                            has_enabled_scissor_test = false;
-                        }
-                        else
-                        {
-                            text_ptr->pGLEnable (GL_SCISSOR_TEST);
-                            text_ptr->pGLScissor(string_ptr->scissor_box[0],
-                                                 string_ptr->scissor_box[1],
-                                                 string_ptr->scissor_box[2],
-                                                 string_ptr->scissor_box[3]);
-
-                            has_enabled_scissor_test = true;
-                        }
-
-                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->fsdata_ub,
-                                                                               text_ptr->draw_text_fragment_shader_color_ub_offset,
-                                                                               string_ptr->color,
-                                                                               sizeof(float) * 3);
-                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->vsdata_ub,
-                                                                               text_ptr->draw_text_vertex_shader_scale_ub_offset,
-                                                                              &string_ptr->scale,
-                                                                               sizeof(float) );
-                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->vsdata_ub,
-                                                                               text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset,
-                                                                              &n_characters_drawn_so_far,
-                                                                               sizeof(int) );
-
-                        ral_program_block_buffer_sync(text_ptr->fsdata_ub);
-                        ral_program_block_buffer_sync(text_ptr->vsdata_ub);
-
-                        text_ptr->pGLDrawArrays(GL_TRIANGLES,
-                                                n_characters_drawn_so_far * 6,
-                                                string_ptr->string_length * 6);
-                    }
-
-                    n_characters_drawn_so_far += string_ptr->string_length;
-                }
-
-                if (has_enabled_scissor_test)
-                {
-                    text_ptr->pGLDisable(GL_SCISSOR_TEST);
-                }
-            }
-            text_ptr->pGLDisable(GL_BLEND);
-
-            /* Clean up */
-            text_ptr->pGLUseProgram (0);
-        }
-    }
-    system_critical_section_leave(text_ptr->draw_cs);
-}
-
-/** Please see header for specification */
-PRIVATE void _varia_text_renderer_release(void* text)
-{
-    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
-
-    /* First we need to call-back from the rendering thread, in order to free resources owned by GL */
-    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(text_ptr->owner_context),
-                                                     _varia_text_renderer_destruction_callback_from_renderer,
-                                                     text);
 
     /* Release other stuff */
     if (text_ptr->data_buffer_contents != nullptr)
@@ -832,6 +516,57 @@ PRIVATE void _varia_text_renderer_release(void* text)
         text_ptr->draw_cs = nullptr;
     }
 
+    if (text_ptr->font_table_texture != nullptr)
+    {
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   1, /* n_textures */
+                                   (const void**) &text_ptr->font_table_texture);
+
+        text_ptr->font_table_texture = nullptr;
+    }
+
+    if (text_ptr->font_table_texture_view != nullptr)
+    {
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   1, /* n_textures */
+                                   (const void**) &text_ptr->font_table_texture_view);
+
+        text_ptr->font_table_texture_view = nullptr;
+    }
+
+    if (text_ptr->last_cached_command_buffer != nullptr)
+    {
+        ral_command_buffer_release(text_ptr->last_cached_command_buffer);
+
+        text_ptr->last_cached_command_buffer = nullptr;
+    }
+
+    if (text_ptr->last_cached_gfx_state != nullptr)
+    {
+        ral_gfx_state_release(text_ptr->last_cached_gfx_state);
+
+        text_ptr->last_cached_gfx_state = nullptr;
+    }
+
+    if (text_ptr->last_cached_present_task != nullptr)
+    {
+        ral_present_task_release(text_ptr->last_cached_present_task);
+
+        text_ptr->last_cached_present_task = nullptr;
+    }
+
+    if (text_ptr->sampler != nullptr)
+    {
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                   1, /* n_textures */
+                                   (const void**) &text_ptr->sampler);
+
+        text_ptr->sampler = nullptr;
+    }
+
     if (text_ptr->strings != nullptr)
     {
         system_resizable_vector_release(text_ptr->strings);
@@ -841,11 +576,17 @@ PRIVATE void _varia_text_renderer_release(void* text)
 }
 
 /** TODO */
-PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
-                                                           void*       text)
+PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(void* text_raw_ptr)
 {
-    ral_backend_type      backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    _varia_text_renderer* text_ptr     = (_varia_text_renderer*) text;
+    ral_backend_type                                                     backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    ral_buffer_client_sourced_update_info                                data_update;
+    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > data_update_ptrs;
+    _varia_text_renderer*                                                text_ptr     = reinterpret_cast<_varia_text_renderer*>(text_raw_ptr);
+
+    if (!text_ptr->dirty)
+    {
+        goto end;
+    }
 
     ral_context_get_property(text_ptr->context,
                              RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
@@ -978,9 +719,6 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
     }
 
     /* Upload the data */
-    ral_buffer_client_sourced_update_info                                data_update;
-    std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > data_update_ptrs;
-
     data_update.data         = text_ptr->data_buffer_contents;
     data_update.data_size    = text_ptr->data_buffer_contents_size;
     data_update.start_offset = 0;
@@ -992,6 +730,10 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage(ogl_context context,
                                            data_update_ptrs,
                                            false, /* async */
                                            false  /* sync_other_contexts */);
+
+end:
+    text_ptr->dirty = false;
+    ;
 }
 
 
@@ -1013,20 +755,21 @@ PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_st
                text_ptr->default_color,
                sizeof(text_string_ptr->color) );
 
-        text_string_ptr->height_px            = 0;
-        text_string_ptr->position[0]          = 0;
-        text_string_ptr->position[1]          = 0;
-        text_string_ptr->scale                = text_ptr->default_scale;
-        text_string_ptr->scissor_box[0]       = -1;
-        text_string_ptr->scissor_box[1]       = -1;
-        text_string_ptr->scissor_box[2]       = -1;
-        text_string_ptr->scissor_box[3]       = -1;
-        text_string_ptr->string               = nullptr;
-        text_string_ptr->string_buffer_length = 0;
-        text_string_ptr->string_length        = 0;
-        text_string_ptr->width_px             = 0;
-        text_string_ptr->visible              = true;
-        text_ptr->dirty                       = true;
+        text_string_ptr->height_px               = 0;
+        text_string_ptr->position[0]             = 0;
+        text_string_ptr->position[1]             = 0;
+        text_string_ptr->scale                   = text_ptr->default_scale;
+        text_string_ptr->scissor_box[0]          = -1;
+        text_string_ptr->scissor_box[1]          = -1;
+        text_string_ptr->scissor_box[2]          = -1;
+        text_string_ptr->scissor_box[3]          = -1;
+        text_string_ptr->string                  = nullptr;
+        text_string_ptr->string_buffer_length    = 0;
+        text_string_ptr->string_length           = 0;
+        text_string_ptr->width_px                = 0;
+        text_string_ptr->visible                 = true;
+        text_ptr->dirty                          = true;
+        text_ptr->last_cached_present_task_dirty = true;
 
         system_resizable_vector_get_property(text_ptr->strings,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1045,11 +788,11 @@ PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_st
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_ansi_string name,
-                                                                  ral_context               context,
-                                                                  gfx_bfg_font_table        font_table,
-                                                                  uint32_t                  screen_width,
-                                                                  uint32_t                  screen_height)
+PUBLIC varia_text_renderer varia_text_renderer_create(system_hashed_ansi_string name,
+                                                      ral_context               context,
+                                                      gfx_bfg_font_table        font_table,
+                                                      uint32_t                  screen_width,
+                                                      uint32_t                  screen_height)
 {
     _varia_text_renderer* result_ptr = nullptr;
 
@@ -1078,10 +821,6 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
     }
     else
     {
-        /* Now that we have place to store OGL-specific ids, we can request a call-back from context thread to fill them up.
-         * Before that, however, fill the structure with data that is necessary for that to happen. */
-        ogl_context context_gl = ral_context_get_gl_context(context);
-
         memset(result_ptr,
                0,
                sizeof(_varia_text_renderer) );
@@ -1093,113 +832,23 @@ PUBLIC EMERALD_API varia_text_renderer varia_text_renderer_create(system_hashed_
         result_ptr->default_scale    = DEFAULT_SCALE;
         result_ptr->draw_cs          = system_critical_section_create();
         result_ptr->font_table       = font_table;
-        result_ptr->fsdata_index     = -1;
         result_ptr->fsdata_ub        = nullptr;
         result_ptr->name             = name;
         result_ptr->owner_context    = context;
         result_ptr->screen_width     = screen_width;
         result_ptr->screen_height    = screen_height;
         result_ptr->strings          = system_resizable_vector_create(4 /* default capacity */);
-        result_ptr->vsdata_index     = -1;
         result_ptr->vsdata_ub        = nullptr;
 
-        /* Retrieve TBO alignment requirement */
-        const ogl_context_gl_limits* limits_ptr = nullptr;
-
-        ogl_context_get_property(context_gl,
-                                 OGL_CONTEXT_PROPERTY_LIMITS,
-                                &limits_ptr);
-
-        result_ptr->shader_storage_buffer_offset_alignment = limits_ptr->shader_storage_buffer_offset_alignment;
-
-        /* Initialize GL func pointers */
-        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-
         ral_context_get_property(context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                                &backend_type);
-
-        if (backend_type == RAL_BACKEND_TYPE_ES)
-        {
-            const ogl_context_es_entrypoints*                    entry_points_ptr    = nullptr;
-            const ogl_context_es_entrypoints_ext_texture_buffer* ts_entry_points_ptr = nullptr;
-
-            ogl_context_get_property(context_gl,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entry_points_ptr);
-            ogl_context_get_property(context_gl,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER,
-                                    &ts_entry_points_ptr);
-
-            result_ptr->pGLActiveTexture      = entry_points_ptr->pGLActiveTexture;
-            result_ptr->pGLBindBuffer         = entry_points_ptr->pGLBindBuffer;
-            result_ptr->pGLBindBufferRange    = entry_points_ptr->pGLBindBufferRange;
-            result_ptr->pGLBindSampler        = entry_points_ptr->pGLBindSampler;
-            result_ptr->pGLBindTexture        = entry_points_ptr->pGLBindTexture;
-            result_ptr->pGLBindVertexArray    = entry_points_ptr->pGLBindVertexArray;
-            result_ptr->pGLBlendEquation      = entry_points_ptr->pGLBlendEquation;
-            result_ptr->pGLBlendFunc          = entry_points_ptr->pGLBlendFunc;
-            result_ptr->pGLDeleteVertexArrays = entry_points_ptr->pGLDeleteVertexArrays;
-            result_ptr->pGLDisable            = entry_points_ptr->pGLDisable;
-            result_ptr->pGLDrawArrays         = entry_points_ptr->pGLDrawArrays;
-            result_ptr->pGLEnable             = entry_points_ptr->pGLEnable;
-            result_ptr->pGLGenVertexArrays    = entry_points_ptr->pGLGenVertexArrays;
-            result_ptr->pGLGenerateMipmap     = entry_points_ptr->pGLGenerateMipmap;
-            result_ptr->pGLProgramUniform1i   = entry_points_ptr->pGLProgramUniform1i;
-            result_ptr->pGLScissor            = entry_points_ptr->pGLScissor;
-            result_ptr->pGLTexBufferRange     = ts_entry_points_ptr->pGLTexBufferRangeEXT;
-            result_ptr->pGLTexParameteri      = entry_points_ptr->pGLTexParameteri;
-            result_ptr->pGLUseProgram         = entry_points_ptr->pGLUseProgram;
-            result_ptr->pGLViewport           = entry_points_ptr->pGLViewport;
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
-                              "Unrecognized backend type");
-
-            const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points_ptr = nullptr;
-            const ogl_context_gl_entrypoints*                         entry_points_ptr     = nullptr;
-
-            ogl_context_get_property(context_gl,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entry_points_ptr);
-            ogl_context_get_property(context_gl,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                                    &dsa_entry_points_ptr);
-
-            result_ptr->gl_pGLPolygonMode           = entry_points_ptr->pGLPolygonMode;
-            result_ptr->gl_pGLTextureParameteriEXT  = dsa_entry_points_ptr->pGLTextureParameteriEXT;
-            result_ptr->pGLActiveTexture            = entry_points_ptr->pGLActiveTexture;
-            result_ptr->pGLBindBuffer               = entry_points_ptr->pGLBindBuffer;
-            result_ptr->pGLBindBufferRange          = entry_points_ptr->pGLBindBufferRange;
-            result_ptr->pGLBindSampler              = entry_points_ptr->pGLBindSampler;
-            result_ptr->pGLBindTexture              = entry_points_ptr->pGLBindTexture;
-            result_ptr->pGLBindVertexArray          = entry_points_ptr->pGLBindVertexArray;
-            result_ptr->pGLBlendEquation            = entry_points_ptr->pGLBlendEquation;
-            result_ptr->pGLBlendFunc                = entry_points_ptr->pGLBlendFunc;
-            result_ptr->pGLDeleteVertexArrays       = entry_points_ptr->pGLDeleteVertexArrays;
-            result_ptr->pGLDisable                  = entry_points_ptr->pGLDisable;
-            result_ptr->pGLDrawArrays               = entry_points_ptr->pGLDrawArrays;
-            result_ptr->pGLEnable                   = entry_points_ptr->pGLEnable;
-            result_ptr->pGLGenVertexArrays          = entry_points_ptr->pGLGenVertexArrays;
-            result_ptr->pGLGenerateMipmap           = entry_points_ptr->pGLGenerateMipmap;
-            result_ptr->pGLProgramUniform1i         = entry_points_ptr->pGLProgramUniform1i;
-            result_ptr->pGLScissor                  = entry_points_ptr->pGLScissor;
-            result_ptr->pGLTexBufferRange           = entry_points_ptr->pGLTexBufferRange;
-            result_ptr->pGLTexParameteri            = entry_points_ptr->pGLTexParameteri;
-            result_ptr->pGLUseProgram               = entry_points_ptr->pGLUseProgram;
-            result_ptr->pGLViewport                 = entry_points_ptr->pGLViewport;
-        }
+                                 RAL_CONTEXT_PROPERTY_STORAGE_BUFFER_ALIGNMENT,
+                                &result_ptr->shader_storage_buffer_offset_alignment);
 
         /* Make sure the font table has been assigned a texture object */
-        ogl_context_request_callback_from_context_thread(context_gl,
-                                                         _varia_text_renderer_create_font_table_to_callback_from_renderer,
-                                                         result_ptr);
+        _varia_text_renderer_create_font_table_to(result_ptr);
 
-        /* We need a call-back, now */
-        ogl_context_request_callback_from_context_thread(context_gl,
-                                                         _varia_text_renderer_construction_callback_from_renderer,
-                                                         result_ptr);
+        /* Initialize rendering programs */
+        _varia_text_renderer_init_programs(result_ptr);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
                                                        _varia_text_renderer_release,
@@ -1220,18 +869,6 @@ PUBLIC EMERALD_API void varia_text_renderer_delete_string(varia_text_renderer   
 {
     ASSERT_DEBUG_SYNC(false,
                       "TODO");
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API void varia_text_renderer_draw(ral_context         context,
-                                                 varia_text_renderer text)
-{
-    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
-
-    /* Make sure the request is handled from rendering thread */
-    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
-                                                     _varia_text_renderer_draw_callback_from_renderer,
-                                                     text);
 }
 
 /** Please see header for specification */
@@ -1265,9 +902,335 @@ PUBLIC EMERALD_API uint32_t varia_text_renderer_get_added_strings_counter(varia_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ral_context varia_text_renderer_get_context(varia_text_renderer text)
+PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer text,
+                                                             ral_texture_view    target_texture_view)
 {
-    return ((_varia_text_renderer*) text)->context;
+    /* TODO: This function should be rewritten to cache text string data with a single update buffer call
+     *       and draw text strings with instanced draw calls.
+     */
+    uint32_t              n_strings                  = 0;
+    ral_present_task      result                     = nullptr;
+    uint32_t              target_texture_view_height = 0;
+    uint32_t              target_texture_view_width  = 0;
+    _varia_text_renderer* text_ptr                   = reinterpret_cast<_varia_text_renderer*>(text);
+
+    /* Can we re-use the last present task we returned? */
+    if ( text_ptr->last_cached_present_task                     != nullptr             &&
+         text_ptr->last_cached_present_task_target_texture_view == target_texture_view &&
+        !text_ptr->last_cached_present_task_dirty)
+    {
+        result = text_ptr->last_cached_present_task;
+
+        goto end;
+    }
+    else
+    {
+        ral_present_task_release(text_ptr->last_cached_present_task);
+
+        text_ptr->last_cached_present_task = nullptr;
+    }
+
+    /* Can we re-use the cached gfx_state instance? */
+    ral_texture_view_get_mipmap_property(target_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                        &target_texture_view_height);
+    ral_texture_view_get_mipmap_property(target_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                        &target_texture_view_width);
+
+    if (text_ptr->last_cached_gfx_state != nullptr)
+    {
+        ral_command_buffer_set_viewport_command_info gfx_state_viewport;
+
+        ral_gfx_state_get_property(text_ptr->last_cached_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
+                                  &gfx_state_viewport);
+
+        if (fabs(gfx_state_viewport.size[0] - target_texture_view_width)  > 1e-5f ||
+            fabs(gfx_state_viewport.size[1] - target_texture_view_height) > 1e-5f)
+        {
+            ral_gfx_state_release(text_ptr->last_cached_gfx_state);
+
+            text_ptr->last_cached_gfx_state = nullptr;
+        }
+    }
+
+    if (text_ptr->last_cached_gfx_state == nullptr)
+    {
+        ral_gfx_state_create_info                    gfx_state_create_info;
+        ral_command_buffer_set_viewport_command_info gfx_state_viewport;
+
+        gfx_state_viewport.depth_range[0] = 0.0f;
+        gfx_state_viewport.depth_range[1] = 1.0f;
+        gfx_state_viewport.index          = 0;
+        gfx_state_viewport.size[0]        = static_cast<float>(target_texture_view_width);
+        gfx_state_viewport.size[1]        = static_cast<float>(target_texture_view_height);
+        gfx_state_viewport.xy  [0]        = 0.0f;
+        gfx_state_viewport.xy  [1]        = 0.0f;
+
+        gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLES;
+        gfx_state_create_info.scissor_test                         = true;
+        gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+        gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
+        gfx_state_create_info.static_viewports_enabled             = true;
+
+        text_ptr->last_cached_gfx_state = ral_gfx_state_create(text_ptr->context,
+                                                              &gfx_state_create_info);
+    }
+
+    /* Start recording the commands .. */
+    if (text_ptr->last_cached_command_buffer == nullptr)
+    {
+        ral_command_buffer_create_info command_buffer_create_info;
+
+        command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+        command_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        command_buffer_create_info.is_resettable                           = true;
+        command_buffer_create_info.is_transient                            = false;
+
+        text_ptr->last_cached_command_buffer = ral_command_buffer_create(text_ptr->context,
+                                                                        &command_buffer_create_info);
+    }
+
+    ral_command_buffer_start_recording(text_ptr->last_cached_command_buffer);
+    {
+        system_critical_section_enter(text_ptr->draw_cs);
+        {
+            system_resizable_vector_get_property(text_ptr->strings,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_strings);
+
+            if (n_strings > 0)
+            {
+                ral_command_buffer_set_binding_command_info            binding_info[4];
+                ral_command_buffer_draw_call_regular_command_info      draw_call_info;
+                uint32_t                                               n_characters_drawn_so_far = 0;
+                ral_command_buffer_set_color_rendertarget_command_info rt_info                   = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+                ral_command_buffer_set_scissor_box_command_info        rt_wide_scissor_box;
+                ral_buffer                                             ub_fsdata_bo              = nullptr;
+                uint32_t                                               ub_fsdata_bo_size         =  0;
+                ral_buffer                                             ub_vsdata_bo              = nullptr;
+                uint32_t                                               ub_vsdata_bo_size         =  0;
+
+                ral_program_block_buffer_get_property(text_ptr->fsdata_ub,
+                                                      RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                     &ub_fsdata_bo);
+                ral_program_block_buffer_get_property(text_ptr->vsdata_ub,
+                                                      RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                     &ub_vsdata_bo);
+
+                ral_buffer_get_property(ub_fsdata_bo,
+                                        RAL_BUFFER_PROPERTY_SIZE,
+                                       &ub_fsdata_bo_size);
+                ral_buffer_get_property(ub_vsdata_bo,
+                                        RAL_BUFFER_PROPERTY_SIZE,
+                                       &ub_vsdata_bo_size);
+
+
+                binding_info[0].binding_type                  = RAL_BINDING_TYPE_STORAGE_BUFFER;
+                binding_info[0].name                          = system_hashed_ansi_string_create("dataSSB");
+                binding_info[0].storage_buffer_binding.buffer = text_ptr->data_buffer;
+                binding_info[0].storage_buffer_binding.offset = 0;
+                binding_info[0].storage_buffer_binding.size   = text_ptr->data_buffer_contents_size;
+
+                binding_info[1].binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
+                binding_info[1].name                               = system_hashed_ansi_string_create("font_table");
+                binding_info[1].sampled_image_binding.sampler      = text_ptr->sampler;
+                binding_info[1].sampled_image_binding.texture_view = text_ptr->font_table_texture_view;
+
+                binding_info[2].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+                binding_info[2].name                          = system_hashed_ansi_string_create("FSData");
+                binding_info[2].uniform_buffer_binding.buffer = ub_fsdata_bo;
+                binding_info[2].uniform_buffer_binding.offset = 0;
+                binding_info[2].uniform_buffer_binding.size   = ub_fsdata_bo_size;
+
+                binding_info[3].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+                binding_info[3].name                          = system_hashed_ansi_string_create("VSData");
+                binding_info[3].uniform_buffer_binding.buffer = ub_vsdata_bo;
+                binding_info[3].uniform_buffer_binding.offset = 0;
+                binding_info[3].uniform_buffer_binding.size   = ub_vsdata_bo_size;
+
+                rt_info.blend_enabled          = true;
+                rt_info.blend_op_alpha         = RAL_BLEND_OP_ADD;
+                rt_info.blend_op_color         = RAL_BLEND_OP_ADD;
+                rt_info.dst_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                rt_info.dst_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                rt_info.rendertarget_index     = 0;
+                rt_info.src_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                rt_info.src_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                rt_info.texture_view           = target_texture_view;
+
+                rt_wide_scissor_box.index   = 0;
+                rt_wide_scissor_box.size[0] = target_texture_view_width;
+                rt_wide_scissor_box.size[1] = target_texture_view_height;
+                rt_wide_scissor_box.xy  [0] = 0;
+                rt_wide_scissor_box.xy  [1] = 0;
+
+
+                ral_command_buffer_record_set_program            (text_ptr->last_cached_command_buffer,
+                                                                  text_ptr->draw_text_program);
+                ral_command_buffer_record_set_bindings           (text_ptr->last_cached_command_buffer,
+                                                                  sizeof(binding_info) / sizeof(binding_info[0]),
+                                                                  binding_info);
+                ral_command_buffer_record_set_color_rendertargets(text_ptr->last_cached_command_buffer,
+                                                                  1, /* n_rendertargets */
+                                                                 &rt_info);
+
+                for (uint32_t n_string = 0;
+                              n_string < n_strings;
+                            ++n_string)
+                {
+                    _varia_text_renderer_text_string* string_ptr = nullptr;
+
+                    system_resizable_vector_get_element_at(text_ptr->strings,
+                                                           n_string,
+                                                          &string_ptr);
+
+                    if (string_ptr->visible)
+                    {
+                        if (string_ptr->scissor_box[0] == -1 &&
+                            string_ptr->scissor_box[1] == -1 &&
+                            string_ptr->scissor_box[2] == -1 &&
+                            string_ptr->scissor_box[3] == -1)
+                        {
+                            ral_command_buffer_record_set_scissor_boxes(text_ptr->last_cached_command_buffer,
+                                                                        1, /* n_scissor_boxes */
+                                                                       &rt_wide_scissor_box);
+                        }
+                        else
+                        {
+                            ral_command_buffer_set_scissor_box_command_info string_scissor_box;
+
+                            string_scissor_box.index   = 0;
+                            string_scissor_box.size[0] = string_ptr->scissor_box[2];
+                            string_scissor_box.size[1] = string_ptr->scissor_box[3];
+                            string_scissor_box.xy  [0] = string_ptr->scissor_box[0];
+                            string_scissor_box.xy  [1] = string_ptr->scissor_box[1];
+
+                            ral_command_buffer_record_set_scissor_boxes(text_ptr->last_cached_command_buffer,
+                                                                        1, /* n_scissor_boxes */
+                                                                       &string_scissor_box);
+                        }
+
+                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->fsdata_ub,
+                                                                               text_ptr->draw_text_fragment_shader_color_ub_offset,
+                                                                               string_ptr->color,
+                                                                               sizeof(float) * 3);
+                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->vsdata_ub,
+                                                                               text_ptr->draw_text_vertex_shader_scale_ub_offset,
+                                                                              &string_ptr->scale,
+                                                                               sizeof(float) );
+                        ral_program_block_buffer_set_nonarrayed_variable_value(text_ptr->vsdata_ub,
+                                                                               text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset,
+                                                                              &n_characters_drawn_so_far,
+                                                                               sizeof(int) );
+
+                        ral_program_block_buffer_sync_via_command_buffer(text_ptr->fsdata_ub,
+                                                                         text_ptr->last_cached_command_buffer);
+                        ral_program_block_buffer_sync_via_command_buffer(text_ptr->vsdata_ub,
+                                                                         text_ptr->last_cached_command_buffer);
+
+                        draw_call_info.base_instance = 0;
+                        draw_call_info.base_vertex   = n_characters_drawn_so_far * 6;
+                        draw_call_info.n_instances   = 1;
+                        draw_call_info.n_vertices    = string_ptr->string_length * 6;
+
+                        ral_command_buffer_record_draw_call_regular(text_ptr->last_cached_command_buffer,
+                                                                    1, /* n_draw_calls */
+                                                                   &draw_call_info);
+                    }
+
+                    n_characters_drawn_so_far += string_ptr->string_length;
+                }
+            }
+        }
+        system_critical_section_leave(text_ptr->draw_cs);
+    }
+    ral_command_buffer_stop_recording(text_ptr->last_cached_command_buffer);
+
+    /* Form present task */
+    ral_present_task                    present_task_cpu;
+    ral_present_task_cpu_create_info    present_task_cpu_create_info;
+    ral_present_task_io                 present_task_cpu_unique_output;
+    ral_present_task                    present_task_gpu;
+    ral_present_task_gpu_create_info    present_task_gpu_create_info;
+    ral_present_task_io                 present_task_gpu_unique_inputs[2];
+    ral_present_task_io                 present_task_gpu_unique_output;
+    ral_present_task_group_create_info  result_present_task_create_info;
+    ral_present_task_ingroup_connection result_present_task_ingroup_connection;
+    ral_present_task                    result_present_task_present_tasks[2];
+    ral_present_task_group_mapping      result_present_task_unique_input;
+    ral_present_task_group_mapping      result_present_task_unique_output;
+
+    present_task_cpu_unique_output.buffer      = text_ptr->data_buffer;
+    present_task_cpu_unique_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    present_task_cpu_create_info.cpu_task_callback_user_arg = text_ptr;
+    present_task_cpu_create_info.n_unique_inputs            = 0;
+    present_task_cpu_create_info.n_unique_outputs           = 1;
+    present_task_cpu_create_info.pfn_cpu_task_callback_proc = _varia_text_renderer_update_vram_data_storage_cpu_task_callback;
+    present_task_cpu_create_info.unique_inputs              = nullptr;
+    present_task_cpu_create_info.unique_outputs             = &present_task_cpu_unique_output;
+
+    present_task_cpu = ral_present_task_create_cpu(system_hashed_ansi_string_create("Text renderer: Data buffer update"),
+                                                  &present_task_cpu_create_info);
+
+
+    present_task_gpu_unique_inputs[0].buffer       = text_ptr->data_buffer;
+    present_task_gpu_unique_inputs[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+    present_task_gpu_unique_inputs[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    present_task_gpu_unique_inputs[1].texture_view = target_texture_view;
+
+    present_task_gpu_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    present_task_gpu_unique_output.texture_view = target_texture_view;
+
+    present_task_gpu_create_info.command_buffer   = text_ptr->last_cached_command_buffer;
+    present_task_gpu_create_info.n_unique_inputs  = sizeof(present_task_gpu_unique_inputs) / sizeof(present_task_gpu_unique_inputs[0]);
+    present_task_gpu_create_info.n_unique_outputs = 1;
+    present_task_gpu_create_info.unique_inputs    =  present_task_gpu_unique_inputs;
+    present_task_gpu_create_info.unique_outputs   = &present_task_gpu_unique_output;
+
+    present_task_gpu = ral_present_task_create_gpu(system_hashed_ansi_string_create("Text renderer: Rasterization"),
+                                                  &present_task_gpu_create_info);
+
+
+    result_present_task_ingroup_connection.input_present_task_index     = 1;
+    result_present_task_ingroup_connection.input_present_task_io_index  = 0; /* data_buffer */
+    result_present_task_ingroup_connection.output_present_task_index    = 0;
+    result_present_task_ingroup_connection.output_present_task_io_index = 0; /* data_buffer */
+
+    result_present_task_present_tasks[0] = present_task_cpu;
+    result_present_task_present_tasks[1] = present_task_gpu;
+
+    result_present_task_unique_input.io_index       = 1; /* target_texture_view */
+    result_present_task_unique_input.n_present_task = 1;
+
+    result_present_task_unique_output.io_index      = 0; /* target_texture_view */
+    result_present_task_unique_input.n_present_task = 1;
+
+    result_present_task_create_info.ingroup_connections                   = &result_present_task_ingroup_connection;
+    result_present_task_create_info.n_ingroup_connections                 = 1;
+    result_present_task_create_info.n_present_tasks                       = sizeof(result_present_task_present_tasks) / sizeof(result_present_task_present_tasks[0]);
+    result_present_task_create_info.n_unique_inputs                       = 1;
+    result_present_task_create_info.n_unique_outputs                      = 1;
+    result_present_task_create_info.present_tasks                         =  result_present_task_present_tasks;
+    result_present_task_create_info.unique_input_to_ingroup_task_mapping  = &result_present_task_unique_input;
+    result_present_task_create_info.unique_output_to_ingroup_task_mapping = &result_present_task_unique_output;
+
+    text_ptr->last_cached_present_task = ral_present_task_create_group(&result_present_task_create_info);
+    result                             = text_ptr->last_cached_present_task;
+
+
+    ral_present_task_release(present_task_cpu);
+    ral_present_task_release(present_task_gpu);
+end:
+    ral_present_task_retain(result);
+
+    return result;
 }
 
 /** Please see header for specification */
