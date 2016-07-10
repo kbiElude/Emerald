@@ -1,7 +1,6 @@
-
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -140,11 +139,11 @@ typedef struct _scene_graph_node_matrix4x4_static
 
     ~_scene_graph_node_matrix4x4_static()
     {
-        if (matrix != NULL)
+        if (matrix != nullptr)
         {
             system_matrix4x4_release(matrix);
 
-            matrix = NULL;
+            matrix = nullptr;
         }
     }
 } _scene_graph_node_matrix4x4_static;
@@ -181,19 +180,19 @@ typedef struct _scene_graph_node_rotation_dynamic
                       n_curve < 4;
                     ++n_curve)
         {
-            if (curves[n_curve] != NULL)
+            if (curves[n_curve] != nullptr)
             {
                 curve_container_release(curves[n_curve]);
 
-                curves[n_curve] = NULL;
+                curves[n_curve] = nullptr;
             }
         }
 
-        if (variant_float != NULL)
+        if (variant_float != nullptr)
         {
             system_variant_release(variant_float);
 
-            variant_float = NULL;
+            variant_float = nullptr;
         }
     }
 } _scene_graph_node_rotation_dynamic;
@@ -227,19 +226,19 @@ typedef struct _scene_graph_node_scale_dynamic
                       n_curve < 3;
                     ++n_curve)
         {
-            if (curves[n_curve] != NULL)
+            if (curves[n_curve] != nullptr)
             {
                 curve_container_release(curves[n_curve]);
 
-                curves[n_curve] = NULL;
+                curves[n_curve] = nullptr;
             }
         }
 
-        if (variant_float != NULL)
+        if (variant_float != nullptr)
         {
             system_variant_release(variant_float);
 
-            variant_float = NULL;
+            variant_float = nullptr;
         }
     }
 } _scene_graph_node_scale_dynamic;
@@ -276,19 +275,19 @@ typedef struct _scene_graph_node_translation_dynamic
                       n_curve < 3;
                     ++n_curve)
         {
-            if (curves[n_curve] != NULL)
+            if (curves[n_curve] != nullptr)
             {
                 curve_container_release(curves[n_curve]);
 
-                curves[n_curve] = NULL;
+                curves[n_curve] = nullptr;
             }
         }
 
-        if (variant_float != NULL)
+        if (variant_float != nullptr)
         {
             system_variant_release(variant_float);
 
-            variant_float = NULL;
+            variant_float = nullptr;
         }
     }
 } _scene_graph_node_translation_dynamic;
@@ -321,7 +320,7 @@ typedef struct _scene_graph_node_transformation_matrix
 
     _scene_graph_node_transformation_matrix()
     {
-        data            = NULL;
+        data            = nullptr;
         has_fired_event = false;
     }
 } _scene_graph_node_transformation_matrix;
@@ -347,10 +346,10 @@ typedef struct _scene_graph_node
         attached_cameras = system_resizable_vector_create(4 /* capacity */);
         attached_lights  = system_resizable_vector_create(4 /* capacity */);
         attached_meshes  = system_resizable_vector_create(4 /* capacity */);
-        dag_node         = NULL;
+        dag_node         = nullptr;
         last_update_time = -1;
         parent_node      = in_parent_node;
-        pUpdateMatrix    = NULL;
+        pUpdateMatrix    = nullptr;
         tag              = SCENE_GRAPH_NODE_TAG_UNDEFINED;
         type             = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
 
@@ -361,25 +360,25 @@ typedef struct _scene_graph_node
 
     ~_scene_graph_node()
     {
-        if (attached_cameras != NULL)
+        if (attached_cameras != nullptr)
         {
             system_resizable_vector_release(attached_cameras);
 
-            attached_cameras = NULL;
+            attached_cameras = nullptr;
         }
 
-        if (attached_lights != NULL)
+        if (attached_lights != nullptr)
         {
             system_resizable_vector_release(attached_lights);
 
-            attached_lights = NULL;
+            attached_lights = nullptr;
         }
 
-        if (attached_meshes != NULL)
+        if (attached_meshes != nullptr)
         {
             system_resizable_vector_release(attached_meshes);
 
-            attached_meshes = NULL;
+            attached_meshes = nullptr;
         }
 
         _scene_graph_node_release_data(data, type);
@@ -410,17 +409,17 @@ typedef struct _scene_graph
     _scene_graph()
     {
         compute_lock_cs       = system_critical_section_create();
-        dag                   = NULL;
+        dag                   = nullptr;
         dirty                 = true;
         dirty_time            = 0;
         last_compute_time     = -1;
         node_compute_cs       = system_critical_section_create();
-        node_compute_vector   = NULL;
-        nodes                 = NULL;
-        object_manager_path   = NULL;
-        root_node_ptr         = NULL;
-        sorted_nodes          = NULL;
-        sorted_nodes_rw_mutex = NULL;
+        node_compute_vector   = nullptr;
+        nodes                 = nullptr;
+        object_manager_path   = nullptr;
+        root_node_ptr         = nullptr;
+        sorted_nodes          = nullptr;
+        sorted_nodes_rw_mutex = nullptr;
 
         memset(node_by_tag,
                0,
@@ -436,7 +435,7 @@ PRIVATE void _scene_graph_align_time_to_fps(scene_graph  graph,
                                             system_time* out_next_keyframe_time_ptr)
 {
     float         fps       = 0.0f;
-    _scene_graph* graph_ptr = (_scene_graph*) graph;
+    _scene_graph* graph_ptr = reinterpret_cast<_scene_graph*>(graph);
 
     scene_get_property(graph_ptr->owner_scene,
                        SCENE_PROPERTY_FPS,
@@ -457,29 +456,29 @@ PRIVATE void _scene_graph_align_time_to_fps(scene_graph  graph,
 
         time_ms_modulo_ms_per_frame = time_ms % ms_per_frame;
 
-        if (out_prev_keyframe_time_ptr != NULL)
+        if (out_prev_keyframe_time_ptr != nullptr)
         {
             unsigned int temp_aligned_time_ms = time_ms - time_ms_modulo_ms_per_frame;
 
             *out_prev_keyframe_time_ptr = system_time_get_time_for_msec(temp_aligned_time_ms);
         }
 
-        if (out_next_keyframe_time_ptr != NULL)
+        if (out_next_keyframe_time_ptr != nullptr)
         {
             /* Align to the next closest frame */
             unsigned int temp_aligned_time_ms = time_ms + ms_per_frame - time_ms_modulo_ms_per_frame;
 
             *out_next_keyframe_time_ptr = system_time_get_time_for_msec(temp_aligned_time_ms);
         }
-    } /* if (fabs(fps) >= 1e-5f) */
+    }
     else
     {
-        if (out_prev_keyframe_time_ptr != NULL)
+        if (out_prev_keyframe_time_ptr != nullptr)
         {
             *out_prev_keyframe_time_ptr = time;
         }
 
-        if (out_next_keyframe_time_ptr != NULL)
+        if (out_next_keyframe_time_ptr != nullptr)
         {
             *out_next_keyframe_time_ptr = time;
         }
@@ -511,11 +510,11 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(scene_graph        
         goto end;
     }
 
-    if (node_ptr->transformation_matrix.data != NULL)
+    if (node_ptr->transformation_matrix.data != nullptr)
     {
         system_matrix4x4_release(node_ptr->transformation_matrix.data);
 
-        node_ptr->transformation_matrix.data = NULL;
+        node_ptr->transformation_matrix.data = nullptr;
     }
 
     /* Retrieve keyframe data */
@@ -553,7 +552,7 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(scene_graph        
     else
     {
         node_ptr->transformation_matrix.data = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                       NULL,
+                                                                       nullptr,
                                                                        prev_keyframe_time,
                                                                        next_keyframe_time,
                                                                        lerp_factor);
@@ -570,7 +569,7 @@ PRIVATE system_matrix4x4 _scene_graph_compute_general(void*            data,
                                                       system_time      next_keyframe_time,
                                                       float            lerp_factor)
 {
-    _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
+    _scene_graph_node_matrix4x4_static* node_data_ptr = reinterpret_cast<_scene_graph_node_matrix4x4_static*>(data);
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
 
     system_matrix4x4_set_from_matrix4x4(new_matrix,
@@ -586,9 +585,9 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(void*            
                                                                system_time      next_keyframe_time,
                                                                float            lerp_factor)
 {
-    _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) data;
+    _scene_graph_node_rotation_dynamic* node_data_ptr = reinterpret_cast<_scene_graph_node_rotation_dynamic*>(data);
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
-    system_matrix4x4                    result        = NULL;
+    system_matrix4x4                    result        = nullptr;
     float                               rotation_final        [4];
     float                               rotation_prev_keyframe[4];
     float                               rotation_next_keyframe[4];
@@ -617,8 +616,8 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(void*            
 
             system_variant_get_float(node_data_ptr->variant_float,
                                      result_rotation_ptr + n_component);
-        } /* for (all components) */
-    } /* for (both keyframes) */
+        }
+    }
 
     /* Lerp to calculate the final rotation values */
     ASSERT_DEBUG_SYNC(lerp_factor >= 0.0f && lerp_factor <= 1.0f,
@@ -631,7 +630,7 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(void*            
         rotation_final[n_component] = rotation_prev_keyframe[n_component] +
                                       lerp_factor                         *
                                       (rotation_next_keyframe[n_component] - rotation_prev_keyframe[n_component]);
-    } /* for (all components) */
+    }
 
     system_matrix4x4_set_to_identity(new_matrix);
     system_matrix4x4_rotate         (new_matrix,
@@ -653,9 +652,9 @@ PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(void*            dat
                                                             system_time      next_keyframe_time,
                                                             float            lerp_factor)
 {
-    _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) data;
+    _scene_graph_node_scale_dynamic* node_data_ptr = reinterpret_cast<_scene_graph_node_scale_dynamic*>(data);
     system_matrix4x4                 new_matrix    = system_matrix4x4_create();
-    system_matrix4x4                 result        = NULL;
+    system_matrix4x4                 result        = nullptr;
     float                            scale_final        [3];
     float                            scale_prev_keyframe[3];
     float                            scale_next_keyframe[3];
@@ -684,8 +683,8 @@ PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(void*            dat
 
             system_variant_get_float(node_data_ptr->variant_float,
                                      result_scale_ptr + n_component);
-        } /* for (all components) */
-    } /* for (both keyframes) */
+        }
+    }
 
     /* Lerp to calculate the final scale values */
     ASSERT_DEBUG_SYNC(lerp_factor >= 0.0f && lerp_factor <= 1.0f,
@@ -698,7 +697,7 @@ PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(void*            dat
         scale_final[n_component] = scale_prev_keyframe[n_component] +
                                    lerp_factor                      *
                                    (scale_next_keyframe[n_component] - scale_prev_keyframe[n_component]);
-    } /* for (all components) */
+    }
 
     system_matrix4x4_set_to_identity(new_matrix);
     system_matrix4x4_scale          (new_matrix,
@@ -719,7 +718,7 @@ PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(void*            
                                                                system_time      next_keyframe_time,
                                                                float            lerp_factor)
 {
-    _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
+    _scene_graph_node_matrix4x4_static* node_data_ptr = reinterpret_cast<_scene_graph_node_matrix4x4_static*>(data);
 
     return system_matrix4x4_create_by_mul(current_matrix,
                                           node_data_ptr->matrix);
@@ -732,9 +731,9 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(void*         
                                                                   system_time      next_keyframe_time,
                                                                   float            lerp_factor)
 {
-    _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) data;
+    _scene_graph_node_translation_dynamic* node_data_ptr = reinterpret_cast<_scene_graph_node_translation_dynamic*>(data);
     system_matrix4x4                       new_matrix    = system_matrix4x4_create();
-    system_matrix4x4                       result        = NULL;
+    system_matrix4x4                       result        = nullptr;
     float                                  translation_final        [3];
     float                                  translation_prev_keyframe[3];
     float                                  translation_next_keyframe[3];
@@ -768,8 +767,8 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(void*         
             {
                 result_translation_ptr[n_component] = -result_translation_ptr[n_component];
             }
-        } /* for (all components) */
-    } /* for (both keyframes) */
+        }
+    }
 
     /* Lerp to calculate the final scale values */
     ASSERT_DEBUG_SYNC(lerp_factor >= 0.0f && lerp_factor <= 1.0f,
@@ -782,7 +781,7 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(void*         
         translation_final[n_component] = translation_prev_keyframe[n_component] +
                                          lerp_factor                            *
                                          (translation_next_keyframe[n_component] - translation_prev_keyframe[n_component]);
-    } /* for (all components) */
+    }
 
     system_matrix4x4_set_to_identity(new_matrix);
     system_matrix4x4_translate      (new_matrix,
@@ -803,7 +802,7 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_static(void*          
                                                                  system_time      next_keyframe_time,
                                                                  float            lerp_factor)
 {
-    _scene_graph_node_translation_static* node_data_ptr = (_scene_graph_node_translation_static*) data;
+    _scene_graph_node_translation_static* node_data_ptr = reinterpret_cast<_scene_graph_node_translation_static*>(data);
     system_matrix4x4                      result        = system_matrix4x4_create();
 
     /* No need to do any LERPing - static translation is static by definition */
@@ -832,7 +831,7 @@ PRIVATE float _scene_graph_get_float_time_from_timeline_time(system_time time)
 /** TODO */
 PRIVATE system_hash64map _scene_graph_get_node_hashmap(_scene_graph* graph_ptr)
 {
-    system_hash64map result = NULL;
+    system_hash64map result = nullptr;
 
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
@@ -845,10 +844,10 @@ PRIVATE system_hash64map _scene_graph_get_node_hashmap(_scene_graph* graph_ptr)
 
         result = system_hash64map_create(sizeof(unsigned int) );
 
-        ASSERT_DEBUG_SYNC(result != NULL,
+        ASSERT_DEBUG_SYNC(result != nullptr,
                           "Could not create a hash map");
 
-        if (result == NULL)
+        if (result == nullptr)
         {
             goto end;
         }
@@ -857,7 +856,7 @@ PRIVATE system_hash64map _scene_graph_get_node_hashmap(_scene_graph* graph_ptr)
                           n_node < n_nodes;
                         ++n_node)
         {
-            const _scene_graph_node* node_ptr = NULL;
+            const _scene_graph_node* node_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(graph_ptr->sorted_nodes,
                                                         n_node,
@@ -873,11 +872,11 @@ PRIVATE system_hash64map _scene_graph_get_node_hashmap(_scene_graph* graph_ptr)
                               n_node);
 
             system_hash64map_insert(result,
-                                    (system_hash64) node_ptr,
-                                    (void*)         (intptr_t) n_node,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        } /* for (all graph nodes) */
+                                    reinterpret_cast<system_hash64>(node_ptr),
+                                    reinterpret_cast<void*>        (static_cast<intptr_t>(n_node) ),
+                                    nullptr,  /* on_remove_callback */
+                                    nullptr); /* on_remove_callback_user_arg */
+        }
     }
 
 end:
@@ -896,7 +895,7 @@ PRIVATE bool _scene_graph_load_curve(scene                     owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve_id curve_id = 0;
 
@@ -935,15 +934,15 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
                                     system_resizable_vector scene_mesh_instances_vector,
                                     scene                   owner_scene)
 {
-    _scene_graph*         graph_ptr                 = NULL;
+    _scene_graph*         graph_ptr                 = nullptr;
     uint32_t              n_attached_cameras        = 0;
     uint32_t              n_attached_lights         = 0;
     uint32_t              n_attached_mesh_instances = 0;
     unsigned int          n_serialized_nodes        = 0;
-    scene_graph_node      new_node                  = NULL;
-    _scene_graph_node*    new_node_ptr              = NULL;
+    scene_graph_node      new_node                  = nullptr;
+    _scene_graph_node*    new_node_ptr              = nullptr;
     scene_graph_node_type node_type                 = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
-    scene_graph_node      parent_node               = NULL;
+    scene_graph_node      parent_node               = nullptr;
     unsigned int          parent_node_id            = 0;
     bool                  result                    = true;
 
@@ -975,7 +974,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
         {
             goto end_error;
         }
-    } /* if (node_type != NODE_TYPE_ROOT) */
+    }
     else
     {
         parent_node = scene_graph_get_root_node(result_graph);
@@ -996,8 +995,8 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
         {
             new_node = scene_graph_create_general_node(result_graph);
 
-            ASSERT_DEBUG_SYNC(new_node != NULL,
-                              "Created general node is NULL");
+            ASSERT_DEBUG_SYNC(new_node != nullptr,
+                              "Created general node is nullptr");
 
             scene_graph_add_node(result_graph,
                                  parent_node,
@@ -1021,7 +1020,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
             new_node = _scene_graph_load_scene_graph_node_scale_dynamic(serializer,
                                                                         result_graph,
                                                                         parent_node,
-                                                                           owner_scene);
+                                                                        owner_scene);
 
             break;
         }
@@ -1040,7 +1039,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
             new_node = _scene_graph_load_scene_graph_node_translation_dynamic(serializer,
                                                                               result_graph,
                                                                               parent_node,
-                                                                           owner_scene);
+                                                                              owner_scene);
 
             break;
         }
@@ -1056,13 +1055,14 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized node type");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized node type");
 
             goto end_error;
         }
-    } /* switch (node_type) */
+    }
 
-    if (new_node == NULL)
+    if (new_node == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Node serialization error");
@@ -1080,7 +1080,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
                 ++n_attached_camera)
     {
         /* Retrieve ID of the camera */
-        scene_camera attached_camera    = NULL;
+        scene_camera attached_camera    = nullptr;
         unsigned int attached_camera_id = -1;
 
         result &= system_file_serializer_read(serializer,
@@ -1109,7 +1109,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
                                           new_node,
                                           SCENE_OBJECT_TYPE_CAMERA,
                                           attached_camera);
-    } /* for (all attached cameras) */
+    }
 
     /* Attach lights to the node */
     result &= system_file_serializer_read(serializer,
@@ -1121,7 +1121,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
                 ++n_attached_light)
     {
         /* Retrieve ID of the light */
-        scene_light  attached_light    = NULL;
+        scene_light  attached_light    = nullptr;
         unsigned int attached_light_id = -1;
 
         result &= system_file_serializer_read(serializer,
@@ -1150,7 +1150,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
                                           new_node,
                                           SCENE_OBJECT_TYPE_LIGHT,
                                           attached_light);
-    } /* for (all attached lights) */
+    }
 
     /* Attach mesh instances to the node */
     result &= system_file_serializer_read(serializer,
@@ -1162,7 +1162,7 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
                 ++n_attached_mesh_instance)
     {
         /* Retrieve ID of the mesh instance */
-        scene_mesh   attached_mesh_instance    = NULL;
+        scene_mesh   attached_mesh_instance    = nullptr;
         unsigned int attached_mesh_instance_id = -1;
 
         result &= system_file_serializer_read(serializer,
@@ -1191,11 +1191,11 @@ PRIVATE bool _scene_graph_load_node(system_file_serializer  serializer,
                                           new_node,
                                           SCENE_OBJECT_TYPE_MESH,
                                           attached_mesh_instance);
-    } /* for (all attached lights) */
+    }
 
     /* If there are any objects attached to this node, cache the transformation nodes. */
-    graph_ptr    = (_scene_graph*)      result_graph;
-    new_node_ptr = (_scene_graph_node*) new_node;
+    graph_ptr    = reinterpret_cast<_scene_graph*>     (result_graph);
+    new_node_ptr = reinterpret_cast<_scene_graph_node*>(new_node);
 
     if (n_attached_cameras        > 0 ||
         n_attached_lights         > 0 ||
@@ -1233,8 +1233,8 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(sys
                                                                              scene_graph            result_graph,
                                                                              scene_graph_node       parent_node)
 {
-    scene_graph_node     result_node       = NULL;
-    system_matrix4x4     serialized_matrix = NULL;
+    scene_graph_node     result_node       = nullptr;
+    system_matrix4x4     serialized_matrix = nullptr;
     scene_graph_node_tag serialized_tag    = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
     if (system_file_serializer_read_matrix4x4(serializer,
@@ -1247,7 +1247,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(sys
                                                                               serialized_matrix,
                                                                               serialized_tag);
 
-        ASSERT_DEBUG_SYNC(result_node != NULL,
+        ASSERT_DEBUG_SYNC(result_node != nullptr,
                           "Static matrix4x4 transformation node serialization failed.");
 
         scene_graph_add_node(result_graph,
@@ -1255,7 +1255,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(sys
                              result_node);
 
         system_matrix4x4_release(serialized_matrix);
-        serialized_matrix = NULL;
+        serialized_matrix = nullptr;
     }
 
     return result_node;
@@ -1267,9 +1267,9 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(sys
                                                                              scene_graph_node       parent_node,
                                                                              scene                  owner_scene)
 {
-    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
-    scene_graph_node     result_node          = NULL;
-    curve_container      serialized_curves[4] = {NULL, NULL, NULL, NULL};
+    _scene_graph*        graph_ptr            = reinterpret_cast<_scene_graph*>(result_graph);
+    scene_graph_node     result_node          = nullptr;
+    curve_container      serialized_curves[4] = {nullptr, nullptr, nullptr, nullptr};
     scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
     bool                 uses_radians         = false;
 
@@ -1307,7 +1307,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(sys
                                                            uses_radians,
                                                            serialized_tag);
 
-    ASSERT_DEBUG_SYNC(result_node != NULL,
+    ASSERT_DEBUG_SYNC(result_node != nullptr,
                       "Could not add rotation dynamic node");
 
     scene_graph_add_node(result_graph,
@@ -1325,11 +1325,11 @@ end:
                       n < 4;
                     ++n)
     {
-        if (serialized_curves[n] != NULL)
+        if (serialized_curves[n] != nullptr)
         {
             curve_container_release(serialized_curves[n]);
 
-            serialized_curves[n] = NULL;
+            serialized_curves[n] = nullptr;
         }
     }
 
@@ -1342,9 +1342,9 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(system
                                                                           scene_graph_node       parent_node,
                                                                           scene                  owner_scene)
 {
-    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
-    scene_graph_node     result_node          = NULL;
-    curve_container      serialized_curves[3] = {NULL, NULL, NULL};
+    _scene_graph*        graph_ptr            = reinterpret_cast<_scene_graph*>(result_graph);
+    scene_graph_node     result_node          = nullptr;
+    curve_container      serialized_curves[3] = {nullptr, nullptr, nullptr};
     scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
     for (unsigned int n = 0;
@@ -1377,7 +1377,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(system
                                                         serialized_curves,
                                                         serialized_tag);
 
-    ASSERT_DEBUG_SYNC(result_node != NULL,
+    ASSERT_DEBUG_SYNC(result_node != nullptr,
                       "Could not add scale dynamic node");
 
     scene_graph_add_node(result_graph,
@@ -1395,11 +1395,11 @@ end:
                       n < 3;
                     ++n)
     {
-        if (serialized_curves[n] != NULL)
+        if (serialized_curves[n] != nullptr)
         {
             curve_container_release(serialized_curves[n]);
 
-            serialized_curves[n] = NULL;
+            serialized_curves[n] = nullptr;
         }
     }
 
@@ -1412,9 +1412,9 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
                                                                                 scene_graph_node       parent_node,
                                                                                 scene                  owner_scene)
 {
-    _scene_graph*        graph_ptr                   = (_scene_graph*) result_graph;
-    scene_graph_node     result_node                 = NULL;
-    curve_container      serialized_curves       [3] = {NULL, NULL, NULL};
+    _scene_graph*        graph_ptr                   = reinterpret_cast<_scene_graph*>(result_graph);
+    scene_graph_node     result_node                 = nullptr;
+    curve_container      serialized_curves       [3] = {nullptr, nullptr, nullptr};
     bool                 serialized_negate_curves[3] = {false, false, false};
     scene_graph_node_tag serialized_tag              = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
@@ -1452,7 +1452,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
                                                               serialized_negate_curves,
                                                               serialized_tag);
 
-    ASSERT_DEBUG_SYNC(result_node != NULL,
+    ASSERT_DEBUG_SYNC(result_node != nullptr,
                       "Could not add translation dynamic node");
 
     scene_graph_add_node(result_graph,
@@ -1470,11 +1470,11 @@ end:
                       n < 3;
                     ++n)
     {
-        if (serialized_curves[n] != NULL)
+        if (serialized_curves[n] != nullptr)
         {
             curve_container_release(serialized_curves[n]);
 
-            serialized_curves[n] = NULL;
+            serialized_curves[n] = nullptr;
         }
     }
 
@@ -1486,8 +1486,8 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(s
                                                                                scene_graph            result_graph,
                                                                                scene_graph_node       parent_node)
 {
-    _scene_graph*        graph_ptr                 = (_scene_graph*) result_graph;
-    scene_graph_node     result_node               = NULL;
+    _scene_graph*        graph_ptr                 = reinterpret_cast<_scene_graph*>(result_graph);
+    scene_graph_node     result_node               = nullptr;
     scene_graph_node_tag serialized_tag            = SCENE_GRAPH_NODE_TAG_UNDEFINED;
     float                serialized_translation[3] = {0.0f};
 
@@ -1508,7 +1508,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(s
                                                              serialized_translation,
                                                              serialized_tag);
 
-    ASSERT_DEBUG_SYNC(result_node != NULL,
+    ASSERT_DEBUG_SYNC(result_node != nullptr,
                       "Could not add translation static node");
 
     scene_graph_add_node(result_graph,
@@ -1644,7 +1644,7 @@ PRIVATE bool _scene_graph_save_scene_graph_node_translation_static(system_file_s
 PRIVATE void _scene_graph_node_release_data(void*                 data,
                                             scene_graph_node_type type)
 {
-    if (data != NULL)
+    if (data != nullptr)
     {
         switch (type)
         {
@@ -1657,42 +1657,43 @@ PRIVATE void _scene_graph_node_release_data(void*                 data,
 
             case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
             {
-                delete (_scene_graph_node_rotation_dynamic*) data;
+                delete reinterpret_cast<_scene_graph_node_rotation_dynamic*>(data);
 
-                data = NULL;
+                data = nullptr;
                 break;
             }
 
             case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
             {
-                delete (_scene_graph_node_scale_dynamic*) data;
+                delete reinterpret_cast<_scene_graph_node_scale_dynamic*>(data);
 
-                data = NULL;
+                data = nullptr;
                 break;
             }
 
             case SCENE_GRAPH_NODE_TYPE_MATRIX4X4_STATIC:
             {
-                delete (_scene_graph_node_matrix4x4_static*) data;
+                delete reinterpret_cast<_scene_graph_node_matrix4x4_static*>(data);
 
-                data = NULL;
+                data = nullptr;
                 break;
             }
 
             case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
             {
-                delete (_scene_graph_node_translation_dynamic*) data;
+                delete reinterpret_cast<_scene_graph_node_translation_dynamic*>(data);
 
-                data = NULL;
+                data = nullptr;
                 break;
             }
 
             default:
             {
-                ASSERT_DEBUG_SYNC(false, "Unrecognized node type");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized node type");
             }
-        } /* switch (type) */
-    } /* if (data != NULL) */
+        }
+    }
 }
 
 /** TODO */
@@ -1702,7 +1703,7 @@ PRIVATE bool _scene_graph_save_curve(scene                  owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve    curve    = scene_get_curve_by_container(owner_scene,
                                                                in_curve);
@@ -1761,7 +1762,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                                          sizeof(parent_node_id),
                                         &parent_node_id);
         }
-    } /* if (node_ptr->type != NODE_TYPE_ROOT) */
+    }
 
     /* Each node needs to be serialized slightly different, depending on its type.
      * When loading, these arguments will be passed to corresponding create() functions.
@@ -1784,7 +1785,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_rotation_dynamic(serializer,
-                                                                          (_scene_graph_node_rotation_dynamic*) node_ptr->data,
+                                                                          reinterpret_cast<_scene_graph_node_rotation_dynamic*>(node_ptr->data),
                                                                           owner_scene);
 
             break;
@@ -1794,8 +1795,8 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_scale_dynamic(serializer,
-                                                                       (_scene_graph_node_scale_dynamic*) node_ptr->data,
-                                                                          owner_scene);
+                                                                       reinterpret_cast<_scene_graph_node_scale_dynamic*>(node_ptr->data),
+                                                                       owner_scene);
 
             break;
         }
@@ -1804,7 +1805,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
         {
             /* Save matrix data */
             result &= _scene_graph_save_scene_graph_node_matrix4x4_static(serializer,
-                                                                          (_scene_graph_node_matrix4x4_static*) node_ptr->data);
+                                                                          reinterpret_cast<_scene_graph_node_matrix4x4_static*>(node_ptr->data) );
 
             break;
         }
@@ -1813,7 +1814,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_translation_dynamic(serializer,
-                                                                             (_scene_graph_node_translation_dynamic*) node_ptr->data,
+                                                                             reinterpret_cast<_scene_graph_node_translation_dynamic*>(node_ptr->data),
                                                                              owner_scene);
 
             break;
@@ -1823,7 +1824,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_translation_static(serializer,
-                                                                            (_scene_graph_node_translation_static*) node_ptr->data);
+                                                                            reinterpret_cast<_scene_graph_node_translation_static*>(node_ptr->data) );
 
             break;
         }
@@ -1834,7 +1835,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                                "Unrecognized scene graph node type [%d]",
                                node_ptr->type);
         }
-    } /* switch (node_ptr->type) */
+    }
 
     /* Store IDs of attached cameras */
     system_resizable_vector_get_property(node_ptr->attached_cameras,
@@ -1849,13 +1850,13 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                   n_camera < n_cameras;
                 ++n_camera)
     {
-        scene_camera current_camera = NULL;
+        scene_camera current_camera = nullptr;
 
         if (system_resizable_vector_get_element_at(node_ptr->attached_cameras,
                                                    n_camera,
                                                   &current_camera) )
         {
-            void* camera_id_ptr = NULL;
+            void* camera_id_ptr = nullptr;
 
             /* Retrieve the ID */
             if (system_hash64map_get(camera_ptr_to_id_map,
@@ -1880,7 +1881,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                                "Failed to retrieve camera descriptor at index [%d]",
                                n_camera);
         }
-    } /* for (all attached cameras) */
+    }
 
     /* Store IDs of attached lights */
     system_resizable_vector_get_property(node_ptr->attached_lights,
@@ -1895,13 +1896,13 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                   n_light < n_lights;
                 ++n_light)
     {
-        scene_light current_light = NULL;
+        scene_light current_light = nullptr;
 
         if (system_resizable_vector_get_element_at(node_ptr->attached_lights,
                                                    n_light,
                                                   &current_light) )
         {
-            void* light_id_ptr = NULL;
+            void* light_id_ptr = nullptr;
 
             /* Retrieve the ID */
             if (system_hash64map_get(light_ptr_to_id_map,
@@ -1926,7 +1927,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                                "Failed to retrieve light descriptor at index [%d]",
                                n_light);
         }
-    } /* for (all attached lights) */
+    }
 
     /* Store IDs of attached mesh instances */
     system_resizable_vector_get_property(node_ptr->attached_meshes,
@@ -1941,13 +1942,13 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                   n_mesh_instance < n_mesh_instances;
                 ++n_mesh_instance)
     {
-        scene_mesh current_mesh = NULL;
+        scene_mesh current_mesh = nullptr;
 
         if (system_resizable_vector_get_element_at(node_ptr->attached_meshes,
                                                    n_mesh_instance,
                                                   &current_mesh) )
         {
-            void* mesh_id_ptr = NULL;
+            void* mesh_id_ptr = nullptr;
 
             /* Retrieve the ID */
             if (system_hash64map_get(mesh_instance_ptr_to_id_map,
@@ -1972,7 +1973,7 @@ PRIVATE bool _scene_graph_save_node(system_file_serializer   serializer,
                                "Failed to retrieve mesh instance descriptor at index [%d]",
                                n_mesh_instance);
         }
-    } /* for (all attached mesh instances) */
+    }
 
     return result;
 }
@@ -2023,16 +2024,16 @@ PUBLIC EMERALD_API void scene_graph_add_node(scene_graph      graph,
                                              scene_graph_node parent_node,
                                              scene_graph_node node)
 {
-    _scene_graph*      graph_ptr       = (_scene_graph*)      graph;
-    _scene_graph_node* node_ptr        = (_scene_graph_node*) node;
-    _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
+    _scene_graph*      graph_ptr       = reinterpret_cast<_scene_graph*>     (graph);
+    _scene_graph_node* node_ptr        = reinterpret_cast<_scene_graph_node*>(node);
+    _scene_graph_node* parent_node_ptr = reinterpret_cast<_scene_graph_node*>(parent_node);
 
-    ASSERT_DEBUG_SYNC(parent_node != NULL,
-                      "Parent node is NULL?");
-    ASSERT_DEBUG_SYNC(node_ptr->parent_node == NULL,
+    ASSERT_DEBUG_SYNC(parent_node != nullptr,
+                      "Parent node is nullptr?");
+    ASSERT_DEBUG_SYNC(node_ptr->parent_node == nullptr,
                       "Node already has a parent");
 
-    node_ptr->parent_node = (_scene_graph_node*) parent_node;
+    node_ptr->parent_node = reinterpret_cast<_scene_graph_node*>(parent_node);
 
     if (!system_dag_add_connection(graph_ptr->dag,
                                    parent_node_ptr->dag_node,
@@ -2060,8 +2061,8 @@ PUBLIC EMERALD_API void scene_graph_attach_object_to_node(scene_graph        gra
                                                           _scene_object_type object_type,
                                                           void*              instance)
 {
-    _scene_graph*      graph_ptr = (_scene_graph*)      graph;
-    _scene_graph_node* node_ptr  = (_scene_graph_node*) graph_node;
+    _scene_graph*      graph_ptr = reinterpret_cast<_scene_graph*>     (graph);
+    _scene_graph_node* node_ptr  = reinterpret_cast<_scene_graph_node*>(graph_node);
 
     switch (object_type)
     {
@@ -2102,7 +2103,7 @@ PUBLIC EMERALD_API void scene_graph_attach_object_to_node(scene_graph        gra
         {
             LOG_FATAL("Unrecognized object type");
         }
-    } /* switch (object_type) */
+    }
 
     graph_ptr->dirty      = true;
     graph_ptr->dirty_time = system_time_now();
@@ -2112,7 +2113,7 @@ PUBLIC EMERALD_API void scene_graph_attach_object_to_node(scene_graph        gra
 PUBLIC EMERALD_API void scene_graph_compute(scene_graph graph,
                                             system_time time)
 {
-    _scene_graph* graph_ptr = (_scene_graph*) graph;
+    _scene_graph* graph_ptr = reinterpret_cast<_scene_graph*>(graph);
 
     /* Sanity check */
     system_thread_id cs_owner_thread_id = 0;
@@ -2160,8 +2161,8 @@ PUBLIC EMERALD_API void scene_graph_compute(scene_graph graph,
                           n_sorted_node < n_sorted_nodes;
                         ++n_sorted_node)
         {
-            _scene_graph_node* node_ptr        = NULL;
-            _scene_graph_node* parent_node_ptr = NULL;
+            _scene_graph_node* node_ptr        = nullptr;
+            _scene_graph_node* parent_node_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(graph_ptr->sorted_nodes,
                                                         n_sorted_node,
@@ -2176,10 +2177,8 @@ PUBLIC EMERALD_API void scene_graph_compute(scene_graph graph,
             }
 
             /* Update graph's tagged notes */
-
-            /* TODO: This really should be a static assert */
-            ASSERT_DEBUG_SYNC(SCENE_GRAPH_NODE_TAG_COUNT == SCENE_GRAPH_NODE_TAG_UNDEFINED,
-                              "");
+            static_assert(SCENE_GRAPH_NODE_TAG_COUNT == SCENE_GRAPH_NODE_TAG_UNDEFINED,
+                          "");
 
             if (node_ptr->tag < SCENE_GRAPH_NODE_TAG_COUNT)
             {
@@ -2189,8 +2188,8 @@ PUBLIC EMERALD_API void scene_graph_compute(scene_graph graph,
             /* Assign the tagged nodes to the node */
             
             /* TODO: This really should be a static assert */
-            ASSERT_DEBUG_SYNC(sizeof(node_ptr->transformation_nodes_by_tag) == sizeof(graph_ptr->node_by_tag),
-                              "Size mismatch");
+            static_assert(sizeof(node_ptr->transformation_nodes_by_tag) == sizeof(graph_ptr->node_by_tag),
+                          "Size mismatch");
 
             memcpy(node_ptr->transformation_nodes_by_tag,
                    graph_ptr->node_by_tag,
@@ -2204,9 +2203,9 @@ PUBLIC EMERALD_API void scene_graph_compute(scene_graph graph,
                                                                 time);
             }
 
-            ASSERT_DEBUG_SYNC(node_ptr->transformation_matrix.data != NULL,
-                              "pUpdateMatrix() returned NULL");
-        } /* for (all sorted nodes) */
+            ASSERT_DEBUG_SYNC(node_ptr->transformation_matrix.data != nullptr,
+                              "pUpdateMatrix() returned nullptr");
+        }
     }
 
     graph_ptr->dirty             = false;
@@ -2225,10 +2224,10 @@ PUBLIC EMERALD_API void scene_graph_compute_node(scene_graph      graph,
                                                  scene_graph_node node,
                                                  system_time      time)
 {
-    _scene_graph_node* current_node_ptr = (_scene_graph_node*) node;
-    _scene_graph*      graph_ptr        = (_scene_graph*)      graph;
+    _scene_graph_node* current_node_ptr = reinterpret_cast<_scene_graph_node*>(node);
+    _scene_graph*      graph_ptr        = reinterpret_cast<_scene_graph*>     (graph);
     int                n_cached_nodes   = 0;
-    _scene_graph_node* node_ptr         = (_scene_graph_node*) node;
+    _scene_graph_node* node_ptr         = reinterpret_cast<_scene_graph_node*>(node);
 
     /* Sanity check */
     system_thread_id cs_owner_thread_id = 0;
@@ -2255,26 +2254,26 @@ PUBLIC EMERALD_API void scene_graph_compute_node(scene_graph      graph,
     /* Cache the node chain */
     system_critical_section_enter(graph_ptr->node_compute_cs);
 
-    if (graph_ptr->node_compute_vector == NULL)
+    if (graph_ptr->node_compute_vector == nullptr)
     {
         graph_ptr->node_compute_vector = system_resizable_vector_create(4 /* capacity */);
 
-        ASSERT_DEBUG_SYNC(graph_ptr->node_compute_vector != NULL,
+        ASSERT_DEBUG_SYNC(graph_ptr->node_compute_vector != nullptr,
                           "Could not create a node compute vector");
 
-        if (graph_ptr->node_compute_vector == NULL)
+        if (graph_ptr->node_compute_vector == nullptr)
         {
             goto end;
         }
     }
 
-    while (current_node_ptr != NULL)
+    while (current_node_ptr != nullptr)
     {
         system_resizable_vector_push(graph_ptr->node_compute_vector,
                                      current_node_ptr);
 
         current_node_ptr = current_node_ptr->parent_node;
-    } /* while (current_node_ptr != NULL) */
+    }
 
     /* Compute the transformation matrices for cached nodes */
     system_resizable_vector_get_property(graph_ptr->node_compute_vector,
@@ -2301,11 +2300,11 @@ PUBLIC EMERALD_API void scene_graph_compute_node(scene_graph      graph,
                                                             current_node_ptr,
                                                             time);
         }
-    } /* for (all cached nodes) */
+    }
 
     /* Job done! */
 end:
-    if (graph_ptr->node_compute_vector != NULL)
+    if (graph_ptr->node_compute_vector != nullptr)
     {
         system_resizable_vector_clear(graph_ptr->node_compute_vector);
     }
@@ -2319,7 +2318,7 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(scene                     owne
 {
     _scene_graph* new_graph = new (std::nothrow) _scene_graph;
 
-    if (new_graph == NULL)
+    if (new_graph == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -2327,8 +2326,8 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(scene                     owne
         goto end;
     }
 
-    ASSERT_ALWAYS_SYNC(owner_scene != NULL,
-                       "Owner scene is NULL");
+    ASSERT_ALWAYS_SYNC(owner_scene != nullptr,
+                       "Owner scene is nullptr");
 
     /* Initialize the descriptor. */
     new_graph->dag                   = system_dag_create             ();
@@ -2337,12 +2336,12 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(scene                     owne
     new_graph->owner_scene           = owner_scene;
     new_graph->sorted_nodes          = system_resizable_vector_create(4 /* capacity */);
     new_graph->sorted_nodes_rw_mutex = system_read_write_mutex_create();
-    new_graph->root_node_ptr         = new (std::nothrow) _scene_graph_node(NULL /* no parent */);
+    new_graph->root_node_ptr         = new (std::nothrow) _scene_graph_node(nullptr /* no parent */);
 
-    if (new_graph->dag           == NULL ||
-        new_graph->nodes         == NULL ||
-        new_graph->root_node_ptr == NULL ||
-        new_graph->sorted_nodes  == NULL)
+    if (new_graph->dag           == nullptr ||
+        new_graph->nodes         == nullptr ||
+        new_graph->root_node_ptr == nullptr ||
+        new_graph->sorted_nodes  == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false, "Out of memory");
 
@@ -2372,10 +2371,10 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(sce
                                                                              bool                 expressed_in_radians,
                                                                              scene_graph_node_tag tag)
 {
-    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
-    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+    _scene_graph*      graph_ptr    = reinterpret_cast<_scene_graph*>(graph);
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(nullptr);
 
-    if (new_node_ptr == NULL)
+    if (new_node_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -2400,10 +2399,10 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_scale_dynamic_node(scene_
                                                                           curve_container*     scale_vector_curves,
                                                                           scene_graph_node_tag tag)
 {
-    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
-    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+    _scene_graph*      graph_ptr    = reinterpret_cast<_scene_graph*>(graph);
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(nullptr);
 
-    if (new_node_ptr == NULL)
+    if (new_node_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -2429,10 +2428,10 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(
                                                                                 const bool*          negate_xyz_vectors,
                                                                                 scene_graph_node_tag tag)
 {
-    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
-    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+    _scene_graph*      graph_ptr    = reinterpret_cast<_scene_graph*>(graph);
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(nullptr);
 
-    if (new_node_ptr == NULL)
+    if (new_node_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -2458,10 +2457,10 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_static_node(s
                                                                                float*               translation_vector,
                                                                                scene_graph_node_tag tag)
 {
-    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
-    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+    _scene_graph*      graph_ptr    = reinterpret_cast<_scene_graph*>(graph);
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(nullptr);
 
-    if (new_node_ptr == NULL)
+    if (new_node_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -2484,10 +2483,10 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(scene_graph graph)
 {
-    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
-    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+    _scene_graph*      graph_ptr    = reinterpret_cast<_scene_graph*>(graph);
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(nullptr);
 
-    if (new_node_ptr == NULL)
+    if (new_node_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -2509,10 +2508,10 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transfor
                                                                                             system_matrix4x4     matrix,
                                                                                             scene_graph_node_tag tag)
 {
-    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
-    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+    _scene_graph*      graph_ptr    = reinterpret_cast<_scene_graph*>(graph);
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(nullptr);
 
-    if (new_node_ptr == NULL)
+    if (new_node_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -2527,20 +2526,20 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transfor
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_static_matrix4x4;
 
     /* NOTE: There's one use case (ogl_flyby wrapped in a scene_graph_node) where we need
-     *       transformation_matrix.data to be != NULL.
+     *       transformation_matrix.data to be != nullptr.
      *
      *       This matrix will be released back to the pool upon the first graph traversal.
      */
     new_node_ptr->transformation_matrix.data = system_matrix4x4_create();
 
-    if (graph_ptr != NULL)
+    if (graph_ptr != nullptr)
     {
         new_node_ptr->dag_node = system_dag_add_node(graph_ptr->dag,
                                                      new_node_ptr);
     }
     else
     {
-        new_node_ptr->dag_node = NULL;
+        new_node_ptr->dag_node = nullptr;
     }
 
 end:
@@ -2553,10 +2552,10 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(scene_graph 
                                                                     _scene_object_type object_type,
                                                                     void*              object)
 {
-    _scene_graph*    graph_ptr      = (_scene_graph*) graph;
+    _scene_graph*    graph_ptr      = reinterpret_cast<_scene_graph*>(graph);
     unsigned int     n_nodes        = 0;
     unsigned int     n_sorted_nodes = 0;
-    scene_graph_node result         = NULL;
+    scene_graph_node result         = nullptr;
 
     system_resizable_vector_get_property(graph_ptr->sorted_nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -2587,7 +2586,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(scene_graph 
                       n_node < n_nodes;
                     ++n_node)
     {
-        _scene_graph_node* node_ptr = NULL;
+        _scene_graph_node* node_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(graph_ptr->sorted_nodes,
                                                     n_node,
@@ -2601,7 +2600,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(scene_graph 
 
         /* Retrieve vector holding the requested object type */
         uint32_t                n_objects     = 0;
-        system_resizable_vector object_vector = NULL;
+        system_resizable_vector object_vector = nullptr;
 
         switch (object_type)
         {
@@ -2616,7 +2615,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(scene_graph 
 
                 goto end;
             }
-        } /* switch (object_type) */
+        }
 
         system_resizable_vector_get_property(object_vector,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -2626,7 +2625,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(scene_graph 
                           n_object < n_objects;
                         ++n_object)
         {
-            void* attached_object = NULL;
+            void* attached_object = nullptr;
 
             if (!system_resizable_vector_get_element_at(object_vector,
                                                         n_object,
@@ -2645,8 +2644,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(scene_graph 
 
                 goto end;
             }
-        } /* for (all attached objects) */
-    } /* for (all nodes) */
+        }
+    }
 
 end:
     system_read_write_mutex_unlock(graph_ptr->sorted_nodes_rw_mutex,
@@ -2658,7 +2657,7 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API scene_graph_node scene_graph_get_root_node(scene_graph graph)
 {
-    return (scene_graph_node) ((_scene_graph*) graph)->root_node_ptr;
+    return reinterpret_cast<scene_graph_node>((reinterpret_cast<_scene_graph*>(graph) )->root_node_ptr);
 }
 
 /* Please see header for specification */
@@ -2672,7 +2671,7 @@ PUBLIC scene_graph scene_graph_load(scene                     owner_scene,
     scene_graph result = scene_graph_create(owner_scene,
                                             object_manager_path);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "Could not create a scene graph instance");
 
     /* Serialize all nodes. The _save() function stores the nodes in a sorted order,
@@ -2702,7 +2701,7 @@ PUBLIC scene_graph scene_graph_load(scene                     owner_scene,
         {
             goto end_error;
         }
-    } /* for (all nodes available for serialization) */
+    }
 
     /* All done */
     goto end;
@@ -2710,19 +2709,19 @@ PUBLIC scene_graph scene_graph_load(scene                     owner_scene,
 end_error:
     ASSERT_DEBUG_SYNC(false, "Scene graph serialization failed");
 
-    if (result != NULL)
+    if (result != nullptr)
     {
         scene_graph_release(result);
 
-        result = NULL;
+        result = nullptr;
     }
 
 end:
-    if (serialized_nodes != NULL)
+    if (serialized_nodes != nullptr)
     {
         system_resizable_vector_release(serialized_nodes);
 
-        serialized_nodes = NULL;
+        serialized_nodes = nullptr;
     }
 
     return result;
@@ -2731,7 +2730,7 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
 {
-    system_critical_section_enter( ((_scene_graph*) graph)->compute_lock_cs);
+    system_critical_section_enter( (reinterpret_cast<_scene_graph*>(graph))->compute_lock_cs);
 }
 
 #ifdef _DEBUG
@@ -2750,18 +2749,18 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
                       n_node < n_nodes;
                     ++n_node)
         {
-            _scene_graph_node* child_node_ptr = NULL;
+            _scene_graph_node* child_node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(graph_ptr->nodes,
                                                    n_node,
                                                   &child_node_ptr);
 
-            if (child_node_ptr->parent_node == (_scene_graph_node*) node)
+            if (child_node_ptr->parent_node == reinterpret_cast<_scene_graph_node*>(node) )
             {
                 system_resizable_vector_push(result,
                                              child_node_ptr);
             }
-        } /* for (all graph nodes) */
+        }
 
         return result;
     }
@@ -2814,7 +2813,7 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
 
                 break;
             }
-        } /* switch (type) */
+        }
 
         return result;
     }
@@ -2825,8 +2824,8 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
                                                       unsigned int     indent_level,
                                                       system_time      time)
     {
-        _scene_graph*           graph_ptr   = (_scene_graph*) graph;
-        _scene_graph_node*      node_ptr    = (_scene_graph_node*) node;
+        _scene_graph*           graph_ptr   = reinterpret_cast<_scene_graph*>     (graph);
+        _scene_graph_node*      node_ptr    = reinterpret_cast<_scene_graph_node*>(node);
 
         system_resizable_vector child_nodes   = _scene_graph_get_children(graph_ptr,
                                                                           node);
@@ -2868,8 +2867,8 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
                       n_attached_camera < n_attached_cameras;
                     ++n_attached_camera)
         {
-            scene_camera              camera      = NULL;
-            system_hashed_ansi_string camera_name = NULL;
+            scene_camera              camera      = nullptr;
+            system_hashed_ansi_string camera_name = nullptr;
 
             system_resizable_vector_get_element_at(node_ptr->attached_cameras,
                                                    n_attached_camera,
@@ -2891,14 +2890,14 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
 
             LOG_INFO("%s",
                      tmp);
-        } /* for (all attached cameras) */
+        }
 
         for (uint32_t n_attached_light = 0;
                       n_attached_light < n_attached_lights;
                     ++n_attached_light)
         {
-            scene_light               light      = NULL;
-            system_hashed_ansi_string light_name = NULL;
+            scene_light               light      = nullptr;
+            system_hashed_ansi_string light_name = nullptr;
 
             system_resizable_vector_get_element_at(node_ptr->attached_lights,
                                                    n_attached_light,
@@ -2919,14 +2918,14 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
 
             LOG_INFO("%s",
                      tmp);
-        } /* for (all attached lights) */
+        }
 
         for (uint32_t n_attached_mesh = 0;
                       n_attached_mesh < n_attached_meshes;
                     ++n_attached_mesh)
         {
-            scene_mesh                mesh      = NULL;
-            system_hashed_ansi_string mesh_name = NULL;
+            scene_mesh                mesh      = nullptr;
+            system_hashed_ansi_string mesh_name = nullptr;
 
             system_resizable_vector_get_element_at(node_ptr->attached_meshes,
                                                    n_attached_mesh,
@@ -2947,14 +2946,14 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
 
             LOG_INFO("%s",
                      tmp);
-        } /* for (all attached meshes) */
+        }
 
         /* Iterate over children */
         for (uint32_t n_child_node = 0;
                       n_child_node < n_child_nodes;
                     ++n_child_node)
         {
-            _scene_graph_node* child_node_ptr = NULL;
+            _scene_graph_node* child_node_ptr = nullptr;
 
             system_resizable_vector_get_element_at(child_nodes,
                                                    n_child_node,
@@ -2965,12 +2964,12 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
                                       (scene_graph_node) child_node_ptr,
                                       indent_level + 1,
                                       time);
-        } /* for (all child nodes) */
+        }
 
         /* Done */
         system_resizable_vector_release(child_nodes);
 
-        child_nodes = NULL;
+        child_nodes = nullptr;
     }
 
 #endif
@@ -2978,36 +2977,36 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph)
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_node_get_property(scene_graph_node          node,
                                                       scene_graph_node_property property,
-                                                      void*                     out_result)
+                                                      void*                     out_result_ptr)
 {
-    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
+    _scene_graph_node* node_ptr = reinterpret_cast<_scene_graph_node*>(node);
 
     switch (property)
     {
         case SCENE_GRAPH_NODE_PROPERTY_PARENT_NODE:
         {
-            *(scene_graph_node*) out_result = (scene_graph_node) node_ptr->parent_node;
+            *reinterpret_cast<scene_graph_node*>(out_result_ptr) = reinterpret_cast<scene_graph_node>(node_ptr->parent_node);
 
             break;
         }
 
         case SCENE_GRAPH_NODE_PROPERTY_TAG:
         {
-            *(scene_graph_node_tag*) out_result = node_ptr->tag;
+            *reinterpret_cast<scene_graph_node_tag*>(out_result_ptr) = node_ptr->tag;
 
             break;
         }
 
         case SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX:
         {
-            *(system_matrix4x4*) out_result = node_ptr->transformation_matrix.data;
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = node_ptr->transformation_matrix.data;
 
             break;
         }
 
         case SCENE_GRAPH_NODE_PROPERTY_TYPE:
         {
-            *(scene_graph_node_type*) out_result = node_ptr->type;
+            *reinterpret_cast<scene_graph_node_type*>(out_result_ptr) = node_ptr->type;
 
             break;
         }
@@ -3017,29 +3016,29 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(scene_graph_node          
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_graph_node property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(scene_graph_node     node,
                                                                  scene_graph_node_tag tag,
-                                                                 scene_graph_node*    out_result_node)
+                                                                 scene_graph_node*    out_result_node_ptr)
 {
-    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
+    _scene_graph_node* node_ptr = reinterpret_cast<_scene_graph_node*>(node);
     bool               result   = true;
 
     ASSERT_DEBUG_SYNC(tag < SCENE_GRAPH_NODE_TAG_COUNT,
                       "Invalid tag");
-    ASSERT_DEBUG_SYNC(out_result_node != NULL,
-                      "Output pointer is NULL");
+    ASSERT_DEBUG_SYNC(out_result_node_ptr != nullptr,
+                      "Output pointer is nullptr");
 
     if (tag < SCENE_GRAPH_NODE_TAG_COUNT)
     {
-        ASSERT_DEBUG_SYNC(node_ptr->transformation_nodes_by_tag[tag] != NULL,
-                          "Requested transformation node is NULL");
+        ASSERT_DEBUG_SYNC(node_ptr->transformation_nodes_by_tag[tag] != nullptr,
+                          "Requested transformation node is nullptr");
 
-        *out_result_node = node_ptr->transformation_nodes_by_tag[tag];
-    } /* if (tag < SCENE_GRAPH_NODE_TAG_COUNT) */
+        *out_result_node_ptr = node_ptr->transformation_nodes_by_tag[tag];
+    }
     else
     {
         result = false;
@@ -3051,10 +3050,10 @@ PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(scene_graph_nod
 /* Please see header for specification */
 PUBLIC void scene_graph_node_release(scene_graph_node node)
 {
-    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
+    _scene_graph_node* node_ptr = reinterpret_cast<_scene_graph_node*>(node);
 
     delete node_ptr;
-    node_ptr = NULL;
+    node_ptr = nullptr;
 }
 
 /* Please see header for specification */
@@ -3062,9 +3061,9 @@ PUBLIC EMERALD_API void scene_graph_node_replace(scene_graph      graph,
                                                  scene_graph_node dst_node,
                                                  scene_graph_node src_node)
 {
-    _scene_graph*      graph_ptr    = (_scene_graph*)      graph;
-    _scene_graph_node* dst_node_ptr = (_scene_graph_node*) dst_node;
-    _scene_graph_node* src_node_ptr = (_scene_graph_node*) src_node;
+    _scene_graph*      graph_ptr    = reinterpret_cast<_scene_graph*>     (graph);
+    _scene_graph_node* dst_node_ptr = reinterpret_cast<_scene_graph_node*>(dst_node);
+    _scene_graph_node* src_node_ptr = reinterpret_cast<_scene_graph_node*>(src_node);
 
     /* This function makes several assumptions in order to avoid a deep destruction of the
      * node.
@@ -3105,7 +3104,7 @@ PUBLIC EMERALD_API void scene_graph_node_replace(scene_graph      graph,
                       "scene_graph_replace_node() does not support replacement for nodes with attach objects.");
 #endif
 
-    if (dst_node_ptr->data != NULL)
+    if (dst_node_ptr->data != nullptr)
     {
         _scene_graph_node_release_data(dst_node_ptr->data,
                                        dst_node_ptr->type);
@@ -3113,77 +3112,77 @@ PUBLIC EMERALD_API void scene_graph_node_replace(scene_graph      graph,
 
     /* Copy data from the source node */
     dst_node_ptr->data = src_node_ptr->data;
-    src_node_ptr->data = NULL;
+    src_node_ptr->data = nullptr;
 
     dst_node_ptr->pUpdateMatrix = src_node_ptr->pUpdateMatrix;
     dst_node_ptr->type          = src_node_ptr->type;
 
     /* Release the source node */
     delete src_node_ptr;
-    src_node_ptr = NULL;
+    src_node_ptr = nullptr;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_release(scene_graph graph)
 {
-    _scene_graph* graph_ptr = (_scene_graph*) graph;
+    _scene_graph* graph_ptr = reinterpret_cast<_scene_graph*>(graph);
 
-    if (graph_ptr->compute_lock_cs != NULL)
+    if (graph_ptr->compute_lock_cs != nullptr)
     {
         system_critical_section_release(graph_ptr->compute_lock_cs);
 
-        graph_ptr->compute_lock_cs = NULL;
+        graph_ptr->compute_lock_cs = nullptr;
     }
 
-    if (graph_ptr->dag != NULL)
+    if (graph_ptr->dag != nullptr)
     {
         system_dag_release(graph_ptr->dag);
 
-        graph_ptr->dag = NULL;
+        graph_ptr->dag = nullptr;
     }
 
-    if (graph_ptr->nodes != NULL)
+    if (graph_ptr->nodes != nullptr)
     {
-        _scene_graph_node* node_ptr = NULL;
+        _scene_graph_node* node_ptr = nullptr;
 
         while (system_resizable_vector_pop(graph_ptr->nodes,
                                            &node_ptr) )
         {
             delete node_ptr;
 
-            node_ptr = NULL;
+            node_ptr = nullptr;
         }
 
         system_resizable_vector_release(graph_ptr->nodes);
-        graph_ptr->nodes = NULL;
+        graph_ptr->nodes = nullptr;
     }
 
-    if (graph_ptr->node_compute_cs != NULL)
+    if (graph_ptr->node_compute_cs != nullptr)
     {
         system_critical_section_release(graph_ptr->node_compute_cs);
 
-        graph_ptr->node_compute_cs = NULL;
+        graph_ptr->node_compute_cs = nullptr;
     }
 
-    if (graph_ptr->node_compute_vector != NULL)
+    if (graph_ptr->node_compute_vector != nullptr)
     {
         system_resizable_vector_release(graph_ptr->node_compute_vector);
 
-        graph_ptr->node_compute_vector = NULL;
+        graph_ptr->node_compute_vector = nullptr;
     }
 
-    if (graph_ptr->sorted_nodes != NULL)
+    if (graph_ptr->sorted_nodes != nullptr)
     {
         system_resizable_vector_release(graph_ptr->sorted_nodes);
 
-        graph_ptr->sorted_nodes = NULL;
+        graph_ptr->sorted_nodes = nullptr;
     }
 
-    if (graph_ptr->sorted_nodes_rw_mutex != NULL)
+    if (graph_ptr->sorted_nodes_rw_mutex != nullptr)
     {
         system_read_write_mutex_release(graph_ptr->sorted_nodes_rw_mutex);
 
-        graph_ptr->sorted_nodes_rw_mutex = NULL;
+        graph_ptr->sorted_nodes_rw_mutex = nullptr;
     }
 
     /* Root node is not deallocated since it's a part of nodes container */
@@ -3198,8 +3197,8 @@ PUBLIC bool scene_graph_save(system_file_serializer serializer,
                              system_hash64map       mesh_instance_ptr_to_id_map,
                              scene                  owner_scene)
 {
-    _scene_graph*    graph_ptr    = (_scene_graph*) graph;
-    system_hash64map node_hashmap = NULL;
+    _scene_graph*    graph_ptr    = reinterpret_cast<_scene_graph*>(graph);
+    system_hash64map node_hashmap = nullptr;
     bool             result       = true;
 
     if (graph_ptr->dirty)
@@ -3225,7 +3224,7 @@ PUBLIC bool scene_graph_save(system_file_serializer serializer,
         /* Prepare a hash map that maps node pointers to IDs corresponding to node descriptor locations
          * in graph_ptr->nodes.
          */
-        node_hashmap = _scene_graph_get_node_hashmap( (_scene_graph*) graph);
+        node_hashmap = _scene_graph_get_node_hashmap( reinterpret_cast<_scene_graph*>(graph) );
 
         /* Store all nodes. While we're on it, determine which of these nodes is considered a root node */
         system_file_serializer_write(serializer,
@@ -3236,7 +3235,7 @@ PUBLIC bool scene_graph_save(system_file_serializer serializer,
                           n_node < n_nodes;
                         ++n_node)
         {
-            _scene_graph_node* node_ptr = NULL;
+            _scene_graph_node* node_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(graph_ptr->sorted_nodes,
                                                         n_node,
@@ -3252,7 +3251,7 @@ PUBLIC bool scene_graph_save(system_file_serializer serializer,
 
             if (n_node == 0)
             {
-                ASSERT_DEBUG_SYNC(node_ptr->parent_node == NULL,
+                ASSERT_DEBUG_SYNC(node_ptr->parent_node == nullptr,
                                   "Zeroth node is not a root node.");
             }
 
@@ -3264,7 +3263,7 @@ PUBLIC bool scene_graph_save(system_file_serializer serializer,
                                              light_ptr_to_id_map,
                                              mesh_instance_ptr_to_id_map,
                                              owner_scene);
-        } /* for (all nodes) */
+        }
     }
 
     /* All done */
@@ -3272,11 +3271,11 @@ end:
     system_read_write_mutex_unlock(graph_ptr->sorted_nodes_rw_mutex,
                                    ACCESS_READ);
 
-    if (node_hashmap != NULL)
+    if (node_hashmap != nullptr)
     {
         system_hash64map_release(node_hashmap);
 
-        node_hashmap = NULL;
+        node_hashmap = nullptr;
     }
 
     return result;
@@ -3291,7 +3290,7 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
                                              void*                          user_arg,
                                              system_time                    frame_time)
 {
-    _scene_graph* graph_ptr = (_scene_graph*) graph;
+    _scene_graph* graph_ptr = reinterpret_cast<_scene_graph*>(graph);
 
     scene_graph_lock(graph);
 
@@ -3317,7 +3316,7 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
                           n_sorted_node < n_sorted_nodes;
                         ++n_sorted_node)
         {
-            _scene_graph_node* node_ptr = NULL;
+            _scene_graph_node* node_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(graph_ptr->sorted_nodes,
                                                         n_sorted_node,
@@ -3331,7 +3330,7 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
             }
 
             node_ptr->transformation_matrix.has_fired_event = false;
-        } /* for (all sorted nodes) */
+        }
 
         /* Iterate through the sorted nodes. Fire the 'on new transformation matrix' only for the first object
          * associated with the node, and then continue with object-specific events.
@@ -3340,7 +3339,7 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
                           n_sorted_node < n_sorted_nodes;
                         ++n_sorted_node)
         {
-            _scene_graph_node* node_ptr           = NULL;
+            _scene_graph_node* node_ptr           = nullptr;
             unsigned int       n_attached_cameras = 0;
             unsigned int       n_attached_lights  = 0;
             unsigned int       n_attached_meshes  = 0;
@@ -3387,7 +3386,7 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
                 if (!node_ptr->transformation_matrix.has_fired_event)
                 {
                     /* Nope, issue a notification */
-                    if (on_new_transformation_matrix_proc != NULL)
+                    if (on_new_transformation_matrix_proc != nullptr)
                     {
                         on_new_transformation_matrix_proc(node_ptr->transformation_matrix.data,
                                                           user_arg);
@@ -3396,9 +3395,9 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
                     node_ptr->transformation_matrix.has_fired_event = true;
                 }
 
-                if (insert_camera_proc != NULL ||
-                    insert_mesh_proc   != NULL ||
-                    insert_light_proc  != NULL)
+                if (insert_camera_proc != nullptr ||
+                    insert_mesh_proc   != nullptr ||
+                    insert_light_proc  != nullptr)
                 {
                     for (unsigned int n_iteration = 0;
                                       n_iteration < 3 /* cameras/meshes/lights */;
@@ -3415,28 +3414,28 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
                                           n_object < n_objects;
                                         ++n_object)
                         {
-                            void* object = NULL;
+                            void* object = nullptr;
 
                             if (system_resizable_vector_get_element_at(objects,
                                                                        n_object,
                                                                       &object) )
                             {
                                 if (n_iteration        == 0 &&
-                                    insert_camera_proc != NULL)
+                                    insert_camera_proc != nullptr)
                                 {
                                     insert_camera_proc( (scene_camera) object,
                                                         user_arg);
                                 }
                                 else
                                 if (n_iteration      == 1 &&
-                                    insert_mesh_proc != NULL)
+                                    insert_mesh_proc != nullptr)
                                 {
                                     insert_mesh_proc( (scene_mesh) object,
                                                       user_arg);
                                 }
                                 else
                                 if (n_iteration       == 2 &&
-                                    insert_light_proc != NULL)
+                                    insert_light_proc != nullptr)
                                 {
                                     insert_light_proc( (scene_light) object,
                                                        user_arg);
@@ -3451,12 +3450,12 @@ PUBLIC EMERALD_API void scene_graph_traverse(scene_graph                    grap
 
                                 goto end;
                             }
-                        } /* for (all attached objects) */
-                    } /* for (all three iterations) */
-                } /* if (it makes sense to fire event call-backs) */
-            } /* if (n_attached_objects != 0) */
-        } /* for (all sorted nodes) */
-    } /* "sorted nodes" lock */
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 end:
     scene_graph_unlock(graph);
@@ -3468,5 +3467,5 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_unlock(scene_graph graph)
 {
-    system_critical_section_leave( ((_scene_graph*) graph)->compute_lock_cs);
+    system_critical_section_leave( (reinterpret_cast<_scene_graph*>(graph))->compute_lock_cs);
 }

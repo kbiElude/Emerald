@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #ifndef SCENE_LIGHT_H
@@ -115,14 +115,14 @@ typedef enum
     /* Settable, scene_light_shadow_map_filtering. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
 
-    /* Settable, ral_texture_format.
+    /* Settable, ral_format.
      *
      * Stores internalformat of draw buffers used during SM generation pass.
      * Such texture is currently only generated for VSM SM algorithm.
      */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR,
 
-    /* Settable, ral_texture_format.
+    /* Settable, ral_format.
      *
      * Stores internalformat of the depth texture used during SM generation pass.
      */
@@ -310,7 +310,7 @@ PUBLIC EMERALD_API scene_light scene_light_create_spot(system_hashed_ansi_string
 /** TODO */
 PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
                                                  scene_light_property property,
-                                                 void*                out_result);
+                                                 void*                out_result_ptr);
 
 /** TODO
  *
@@ -367,8 +367,8 @@ PUBLIC bool scene_light_save(system_file_serializer serializer,
                              scene                  owner_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_light_set_property(scene_light,
-                                                 scene_light_property,
-                                                 const void*);
+PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
+                                                 scene_light_property property,
+                                                 const void*          data);
 
 #endif /* SCENE_CAMERA_H */

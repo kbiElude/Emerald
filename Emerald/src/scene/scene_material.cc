@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -114,7 +114,7 @@ PRIVATE bool _scene_material_load_curve(scene                     owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve_id curve_id = 0;
 
@@ -147,57 +147,57 @@ PRIVATE bool _scene_material_load_curve(scene                     owner_scene,
 /** TODO */
 PRIVATE void _scene_material_release(void* data_ptr)
 {
-    _scene_material* material_ptr = (_scene_material*) data_ptr;
+    _scene_material* material_ptr = reinterpret_cast<_scene_material*>(data_ptr);
 
     material_ptr->smoothing_angle = 0.0f;
 
-    if (material_ptr->color[0] != NULL)
+    if (material_ptr->color[0] != nullptr)
     {
         curve_container_release(material_ptr->color[0]);
 
-        material_ptr->color[0] = NULL;
+        material_ptr->color[0] = nullptr;
     }
 
-    if (material_ptr->color[1] != NULL)
+    if (material_ptr->color[1] != nullptr)
     {
         curve_container_release(material_ptr->color[1]);
 
-        material_ptr->color[1] = NULL;
+        material_ptr->color[1] = nullptr;
     }
 
-    if (material_ptr->color[2] != NULL)
+    if (material_ptr->color[2] != nullptr)
     {
         curve_container_release(material_ptr->color[2]);
 
-        material_ptr->color[2] = NULL;
+        material_ptr->color[2] = nullptr;
     }
 
-    if (material_ptr->glosiness != NULL)
+    if (material_ptr->glosiness != nullptr)
     {
         curve_container_release(material_ptr->glosiness);
 
-        material_ptr->glosiness = NULL;
+        material_ptr->glosiness = nullptr;
     }
 
-    if (material_ptr->luminance != NULL)
+    if (material_ptr->luminance != nullptr)
     {
         curve_container_release(material_ptr->luminance);
 
-        material_ptr->luminance = NULL;
+        material_ptr->luminance = nullptr;
     }
 
-    if (material_ptr->reflection_ratio != NULL)
+    if (material_ptr->reflection_ratio != nullptr)
     {
         curve_container_release(material_ptr->reflection_ratio);
 
-        material_ptr->reflection_ratio = NULL;
+        material_ptr->reflection_ratio = nullptr;
     }
 
-    if (material_ptr->specular_ratio != NULL)
+    if (material_ptr->specular_ratio != nullptr)
     {
         curve_container_release(material_ptr->specular_ratio);
 
-        material_ptr->specular_ratio = NULL;
+        material_ptr->specular_ratio = nullptr;
     }
 }
 
@@ -208,7 +208,7 @@ PRIVATE bool _scene_material_save_curve(scene                  owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve    curve    = scene_get_curve_by_container(owner_scene,
                                                                in_curve);
@@ -239,10 +239,10 @@ PUBLIC EMERALD_API scene_material scene_material_create(system_hashed_ansi_strin
 {
     _scene_material* new_scene_material = new (std::nothrow) _scene_material;
 
-    ASSERT_DEBUG_SYNC(new_scene_material != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_material != nullptr,
                       "Out of memory");
 
-    if (new_scene_material != NULL)
+    if (new_scene_material != nullptr)
     {
         _scene_material_init(new_scene_material,
                              name,
@@ -263,176 +263,176 @@ PUBLIC EMERALD_API scene_material scene_material_create(system_hashed_ansi_strin
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_material_get_property(scene_material          material_instance,
                                                     scene_material_property property,
-                                                    void*                   out_result)
+                                                    void*                   out_result_ptr)
 {
-    _scene_material* material_ptr = (_scene_material*) material_instance;
+    _scene_material* material_ptr = reinterpret_cast<_scene_material*>(material_instance);
 
     switch (property)
     {
         case SCENE_MATERIAL_PROPERTY_COLOR:
         {
-            *(curve_container**) out_result = material_ptr->color;
+            *reinterpret_cast<curve_container**>(out_result_ptr) = material_ptr->color;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME:
         {
-            *((system_hashed_ansi_string*) out_result) = material_ptr->color_texture_file_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->color_texture_file_name;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MAG_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->color_texture_mag_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->color_texture_mag_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MIN_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->color_texture_min_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->color_texture_min_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_GLOSINESS:
         {
-            *(curve_container*) out_result = material_ptr->glosiness;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = material_ptr->glosiness;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_LUMINANCE:
         {
-            *(curve_container*) out_result = material_ptr->luminance;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = material_ptr->luminance;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = material_ptr->luminance_texture_file_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->luminance_texture_file_name;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MAG_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->luminance_texture_mag_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->luminance_texture_mag_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MIN_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->luminance_texture_min_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->luminance_texture_min_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_NAME:
         {
-            *((system_hashed_ansi_string*) out_result) = material_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->name;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = material_ptr->normal_texture_file_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->normal_texture_file_name;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MAG_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->normal_texture_mag_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->normal_texture_mag_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MIN_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->normal_texture_min_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->normal_texture_min_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_OBJECT_MANAGER_PATH:
         {
-            *(system_hashed_ansi_string*) out_result = material_ptr->object_manager_path;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->object_manager_path;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_OWNER_SCENE:
         {
-            *(scene*) out_result = material_ptr->owner_scene;
+            *reinterpret_cast<scene*>(out_result_ptr) = material_ptr->owner_scene;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO:
         {
-            *(curve_container*) out_result = material_ptr->reflection_ratio;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = material_ptr->reflection_ratio;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = material_ptr->reflection_texture_file_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->reflection_texture_file_name;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MAG_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->reflection_texture_mag_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->reflection_texture_mag_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MIN_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->reflection_texture_min_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->reflection_texture_min_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE:
         {
-            *(float*) out_result = material_ptr->smoothing_angle;
+            *reinterpret_cast<float*>(out_result_ptr) = material_ptr->smoothing_angle;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO:
         {
-            *(curve_container*) out_result = material_ptr->specular_ratio;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = material_ptr->specular_ratio;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = material_ptr->specular_texture_file_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->specular_texture_file_name;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MAG_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->specular_texture_mag_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->specular_texture_mag_filter;
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MIN_FILTER:
         {
-            *(scene_material_texture_filtering*) out_result = material_ptr->specular_texture_min_filter;
+            *reinterpret_cast<scene_material_texture_filtering*>(out_result_ptr) = material_ptr->specular_texture_min_filter;
 
             break;
         }
@@ -442,7 +442,7 @@ PUBLIC EMERALD_API void scene_material_get_property(scene_material          mate
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_material property requested");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for spec */
@@ -450,12 +450,12 @@ PUBLIC scene_material scene_material_load(system_file_serializer    serializer,
                                           scene                     owner_scene,
                                           system_hashed_ansi_string object_manager_path)
 {
-    curve_container*          default_curves[7]   = {NULL};
+    curve_container*          default_curves[7]   = {nullptr};
     const unsigned int        n_default_curves    = sizeof(default_curves) / sizeof(default_curves[0]);
-    system_hashed_ansi_string name                = NULL;
+    system_hashed_ansi_string name                = nullptr;
     bool                      result              = true;
-    scene_material            result_material     = NULL;
-    _scene_material*          result_material_ptr = NULL;
+    scene_material            result_material     = nullptr;
+    _scene_material*          result_material_ptr = nullptr;
 
     /* Retrieve mesh instance properties. */
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
@@ -471,16 +471,16 @@ PUBLIC scene_material scene_material_load(system_file_serializer    serializer,
                                             object_manager_path,
                                             owner_scene);
 
-    ASSERT_DEBUG_SYNC(result_material != NULL,
+    ASSERT_DEBUG_SYNC(result_material != nullptr,
                       "Could not instantiate a scene_material object");
 
-    if (result_material == NULL)
+    if (result_material == nullptr)
     {
         goto end;
     }
 
     /* Release the default curves */
-    result_material_ptr = (_scene_material*) result_material;
+    result_material_ptr = reinterpret_cast<_scene_material*>(result_material);
 
     default_curves[0] =  result_material_ptr->color + 0;
     default_curves[1] =  result_material_ptr->color + 1;
@@ -494,13 +494,13 @@ PUBLIC scene_material scene_material_load(system_file_serializer    serializer,
                       n_default_curve < n_default_curves;
                     ++n_default_curve)
     {
-        if (default_curves[n_default_curve] != NULL)
+        if (default_curves[n_default_curve] != nullptr)
         {
             curve_container_release(*default_curves[n_default_curve]);
 
-            *default_curves[n_default_curve] = NULL;
+            *default_curves[n_default_curve] = nullptr;
         }
-    } /* for (all default curves) */
+    }
 
     /* Read all the properties */
     result &= _scene_material_load_curve                    (owner_scene,
@@ -555,7 +555,7 @@ PUBLIC bool scene_material_save(system_file_serializer serializer,
                                 const scene_material   material,
                                 scene                  owner_scene)
 {
-    const _scene_material* material_ptr = (const _scene_material*) material;
+    const _scene_material* material_ptr = reinterpret_cast<const _scene_material*>(material);
     bool                   result;
 
     result  = system_file_serializer_write_hashed_ansi_string(serializer,
@@ -570,7 +570,7 @@ PUBLIC bool scene_material_save(system_file_serializer serializer,
                                                               material_ptr->color[2],
                                                               serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              (material_ptr->color_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                              (material_ptr->color_texture_file_name == nullptr) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                               : material_ptr->color_texture_file_name);
     result &= _scene_material_save_curve                     (owner_scene,
                                                               material_ptr->glosiness,
@@ -579,16 +579,16 @@ PUBLIC bool scene_material_save(system_file_serializer serializer,
                                                               material_ptr->luminance,
                                                               serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              (material_ptr->luminance_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                              (material_ptr->luminance_texture_file_name == nullptr) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                   : material_ptr->luminance_texture_file_name);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              (material_ptr->normal_texture_file_name    == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                              (material_ptr->normal_texture_file_name    == nullptr) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                   : material_ptr->normal_texture_file_name);
     result &= _scene_material_save_curve                     (owner_scene,
                                                               material_ptr->reflection_ratio,
                                                               serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              (material_ptr->reflection_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                              (material_ptr->reflection_texture_file_name == nullptr) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                    : material_ptr->reflection_texture_file_name);
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(material_ptr->smoothing_angle),
@@ -597,7 +597,7 @@ PUBLIC bool scene_material_save(system_file_serializer serializer,
                                                               material_ptr->specular_ratio,
                                                               serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              (material_ptr->specular_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                              (material_ptr->specular_texture_file_name == nullptr) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                  : material_ptr->specular_texture_file_name);
 
     return result;
@@ -608,7 +608,7 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
                                                     scene_material_property property,
                                                     const void*             data)
 {
-    _scene_material* material_ptr = (_scene_material*) material;
+    _scene_material* material_ptr = reinterpret_cast<_scene_material*>(material);
 
     switch (property)
     {
@@ -618,12 +618,12 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
                               n_component < 3;
                             ++n_component)
             {
-                if (material_ptr->color[n_component] != NULL)
+                if (material_ptr->color[n_component] != nullptr)
                 {
                     curve_container_release(material_ptr->color[n_component]);
                 }
 
-                material_ptr->color[n_component] = *((curve_container*) data + n_component);
+                material_ptr->color[n_component] = *(reinterpret_cast<const curve_container*>(data) + n_component);
                 curve_container_retain(material_ptr->color[n_component]);
             }
 
@@ -632,19 +632,19 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
 
         case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME:
         {
-            material_ptr->color_texture_file_name = *((system_hashed_ansi_string*) data);
+            material_ptr->color_texture_file_name = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_GLOSINESS:
         {
-            if (material_ptr->glosiness != NULL)
+            if (material_ptr->glosiness != nullptr)
             {
                 curve_container_release(material_ptr->glosiness);
             }
 
-            material_ptr->glosiness = *(curve_container*) data;
+            material_ptr->glosiness = *reinterpret_cast<const curve_container*>(data);
             curve_container_retain(material_ptr->glosiness);
 
             break;
@@ -652,12 +652,12 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
 
         case SCENE_MATERIAL_PROPERTY_LUMINANCE:
         {
-            if (material_ptr->luminance != NULL)
+            if (material_ptr->luminance != nullptr)
             {
                 curve_container_release(material_ptr->luminance);
             }
 
-            material_ptr->luminance = *(curve_container*) data;
+            material_ptr->luminance = *reinterpret_cast<const curve_container*>(data);
             curve_container_retain(material_ptr->luminance);
 
             break;
@@ -665,26 +665,26 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
 
         case SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME:
         {
-            material_ptr->luminance_texture_file_name = *(system_hashed_ansi_string*) data;
+            material_ptr->luminance_texture_file_name = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME:
         {
-            material_ptr->normal_texture_file_name = *(system_hashed_ansi_string*) data;
+            material_ptr->normal_texture_file_name = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO:
         {
-            if (material_ptr->reflection_ratio != NULL)
+            if (material_ptr->reflection_ratio != nullptr)
             {
                 curve_container_release(material_ptr->reflection_ratio);
             }
 
-            material_ptr->reflection_ratio = *(curve_container*) data;
+            material_ptr->reflection_ratio = *reinterpret_cast<const curve_container*>(data);
             curve_container_retain(material_ptr->reflection_ratio);
 
             break;
@@ -692,26 +692,26 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
 
         case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME:
         {
-            material_ptr->reflection_texture_file_name = *(system_hashed_ansi_string*) data;
+            material_ptr->reflection_texture_file_name = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE:
         {
-            material_ptr->smoothing_angle = *(float*) data;
+            material_ptr->smoothing_angle = *reinterpret_cast<const float*>(data);
 
             break;
         }
 
         case SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO:
         {
-            if (material_ptr->specular_ratio != NULL)
+            if (material_ptr->specular_ratio != nullptr)
             {
                 curve_container_release(material_ptr->specular_ratio);
             }
 
-            material_ptr->specular_ratio = *(curve_container*) data;
+            material_ptr->specular_ratio = *reinterpret_cast<const curve_container*>(data);
             curve_container_retain(material_ptr->specular_ratio);
 
             break;
@@ -719,7 +719,7 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
 
         case SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME:
         {
-            material_ptr->specular_texture_file_name = *(system_hashed_ansi_string*) data;
+            material_ptr->specular_texture_file_name = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }
@@ -729,5 +729,5 @@ PUBLIC EMERALD_API void scene_material_set_property(scene_material          mate
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_material property requested");
         }
-    } /* switch (property) */
+    }
 }

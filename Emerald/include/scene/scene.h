@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef SCENE_H
@@ -16,32 +16,53 @@ REFCOUNT_INSERT_DECLARATIONS(scene,
 
 enum scene_property
 {
-    SCENE_PROPERTY_CALLBACK_MANAGER,       /* not settable, system_callback_manager. */
-    SCENE_PROPERTY_FPS,                    /*     settable, float. By default set to 0 which
-                                            *               disables scene graph computation's FPS
-                                            *               limiter which is needed for correct LW
-                                            *               animation playback. */
-    SCENE_PROPERTY_GRAPH,                  /* not settable, scene_graph */
-    SCENE_PROPERTY_MAX_ANIMATION_DURATION, /*     settable, float */
-    SCENE_PROPERTY_N_CAMERAS,              /* not settable, uint32_t */
-    SCENE_PROPERTY_N_LIGHTS,               /* not settable, uint32_t */
-    SCENE_PROPERTY_N_MATERIALS,            /* not settable, uint32_t */
-    SCENE_PROPERTY_N_MESH_INSTANCES,       /* not settable, uint32_t */
-    SCENE_PROPERTY_N_UNIQUE_MESHES,        /* not settable, uint32_t */
-    SCENE_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
+    /* not settable, system_callback_manager. */
+    SCENE_PROPERTY_CALLBACK_MANAGER,
 
-    SCENE_PROPERTY_SHADOW_MAPPING_ENABLED, /*     settable, bool. Set in run-time.
-                                            *
-                                            * Tells if shadow mapping should be enabled for lights
-                                            * which are marked as shadow caster. This is used by
-                                            * material manager to determine which materials should be
-                                            * returned.
-                                            */
+    /* settable, float.
+     *
+     * By default set to 0 which disables scene graph computation's FPS
+     * limiter which is needed for correct LW animation playback. */
+    SCENE_PROPERTY_FPS,
+
+    /* not settable, scene_graph */
+    SCENE_PROPERTY_GRAPH,
+
+    /* settable, float */
+    SCENE_PROPERTY_MAX_ANIMATION_DURATION,
+
+    /* not settable, uint32_t */
+    SCENE_PROPERTY_N_CAMERAS,
+
+    /* not settable, uint32_t */
+    SCENE_PROPERTY_N_LIGHTS,
+
+    /* not settable, uint32_t */
+    SCENE_PROPERTY_N_MATERIALS,
+
+    /* not settable, uint32_t */
+    SCENE_PROPERTY_N_MESH_INSTANCES,
+
+    /* not settable, uint32_t */
+    SCENE_PROPERTY_N_UNIQUE_MESHES,
+
+    /* not settable, system_hashed_ansi_string */
+    SCENE_PROPERTY_NAME,
+
+    /* settable, bool. Set in run-time.
+     *
+     * Tells if shadow mapping should be enabled for lights
+     * which are marked as shadow caster. This is used by
+     * material manager to determine which materials should be
+     * returned.
+     */
+    SCENE_PROPERTY_SHADOW_MAPPING_ENABLED, 
 };
 
 typedef enum
 {
-    SCENE_CALLBACK_ID_LIGHT_ADDED, /* new_light_added; callback_proc_data: new scene_light */
+    /* new_light_added; callback_proc_data: new scene_light */
+    SCENE_CALLBACK_ID_LIGHT_ADDED,
 
     /* Always last */
     SCENE_CALLBACK_ID_COUNT
@@ -71,7 +92,7 @@ PUBLIC EMERALD_API bool scene_add_material(scene          scene_instance,
 PUBLIC EMERALD_API bool scene_add_mesh_instance(scene                     scene,
                                                 mesh                      mesh_data,
                                                 system_hashed_ansi_string name,
-                                                scene_mesh*               out_opt_result_mesh_ptr = NULL);
+                                                scene_mesh*               out_opt_result_mesh_ptr = nullptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(scene      scene,
@@ -130,7 +151,7 @@ PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_name(scene             
 /** TODO */
 PUBLIC EMERALD_API void scene_get_property(scene          scene,
                                            scene_property property,
-                                           void*          out_result);
+                                           void*          out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API scene_texture scene_get_texture_by_index(scene        scene,
@@ -171,6 +192,6 @@ PUBLIC EMERALD_API void scene_set_graph(scene       scene,
 /** TODO */
 PUBLIC EMERALD_API void scene_set_property(scene          scene,
                                            scene_property property,
-                                           const void*    data);
+                                           const void*    data_ptr);
 
 #endif /* SCENE_H */

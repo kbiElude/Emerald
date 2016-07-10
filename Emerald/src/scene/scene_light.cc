@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -44,8 +44,8 @@ typedef struct
     scene_light_shadow_map_bias                 shadow_map_bias;                  /* NOTE: This property affects the generated ogl_uber! */
     bool                                        shadow_map_cull_front_faces;
     scene_light_shadow_map_filtering            shadow_map_filtering;             /* NOTE: This property affects the generated ogl_uber! */
-    ral_texture_format                          shadow_map_format_color;
-    ral_texture_format                          shadow_map_format_depth;
+    ral_format                                  shadow_map_format_color;
+    ral_format                                  shadow_map_format_depth;
     scene_light_shadow_map_pointlight_algorithm shadow_map_pointlight_algorithm;  /* NOTE: This property affects the generated ogl_uber! */
     float                                       shadow_map_pointlight_far_plane;
     float                                       shadow_map_pointlight_near_plane;
@@ -101,7 +101,7 @@ PRIVATE void _scene_light_init_default_attenuation_curves(_scene_light* light_pt
      */
     if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
-        ASSERT_DEBUG_SYNC(light_ptr->constant_attenuation == NULL,
+        ASSERT_DEBUG_SYNC(light_ptr->constant_attenuation == nullptr,
                           "Light constant attenuation curve already instantiated");
 
         light_ptr->constant_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
@@ -121,7 +121,7 @@ PRIVATE void _scene_light_init_default_attenuation_curves(_scene_light* light_pt
      */
     if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
-        ASSERT_DEBUG_SYNC(light_ptr->linear_attenuation == NULL,
+        ASSERT_DEBUG_SYNC(light_ptr->linear_attenuation == nullptr,
                           "Light linear attenuation curve already instantiated");
 
         light_ptr->linear_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
@@ -141,7 +141,7 @@ PRIVATE void _scene_light_init_default_attenuation_curves(_scene_light* light_pt
      */
     if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
-        ASSERT_DEBUG_SYNC(light_ptr->quadratic_attenuation == NULL,
+        ASSERT_DEBUG_SYNC(light_ptr->quadratic_attenuation == nullptr,
                           "Light quadratic attenuation curve already instantiated");
 
         light_ptr->quadratic_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
@@ -165,9 +165,9 @@ PRIVATE void _scene_light_init_default_color_curves(_scene_light* light_ptr)
      *
      * Default color: (1, 1, 1)
      */
-    ASSERT_DEBUG_SYNC(light_ptr->color[0] == NULL &&
-                      light_ptr->color[1] == NULL &&
-                      light_ptr->color[2] == NULL,
+    ASSERT_DEBUG_SYNC(light_ptr->color[0] == nullptr &&
+                      light_ptr->color[1] == nullptr &&
+                      light_ptr->color[2] == nullptr,
                       "Light color curve(s) already instantiated");
 
     system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
@@ -202,7 +202,7 @@ PRIVATE void _scene_light_init_default_color_intensity_curve(_scene_light* light
     system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     /* Color intensity: common for all light types */
-    ASSERT_DEBUG_SYNC(light_ptr->color_intensity == NULL,
+    ASSERT_DEBUG_SYNC(light_ptr->color_intensity == nullptr,
                       "Light color intensity curve already instantiated");
 
     light_ptr->color_intensity = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
@@ -224,7 +224,7 @@ PRIVATE void _scene_light_init_default_point_light_curves(_scene_light* light_pt
     system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     /* Range */
-    ASSERT_DEBUG_SYNC(light_ptr->range == NULL,
+    ASSERT_DEBUG_SYNC(light_ptr->range == nullptr,
                       "Light edge angle curve already instantiated");
 
     light_ptr->range = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
@@ -247,7 +247,7 @@ PRIVATE void _scene_light_init_default_spot_light_curves(_scene_light* light_ptr
     system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     /* Cone angle */
-    ASSERT_DEBUG_SYNC(light_ptr->cone_angle_half == NULL,
+    ASSERT_DEBUG_SYNC(light_ptr->cone_angle_half == nullptr,
                       "Light cone angle half curve already instantiated");
 
     light_ptr->cone_angle_half = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
@@ -261,7 +261,7 @@ PRIVATE void _scene_light_init_default_spot_light_curves(_scene_light* light_ptr
                                       temp_variant);
 
     /* Edge angle */
-    ASSERT_DEBUG_SYNC(light_ptr->edge_angle == NULL,
+    ASSERT_DEBUG_SYNC(light_ptr->edge_angle == nullptr,
                       "Light edge angle curve already instantiated");
 
     light_ptr->edge_angle = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
@@ -281,19 +281,19 @@ PRIVATE void _scene_light_init_default_spot_light_curves(_scene_light* light_ptr
 /** TODO */
 PRIVATE void _scene_light_init(_scene_light* light_ptr)
 {
-    /* Curves - set all to NULL */
+    /* Curves - set all to nullptr */
     memset(light_ptr->color,
            0,
            sizeof(light_ptr->color) );
 
-    light_ptr->color_intensity       = NULL;
-    light_ptr->cone_angle_half       = NULL;
-    light_ptr->constant_attenuation  = NULL;
-    light_ptr->edge_angle            = NULL;
+    light_ptr->color_intensity       = nullptr;
+    light_ptr->cone_angle_half       = nullptr;
+    light_ptr->constant_attenuation  = nullptr;
+    light_ptr->edge_angle            = nullptr;
     light_ptr->falloff               = SCENE_LIGHT_FALLOFF_LINEAR;
-    light_ptr->linear_attenuation    = NULL;
-    light_ptr->quadratic_attenuation = NULL;
-    light_ptr->range                 = NULL;
+    light_ptr->linear_attenuation    = nullptr;
+    light_ptr->quadratic_attenuation = nullptr;
+    light_ptr->range                 = nullptr;
 
     light_ptr->callback_manager                 = system_callback_manager_create( (_callback_id) SCENE_LIGHT_CALLBACK_ID_LAST);
     light_ptr->shadow_map_algorithm             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM;
@@ -301,8 +301,8 @@ PRIVATE void _scene_light_init(_scene_light* light_ptr)
     light_ptr->shadow_map_cull_front_faces      = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
                                                    light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
-    light_ptr->shadow_map_format_color          = RAL_TEXTURE_FORMAT_RG32_FLOAT;
-    light_ptr->shadow_map_format_depth          = RAL_TEXTURE_FORMAT_DEPTH16_SNORM;
+    light_ptr->shadow_map_format_color          = RAL_FORMAT_RG32_FLOAT;
+    light_ptr->shadow_map_format_depth          = RAL_FORMAT_DEPTH16_SNORM;
     light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
     light_ptr->shadow_map_pointlight_far_plane  = 0.0f;
     light_ptr->shadow_map_pointlight_near_plane = 0.1f;
@@ -310,8 +310,8 @@ PRIVATE void _scene_light_init(_scene_light* light_ptr)
     light_ptr->shadow_map_spotlight_near_plane  = 0.1f;
     light_ptr->shadow_map_size[0]               = DEFAULT_SHADOW_MAP_SIZE;
     light_ptr->shadow_map_size[1]               = DEFAULT_SHADOW_MAP_SIZE;
-    light_ptr->shadow_map_texture_color         = NULL;
-    light_ptr->shadow_map_texture_depth         = NULL;
+    light_ptr->shadow_map_texture_color         = nullptr;
+    light_ptr->shadow_map_texture_depth         = nullptr;
     light_ptr->shadow_map_view                  = system_matrix4x4_create();
     light_ptr->shadow_map_vp                    = system_matrix4x4_create();
     light_ptr->shadow_map_vsm_blur_n_passes     = 1;
@@ -353,7 +353,7 @@ PRIVATE bool _scene_light_load_curve(scene                     owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve_id curve_id = 0;
 
@@ -386,7 +386,7 @@ PRIVATE bool _scene_light_load_curve(scene                     owner_scene,
 /** TODO */
 PRIVATE void _scene_light_release(void* data_ptr)
 {
-    _scene_light*    light_ptr    = (_scene_light*) data_ptr;
+    _scene_light*    light_ptr    = reinterpret_cast<_scene_light*>(data_ptr);
     curve_container* containers[] =
     {
         light_ptr->color + 0,
@@ -406,40 +406,40 @@ PRIVATE void _scene_light_release(void* data_ptr)
                   n_container < n_containers;
                 ++n_container)
     {
-        if (*containers[n_container] != NULL)
+        if (*containers[n_container] != nullptr)
         {
             curve_container_release(*containers[n_container]);
 
-            *containers[n_container] = NULL;
+            *containers[n_container] = nullptr;
         }
-    } /* for (all curve containers) */
+    }
 
-    if (light_ptr->callback_manager != NULL)
+    if (light_ptr->callback_manager != nullptr)
     {
         system_callback_manager_release(light_ptr->callback_manager);
 
-        light_ptr->callback_manager = NULL;
+        light_ptr->callback_manager = nullptr;
     }
 
-    if (light_ptr->shadow_map_projection != NULL)
+    if (light_ptr->shadow_map_projection != nullptr)
     {
         system_matrix4x4_release(light_ptr->shadow_map_projection);
 
-        light_ptr->shadow_map_projection = NULL;
+        light_ptr->shadow_map_projection = nullptr;
     }
 
-    if (light_ptr->shadow_map_view != NULL)
+    if (light_ptr->shadow_map_view != nullptr)
     {
         system_matrix4x4_release(light_ptr->shadow_map_view);
 
-        light_ptr->shadow_map_view = NULL;
+        light_ptr->shadow_map_view = nullptr;
     }
 
-    if (light_ptr->shadow_map_vp != NULL)
+    if (light_ptr->shadow_map_vp != nullptr)
     {
         system_matrix4x4_release(light_ptr->shadow_map_vp);
 
-        light_ptr->shadow_map_vp = NULL;
+        light_ptr->shadow_map_vp = nullptr;
     }
 
     /* NOTE: We do not release the shadow map texture at this point, as it is
@@ -454,7 +454,7 @@ PRIVATE bool _scene_light_save_curve(scene                  owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve    curve    = scene_get_curve_by_container(owner_scene,
                                                                in_curve);
@@ -482,27 +482,27 @@ PRIVATE bool _scene_light_save_curve(scene                  owner_scene,
 PUBLIC EMERALD_API scene_light scene_light_create_ambient(system_hashed_ansi_string name,
                                                           system_hashed_ansi_string object_manager_path)
 {
-    _scene_light* new_scene_light = new (std::nothrow) _scene_light;
+    _scene_light* new_scene_light_ptr = new (std::nothrow) _scene_light;
 
-    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_light_ptr != nullptr,
                       "Out of memory");
 
-    if (new_scene_light != NULL)
+    if (new_scene_light_ptr != nullptr)
     {
-        memset(new_scene_light,
+        memset(new_scene_light_ptr,
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name                = name;
-        new_scene_light->object_manager_path = object_manager_path;
-        new_scene_light->type                = SCENE_LIGHT_TYPE_AMBIENT;
+        new_scene_light_ptr->name                = name;
+        new_scene_light_ptr->object_manager_path = object_manager_path;
+        new_scene_light_ptr->type                = SCENE_LIGHT_TYPE_AMBIENT;
 
-        _scene_light_init(new_scene_light);
+        _scene_light_init(new_scene_light_ptr);
 
         /* Ambient light never casts shadows */
-        new_scene_light->uses_shadow_map = false;
+        new_scene_light_ptr->uses_shadow_map = false;
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light_ptr,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
                                                        GET_OBJECT_PATH(name,
@@ -510,31 +510,31 @@ PUBLIC EMERALD_API scene_light scene_light_create_ambient(system_hashed_ansi_str
                                                                        object_manager_path) );
     }
 
-    return (scene_light) new_scene_light;
+    return (scene_light) new_scene_light_ptr;
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API scene_light scene_light_create_directional(system_hashed_ansi_string name,
                                                               system_hashed_ansi_string object_manager_path)
 {
-    _scene_light* new_scene_light = new (std::nothrow) _scene_light;
+    _scene_light* new_scene_light_ptr = new (std::nothrow) _scene_light;
 
-    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_light_ptr != nullptr,
                       "Out of memory");
 
-    if (new_scene_light != NULL)
+    if (new_scene_light_ptr != nullptr)
     {
-        memset(new_scene_light,
+        memset(new_scene_light_ptr,
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name                = name;
-        new_scene_light->object_manager_path = object_manager_path;
-        new_scene_light->type                = SCENE_LIGHT_TYPE_DIRECTIONAL;
+        new_scene_light_ptr->name                = name;
+        new_scene_light_ptr->object_manager_path = object_manager_path;
+        new_scene_light_ptr->type                = SCENE_LIGHT_TYPE_DIRECTIONAL;
 
-        _scene_light_init(new_scene_light);
+        _scene_light_init(new_scene_light_ptr);
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light_ptr,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
                                                        GET_OBJECT_PATH(name,
@@ -542,31 +542,31 @@ PUBLIC EMERALD_API scene_light scene_light_create_directional(system_hashed_ansi
                                                                        object_manager_path) );
     }
 
-    return (scene_light) new_scene_light;
+    return (scene_light) new_scene_light_ptr;
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API scene_light scene_light_create_point(system_hashed_ansi_string name,
                                                         system_hashed_ansi_string object_manager_path)
 {
-    _scene_light* new_scene_light = new (std::nothrow) _scene_light;
+    _scene_light* new_scene_light_ptr = new (std::nothrow) _scene_light;
 
-    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_light_ptr != nullptr,
                       "Out of memory");
 
-    if (new_scene_light != NULL)
+    if (new_scene_light_ptr != nullptr)
     {
-        memset(new_scene_light,
+        memset(new_scene_light_ptr,
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name                = name;
-        new_scene_light->object_manager_path = object_manager_path;
-        new_scene_light->type                = SCENE_LIGHT_TYPE_POINT;
+        new_scene_light_ptr->name                = name;
+        new_scene_light_ptr->object_manager_path = object_manager_path;
+        new_scene_light_ptr->type                = SCENE_LIGHT_TYPE_POINT;
 
-        _scene_light_init(new_scene_light);
+        _scene_light_init(new_scene_light_ptr);
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light_ptr,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
                                                        GET_OBJECT_PATH(name,
@@ -574,31 +574,31 @@ PUBLIC EMERALD_API scene_light scene_light_create_point(system_hashed_ansi_strin
                                                                        object_manager_path) );
     }
 
-    return (scene_light) new_scene_light;
+    return (scene_light) new_scene_light_ptr;
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API scene_light scene_light_create_spot(system_hashed_ansi_string name,
                                                        system_hashed_ansi_string object_manager_path)
 {
-    _scene_light* new_scene_light = new (std::nothrow) _scene_light;
+    _scene_light* new_scene_light_ptr = new (std::nothrow) _scene_light;
 
-    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_light_ptr != nullptr,
                       "Out of memory");
 
-    if (new_scene_light != NULL)
+    if (new_scene_light_ptr != nullptr)
     {
-        memset(new_scene_light,
+        memset(new_scene_light_ptr,
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name                = name;
-        new_scene_light->object_manager_path = object_manager_path;
-        new_scene_light->type                = SCENE_LIGHT_TYPE_SPOT;
+        new_scene_light_ptr->name                = name;
+        new_scene_light_ptr->object_manager_path = object_manager_path;
+        new_scene_light_ptr->type                = SCENE_LIGHT_TYPE_SPOT;
 
-        _scene_light_init(new_scene_light);
+        _scene_light_init(new_scene_light_ptr);
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light_ptr,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
                                                        GET_OBJECT_PATH(name,
@@ -606,35 +606,35 @@ PUBLIC EMERALD_API scene_light scene_light_create_spot(system_hashed_ansi_string
                                                                        object_manager_path) );
     }
 
-    return (scene_light) new_scene_light;
+    return (scene_light) new_scene_light_ptr;
 }
 
 /* Please see header for spec */
 PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
                                                  scene_light_property property,
-                                                 void*                out_result)
+                                                 void*                out_result_ptr)
 {
-    _scene_light* light_ptr = (_scene_light*) light;
+    _scene_light* light_ptr = reinterpret_cast<_scene_light*>(light);
 
     switch (property)
     {
         case SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result = light_ptr->callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = light_ptr->callback_manager;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_COLOR:
         {
-            if (light_ptr->color[0] == NULL ||
-                light_ptr->color[1] == NULL ||
-                light_ptr->color[2] == NULL)
+            if (light_ptr->color[0] == nullptr ||
+                light_ptr->color[1] == nullptr ||
+                light_ptr->color[2] == nullptr)
             {
                 _scene_light_init_default_color_curves(light_ptr);
             }
 
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    light_ptr->color,
                    sizeof(light_ptr->color) );
 
@@ -643,12 +643,12 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_COLOR_INTENSITY:
         {
-            if (light_ptr->color_intensity == NULL)
+            if (light_ptr->color_intensity == nullptr)
             {
                 _scene_light_init_default_color_intensity_curve(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->color_intensity;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = light_ptr->color_intensity;
 
             break;
         }
@@ -658,12 +658,12 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF property only available for spot lights");
 
-            if (light_ptr->cone_angle_half == NULL)
+            if (light_ptr->cone_angle_half == nullptr)
             {
                 _scene_light_init_default_spot_light_curves(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->cone_angle_half;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = light_ptr->cone_angle_half;
 
             break;
         }
@@ -673,12 +673,12 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION property only available for point lights");
 
-            if (light_ptr->constant_attenuation == NULL)
+            if (light_ptr->constant_attenuation == nullptr)
             {
                 _scene_light_init_default_attenuation_curves(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->constant_attenuation;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = light_ptr->constant_attenuation;
 
             break;
         }
@@ -689,7 +689,7 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
                               light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_DIRECTION property only available for directional & spot lights");
 
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    light_ptr->direction,
                    sizeof(light_ptr->direction) );
 
@@ -701,12 +701,12 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_EDGE_ANGLE property only available for spot lights");
 
-            if (light_ptr->edge_angle == NULL)
+            if (light_ptr->edge_angle == nullptr)
             {
                 _scene_light_init_default_spot_light_curves(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->edge_angle;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = light_ptr->edge_angle;
 
             break;
         }
@@ -717,14 +717,14 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
                               light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_FALLOFF property only available for point / spot lights");
 
-            *(scene_light_falloff*) out_result = light_ptr->falloff;
+            *reinterpret_cast<scene_light_falloff*>(out_result_ptr) = light_ptr->falloff;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE:
         {
-            *(scene_graph_node*) out_result = light_ptr->graph_owner_node;
+            *reinterpret_cast<scene_graph_node*>(out_result_ptr) = light_ptr->graph_owner_node;
 
             break;
         }
@@ -734,19 +734,19 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION property only available for point lights");
 
-            if (light_ptr->linear_attenuation == NULL)
+            if (light_ptr->linear_attenuation == nullptr)
             {
                 _scene_light_init_default_attenuation_curves(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->linear_attenuation;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = light_ptr->linear_attenuation;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_NAME:
         {
-            *((system_hashed_ansi_string*) out_result) = light_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = light_ptr->name;
 
             break;
         }
@@ -757,7 +757,7 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
                               light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_POSITION property only available for point & spot lights");
 
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    light_ptr->position,
                    sizeof(light_ptr->position) );
 
@@ -769,12 +769,12 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION property only available for point lights");
 
-            if (light_ptr->quadratic_attenuation == NULL)
+            if (light_ptr->quadratic_attenuation == nullptr)
             {
                 _scene_light_init_default_attenuation_curves(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->quadratic_attenuation;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = light_ptr->quadratic_attenuation;
 
             break;
         }
@@ -785,19 +785,19 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
                               light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_RANGE property only available for point & spot lights");
 
-            if (light_ptr->range == NULL)
+            if (light_ptr->range == nullptr)
             {
                 _scene_light_init_default_point_light_curves(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->range;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = light_ptr->range;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM:
         {
-            *(scene_light_shadow_map_algorithm*) out_result = light_ptr->shadow_map_algorithm;
+            *reinterpret_cast<scene_light_shadow_map_algorithm*>(out_result_ptr) = light_ptr->shadow_map_algorithm;
 
             break;
         }
@@ -807,11 +807,11 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             /* For VSM, no bias should ever be used */
             if (light_ptr->shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
             {
-                *(scene_light_shadow_map_bias*) out_result = SCENE_LIGHT_SHADOW_MAP_BIAS_NONE;
+                *reinterpret_cast<scene_light_shadow_map_bias*>(out_result_ptr) = SCENE_LIGHT_SHADOW_MAP_BIAS_NONE;
             }
             else
             {
-                *(scene_light_shadow_map_bias*) out_result = light_ptr->shadow_map_bias;
+                *reinterpret_cast<scene_light_shadow_map_bias*>(out_result_ptr) = light_ptr->shadow_map_bias;
             }
 
             break;
@@ -819,63 +819,63 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:
         {
-            *(bool*) out_result = light_ptr->shadow_map_cull_front_faces;
+            *reinterpret_cast<bool*>(out_result_ptr) = light_ptr->shadow_map_cull_front_faces;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING:
         {
-            *(scene_light_shadow_map_filtering*) out_result = light_ptr->shadow_map_filtering;
+            *reinterpret_cast<scene_light_shadow_map_filtering*>(out_result_ptr) = light_ptr->shadow_map_filtering;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR:
         {
-            *(ral_texture_format*) out_result = light_ptr->shadow_map_format_color;
+            *reinterpret_cast<ral_format*>(out_result_ptr) = light_ptr->shadow_map_format_color;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH:
         {
-            *(ral_texture_format*) out_result = light_ptr->shadow_map_format_depth;
+            *reinterpret_cast<ral_format*>(out_result_ptr) = light_ptr->shadow_map_format_depth;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM:
         {
-            *(scene_light_shadow_map_pointlight_algorithm*) out_result = light_ptr->shadow_map_pointlight_algorithm;
+            *reinterpret_cast<scene_light_shadow_map_pointlight_algorithm*>(out_result_ptr) = light_ptr->shadow_map_pointlight_algorithm;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE:
         {
-            *(float*) out_result = light_ptr->shadow_map_pointlight_far_plane;
+            *reinterpret_cast<float*>(out_result_ptr) = light_ptr->shadow_map_pointlight_far_plane;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE:
         {
-            *(float*) out_result = light_ptr->shadow_map_pointlight_near_plane;
+            *reinterpret_cast<float*>(out_result_ptr) = light_ptr->shadow_map_pointlight_near_plane;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION:
         {
-            *(system_matrix4x4*) out_result = light_ptr->shadow_map_projection;
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = light_ptr->shadow_map_projection;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    light_ptr->shadow_map_size,
                    sizeof(light_ptr->shadow_map_size) );
 
@@ -884,91 +884,91 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SPOTLIGHT_NEAR_PLANE:
         {
-            *(float*) out_result = light_ptr->shadow_map_spotlight_near_plane;
+            *reinterpret_cast<float*>(out_result_ptr) = light_ptr->shadow_map_spotlight_near_plane;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL:
         {
-            *(ral_texture*) out_result = light_ptr->shadow_map_texture_color;
+            *reinterpret_cast<ral_texture*>(out_result_ptr) = light_ptr->shadow_map_texture_color;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL:
         {
-            *(ral_texture*) out_result = light_ptr->shadow_map_texture_depth;
+            *reinterpret_cast<ral_texture*>(out_result_ptr) = light_ptr->shadow_map_texture_depth;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW:
         {
-            *(system_matrix4x4*) out_result = light_ptr->shadow_map_view;
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = light_ptr->shadow_map_view;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP:
         {
-            *(system_matrix4x4*) out_result = light_ptr->shadow_map_vp;
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = light_ptr->shadow_map_vp;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES:
         {
-            *(float*) out_result = light_ptr->shadow_map_vsm_blur_n_passes;
+            *reinterpret_cast<float*>(out_result_ptr) = light_ptr->shadow_map_vsm_blur_n_passes;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS:
         {
-            *(unsigned int*) out_result = light_ptr->shadow_map_vsm_blur_n_taps;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = light_ptr->shadow_map_vsm_blur_n_taps;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION:
         {
-            *(postprocessing_blur_gaussian_resolution*) out_result = light_ptr->shadow_map_vsm_blur_resolution;
+            *reinterpret_cast<postprocessing_blur_gaussian_resolution*>(out_result_ptr) = light_ptr->shadow_map_vsm_blur_resolution;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF:
         {
-            *(float*) out_result = light_ptr->shadow_map_vsm_cutoff;
+            *reinterpret_cast<float*>(out_result_ptr) = light_ptr->shadow_map_vsm_cutoff;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE:
         {
-            *(float*) out_result = light_ptr->shadow_map_vsm_max_variance;
+            *reinterpret_cast<float*>(out_result_ptr) = light_ptr->shadow_map_vsm_max_variance;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MIN_VARIANCE:
         {
-            *(float*) out_result = light_ptr->shadow_map_vsm_min_variance;
+            *reinterpret_cast<float*>(out_result_ptr) = light_ptr->shadow_map_vsm_min_variance;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_TYPE:
         {
-            *((scene_light_type*) out_result) = light_ptr->type;
+            *reinterpret_cast<scene_light_type*>(out_result_ptr) = light_ptr->type;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP:
         {
-            *(bool*) out_result = light_ptr->uses_shadow_map;
+            *reinterpret_cast<bool*>(out_result_ptr) = light_ptr->uses_shadow_map;
 
             break;
         }
@@ -978,7 +978,7 @@ PUBLIC EMERALD_API void scene_light_get_property(scene_light          light,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_light property requested");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for spec */
@@ -1034,7 +1034,7 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_falloff_has(scene_l
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_light_falloff value.");
         }
-    } /* switch (falloff) */
+    }
 
     return result;
 }
@@ -1068,7 +1068,7 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_algorith
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_light_shadow_map_algorithm value.");
         }
-    } /* switch (algorithm) */
+    }
 
     return result;
 }
@@ -1118,7 +1118,7 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_bias_has
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_light_shadow_map_bias value.");
         }
-    } /* switch (bias) */
+    }
 
     return result;
 }
@@ -1152,7 +1152,7 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_filterin
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_light_shadow_map_filtering value.");
         }
-    } /* switch (filtering) */
+    }
 
     return result;
 }
@@ -1186,7 +1186,7 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_pointlig
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_light_shadow_map_pointlight_algorithm value.");
         }
-    } /* switch (algorithm) */
+    }
 
     return result;
 }
@@ -1236,7 +1236,7 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_type_has(scene_ligh
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_light_type value.");
         }
-    } /* switch (light_type) */
+    }
 
     return result;
 }
@@ -1246,10 +1246,10 @@ PUBLIC scene_light scene_light_load(system_file_serializer    serializer,
                                     scene                     owner_scene,
                                     system_hashed_ansi_string object_manager_path)
 {
-    system_hashed_ansi_string light_name   = NULL;
+    system_hashed_ansi_string light_name   = nullptr;
     scene_light_type          light_type   = SCENE_LIGHT_TYPE_UNKNOWN;
     bool                      result       = true;
-    scene_light               result_light = NULL;
+    scene_light               result_light = nullptr;
 
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &light_name);
@@ -1298,12 +1298,14 @@ PUBLIC scene_light scene_light_load(system_file_serializer    serializer,
 
             goto end_error;
         }
-    } /* switch (light_type) */
+    }
 
-    ASSERT_ALWAYS_SYNC(result_light != NULL, "Out of memory");
-    if (result_light != NULL)
+    ASSERT_ALWAYS_SYNC(result_light != nullptr,
+                       "Out of memory");
+
+    if (result_light != nullptr)
     {
-        _scene_light* result_light_ptr = (_scene_light*) result_light;
+        _scene_light* result_light_ptr = reinterpret_cast<_scene_light*>(result_light);
 
         for (uint32_t n_color_component = 0;
                       n_color_component < sizeof(result_light_ptr->color) / sizeof(result_light_ptr->color[0]);
@@ -1386,11 +1388,11 @@ PUBLIC scene_light scene_light_load(system_file_serializer    serializer,
     goto end;
 
 end_error:
-    if (result_light != NULL)
+    if (result_light != nullptr)
     {
         scene_light_release(result_light);
 
-        result_light = NULL;
+        result_light = nullptr;
     }
 
 end:
@@ -1402,7 +1404,7 @@ PUBLIC bool scene_light_save(system_file_serializer serializer,
                              const scene_light      light,
                              scene                  owner_scene)
 {
-    const _scene_light* light_ptr = (const _scene_light*) light;
+    const _scene_light* light_ptr = reinterpret_cast<const _scene_light*>(light);
     bool                result    = true;
 
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
@@ -1479,7 +1481,7 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
                                                  scene_light_property property,
                                                  const void*          data)
 {
-    _scene_light* light_ptr = (_scene_light*) light;
+    _scene_light* light_ptr = reinterpret_cast<_scene_light*>(light);
 
     switch (property)
     {
@@ -1489,11 +1491,11 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
                               n_component < 3;
                             ++n_component)
             {
-                if (light_ptr->color[n_component] != NULL)
+                if (light_ptr->color[n_component] != nullptr)
                 {
                     curve_container_release(light_ptr->color[n_component]);
 
-                    light_ptr->color[n_component] = NULL;
+                    light_ptr->color[n_component] = nullptr;
                 }
             }
 
@@ -1506,14 +1508,14 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_COLOR_INTENSITY:
         {
-            if (light_ptr->color_intensity != NULL)
+            if (light_ptr->color_intensity != nullptr)
             {
                 curve_container_release(light_ptr->color_intensity);
 
-                light_ptr->color_intensity = NULL;
+                light_ptr->color_intensity = nullptr;
             }
 
-            light_ptr->color_intensity = *(curve_container*) data;
+            light_ptr->color_intensity = *reinterpret_cast<const curve_container*>(data);
 
             break;
         }
@@ -1523,14 +1525,14 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF property only settable for spot lights");
 
-            if (light_ptr->cone_angle_half != NULL)
+            if (light_ptr->cone_angle_half != nullptr)
             {
                 curve_container_release(light_ptr->cone_angle_half);
 
-                light_ptr->cone_angle_half = NULL;
+                light_ptr->cone_angle_half = nullptr;
             }
 
-            light_ptr->cone_angle_half = *(curve_container*) data;
+            light_ptr->cone_angle_half = *reinterpret_cast<const curve_container*>(data);
 
             break;
         }
@@ -1540,14 +1542,14 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION property only settable for point lights");
 
-            if (light_ptr->constant_attenuation != NULL)
+            if (light_ptr->constant_attenuation != nullptr)
             {
                 curve_container_release(light_ptr->constant_attenuation);
 
-                light_ptr->constant_attenuation = NULL;
+                light_ptr->constant_attenuation = nullptr;
             }
 
-            light_ptr->constant_attenuation = *(curve_container*) data;
+            light_ptr->constant_attenuation = *reinterpret_cast<const curve_container*>(data);
 
             break;
         }
@@ -1557,14 +1559,14 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_EDGE_ANGLE property only settable for spot lights");
 
-            if (light_ptr->edge_angle != NULL)
+            if (light_ptr->edge_angle != nullptr)
             {
                 curve_container_release(light_ptr->edge_angle);
 
-                light_ptr->edge_angle = NULL;
+                light_ptr->edge_angle = nullptr;
             }
 
-            light_ptr->edge_angle = *(curve_container*) data;
+            light_ptr->edge_angle = *reinterpret_cast<const curve_container*>(data);
 
             break;
         }
@@ -1575,7 +1577,7 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
                               light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_FALLOFF property only settable for point & spot lights");
 
-            light_ptr->falloff = *(scene_light_falloff*) data;
+            light_ptr->falloff = *reinterpret_cast<const scene_light_falloff*>(data);
 
             break;
         }
@@ -1595,7 +1597,7 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE:
         {
-            light_ptr->graph_owner_node = *(scene_graph_node*) data;
+            light_ptr->graph_owner_node = *reinterpret_cast<const scene_graph_node*>(data);
 
             break;
         }
@@ -1605,14 +1607,14 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION property only settable for point lights");
 
-            if (light_ptr->linear_attenuation != NULL)
+            if (light_ptr->linear_attenuation != nullptr)
             {
                 curve_container_release(light_ptr->linear_attenuation);
 
-                light_ptr->linear_attenuation = NULL;
+                light_ptr->linear_attenuation = nullptr;
             }
 
-            light_ptr->linear_attenuation = *(curve_container*) data;
+            light_ptr->linear_attenuation = *reinterpret_cast<const curve_container*>(data);
 
             break;
         }
@@ -1640,14 +1642,14 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION property only settable for point lights");
 
-            if (light_ptr->quadratic_attenuation != NULL)
+            if (light_ptr->quadratic_attenuation != nullptr)
             {
                 curve_container_release(light_ptr->quadratic_attenuation);
 
-                light_ptr->quadratic_attenuation = NULL;
+                light_ptr->quadratic_attenuation = nullptr;
             }
 
-            light_ptr->quadratic_attenuation = *(curve_container*) data;
+            light_ptr->quadratic_attenuation = *reinterpret_cast<const curve_container*>(data);
 
             break;
         }
@@ -1658,23 +1660,23 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
                               light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
                               "SCENE_LIGHT_PROPERTY_RANGE property only settable for point & spot lights");
 
-            if (light_ptr->range != NULL)
+            if (light_ptr->range != nullptr)
             {
                 curve_container_release(light_ptr->range);
 
-                light_ptr->range = NULL;
+                light_ptr->range = nullptr;
             }
 
-            light_ptr->range = *(curve_container*) data;
+            light_ptr->range = *reinterpret_cast<const curve_container*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM:
         {
-            if (light_ptr->shadow_map_algorithm != *(scene_light_shadow_map_algorithm*) data)
+            if (light_ptr->shadow_map_algorithm != *reinterpret_cast<const scene_light_shadow_map_algorithm*>(data) )
             {
-                light_ptr->shadow_map_algorithm = *(scene_light_shadow_map_algorithm*) data;
+                light_ptr->shadow_map_algorithm = *reinterpret_cast<const scene_light_shadow_map_algorithm*>(data);
 
                 system_callback_manager_call_back(light_ptr->callback_manager,
                                                   SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
@@ -1686,16 +1688,16 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:
         {
-            light_ptr->shadow_map_cull_front_faces = *(bool*) data;
+            light_ptr->shadow_map_cull_front_faces = *reinterpret_cast<const bool*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS:
         {
-            if (light_ptr->shadow_map_bias != *(scene_light_shadow_map_bias*) data)
+            if (light_ptr->shadow_map_bias != *reinterpret_cast<const scene_light_shadow_map_bias*>(data) )
             {
-                light_ptr->shadow_map_bias = *(scene_light_shadow_map_bias*) data;
+                light_ptr->shadow_map_bias = *reinterpret_cast<const scene_light_shadow_map_bias*>(data);
 
                 system_callback_manager_call_back(light_ptr->callback_manager,
                                                   SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
@@ -1707,9 +1709,9 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING:
         {
-            if (light_ptr->shadow_map_filtering != *(scene_light_shadow_map_filtering*) data)
+            if (light_ptr->shadow_map_filtering != *reinterpret_cast<const scene_light_shadow_map_filtering*>(data) )
             {
-                light_ptr->shadow_map_filtering = *(scene_light_shadow_map_filtering*) data;
+                light_ptr->shadow_map_filtering = *reinterpret_cast<const scene_light_shadow_map_filtering*>(data);
 
                 system_callback_manager_call_back(light_ptr->callback_manager,
                                                   SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
@@ -1721,23 +1723,23 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR:
         {
-            light_ptr->shadow_map_format_color = *(ral_texture_format*) data;
+            light_ptr->shadow_map_format_color = *reinterpret_cast<const ral_format*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH:
         {
-            light_ptr->shadow_map_format_depth = *(ral_texture_format*) data;
+            light_ptr->shadow_map_format_depth = *reinterpret_cast<const ral_format*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM:
         {
-            if (light_ptr->shadow_map_pointlight_algorithm != *(scene_light_shadow_map_pointlight_algorithm*) data)
+            if (light_ptr->shadow_map_pointlight_algorithm != *reinterpret_cast<const scene_light_shadow_map_pointlight_algorithm*>(data) )
             {
-                light_ptr->shadow_map_pointlight_algorithm = *(scene_light_shadow_map_pointlight_algorithm*) data;
+                light_ptr->shadow_map_pointlight_algorithm = *reinterpret_cast<const scene_light_shadow_map_pointlight_algorithm*>(data);
 
                 system_callback_manager_call_back(light_ptr->callback_manager,
                                                   SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
@@ -1749,14 +1751,14 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE:
         {
-            light_ptr->shadow_map_pointlight_far_plane = *(float*) data;
+            light_ptr->shadow_map_pointlight_far_plane = *reinterpret_cast<const float*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE:
         {
-            light_ptr->shadow_map_pointlight_near_plane = *(float*) data;
+            light_ptr->shadow_map_pointlight_near_plane = *reinterpret_cast<const float*>(data);
 
             break;
         }
@@ -1772,7 +1774,7 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SPOTLIGHT_NEAR_PLANE:
         {
-            light_ptr->shadow_map_spotlight_near_plane = *(float*) data;
+            light_ptr->shadow_map_spotlight_near_plane = *reinterpret_cast<const float*>(data);
 
             break;
         }
@@ -1782,7 +1784,7 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             /* NOTE: ral_texture is considered a state by scene_light. It's not used
              *       by scene_light in any way, so its reference counter is left intact.
              */
-            light_ptr->shadow_map_texture_color = *(ral_texture*) data;
+            light_ptr->shadow_map_texture_color = *reinterpret_cast<const ral_texture*>(data);
 
             break;
         }
@@ -1792,56 +1794,56 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
             /* NOTE: ral_texture is considered a state by scene_light. It's not used
              *       by scene_light in any way, so its reference counter is left intact.
              */
-            light_ptr->shadow_map_texture_depth = *(ral_texture*) data;
+            light_ptr->shadow_map_texture_depth = *reinterpret_cast<const ral_texture*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES:
         {
-            light_ptr->shadow_map_vsm_blur_n_passes = *(float*) data;
+            light_ptr->shadow_map_vsm_blur_n_passes = *reinterpret_cast<const float*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS:
         {
-            light_ptr->shadow_map_vsm_blur_n_taps = *(unsigned int*) data;
+            light_ptr->shadow_map_vsm_blur_n_taps = *reinterpret_cast<const unsigned int*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION:
         {
-            light_ptr->shadow_map_vsm_blur_resolution = *(postprocessing_blur_gaussian_resolution*) data;
+            light_ptr->shadow_map_vsm_blur_resolution = *reinterpret_cast<const postprocessing_blur_gaussian_resolution*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF:
         {
-            light_ptr->shadow_map_vsm_cutoff = *(float*) data;
+            light_ptr->shadow_map_vsm_cutoff = *reinterpret_cast<const float*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE:
         {
-            light_ptr->shadow_map_vsm_max_variance = *(float*) data;
+            light_ptr->shadow_map_vsm_max_variance = *reinterpret_cast<const float*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MIN_VARIANCE:
         {
-            light_ptr->shadow_map_vsm_min_variance = *(float*) data;
+            light_ptr->shadow_map_vsm_min_variance = *reinterpret_cast<const float*>(data);
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP:
         {
-            light_ptr->uses_shadow_map = *(bool*) data;
+            light_ptr->uses_shadow_map = *reinterpret_cast<const bool*>(data);
 
             break;
         }
@@ -1853,6 +1855,6 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
             break;
         }
-    } /* switch (property) */
+    }
 
 }

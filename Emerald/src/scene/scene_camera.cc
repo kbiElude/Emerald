@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -62,24 +62,22 @@ typedef struct
 } _scene_camera;
 
 /* Forward declarations */
-PRIVATE void                      _scene_camera_calculate_frustum                (_scene_camera*            camera_ptr,
-                                                                                  system_time               time);
-PRIVATE void                      _scene_camera_calculate_zfar_znear             (_scene_camera*            camera_ptr,
-                                                                                  system_time               time);
-PRIVATE void                      _scene_camera_init                             (_scene_camera*            camera_ptr,
-                                                                                  system_hashed_ansi_string name);
-PRIVATE void                      _scene_camera_init_default_f_stop_curve        (_scene_camera*            camera_ptr);
-PRIVATE void                      _scene_camera_init_default_focal_distance_curve(_scene_camera*            camera_ptr);
-PRIVATE void                      _scene_camera_init_default_yfov_custom_curve   (_scene_camera*            camera_ptr);
-PRIVATE void                      _scene_camera_init_default_zoom_factor_curve   (_scene_camera*            camera_ptr);
-PRIVATE bool                      _scene_camera_load_curve                       (scene                     owner_scene,
-                                                                                  system_hashed_ansi_string object_manager_path,
-                                                                                  curve_container*          curve_ptr,
-                                                                                  system_file_serializer    serializer);
-PRIVATE void                      _scene_camera_release                          (void*                     data_ptr);
-PRIVATE bool                      _scene_camera_save_curve                       (scene                     owner_scene,
-                                                                                  curve_container           in_curve,
-                                                                                  system_file_serializer    serializer);
+PRIVATE void _scene_camera_calculate_frustum                (_scene_camera*            camera_ptr,
+                                                             system_time               time);
+PRIVATE void _scene_camera_calculate_zfar_znear             (_scene_camera*            camera_ptr,
+                                                             system_time               time);
+PRIVATE void _scene_camera_init_default_f_stop_curve        (_scene_camera*            camera_ptr);
+PRIVATE void _scene_camera_init_default_focal_distance_curve(_scene_camera*            camera_ptr);
+PRIVATE void _scene_camera_init_default_yfov_custom_curve   (_scene_camera*            camera_ptr);
+PRIVATE void _scene_camera_init_default_zoom_factor_curve   (_scene_camera*            camera_ptr);
+PRIVATE bool _scene_camera_load_curve                       (scene                     owner_scene,
+                                                             system_hashed_ansi_string object_manager_path,
+                                                             curve_container*          curve_ptr,
+                                                             system_file_serializer    serializer);
+PRIVATE void _scene_camera_release                          (void*                     data_ptr);
+PRIVATE bool _scene_camera_save_curve                       (scene                     owner_scene,
+                                                             curve_container           in_curve,
+                                                             system_file_serializer    serializer);
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(scene_camera,
@@ -95,7 +93,7 @@ PRIVATE void _scene_camera_calculate_frustum(_scene_camera* camera_ptr,
 
     if (camera_ptr->use_custom_vertical_fov)
     {
-        if (camera_ptr->yfov_custom == NULL)
+        if (camera_ptr->yfov_custom == nullptr)
         {
             _scene_camera_init_default_yfov_custom_curve(camera_ptr);
         }
@@ -140,9 +138,9 @@ PRIVATE void _scene_camera_calculate_frustum(_scene_camera* camera_ptr,
     /* We need forward, right & up vectors for the camera. We will calculate those, using
      * the inversed camera matrix.
      */
-    system_matrix4x4 owner_node_transformation_matrix = NULL;
+    system_matrix4x4 owner_node_transformation_matrix = nullptr;
 
-    ASSERT_DEBUG_SYNC(camera_ptr->owner_node != NULL,
+    ASSERT_DEBUG_SYNC(camera_ptr->owner_node != nullptr,
                       "No scene graph node assigned to a scene_camera instance!");
 
     scene_graph_node_get_property(camera_ptr->owner_node,
@@ -348,17 +346,17 @@ PRIVATE void _scene_camera_calculate_zfar_znear(_scene_camera* camera_ptr,
                                                 system_time    time)
 {
     /* Make sure the curves are available */
-    if (camera_ptr->f_stop == NULL)
+    if (camera_ptr->f_stop == nullptr)
     {
         _scene_camera_init_default_f_stop_curve(camera_ptr);
     }
 
-    if (camera_ptr->focal_distance == NULL)
+    if (camera_ptr->focal_distance == nullptr)
     {
         _scene_camera_init_default_focal_distance_curve(camera_ptr);
     }
 
-    if (camera_ptr->zoom_factor == NULL)
+    if (camera_ptr->zoom_factor == nullptr)
     {
         _scene_camera_init_default_zoom_factor_curve(camera_ptr);
     }
@@ -410,19 +408,19 @@ PRIVATE void _scene_camera_init(_scene_camera*            camera_ptr,
 {
     camera_ptr->ar                       = 0.0f;
     camera_ptr->callback_manager         = system_callback_manager_create( (_callback_id) SCENE_CAMERA_CALLBACK_ID_COUNT);
-    camera_ptr->focal_distance           = NULL;
-    camera_ptr->f_stop                   = NULL;
+    camera_ptr->focal_distance           = nullptr;
+    camera_ptr->f_stop                   = nullptr;
     camera_ptr->frustum_last_recalc_time = -1;
     camera_ptr->name                     = name;
     camera_ptr->object_manager_path      = object_manager_path;
-    camera_ptr->owner_node               = NULL;
+    camera_ptr->owner_node               = nullptr;
     camera_ptr->show_frustum             = true;
     camera_ptr->temp_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
     camera_ptr->type                     = SCENE_CAMERA_TYPE_UNDEFINED;
-    camera_ptr->yfov_custom              = NULL;
+    camera_ptr->yfov_custom              = nullptr;
     camera_ptr->zfar                     = 0.0f;
     camera_ptr->znear                    = 0.0f;
-    camera_ptr->zoom_factor              = NULL;
+    camera_ptr->zoom_factor              = nullptr;
 
     camera_ptr->use_camera_physical_properties = false;
     camera_ptr->use_custom_vertical_fov        = true;
@@ -436,7 +434,7 @@ PRIVATE void _scene_camera_init(_scene_camera*            camera_ptr,
 /** TODO */
 PRIVATE void _scene_camera_init_default_f_stop_curve(_scene_camera* camera_ptr)
 {
-    ASSERT_DEBUG_SYNC(camera_ptr->f_stop == NULL,
+    ASSERT_DEBUG_SYNC(camera_ptr->f_stop == nullptr,
                       "Overwriting existing F-stop curve with the default one.");
 
     camera_ptr->f_stop = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(camera_ptr->name),
@@ -448,7 +446,7 @@ PRIVATE void _scene_camera_init_default_f_stop_curve(_scene_camera* camera_ptr)
 /** TODO */
 PRIVATE void _scene_camera_init_default_focal_distance_curve(_scene_camera* camera_ptr)
 {
-    ASSERT_DEBUG_SYNC(camera_ptr->focal_distance == NULL,
+    ASSERT_DEBUG_SYNC(camera_ptr->focal_distance == nullptr,
                       "Overwriting existing focal distance curve with the default one.");
 
     camera_ptr->focal_distance = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(camera_ptr->name),
@@ -460,7 +458,7 @@ PRIVATE void _scene_camera_init_default_focal_distance_curve(_scene_camera* came
 /** TODO */
 PRIVATE void _scene_camera_init_default_yfov_custom_curve(_scene_camera* camera_ptr)
 {
-    ASSERT_DEBUG_SYNC(camera_ptr->yfov_custom == NULL,
+    ASSERT_DEBUG_SYNC(camera_ptr->yfov_custom == nullptr,
                       "Overwriting existing YFov curve with the default one.");
 
     /* Use a default Yfov of 45 degrees */
@@ -478,7 +476,7 @@ PRIVATE void _scene_camera_init_default_yfov_custom_curve(_scene_camera* camera_
 /** TODO */
 PRIVATE void _scene_camera_init_default_zoom_factor_curve(_scene_camera* camera_ptr)
 {
-    ASSERT_DEBUG_SYNC(camera_ptr->zoom_factor == NULL,
+    ASSERT_DEBUG_SYNC(camera_ptr->zoom_factor == nullptr,
                       "Overwriting existing Zoom Factor curve with the default one.");
 
     camera_ptr->zoom_factor = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(camera_ptr->name),
@@ -495,7 +493,7 @@ PRIVATE bool _scene_camera_load_curve(scene                     owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve_id curve_id = 0;
 
@@ -528,48 +526,48 @@ PRIVATE bool _scene_camera_load_curve(scene                     owner_scene,
 /** TODO */
 PRIVATE void _scene_camera_release(void* data_ptr)
 {
-    _scene_camera* camera_ptr = (_scene_camera*) data_ptr;
+    _scene_camera* camera_ptr = reinterpret_cast<_scene_camera*>(data_ptr);
 
-    if (camera_ptr->callback_manager != NULL)
+    if (camera_ptr->callback_manager != nullptr)
     {
         system_callback_manager_release(camera_ptr->callback_manager);
 
-        camera_ptr->callback_manager = NULL;
+        camera_ptr->callback_manager = nullptr;
     }
 
-    if (camera_ptr->f_stop != NULL)
+    if (camera_ptr->f_stop != nullptr)
     {
         curve_container_release(camera_ptr->f_stop);
 
-        camera_ptr->f_stop = NULL;
+        camera_ptr->f_stop = nullptr;
     }
 
-    if (camera_ptr->focal_distance != NULL)
+    if (camera_ptr->focal_distance != nullptr)
     {
         curve_container_release(camera_ptr->focal_distance);
 
-        camera_ptr->focal_distance = NULL;
+        camera_ptr->focal_distance = nullptr;
     }
 
-    if (camera_ptr->temp_variant != NULL)
+    if (camera_ptr->temp_variant != nullptr)
     {
         system_variant_release(camera_ptr->temp_variant);
 
-        camera_ptr->temp_variant = NULL;
+        camera_ptr->temp_variant = nullptr;
     }
 
-    if (camera_ptr->yfov_custom != NULL)
+    if (camera_ptr->yfov_custom != nullptr)
     {
         curve_container_release(camera_ptr->yfov_custom);
 
-        camera_ptr->yfov_custom = NULL;
+        camera_ptr->yfov_custom = nullptr;
     }
 
-    if (camera_ptr->zoom_factor != NULL)
+    if (camera_ptr->zoom_factor != nullptr)
     {
         curve_container_release(camera_ptr->zoom_factor);
 
-        camera_ptr->zoom_factor = NULL;
+        camera_ptr->zoom_factor = nullptr;
     }
 }
 
@@ -580,7 +578,7 @@ PRIVATE bool _scene_camera_save_curve(scene                  owner_scene,
 {
     bool result = true;
 
-    if (owner_scene != NULL)
+    if (owner_scene != nullptr)
     {
         scene_curve    curve    = scene_get_curve_by_container(owner_scene,
                                                                in_curve);
@@ -609,10 +607,10 @@ PUBLIC EMERALD_API scene_camera scene_camera_create(system_hashed_ansi_string na
 {
     _scene_camera* new_scene_camera = new (std::nothrow) _scene_camera;
 
-    ASSERT_DEBUG_SYNC(new_scene_camera != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_camera != nullptr,
                       "Out of memory");
 
-    if (new_scene_camera != NULL)
+    if (new_scene_camera != nullptr)
     {
         /* Initialize the camera */
         _scene_camera_init(new_scene_camera,
@@ -634,9 +632,9 @@ PUBLIC EMERALD_API scene_camera scene_camera_create(system_hashed_ansi_string na
 PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
                                                   scene_camera_property property,
                                                   system_time           time,
-                                                  void*                 out_result)
+                                                  void*                 out_result_ptr)
 {
-    _scene_camera* camera_ptr             = (_scene_camera*) camera;
+    _scene_camera* camera_ptr             = reinterpret_cast<_scene_camera*>(camera);
     const bool     recalc_value_requested = (property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT   ||
                                              property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT  ||
                                              property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT      ||
@@ -661,7 +659,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
     {
         case SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result = camera_ptr->callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = camera_ptr->callback_manager;
 
             break;
         }
@@ -677,38 +675,38 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
                 }
             }
 
-            *(float*) out_result = camera_ptr->zfar;
+            *reinterpret_cast<float*>(out_result_ptr) = camera_ptr->zfar;
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_F_STOP:
         {
-            if (camera_ptr->f_stop == NULL)
+            if (camera_ptr->f_stop == nullptr)
             {
                 _scene_camera_init_default_f_stop_curve(camera_ptr);
             }
 
-            *(curve_container*) out_result = camera_ptr->f_stop;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = camera_ptr->f_stop;
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE:
         {
-            if (camera_ptr->focal_distance == NULL)
+            if (camera_ptr->focal_distance == nullptr)
             {
                 _scene_camera_init_default_focal_distance_curve(camera_ptr);
             }
 
-            *(curve_container*) out_result = camera_ptr->focal_distance;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = camera_ptr->focal_distance;
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_centroid,
                    sizeof(camera_ptr->frustum_centroid) );
 
@@ -717,7 +715,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_far_bottom_left,
                    sizeof(camera_ptr->frustum_far_bottom_left) );
 
@@ -726,7 +724,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_far_bottom_right,
                    sizeof(camera_ptr->frustum_far_bottom_right) );
 
@@ -735,7 +733,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_far_top_left,
                    sizeof(camera_ptr->frustum_far_top_left) );
 
@@ -744,7 +742,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_far_top_right,
                    sizeof(camera_ptr->frustum_far_top_right) );
 
@@ -753,7 +751,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_near_bottom_left,
                    sizeof(camera_ptr->frustum_near_bottom_left) );
 
@@ -762,7 +760,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_near_bottom_right,
                    sizeof(camera_ptr->frustum_near_bottom_right) );
 
@@ -771,7 +769,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_near_top_left,
                    sizeof(camera_ptr->frustum_near_top_left) );
 
@@ -780,7 +778,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    camera_ptr->frustum_near_top_right,
                    sizeof(camera_ptr->frustum_near_top_right) );
 
@@ -789,7 +787,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = camera_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = camera_ptr->name;
 
             break;
         }
@@ -805,28 +803,28 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
                 }
             }
 
-            *(float*) out_result = camera_ptr->znear;
+            *reinterpret_cast<float*>(out_result_ptr) = camera_ptr->znear;
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE:
         {
-            *(scene_graph_node*) out_result = camera_ptr->owner_node;
+            *reinterpret_cast<scene_graph_node*>(out_result_ptr) = camera_ptr->owner_node;
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_SHOW_FRUSTUM:
         {
-            *(bool*) out_result = camera_ptr->show_frustum;
+            *reinterpret_cast<bool*>(out_result_ptr) = camera_ptr->show_frustum;
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES:
         {
-            *(bool*) out_result = camera_ptr->use_camera_physical_properties;
+            *reinterpret_cast<bool*>(out_result_ptr) = camera_ptr->use_camera_physical_properties;
 
             break;
         }
@@ -841,12 +839,12 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
             }
             else
             {
-                if (camera_ptr->yfov_custom == NULL)
+                if (camera_ptr->yfov_custom == nullptr)
                 {
                     _scene_camera_init_default_yfov_custom_curve(camera_ptr);
                 }
 
-                *(curve_container*) out_result = camera_ptr->yfov_custom;
+                *reinterpret_cast<curve_container*>(out_result_ptr) = camera_ptr->yfov_custom;
             }
 
             break;
@@ -871,8 +869,8 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
                 system_variant_get_float (camera_ptr->temp_variant,
                                          &zoom_factor);
 
-                *(float*) out_result = 2.0f * atan2(1.0f,
-                                                    zoom_factor);
+                *reinterpret_cast<float*>(out_result_ptr) = 2.0f * atan2(1.0f,
+                                                                         zoom_factor);
             }
 
             break;
@@ -880,12 +878,12 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_ZOOM_FACTOR:
         {
-            if (camera_ptr->zoom_factor == NULL)
+            if (camera_ptr->zoom_factor == nullptr)
             {
                 _scene_camera_init_default_zoom_factor_curve(camera_ptr);
             }
 
-            *(curve_container*) out_result = camera_ptr->zoom_factor;
+            *reinterpret_cast<curve_container*>(out_result_ptr) = camera_ptr->zoom_factor;
 
             break;
         }
@@ -895,7 +893,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_camera property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
@@ -904,20 +902,20 @@ PUBLIC scene_camera scene_camera_load(system_file_serializer    serializer,
                                       system_hashed_ansi_string object_manager_path)
 {
     float              camera_ar;
-    curve_container    camera_f_stop                  = NULL;
-    curve_container    camera_focal_distance          = NULL;
+    curve_container    camera_f_stop                  = nullptr;
+    curve_container    camera_focal_distance          = nullptr;
     _scene_camera_type camera_type;
     bool               camera_use_custom_vertical_fov = false;
     bool               camera_use_physical_properties = false;
-    curve_container    camera_yfov                    = NULL;
+    curve_container    camera_yfov                    = nullptr;
     float              camera_zfar;
     float              camera_znear;
-    curve_container    camera_zoom_factor             = NULL;
-    scene_camera       result                         = NULL;
-    _scene_camera*     result_ptr                     = NULL;
+    curve_container    camera_zoom_factor             = nullptr;
+    scene_camera       result                         = nullptr;
+    _scene_camera*     result_ptr                     = nullptr;
 
     /* Retrieve camera name */
-    system_hashed_ansi_string name = NULL;
+    system_hashed_ansi_string name = nullptr;
 
     if (!system_file_serializer_read_hashed_ansi_string(serializer,
                                                        &name) )
@@ -929,43 +927,43 @@ PUBLIC scene_camera scene_camera_load(system_file_serializer    serializer,
     result = scene_camera_create(name,
                                  object_manager_path);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "Could not create a new scene_camera instance");
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         goto end_error;
     }
 
-    result_ptr = (_scene_camera*) result;
+    result_ptr = reinterpret_cast<_scene_camera*>(result);
 
     /* Release local curve containers before continuing */
-    if (result_ptr->f_stop != NULL)
+    if (result_ptr->f_stop != nullptr)
     {
         curve_container_release(result_ptr->f_stop);
 
-        result_ptr->f_stop = NULL;
+        result_ptr->f_stop = nullptr;
     }
 
-    if (result_ptr->focal_distance != NULL)
+    if (result_ptr->focal_distance != nullptr)
     {
         curve_container_release(result_ptr->focal_distance);
 
-        result_ptr->focal_distance = NULL;
+        result_ptr->focal_distance = nullptr;
     }
 
-    if (result_ptr->yfov_custom != NULL)
+    if (result_ptr->yfov_custom != nullptr)
     {
         curve_container_release(result_ptr->yfov_custom);
 
-        result_ptr->yfov_custom = NULL;
+        result_ptr->yfov_custom = nullptr;
     }
 
-    if (result_ptr->zoom_factor != NULL)
+    if (result_ptr->zoom_factor != nullptr)
     {
         curve_container_release(result_ptr->zoom_factor);
 
-        result_ptr->zoom_factor = NULL;
+        result_ptr->zoom_factor = nullptr;
     }
 
     /* Retrieve other camera properties */
@@ -1012,7 +1010,7 @@ PUBLIC scene_camera scene_camera_load(system_file_serializer    serializer,
     if (fabs(camera_ar) < 1e-5f)
     {
         camera_ar = 0.0f;
-    } /* if (fabs(camera_ar) < 1e-5f) */
+    }
 
     /* Set the float properties */
     scene_camera_set_property(result,
@@ -1046,11 +1044,11 @@ end_error:
     ASSERT_DEBUG_SYNC(false,
                       "Scene camera serialization failed.");
 
-    if (result != NULL)
+    if (result != nullptr)
     {
         scene_camera_release(result);
 
-        result = NULL;
+        result = nullptr;
     }
 
 end:
@@ -1062,7 +1060,7 @@ PUBLIC bool scene_camera_save(system_file_serializer serializer,
                               const scene_camera     camera,
                               scene                  owner_scene)
 {
-    const _scene_camera* camera_ptr = (const _scene_camera*) camera;
+    const _scene_camera* camera_ptr = reinterpret_cast<const _scene_camera*>(camera);
     bool                 result     = false;
 
     result  = system_file_serializer_write_hashed_ansi_string(serializer,
@@ -1104,15 +1102,15 @@ PUBLIC bool scene_camera_save(system_file_serializer serializer,
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
                                                   scene_camera_property property,
-                                                  const void*           data)
+                                                  const void*           data_ptr)
 {
-    _scene_camera* camera_ptr = (_scene_camera*) camera;
+    _scene_camera* camera_ptr = reinterpret_cast<_scene_camera*>(camera);
 
     switch (property)
     {
         case SCENE_CAMERA_PROPERTY_ASPECT_RATIO:
         {
-            camera_ptr->ar = *(float*) data;
+            camera_ptr->ar = *reinterpret_cast<const float*>(data_ptr);
 
             break;
         }
@@ -1122,7 +1120,7 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
             ASSERT_DEBUG_SYNC(!camera_ptr->use_camera_physical_properties,
                               "Replacing far plane setting while use-camera-physical-props mode is on makes no sense");
 
-            camera_ptr->zfar = *(float*) data;
+            camera_ptr->zfar = *reinterpret_cast<const float*>(data_ptr);
 
             break;
         }
@@ -1133,16 +1131,16 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
              *       future. Please implement a property copy constructor-like function for
              *       curve containers.
              */
-            if (camera_ptr->f_stop != NULL)
+            if (camera_ptr->f_stop != nullptr)
             {
                 curve_container_release(camera_ptr->f_stop);
 
-                camera_ptr->f_stop = NULL;
+                camera_ptr->f_stop = nullptr;
             }
 
-            camera_ptr->f_stop = *(curve_container*) data;
+            camera_ptr->f_stop = *reinterpret_cast<const curve_container*>(data_ptr);
 
-            if (camera_ptr->f_stop != NULL)
+            if (camera_ptr->f_stop != nullptr)
             {
                 curve_container_retain(camera_ptr->f_stop);
             }
@@ -1156,16 +1154,16 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
              *       future. Please implement a property copy constructor-like function for
              *       curve containers.
              */
-            if (camera_ptr->focal_distance != NULL)
+            if (camera_ptr->focal_distance != nullptr)
             {
                 curve_container_release(camera_ptr->focal_distance);
 
-                camera_ptr->focal_distance = NULL;
+                camera_ptr->focal_distance = nullptr;
             }
 
-            camera_ptr->focal_distance = *(curve_container*) data;
+            camera_ptr->focal_distance = *reinterpret_cast<const curve_container*>(data_ptr);
 
-            if (camera_ptr->focal_distance != NULL)
+            if (camera_ptr->focal_distance != nullptr)
             {
                 curve_container_retain(camera_ptr->focal_distance);
             }
@@ -1178,7 +1176,7 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
             ASSERT_DEBUG_SYNC(!camera_ptr->use_camera_physical_properties,
                               "Replacing near plane distance value while use-camera-physical-props mode is on makes no sense");
 
-            camera_ptr->znear = *(float*) data;
+            camera_ptr->znear = *reinterpret_cast<const float*>(data_ptr);
 
             break;
         }
@@ -1186,17 +1184,17 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
         case SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE:
         {
              /* This setter should only be called once during scene_camera lifetime */
-            ASSERT_DEBUG_SYNC(camera_ptr->owner_node == NULL,
+            ASSERT_DEBUG_SYNC(camera_ptr->owner_node == nullptr,
                               "Owner scene graph node already set for a scene_camera instance");
 
-            camera_ptr->owner_node = *(scene_graph_node*) data;
+            camera_ptr->owner_node = *reinterpret_cast<const scene_graph_node*>(data_ptr);
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_SHOW_FRUSTUM:
         {
-            camera_ptr->show_frustum = *(bool*) data;
+            camera_ptr->show_frustum = *reinterpret_cast<const bool*>(data_ptr);
 
             system_callback_manager_call_back(camera_ptr->callback_manager,
                                               SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
@@ -1207,21 +1205,21 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
 
         case SCENE_CAMERA_PROPERTY_TYPE:
         {
-            camera_ptr->type = *(_scene_camera_type*) data;
+            camera_ptr->type = *reinterpret_cast<const _scene_camera_type*>(data_ptr);
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES:
         {
-            camera_ptr->use_camera_physical_properties = *(bool*) data;
+            camera_ptr->use_camera_physical_properties = *reinterpret_cast<const bool*>(data_ptr);
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_USE_CUSTOM_VERTICAL_FOV:
         {
-            camera_ptr->use_custom_vertical_fov = *(bool*) data;
+            camera_ptr->use_custom_vertical_fov = *reinterpret_cast<const bool*>(data_ptr);
 
             break;
         }
@@ -1232,16 +1230,16 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
              *       future. Please implement a property copy constructor-like function for
              *       curve containers.
              */
-            if (camera_ptr->yfov_custom != NULL)
+            if (camera_ptr->yfov_custom != nullptr)
             {
                 curve_container_release(camera_ptr->yfov_custom);
 
-                camera_ptr->yfov_custom = NULL;
+                camera_ptr->yfov_custom = nullptr;
             }
 
-            camera_ptr->yfov_custom = *(curve_container*) data;
+            camera_ptr->yfov_custom = *reinterpret_cast<const curve_container*>(data_ptr);
 
-            if (camera_ptr->yfov_custom != NULL)
+            if (camera_ptr->yfov_custom != nullptr)
             {
                 curve_container_retain(camera_ptr->yfov_custom);
             }
@@ -1252,7 +1250,7 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
         case SCENE_CAMERA_PROPERTY_VIEWPORT:
         {
             memcpy(camera_ptr->viewport,
-                   data,
+                   data_ptr,
                    sizeof(camera_ptr->viewport) );
 
             break;
@@ -1263,16 +1261,16 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
              *       future. Please implement a property copy constructor-like function for
              *       curve containers.
              */
-            if (camera_ptr->zoom_factor != NULL)
+            if (camera_ptr->zoom_factor != nullptr)
             {
                 curve_container_release(camera_ptr->zoom_factor);
 
-                camera_ptr->zoom_factor = NULL;
+                camera_ptr->zoom_factor = nullptr;
             }
 
-            camera_ptr->zoom_factor = *(curve_container*) data;
+            camera_ptr->zoom_factor = *reinterpret_cast<const curve_container*>(data_ptr);
 
-            if (camera_ptr->zoom_factor != NULL)
+            if (camera_ptr->zoom_factor != nullptr)
             {
                 curve_container_retain(camera_ptr->zoom_factor);
             }
@@ -1285,5 +1283,5 @@ PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_camera property");
         }
-    } /* switch (property) */
+    }
 }

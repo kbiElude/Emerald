@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef SCENE_GRAPH_H
@@ -124,11 +124,6 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(scene                     owne
                                                   system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_dynamic_matrix4x4_transformation_node(scene_graph          graph,
-                                                                                             system_matrix4x4     matrix,
-                                                                                             scene_graph_node_tag tag);
-
-/** TODO */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(scene_graph graph);
 
 /** TODO */
@@ -195,7 +190,7 @@ PUBLIC EMERALD_API void scene_graph_lock(scene_graph graph);
 /** TODO */
 PUBLIC EMERALD_API void scene_graph_node_get_property(scene_graph_node          node,
                                                       scene_graph_node_property property,
-                                                      void*                     out_result);
+                                                      void*                     out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(scene_graph_node     node,

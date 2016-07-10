@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -60,10 +60,10 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(system_hashed_ansi_string name,
 {
     _scene_mesh* new_scene_mesh = new (std::nothrow) _scene_mesh;
 
-    ASSERT_DEBUG_SYNC(new_scene_mesh != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_mesh != nullptr,
                       "Out of memory");
 
-    if (new_scene_mesh != NULL)
+    if (new_scene_mesh != nullptr)
     {
         _scene_mesh_init(new_scene_mesh,
                          name,
@@ -77,49 +77,49 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(system_hashed_ansi_string name,
                                                                        object_manager_path) );
     }
 
-    return (scene_mesh) new_scene_mesh;
+    return reinterpret_cast<scene_mesh>(new_scene_mesh);
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_mesh_get_property(scene_mesh          mesh_instance,
                                                 scene_mesh_property property,
-                                                void*               out_result)
+                                                void*               out_result_ptr)
 {
-    _scene_mesh* mesh_ptr = (_scene_mesh*) mesh_instance;
+    _scene_mesh* mesh_ptr = reinterpret_cast<_scene_mesh*>(mesh_instance);
 
     switch (property)
     {
         case SCENE_MESH_PROPERTY_ID:
         {
-            *((uint32_t*) out_result) = mesh_ptr->id;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = mesh_ptr->id;
 
             break;
         }
 
         case SCENE_MESH_PROPERTY_IS_SHADOW_CASTER:
         {
-            *(bool*) out_result = mesh_ptr->is_shadow_caster;
+            *reinterpret_cast<bool*>(out_result_ptr) = mesh_ptr->is_shadow_caster;
 
             break;
         }
 
         case SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER:
         {
-            *(bool*) out_result = mesh_ptr->is_shadow_receiver;
+            *reinterpret_cast<bool*>(out_result_ptr) = mesh_ptr->is_shadow_receiver;
 
             break;
         }
 
         case SCENE_MESH_PROPERTY_MESH:
         {
-            *((mesh*) out_result) = mesh_ptr->geometry;
+            *reinterpret_cast<mesh*>(out_result_ptr) = mesh_ptr->geometry;
 
             break;
         }
 
         case SCENE_MESH_PROPERTY_NAME:
         {
-            *((system_hashed_ansi_string*) out_result) = mesh_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = mesh_ptr->name;
 
             break;
         }
@@ -129,7 +129,7 @@ PUBLIC EMERALD_API void scene_mesh_get_property(scene_mesh          mesh_instanc
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_mesh property requested");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for spec */
@@ -137,11 +137,11 @@ PUBLIC scene_mesh scene_mesh_load(system_file_serializer    serializer,
                                   system_hashed_ansi_string object_manager_path,
                                   system_hash64map          id_to_gpu_mesh_map)
 {
-    system_hashed_ansi_string name                           = NULL;
-    mesh                      mesh_gpu                       = NULL;
+    system_hashed_ansi_string name                           = nullptr;
+    mesh                      mesh_gpu                       = nullptr;
     uint32_t                  mesh_map_id                    = -1;
     bool                      result                         = true;
-    scene_mesh                result_mesh                    = NULL;
+    scene_mesh                result_mesh                    = nullptr;
     uint32_t                  result_mesh_id                 = -1;
     bool                      result_mesh_is_shadow_caster   = false;
     bool                      result_mesh_is_shadow_receiver = false;
@@ -180,10 +180,10 @@ PUBLIC scene_mesh scene_mesh_load(system_file_serializer    serializer,
                                     object_manager_path,
                                     mesh_gpu);
 
-    ASSERT_DEBUG_SYNC(result_mesh != NULL,
+    ASSERT_DEBUG_SYNC(result_mesh != nullptr,
                       "Could not spawn GPU mesh instance");
 
-    if (result_mesh == NULL)
+    if (result_mesh == nullptr)
     {
         goto end_error;
     }
@@ -202,13 +202,14 @@ PUBLIC scene_mesh scene_mesh_load(system_file_serializer    serializer,
     goto end;
 
 end_error:
-    ASSERT_DEBUG_SYNC(false, "SCene mesh serialization failed.");
+    ASSERT_DEBUG_SYNC(false,
+                      "Scene mesh serialization failed.");
 
-    if (result_mesh != NULL)
+    if (result_mesh != nullptr)
     {
         scene_mesh_release(result_mesh);
 
-        result_mesh = NULL;
+        result_mesh = nullptr;
     }
 
 end:
@@ -220,7 +221,7 @@ PUBLIC bool scene_mesh_save(system_file_serializer serializer,
                             const scene_mesh       mesh,
                             system_hash64map       gpu_mesh_to_id_map)
 {
-    const _scene_mesh* mesh_ptr = (const _scene_mesh*) mesh;
+    const _scene_mesh* mesh_ptr = reinterpret_cast<const _scene_mesh*>(mesh);
     bool               result;
 
     result  = system_file_serializer_write                   (serializer,
@@ -237,10 +238,10 @@ PUBLIC bool scene_mesh_save(system_file_serializer serializer,
 
     /* Retrieve GPU mesh instance's ID and store it. */
     uint32_t mesh_id     = -1;
-    void*    mesh_id_ptr = NULL;
+    void*    mesh_id_ptr = nullptr;
 
     if (!system_hash64map_get(gpu_mesh_to_id_map,
-                              (system_hash64) (intptr_t) mesh_ptr->geometry,
+                              static_cast<system_hash64>(reinterpret_cast<intptr_t>(mesh_ptr->geometry) ),
                              &mesh_id_ptr) )
     {
         ASSERT_ALWAYS_SYNC(false,
@@ -250,7 +251,7 @@ PUBLIC bool scene_mesh_save(system_file_serializer serializer,
         goto end;
     }
 
-    mesh_id = (uint32_t) (intptr_t) mesh_id_ptr;
+    mesh_id = static_cast<uint32_t>(reinterpret_cast<intptr_t>(mesh_id_ptr));
 
     result &= system_file_serializer_write(serializer,
                                            sizeof(mesh_id),
@@ -265,27 +266,27 @@ PUBLIC EMERALD_API void scene_mesh_set_property(scene_mesh          mesh,
                                                 scene_mesh_property property,
                                                 const void*         data)
 {
-    _scene_mesh* mesh_ptr = (_scene_mesh*) mesh;
+    _scene_mesh* mesh_ptr = reinterpret_cast<_scene_mesh*>(mesh);
 
     switch (property)
     {
         case SCENE_MESH_PROPERTY_ID:
         {
-            mesh_ptr->id = *((uint32_t*) data);
+            mesh_ptr->id = *reinterpret_cast<const uint32_t*>(data);
 
             break;
         }
 
         case SCENE_MESH_PROPERTY_IS_SHADOW_CASTER:
         {
-            mesh_ptr->is_shadow_caster = *(bool*) data;
+            mesh_ptr->is_shadow_caster = *reinterpret_cast<const bool*>(data);
 
             break;
         }
 
         case SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER:
         {
-            mesh_ptr->is_shadow_receiver = *(bool*) data;
+            mesh_ptr->is_shadow_receiver = *reinterpret_cast<const bool*>(data);
 
             break;
         }
@@ -295,5 +296,5 @@ PUBLIC EMERALD_API void scene_mesh_set_property(scene_mesh          mesh,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_mesh property requested");
         }
-    } /* switch (property)*/
+    }
 }

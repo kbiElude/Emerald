@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * scene_multiloader is a tool which allows you to load multiple scenes in parallel,
  * each scene loaded in a separate thread.

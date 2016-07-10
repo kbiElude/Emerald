@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Represents a single mesh instance.
  */
@@ -14,11 +14,20 @@ REFCOUNT_INSERT_DECLARATIONS(scene_mesh,
 
 enum scene_mesh_property
 {
-    SCENE_MESH_PROPERTY_ID,                 /*     settable, uint32_t                  */
-    SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,   /*     settable, bool                      */
-    SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER, /*     settable, bool                      */
-    SCENE_MESH_PROPERTY_MESH,               /* not settable, mesh                      */
-    SCENE_MESH_PROPERTY_NAME,               /* not settable, system_hashed_ansi_string */
+    /* settable, uint32_t */
+    SCENE_MESH_PROPERTY_ID,
+
+    /* settable, bool */
+    SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
+
+    /* settable, bool */
+    SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER,
+
+    /* not settable, mesh */
+    SCENE_MESH_PROPERTY_MESH,
+
+    /* not settable, system_hashed_ansi_string */
+    SCENE_MESH_PROPERTY_NAME,
 };
 
 /** TODO */
@@ -29,7 +38,7 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(system_hashed_ansi_string name,
 /** TODO */
 PUBLIC EMERALD_API void scene_mesh_get_property(scene_mesh          mesh_instance,
                                                 scene_mesh_property property,
-                                                void*               out_result);
+                                                void*               out_result_ptr);
 
 /** TODO.
  *

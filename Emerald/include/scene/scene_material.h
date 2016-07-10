@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Represents a single scene material.
  */
@@ -9,7 +9,8 @@
 
 #include "scene/scene_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(scene_material, scene_material);
+REFCOUNT_INSERT_DECLARATIONS(scene_material,
+                             scene_material);
 
 typedef enum
 {
@@ -26,30 +27,77 @@ typedef enum
 
 enum scene_material_property
 {
-    SCENE_MATERIAL_PROPERTY_COLOR,                         /*     settable, curve_container[3]               */
-    SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MAG_FILTER,      /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MIN_FILTER,      /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME,       /*     settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_GLOSINESS,                     /*     settable, curve_container                  */
-    SCENE_MATERIAL_PROPERTY_LUMINANCE,                     /*     settable, curve_container                  */
-    SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME,   /*     settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MAG_FILTER,  /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MIN_FILTER,  /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_NAME,                          /* not settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME,      /*     settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MAG_FILTER,     /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MIN_FILTER,     /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_OBJECT_MANAGER_PATH,           /* not settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_OWNER_SCENE,                   /* not settable, scene                            */
-    SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,              /*     settable, curve_container                  */
-    SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,  /*     settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MAG_FILTER, /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MIN_FILTER, /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE,               /*     settable, float                            */
-    SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,                /*     settable, curve_container                  */
-    SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME,    /*     settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MAG_FILTER,   /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MIN_FILTER,   /*     settable, scene_material_texture_filtering */
+    /* settable, curve_container[3] */
+    SCENE_MATERIAL_PROPERTY_COLOR,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MAG_FILTER,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MIN_FILTER,
+
+    /* settable, system_hashed_ansi_string */
+    SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME,
+
+    /* settable, curve_container */
+    SCENE_MATERIAL_PROPERTY_GLOSINESS,
+
+    /* settable, curve_container */
+    SCENE_MATERIAL_PROPERTY_LUMINANCE,
+
+    /* settable, system_hashed_ansi_string */
+    SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MAG_FILTER,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MIN_FILTER,
+
+    /* not settable, system_hashed_ansi_string */
+    SCENE_MATERIAL_PROPERTY_NAME,
+
+    /* settable, system_hashed_ansi_string */
+    SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MAG_FILTER,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MIN_FILTER,
+
+    /* not settable, system_hashed_ansi_string */
+    SCENE_MATERIAL_PROPERTY_OBJECT_MANAGER_PATH,
+
+    /* not settable, scene */
+    SCENE_MATERIAL_PROPERTY_OWNER_SCENE,
+
+    /* settable, curve_container */
+    SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,
+
+    /* settable, system_hashed_ansi_string */
+    SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MAG_FILTER,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MIN_FILTER,
+
+    /* settable, float */
+    SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE,
+
+    /* settable, curve_container */
+    SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
+
+    /* settable, system_hashed_ansi_string */
+    SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MAG_FILTER,
+
+    /* settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MIN_FILTER,
 };
 
 /** TODO.
@@ -62,9 +110,9 @@ PUBLIC EMERALD_API scene_material scene_material_create(system_hashed_ansi_strin
                                                         scene                     owner_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_material_get_property(scene_material,
-                                                    scene_material_property,
-                                                    void*);
+PUBLIC EMERALD_API void scene_material_get_property(scene_material          material,
+                                                    scene_material_property property,
+                                                    void*                   out_result_ptr);
 
 /** TODO.
  *

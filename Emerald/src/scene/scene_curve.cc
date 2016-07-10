@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -43,7 +43,7 @@ PRIVATE void _scene_curve_init(_scene_curve*             data_ptr,
 /** TODO */
 PRIVATE void _scene_curve_release(void* data_ptr)
 {
-    _scene_curve* curve_ptr = (_scene_curve*) data_ptr;
+    _scene_curve* curve_ptr = reinterpret_cast<_scene_curve*>(data_ptr);
 
     curve_container_release(curve_ptr->property_instance);
 }
@@ -56,10 +56,10 @@ PUBLIC EMERALD_API scene_curve scene_curve_create(system_hashed_ansi_string name
 {
     _scene_curve* new_scene_curve = new (std::nothrow) _scene_curve;
 
-    ASSERT_DEBUG_SYNC(new_scene_curve != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_curve != nullptr,
                       "Out of memory");
 
-    if (new_scene_curve != NULL)
+    if (new_scene_curve != nullptr)
     {
         _scene_curve_init(new_scene_curve,
                           name,
@@ -81,20 +81,20 @@ PUBLIC EMERALD_API void scene_curve_get(scene_curve          instance,
                                         scene_curve_property property,
                                         void*                result_ptr)
 {
-    _scene_curve* curve_ptr = (_scene_curve*) instance;
+    _scene_curve* curve_ptr = reinterpret_cast<_scene_curve*>(instance);
 
     switch (property)
     {
         case SCENE_CURVE_PROPERTY_ID:
         {
-            *((scene_curve_id*) result_ptr) = curve_ptr->property_id;
+            *reinterpret_cast<scene_curve_id*>(result_ptr) = curve_ptr->property_id;
 
             break;
         }
 
         case SCENE_CURVE_PROPERTY_INSTANCE:
         {
-            *((curve_container*) result_ptr) = curve_ptr->property_instance;
+            *reinterpret_cast<curve_container*>(result_ptr) = curve_ptr->property_instance;
 
             break;
         }
@@ -105,17 +105,17 @@ PUBLIC EMERALD_API void scene_curve_get(scene_curve          instance,
                                "Unrecognized scene curve property [%d]",
                                property);
         }
-    } /* switch */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API scene_curve scene_curve_load(system_file_serializer    serializer,
                                                 system_hashed_ansi_string object_manager_path)
 {
-    system_hashed_ansi_string name     = NULL;
-    scene_curve               result   = NULL;
+    system_hashed_ansi_string name     = nullptr;
+    scene_curve               result   = nullptr;
     scene_curve_id            id       = -1;
-    curve_container           instance = NULL;
+    curve_container           instance = nullptr;
 
     if (!system_file_serializer_read_hashed_ansi_string(serializer,
                                                        &name)                ||
@@ -135,8 +135,8 @@ PUBLIC EMERALD_API scene_curve scene_curve_load(system_file_serializer    serial
     {
         /* In order to avoid collisions in environments where multiple scenes are loaded,
          * we embed the scene's name in the curve's name */
-        system_hashed_ansi_string file_name  = NULL;
-        system_hashed_ansi_string final_name = NULL;
+        system_hashed_ansi_string file_name  = nullptr;
+        system_hashed_ansi_string final_name = nullptr;
         const char*               limiter    = "\\";
 
         system_file_serializer_get_property(serializer,
@@ -156,7 +156,7 @@ PUBLIC EMERALD_API scene_curve scene_curve_load(system_file_serializer    serial
                                     id,
                                     instance);
 
-        if (result == NULL)
+        if (result == nullptr)
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not create curve instance");
@@ -168,12 +168,12 @@ PUBLIC EMERALD_API scene_curve scene_curve_load(system_file_serializer    serial
     return result;
 
 end_with_error:
-    if (result != NULL)
+    if (result != nullptr)
     {
         scene_curve_release(result);
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /* Please see header for specification */
@@ -181,9 +181,9 @@ PUBLIC EMERALD_API bool scene_curve_save(system_file_serializer serializer,
                                          scene_curve            curve)
 {
     bool          result    = false;
-    _scene_curve* curve_ptr = (_scene_curve*) curve;
+    _scene_curve* curve_ptr = reinterpret_cast<_scene_curve*>(curve);
     
-    if (curve_ptr != NULL)
+    if (curve_ptr != nullptr)
     {
         if (system_file_serializer_write_hashed_ansi_string(serializer,
                                                             curve_ptr->name)                &&

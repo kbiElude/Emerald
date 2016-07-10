@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef SCENE_TEXTURE_H
@@ -10,8 +10,12 @@
 
 typedef enum
 {
-    SCENE_TEXTURE_PROPERTY_NAME,       /* system_hashed_ansi_string */
-    SCENE_TEXTURE_PROPERTY_FILENAME,   /* system_hashed_ansi_string */
+    /* system_hashed_ansi_string */
+    SCENE_TEXTURE_PROPERTY_NAME,
+
+    /* system_hashed_ansi_string */
+    SCENE_TEXTURE_PROPERTY_FILENAME,
+
     SCENE_TEXTURE_PROPERTY_TEXTURE_RAL
 } scene_texture_property;
 
@@ -37,7 +41,7 @@ PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string 
 /** TODO */
 PUBLIC EMERALD_API void scene_texture_get(scene_texture          instance,
                                           scene_texture_property property,
-                                          void*                  result);
+                                          void*                  out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_serializer      serializer,
@@ -58,6 +62,6 @@ PUBLIC bool scene_texture_save(system_file_serializer serializer,
 /** TODO */
 PUBLIC EMERALD_API void scene_texture_set(scene_texture          instance,
                                           scene_texture_property property,
-                                          void*                  value);
+                                          const void*            value);
 
 #endif /* SCENE_TEXTURE_H */

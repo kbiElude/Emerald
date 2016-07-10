@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  */
 #ifndef SCENE_CAMERA_H
 #define SCENE_CAMERA_H
@@ -133,7 +133,7 @@ PUBLIC EMERALD_API scene_camera scene_camera_create(system_hashed_ansi_string na
 PUBLIC EMERALD_API void scene_camera_get_property(scene_camera          camera,
                                                   scene_camera_property property,
                                                   system_time           time,
-                                                  void*                 out_result);
+                                                  void*                 out_result_ptr);
 
 /** TODO */
 PUBLIC scene_camera scene_camera_load(system_file_serializer    serializer,
@@ -151,6 +151,6 @@ PUBLIC bool scene_camera_save(system_file_serializer serializer,
 /** TODO */
 PUBLIC EMERALD_API void scene_camera_set_property(scene_camera          camera,
                                                   scene_camera_property property,
-                                                  const void*           data);
+                                                  const void*           data_ptr);
 
 #endif /* SCENE_CAMERA_H */

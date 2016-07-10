@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -39,22 +39,22 @@ PRIVATE void _scene_texture_init(_scene_texture*           data_ptr,
     data_ptr->context  = context;
     data_ptr->filename = filename;
     data_ptr->name     = name;
-    data_ptr->texture  = NULL;
+    data_ptr->texture  = nullptr;
 }
 
 /** TODO */
 PRIVATE void _scene_texture_release(void* data_ptr)
 {
-    _scene_texture* texture_ptr = (_scene_texture*) data_ptr;
+    _scene_texture* texture_ptr = reinterpret_cast<_scene_texture*>(data_ptr);
 
-    if (texture_ptr->texture != NULL)
+    if (texture_ptr->texture != nullptr)
     {
         ral_context_delete_objects(texture_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_objects */
                                    (const void**) &texture_ptr->texture);
 
-        texture_ptr->texture = NULL;
+        texture_ptr->texture = nullptr;
     }
 }
 
@@ -67,10 +67,10 @@ PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string 
 {
     _scene_texture* new_scene_texture = new (std::nothrow) _scene_texture;
 
-    ASSERT_DEBUG_SYNC(new_scene_texture != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_texture != nullptr,
                       "Out of memory");
 
-    if (new_scene_texture != NULL)
+    if (new_scene_texture != nullptr)
     {
         _scene_texture_init(new_scene_texture,
                             name,
@@ -91,29 +91,29 @@ PUBLIC EMERALD_API scene_texture scene_texture_create(system_hashed_ansi_string 
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_texture_get(scene_texture          instance,
                                           scene_texture_property property,
-                                          void*                  result)
+                                          void*                  out_result_ptr)
 {
-    _scene_texture* texture_ptr = (_scene_texture*) instance;
+    _scene_texture* texture_ptr = reinterpret_cast<_scene_texture*>(instance);
 
     switch (property)
     {
         case SCENE_TEXTURE_PROPERTY_FILENAME:
         {
-            *((system_hashed_ansi_string*)result) = texture_ptr->filename;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = texture_ptr->filename;
 
             break;
         }
 
         case SCENE_TEXTURE_PROPERTY_NAME:
         {
-            *((system_hashed_ansi_string*)result) = texture_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = texture_ptr->name;
 
             break;
         }
 
         case SCENE_TEXTURE_PROPERTY_TEXTURE_RAL:
         {
-            *((ral_texture*) result) = texture_ptr->texture;
+            *reinterpret_cast<ral_texture*>(out_result_ptr) = texture_ptr->texture;
 
             break;
         }
@@ -123,7 +123,7 @@ PUBLIC EMERALD_API void scene_texture_get(scene_texture          instance,
             ASSERT_ALWAYS_SYNC(false,
                                "Unrecognized texture property requested");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
@@ -133,8 +133,8 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                                                                     PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
                                                                     void*                       callback_user_data)
 {
-    system_hashed_ansi_string filename         = NULL;
-    system_hashed_ansi_string name             = NULL;
+    system_hashed_ansi_string filename         = nullptr;
+    system_hashed_ansi_string name             = nullptr;
     scene_texture             result           = 0;
     bool                      uses_mipmaps     = false;
 
@@ -151,21 +151,21 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                                       filename,
                                       context);
 
-        ASSERT_ALWAYS_SYNC(result != NULL,
+        ASSERT_ALWAYS_SYNC(result != nullptr,
                           "Could not create scene texture instance");
 
-        if (result != NULL)
+        if (result != nullptr)
         {
             /* Check with ral_context if the filename is recognized. If so, we need not create
              * a new ral_texture instance, but can simply reuse one that's already been instantiated
              * for the file.
              */
-            ral_texture texture = NULL;
+            ral_texture texture = nullptr;
 
             if ( (texture = ral_context_get_texture_by_file_name(context,
-                                                                 filename) ) == NULL)
+                                                                 filename) ) == nullptr)
             {
-                if (pGLSetOGLTextureBacking_callback != NULL)
+                if (pGLSetOGLTextureBacking_callback != nullptr)
                 {
                     /* Let the caller take care of setting up the ogl_texture instance
                      * behind this scene_texture.
@@ -175,11 +175,11 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                                                      name,
                                                      uses_mipmaps,
                                                      callback_user_data);
-                } /* if (pGLSpawnOGLTextureBacking_callback != NULL) */
+                }
                 else
                 {
                     /* Try to initialize the ogl_texture instance */
-                    gfx_image image = NULL;
+                    gfx_image image = nullptr;
 
                     LOG_INFO("Creating a gfx_image instance for file [%s]",
                              system_hashed_ansi_string_get_buffer(filename) );
@@ -188,7 +188,7 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                                                        filename,
                                                        true); /* use_alternative_filename_getter */
 
-                    if (image == NULL)
+                    if (image == nullptr)
                     {
                         LOG_FATAL("Could not load texture data from file [%s]",
                                   system_hashed_ansi_string_get_buffer(filename) );
@@ -201,7 +201,7 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                                                                &image,
                                                                &texture);
 
-                    if (texture == NULL)
+                    if (texture == nullptr)
                     {
                         ASSERT_ALWAYS_SYNC(false,
                                            "Could not create ral_texture [%s] from file [%s]",
@@ -209,7 +209,7 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                                            system_hashed_ansi_string_get_buffer(filename) );
 
                         goto end_error;
-                    } /* if (result_ogl_texture == NULL) */
+                    }
 
                     /* Generate mipmaps if necessary */
                     if (uses_mipmaps)
@@ -221,14 +221,14 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
                     /* Release gfx_image instance */
                     gfx_image_release(image);
 
-                    image = NULL;
+                    image = nullptr;
 
                     /* Associate the ogl_texture instance with the scene texture */
                     scene_texture_set(result,
                                       SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
                                      &texture);
                 }
-            } /* if (no corresponding RAL texture is already available) */
+            }
         }
     }
     else
@@ -241,11 +241,11 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(system_file_
     goto end;
 
 end_error:
-    if (result != NULL)
+    if (result != nullptr)
     {
         scene_texture_release(result);
 
-        result = NULL;
+        result = nullptr;
     }
 
 end:
@@ -257,9 +257,9 @@ PUBLIC bool scene_texture_save(system_file_serializer serializer,
                                scene_texture          texture)
 {
     bool            result      = false;
-    _scene_texture* texture_ptr = (_scene_texture*) texture;
+    _scene_texture* texture_ptr = reinterpret_cast<_scene_texture*>(texture);
     
-    if (texture_ptr != NULL)
+    if (texture_ptr != nullptr)
     {
         unsigned int n_texture_mipmaps = 0;
         bool         uses_mipmaps      = false;
@@ -294,38 +294,38 @@ PUBLIC bool scene_texture_save(system_file_serializer serializer,
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_texture_set(scene_texture          instance,
                                           scene_texture_property property,
-                                          void*                  value)
+                                          const void*            value_ptr)
 {
-    _scene_texture* texture_ptr = (_scene_texture*) instance;
+    _scene_texture* texture_ptr = reinterpret_cast<_scene_texture*>(instance);
 
     switch(property)
     {
         case SCENE_TEXTURE_PROPERTY_FILENAME:
         {
-            texture_ptr->filename = *((system_hashed_ansi_string*) value);
+            texture_ptr->filename = *reinterpret_cast<const system_hashed_ansi_string*>(value_ptr);
 
             break;
         }
 
         case SCENE_TEXTURE_PROPERTY_NAME:
         {
-            texture_ptr->name = *((system_hashed_ansi_string*) value);
+            texture_ptr->name = *reinterpret_cast<const system_hashed_ansi_string*>(value_ptr);
 
             break;
         }
 
         case SCENE_TEXTURE_PROPERTY_TEXTURE_RAL:
         {
-            if (texture_ptr->texture != NULL)
+            if (texture_ptr->texture != nullptr)
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "? Verify ?");
                 // ral_texture_release(texture_ptr->texture);
 
-                texture_ptr->texture = NULL;
+                texture_ptr->texture = nullptr;
             }
 
-            texture_ptr->texture = *((ral_texture*) value);
+            texture_ptr->texture = *reinterpret_cast<const ral_texture*>(value_ptr);
 
             break;
         }
