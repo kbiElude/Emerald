@@ -1,6 +1,10 @@
+#if 0
+
+TODO
+
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -186,7 +190,7 @@ PRIVATE void        _varia_skybox_init_ub                 (_varia_skybox*       
                                                      RAL_SHADER_TYPE_VERTEX,
                                                      system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                              " vertex shader") );
-        ASSERT_DEBUG_SYNC(vertex_shader != NULL,
+        ASSERT_DEBUG_SYNC(vertex_shader != nullptr,
                           "Could not create skybox vertex shader");
 
         ogl_shader_set_body(vertex_shader,
@@ -197,7 +201,7 @@ PRIVATE void        _varia_skybox_init_ub                 (_varia_skybox*       
                                                        RAL_SHADER_TYPE_FRAGMENT,
                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                                " fragment shader") );
-        ASSERT_DEBUG_SYNC(fragment_shader != NULL,
+        ASSERT_DEBUG_SYNC(fragment_shader != nullptr,
                           "Could not create skybox fragment shader");
 
         ogl_shader_set_body(fragment_shader,
@@ -209,7 +213,7 @@ PRIVATE void        _varia_skybox_init_ub                 (_varia_skybox*       
                                                                                                          " program"),
                                                  OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
-        ASSERT_DEBUG_SYNC(skybox_ptr->program != NULL,
+        ASSERT_DEBUG_SYNC(skybox_ptr->program != nullptr,
                           "Could not create skybox program");
 
         if (!ogl_program_attach_shader(skybox_ptr->program, fragment_shader) ||
@@ -226,9 +230,9 @@ PRIVATE void        _varia_skybox_init_ub                 (_varia_skybox*       
         }
 
         /* Retrieve uniform locations */
-        const ogl_program_variable* input_light_sh_data_uniform_descriptor = NULL;
-        const ogl_program_variable* inverse_projection_uniform_descriptor  = NULL;
-        const ogl_program_variable* mv_data_uniform_descriptor             = NULL;
+        const ogl_program_variable* input_light_sh_data_uniform_descriptor = nullptr;
+        const ogl_program_variable* inverse_projection_uniform_descriptor  = nullptr;
+        const ogl_program_variable* mv_data_uniform_descriptor             = nullptr;
 
         ogl_program_get_uniform_by_name(skybox_ptr->program,
                                         system_hashed_ansi_string_create("input_light_sh_data"),
@@ -240,9 +244,9 @@ PRIVATE void        _varia_skybox_init_ub                 (_varia_skybox*       
                                         system_hashed_ansi_string_create("mv"),
                                        &mv_data_uniform_descriptor);
 
-        skybox_ptr->input_sh_light_data_uniform_location = (input_light_sh_data_uniform_descriptor != NULL) ? input_light_sh_data_uniform_descriptor->location    : -1;
-        skybox_ptr->inverse_projection_ub_offset         = (inverse_projection_uniform_descriptor  != NULL) ? inverse_projection_uniform_descriptor->block_offset : -1;
-        skybox_ptr->mv_ub_offset                         = (mv_data_uniform_descriptor             != NULL) ? mv_data_uniform_descriptor->block_offset            : -1;
+        skybox_ptr->input_sh_light_data_uniform_location = (input_light_sh_data_uniform_descriptor != nullptr) ? input_light_sh_data_uniform_descriptor->location    : -1;
+        skybox_ptr->inverse_projection_ub_offset         = (inverse_projection_uniform_descriptor  != nullptr) ? inverse_projection_uniform_descriptor->block_offset : -1;
+        skybox_ptr->mv_ub_offset                         = (mv_data_uniform_descriptor             != nullptr) ? mv_data_uniform_descriptor->block_offset            : -1;
 
         /* Retrieve uniform block info */
         _varia_skybox_init_ub(skybox_ptr);
@@ -329,11 +333,11 @@ PRIVATE void _varia_skybox_init_spherical_projection_texture(_varia_skybox* skyb
     }
 
     /* Retrieve uniform locations */
-    const ral_program_variable*   inverse_projection_uniform_ral_ptr = NULL;
-    const ral_program_variable*   mv_data_uniform_ral_ptr            = NULL;
+    const ral_program_variable*   inverse_projection_uniform_ral_ptr = nullptr;
+    const ral_program_variable*   mv_data_uniform_ral_ptr            = nullptr;
     raGL_program                  program_raGL                       = ral_context_get_program_gl(skybox_ptr->context,
                                                                                                   skybox_ptr->program);
-    const _raGL_program_variable* skybox_uniform_raGL_ptr            = NULL;
+    const _raGL_program_variable* skybox_uniform_raGL_ptr            = nullptr;
 
     ral_program_get_block_variable_by_name(skybox_ptr->program,
                                            system_hashed_ansi_string_create("dataVS"),
@@ -347,9 +351,9 @@ PRIVATE void _varia_skybox_init_spherical_projection_texture(_varia_skybox* skyb
                                            system_hashed_ansi_string_create("skybox"),
                                           &skybox_uniform_raGL_ptr);
 
-    skybox_ptr->inverse_projection_ub_offset = (inverse_projection_uniform_ral_ptr != NULL) ? inverse_projection_uniform_ral_ptr->block_offset : -1;
-    skybox_ptr->mv_ub_offset                 = (mv_data_uniform_ral_ptr            != NULL) ? mv_data_uniform_ral_ptr->block_offset            : -1;
-    skybox_ptr->skybox_uniform_location      = (skybox_uniform_raGL_ptr            != NULL) ? skybox_uniform_raGL_ptr->location                : -1;
+    skybox_ptr->inverse_projection_ub_offset = (inverse_projection_uniform_ral_ptr != nullptr) ? inverse_projection_uniform_ral_ptr->block_offset : -1;
+    skybox_ptr->mv_ub_offset                 = (mv_data_uniform_ral_ptr            != nullptr) ? mv_data_uniform_ral_ptr->block_offset            : -1;
+    skybox_ptr->skybox_uniform_location      = (skybox_uniform_raGL_ptr            != nullptr) ? skybox_uniform_raGL_ptr->location                : -1;
 
     /* Retrieve uniform block info */
     _varia_skybox_init_ub(skybox_ptr);
@@ -388,7 +392,7 @@ PRIVATE void _varia_skybox_init(_varia_skybox*            skybox_ptr,
             _varia_skybox_init_varia_skybox_sh(skybox_ptr);
 
             break;
-        } /* case VARIA_SKYBOX_LIGHT_PROJECTION_SH: */
+        }
 #endif
 
         case VARIA_SKYBOX_SPHERICAL_PROJECTION_TEXTURE:
@@ -396,26 +400,26 @@ PRIVATE void _varia_skybox_init(_varia_skybox*            skybox_ptr,
             _varia_skybox_init_spherical_projection_texture(skybox_ptr);
 
             break;
-        } /* case VARIA_SKYBOX_SPHERICAL_PROJECTION_TEXTURE: */
+        }
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized skybox type");
-        } /* default:*/
-    } /* switch (type) */
+        }
+    }
 }
 
 /** TODO */
 PRIVATE void _varia_skybox_init_ub(_varia_skybox* skybox_ptr)
 {
-    ral_buffer ub_buffer_ral = NULL;
+    ral_buffer ub_buffer_ral = nullptr;
 
     skybox_ptr->program_ub = ral_program_block_buffer_create(skybox_ptr->context,
                                                              skybox_ptr->program,
                                                              system_hashed_ansi_string_create("dataVS") );
 
-    ASSERT_DEBUG_SYNC(skybox_ptr->program_ub != NULL,
+    ASSERT_DEBUG_SYNC(skybox_ptr->program_ub != nullptr,
                       "Could not create a ral_program_block_buffer instance for the dataVS uniform block.");
 
     ral_program_block_buffer_get_property(skybox_ptr->program_ub,
@@ -436,11 +440,11 @@ PRIVATE void _varia_skybox_release(void* skybox)
                                1, /* n_objects */
                                (const void**) &skybox_ptr->program);
 
-    if (skybox_ptr->program_ub != NULL)
+    if (skybox_ptr->program_ub != nullptr)
     {
         ral_program_block_buffer_release(skybox_ptr->program_ub);
 
-        skybox_ptr->program_ub = NULL;
+        skybox_ptr->program_ub = nullptr;
     }
 }
 
@@ -454,24 +458,24 @@ PRIVATE void _varia_skybox_release(void* skybox)
 
         _varia_skybox* new_instance = new (std::nothrow) _varia_skybox;
 
-        ASSERT_DEBUG_SYNC(new_instance != NULL,
+        ASSERT_DEBUG_SYNC(new_instance != nullptr,
                           "Out of memory");
 
-        if (new_instance != NULL)
+        if (new_instance != nullptr)
         {
             _varia_skybox_init_varia_skybox(new_instance,
                                             name,
                                             VARIA_SKYBOX_LIGHT_PROJECTION_SH,
                                             samples,
                                             context,
-                                            NULL);
+                                            nullptr);
 
             REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_instance,
                                                            _varia_skybox_release,
                                                            OBJECT_TYPE_VARIA_SKYBOX,
                                                            system_hashed_ansi_string_create_by_merging_two_strings("\\Varia Skyboxes\\",
                                                                                                                    system_hashed_ansi_string_get_buffer(name)) );
-        } /* if (new_instance != NULL) */
+        }
 
         return (varia_skybox) new_instance;
     }
@@ -484,15 +488,15 @@ PUBLIC EMERALD_API varia_skybox varia_skybox_create_spherical_projection_texture
 {
     _varia_skybox* new_skybox_ptr = new (std::nothrow) _varia_skybox;
 
-    ASSERT_DEBUG_SYNC(new_skybox_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_skybox_ptr != nullptr,
                       "Out of memory");
 
-    if (new_skybox_ptr != NULL)
+    if (new_skybox_ptr != nullptr)
     {
         _varia_skybox_init(new_skybox_ptr,
                            name,
                            VARIA_SKYBOX_SPHERICAL_PROJECTION_TEXTURE,
-                           NULL,
+                           nullptr,
                            context,
                            texture);
 
@@ -501,7 +505,7 @@ PUBLIC EMERALD_API varia_skybox varia_skybox_create_spherical_projection_texture
                                                        OBJECT_TYPE_VARIA_SKYBOX,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Varia Skyboxes\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
-    } /* if (new_instance != NULL) */
+    }
 
     return (varia_skybox) new_skybox_ptr;
 }
@@ -511,9 +515,9 @@ PUBLIC EMERALD_API void varia_skybox_draw(varia_skybox     skybox,
                                           system_matrix4x4 modelview,
                                           system_matrix4x4 inverted_projection)
 {
-    ogl_context                                               context_gl             = NULL;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points_ptr   = NULL;
-    const ogl_context_gl_entrypoints*                         entry_points_ptr       = NULL;
+    ogl_context                                               context_gl             = nullptr;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points_ptr   = nullptr;
+    const ogl_context_gl_entrypoints*                         entry_points_ptr       = nullptr;
     _varia_skybox*                                            skybox_ptr             = (_varia_skybox*) skybox;
     raGL_program                                              skybox_program_raGL    = ral_context_get_program_gl(skybox_ptr->context,
                                                                                                                   skybox_ptr->program);
@@ -561,7 +565,7 @@ PUBLIC EMERALD_API void varia_skybox_draw(varia_skybox     skybox,
         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                                  GL_TEXTURE_BUFFER,
                                                  light_sh_data_tbo);
-    } /* if (skybox_ptr->type == VARIA_SKYBOX_LIGHT_PROJECTION_SH) */
+    }
 #endif
 
     /* Do spherial projection-specific stuff */
@@ -575,13 +579,13 @@ PUBLIC EMERALD_API void varia_skybox_draw(varia_skybox     skybox,
         dsa_entry_points_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                                      GL_TEXTURE_2D,
                                                      texture_id);
-    } /* if (skybox_ptr->type == varia_skybox_SPHERICAL_PROJECTION_TEXTURE) */
+    }
 
     /* Draw. Do not modify depth information */
     GLuint      program_ub_bo_id                = 0;
-    raGL_buffer program_ub_bo_raGL              = NULL;
+    raGL_buffer program_ub_bo_raGL              = nullptr;
     uint32_t    program_ub_bo_raGL_start_offset = -1;
-    ral_buffer  program_ub_bo_ral               = NULL;
+    ral_buffer  program_ub_bo_ral               = nullptr;
     uint32_t    program_ub_bo_ral_start_offset  = -1;
 
     ral_program_block_buffer_get_property(skybox_ptr->program_ub,
@@ -616,3 +620,5 @@ PUBLIC EMERALD_API void varia_skybox_draw(varia_skybox     skybox,
     }
     entry_points_ptr->pGLDepthMask(GL_TRUE);
 }
+
+#endif

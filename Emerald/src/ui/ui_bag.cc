@@ -67,9 +67,13 @@ PRIVATE void _ui_bag_position_controls(_ui_bag* bag_ptr)
                                         &n_controls);
 
     /* Determine deltas */
-    ral_context   context              = ui_get_context(bag_ptr->ui_instance);
+    ral_context   context              = nullptr;
     system_window window               = nullptr;
     int           window_dimensions[2] = {0};
+
+    ui_get_property(bag_ptr->ui_instance,
+                    UI_PROPERTY_CONTEXT,
+                   &context);
 
     ral_context_get_property  (context,
                                RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,

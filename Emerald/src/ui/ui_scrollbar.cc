@@ -137,9 +137,8 @@ PRIVATE void _ui_scrollbar_init_program(ui             ui_instance,
                                         _ui_scrollbar* scrollbar_ptr)
 {
     /* Create all objects */
-    ral_context context = ui_get_context(ui_instance);
-    ral_shader  fs      = nullptr;
-    ral_shader  vs      = nullptr;
+    ral_shader fs = nullptr;
+    ral_shader vs = nullptr;
 
     const ral_shader_create_info fs_create_info =
     {
@@ -167,7 +166,7 @@ PRIVATE void _ui_scrollbar_init_program(ui             ui_instance,
 
     ral_shader result_shaders[n_shader_create_info_items];
 
-    if (!ral_context_create_programs(context,
+    if (!ral_context_create_programs(scrollbar_ptr->context,
                                      1, /* n_create_info_items */
                                     &program_create_info,
                                     &scrollbar_ptr->program_slider) )
@@ -176,7 +175,7 @@ PRIVATE void _ui_scrollbar_init_program(ui             ui_instance,
                           "RAL program creation failed.");
     }
 
-    if (!ral_context_create_shaders(context,
+    if (!ral_context_create_shaders(scrollbar_ptr->context,
                                     n_shader_create_info_items,
                                     shader_create_info_items,
                                     result_shaders) )
@@ -466,9 +465,9 @@ PRIVATE void _ui_scrollbar_update_ub_cpu_task_callback(void* scrollbar_raw_ptr)
                                                            scrollbar_ptr->slider_handle_x1y1x2y2,
                                                            sizeof(float) * 4);
 
-    ral_program_block_buffer_sync(scrollbar_ptr->program_handle_ub_fs);
-    ral_program_block_buffer_sync(scrollbar_ptr->program_slider_ub_fs);
-    ral_program_block_buffer_sync(scrollbar_ptr->program_slider_ub_vs);
+    ral_program_block_buffer_sync_immediately(scrollbar_ptr->program_handle_ub_fs);
+    ral_program_block_buffer_sync_immediately(scrollbar_ptr->program_slider_ub_fs);
+    ral_program_block_buffer_sync_immediately(scrollbar_ptr->program_slider_ub_vs);
 }
 
 /** TODO */
@@ -833,6 +832,10 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
                0,
                sizeof(_ui_scrollbar) );
 
+        ui_get_property(ui_instance,
+                        UI_PROPERTY_CONTEXT,
+                       &new_scrollbar_ptr->context);
+
         new_scrollbar_ptr->gpu_slider_handle_position = 0;
         new_scrollbar_ptr->is_visible                 = true;
 
@@ -842,7 +845,6 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
         new_scrollbar_ptr->slider_x1y1x2y2[3] = 1 - x1y1[1];
 
         new_scrollbar_ptr->current_gpu_brightness_level   = NONFOCUSED_BRIGHTNESS;
-        new_scrollbar_ptr->context                        = ui_get_context(ui_instance);
         new_scrollbar_ptr->pfn_get_current_value_ptr      = pfn_get_current_value_ptr;
         new_scrollbar_ptr->get_current_value_ptr_user_arg = get_current_value_ptr_user_arg;
         new_scrollbar_ptr->pfn_set_current_value_ptr      = pfn_set_current_value_ptr;

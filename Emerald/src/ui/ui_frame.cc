@@ -64,9 +64,8 @@ PRIVATE void _ui_frame_init_program(ui         ui_instance,
                                     _ui_frame* frame_ptr)
 {
     /* Create all objects */
-    ral_context context = ui_get_context(ui_instance);
-    ral_shader  fs      = nullptr;
-    ral_shader  vs      = nullptr;
+    ral_shader fs = nullptr;
+    ral_shader vs = nullptr;
 
     const ral_shader_create_info fs_create_info =
     {
@@ -167,7 +166,7 @@ PRIVATE void _ui_frame_update_ub_props_cpu_task_callback(void* frame_raw_ptr)
                                                            frame_ptr->x1y1x2y2,
                                                            sizeof(float) * 4);
 
-    ral_program_block_buffer_sync(frame_ptr->program_ub);
+    ral_program_block_buffer_sync_immediately(frame_ptr->program_ub);
 
 }
 
@@ -485,7 +484,10 @@ PUBLIC void* ui_frame_init(ui           instance,
                0,
                sizeof(_ui_frame) );
 
-        new_frame_ptr->context     = ui_get_context(instance);
+        ui_get_property(instance,
+                        UI_PROPERTY_CONTEXT,
+                       &new_frame_ptr->context);
+
         new_frame_ptr->visible     = true;
         new_frame_ptr->x1y1x2y2[0] = x1y1x2y2[0];
         new_frame_ptr->x1y1x2y2[1] = 1.0f - x1y1x2y2[1];

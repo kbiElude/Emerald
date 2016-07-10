@@ -1,6 +1,10 @@
+#if 0
+
+TODO
+
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  * TODO: For RAL integration, this will require significant overhaul.
  */
@@ -74,7 +78,7 @@ typedef struct _varia_primitive_renderer_dataset
         n_vertices           = 0;
         n_vertices_allocated = 0;
         primitive_type       = RAL_PRIMITIVE_TYPE_UNKNOWN;
-        vertex_data          = NULL;
+        vertex_data          = nullptr;
 
         memset(color_data,
                0,
@@ -83,11 +87,11 @@ typedef struct _varia_primitive_renderer_dataset
 
     ~_varia_primitive_renderer_dataset()
     {
-        if (vertex_data != NULL)
+        if (vertex_data != nullptr)
         {
             delete [] vertex_data;
 
-            vertex_data = NULL;
+            vertex_data = nullptr;
         }
     }
 
@@ -171,8 +175,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(varia_primitive_renderer,
 PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_context context,
                                                                       void*       user_arg)
 {
-    ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
-    ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = nullptr;
+    ogl_context_gl_entrypoints*                         entry_points     = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -220,7 +224,7 @@ PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_contex
 
     /* Draw line strips as requested */
     GLuint             bo_id           = 0;
-    raGL_buffer        bo_raGL         = NULL;
+    raGL_buffer        bo_raGL         = nullptr;
     GLuint             bo_start_offset = 0;
     const raGL_program program_raGL    = ral_context_get_program_gl(renderer_ptr->context,
                                                                     renderer_ptr->program);
@@ -254,7 +258,7 @@ PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_contex
                       n < renderer_ptr->draw_n_dataset_ids;
                     ++n)
     {
-        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    renderer_ptr->draw_dataset_ids[n],
@@ -271,7 +275,7 @@ PRIVATE void _varia_primitive_renderer_draw_rendering_thread_callback(ogl_contex
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve dataset descriptor");
         }
-    } /* for (all datasets) */
+    }
 }
 
 /** TODO */
@@ -286,8 +290,8 @@ PRIVATE void _varia_primitive_renderer_init_program(_varia_primitive_renderer* r
     const unsigned int n_vs_parts = sizeof(vs_parts) / sizeof(vs_parts[0]);
 
     /* Prepare the objects */
-    ral_shader fs = NULL;
-    ral_shader vs = NULL;
+    ral_shader fs = nullptr;
+    ral_shader vs = nullptr;
 
     const ral_shader_create_info fs_create_info =
     {
@@ -316,10 +320,10 @@ PRIVATE void _varia_primitive_renderer_init_program(_varia_primitive_renderer* r
     };
     const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
 
-    ral_shader result_shaders[n_shader_create_info_items] = {NULL};
+    ral_shader result_shaders[n_shader_create_info_items] = {nullptr};
 
     if ( (renderer_ptr->program = ral_context_get_program_by_name(renderer_ptr->context,
-                                                                  program_create_info.name) ) == NULL)
+                                                                  program_create_info.name) ) == nullptr)
     {
         if (!ral_context_create_shaders(renderer_ptr->context,
                                         n_shader_create_info_items,
@@ -392,7 +396,7 @@ PRIVATE void _varia_primitive_renderer_init_vao(_varia_primitive_renderer* rende
 PRIVATE void _varia_primitive_renderer_init_vao_rendering_thread_callback(ogl_context context,
                                                                           void*       user_arg)
 {
-    const ogl_context_gl_entrypoints* entry_points = NULL;
+    const ogl_context_gl_entrypoints* entry_points = nullptr;
     _varia_primitive_renderer*        renderer_ptr = (_varia_primitive_renderer*) user_arg;
 
     ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
@@ -410,31 +414,31 @@ PRIVATE void _varia_primitive_renderer_init_vao_rendering_thread_callback(ogl_co
 PRIVATE void _varia_primitive_renderer_release_rendering_thread_callback(ogl_context context,
                                                                          void*       user_arg)
 {
-    ogl_context_gl_entrypoints* entrypoints  = NULL;
+    ogl_context_gl_entrypoints* entrypoints  = nullptr;
     _varia_primitive_renderer*  instance_ptr = (_varia_primitive_renderer*) user_arg;
 
     ogl_context_get_property(ral_context_get_gl_context(instance_ptr->context),
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
-    if (instance_ptr->bo != NULL)
+    if (instance_ptr->bo != nullptr)
     {
         ral_context_delete_objects(instance_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
                                    (const void**) &instance_ptr->bo);
 
-        instance_ptr->bo = NULL;
+        instance_ptr->bo = nullptr;
     }
 
-    if (instance_ptr->program != NULL)
+    if (instance_ptr->program != nullptr)
     {
         ral_context_delete_objects(instance_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
                                    (const void**) &instance_ptr->program);
 
-        instance_ptr->program = NULL;
+        instance_ptr->program = nullptr;
     }
 
     if (instance_ptr->vao_id != 0)
@@ -455,32 +459,32 @@ PRIVATE void _varia_primitive_renderer_release(void* renderer)
                                                      _varia_primitive_renderer_release_rendering_thread_callback,
                                                      instance_ptr);
 
-    if (instance_ptr->datasets != NULL)
+    if (instance_ptr->datasets != nullptr)
     {
-        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = nullptr;
 
         while (system_resizable_vector_pop(instance_ptr->datasets,
                                           &dataset_ptr) )
         {
             delete dataset_ptr;
 
-            dataset_ptr = NULL;
+            dataset_ptr = nullptr;
         }
         system_resizable_vector_release(instance_ptr->datasets);
-    } /* if (instance_ptr->datasets != NULL) */
+    }
 
-    if (instance_ptr->draw_cs != NULL)
+    if (instance_ptr->draw_cs != nullptr)
     {
         system_critical_section_release(instance_ptr->draw_cs);
 
-        instance_ptr->draw_cs = NULL;
+        instance_ptr->draw_cs = nullptr;
     }
 
-    if (instance_ptr->bo_mvp != NULL)
+    if (instance_ptr->bo_mvp != nullptr)
     {
         system_matrix4x4_release(instance_ptr->bo_mvp);
 
-        instance_ptr->bo_mvp = NULL;
+        instance_ptr->bo_mvp = nullptr;
     }
 }
 
@@ -489,8 +493,8 @@ PRIVATE void _varia_primitive_renderer_update_bo_storage(ogl_context            
                                                          _varia_primitive_renderer* renderer_ptr)
 {
     ral_buffer_client_sourced_update_info               bo_update_info;
-    ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
-    ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = nullptr;
+    ogl_context_gl_entrypoints*                         entry_points     = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -511,7 +515,7 @@ PRIVATE void _varia_primitive_renderer_update_bo_storage(ogl_context            
     }
 
     /* Make sure we have a BO available and that it is capacious enough. */
-    if (renderer_ptr->bo              != NULL &&
+    if (renderer_ptr->bo              != nullptr &&
         renderer_ptr->bo_storage_size <  renderer_ptr->bo_data_size)
     {
         ral_context_delete_objects(renderer_ptr->context,
@@ -519,10 +523,10 @@ PRIVATE void _varia_primitive_renderer_update_bo_storage(ogl_context            
                                    1, /* n_objects */
                                    (const void**) &renderer_ptr->bo);
 
-        renderer_ptr->bo = NULL;
+        renderer_ptr->bo = nullptr;
     }
 
-    if (renderer_ptr->bo == NULL)
+    if (renderer_ptr->bo == nullptr)
     {
         ral_buffer_create_info bo_create_info;
 
@@ -580,12 +584,12 @@ PRIVATE void _varia_primitive_renderer_update_data_buffer(_varia_primitive_rende
                       n_item < n_datasets;
                     ++n_item)
     {
-        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    n_item,
                                                   &dataset_ptr) &&
-            dataset_ptr != NULL)
+            dataset_ptr != nullptr)
         {
             /* Color data */
             color_data_size += sizeof(float) * 4;
@@ -593,7 +597,7 @@ PRIVATE void _varia_primitive_renderer_update_data_buffer(_varia_primitive_rende
             /* Vertex data */
             vertex_data_size += dataset_ptr->n_vertices * sizeof(float) * 3 /* components per vertex */;
         }
-    } /* for (all dataset items) */
+    }
 
     /* Compute data offsets */
     unsigned int data_mvp_offset    = 0;
@@ -607,17 +611,17 @@ PRIVATE void _varia_primitive_renderer_update_data_buffer(_varia_primitive_rende
     /* Allocate the memory */
     const unsigned int data_size = color_data_size + mvp_data_size + vertex_data_size;
 
-    if (renderer_ptr->bo_data != NULL)
+    if (renderer_ptr->bo_data != nullptr)
     {
         delete [] renderer_ptr->bo_data;
 
-        renderer_ptr->bo_data = NULL;
+        renderer_ptr->bo_data = nullptr;
     }
 
     renderer_ptr->bo_data_size = data_size;
     renderer_ptr->bo_data      = new unsigned char[data_size];
 
-    ASSERT_ALWAYS_SYNC(renderer_ptr->bo_data != NULL,
+    ASSERT_ALWAYS_SYNC(renderer_ptr->bo_data != nullptr,
                        "Out of memory");
 
     /* Cache the data */
@@ -629,12 +633,12 @@ PRIVATE void _varia_primitive_renderer_update_data_buffer(_varia_primitive_rende
                       n_item < n_datasets;
                     ++n_item)
     {
-        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    n_item,
                                                   &dataset_ptr) &&
-            dataset_ptr != NULL)
+            dataset_ptr != nullptr)
         {
             dataset_ptr->draw_first  = (current_vertex_offset - data_vertex_offset) / sizeof(float) / 3;
             dataset_ptr->instance_id = n_current_item;
@@ -650,7 +654,7 @@ PRIVATE void _varia_primitive_renderer_update_data_buffer(_varia_primitive_rende
             current_vertex_offset += sizeof(float) * 3 * dataset_ptr->n_vertices;
             n_current_item        ++;
         }
-    } /* for (all dataset items) */
+    }
 
     renderer_ptr->dirty = false;
 }
@@ -660,9 +664,9 @@ PRIVATE void _varia_primitive_renderer_update_vao(ogl_context                con
                                                   _varia_primitive_renderer* renderer_ptr)
 {
     GLuint                            bo_id           = 0;
-    raGL_buffer                       bo_raGL         = NULL;
+    raGL_buffer                       bo_raGL         = nullptr;
     uint32_t                          bo_start_offset = -1;
-    const ogl_context_gl_entrypoints* entry_points    = NULL;
+    const ogl_context_gl_entrypoints* entry_points    = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -720,10 +724,10 @@ PUBLIC EMERALD_API varia_primitive_renderer_dataset_id varia_primitive_renderer_
     /* Allocate new descriptor */
     _varia_primitive_renderer_dataset* new_dataset_ptr = new (std::nothrow) _varia_primitive_renderer_dataset;
 
-    ASSERT_ALWAYS_SYNC(new_dataset_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_dataset_ptr != nullptr,
                        "Out of memory");
 
-    if (new_dataset_ptr == NULL)
+    if (new_dataset_ptr == nullptr)
     {
         goto end;
     }
@@ -734,10 +738,10 @@ PUBLIC EMERALD_API varia_primitive_renderer_dataset_id varia_primitive_renderer_
     new_dataset_ptr->primitive_type       = primitive_type;
     new_dataset_ptr->vertex_data          = new (std::nothrow) float[3 * n_vertices];
 
-    ASSERT_ALWAYS_SYNC(new_dataset_ptr->vertex_data != NULL,
+    ASSERT_ALWAYS_SYNC(new_dataset_ptr->vertex_data != nullptr,
                        "Out of memory");
 
-    if (new_dataset_ptr->vertex_data == NULL)
+    if (new_dataset_ptr->vertex_data == nullptr)
     {
         goto end;
     }
@@ -768,13 +772,13 @@ PUBLIC EMERALD_API varia_primitive_renderer_dataset_id varia_primitive_renderer_
 end:
     if (result_id == -1)
     {
-        if (new_dataset_ptr != NULL)
+        if (new_dataset_ptr != nullptr)
         {
             delete new_dataset_ptr;
 
-            new_dataset_ptr = NULL;
+            new_dataset_ptr = nullptr;
         }
-    } /* if (result_id == -1) */
+    }
 
     ASSERT_DEBUG_SYNC(result_id != -1,
                       "Function failed");
@@ -793,7 +797,7 @@ PUBLIC EMERALD_API void varia_primitive_renderer_change_dataset_data(varia_primi
     system_critical_section_enter(renderer_ptr->draw_cs);
 
     /* Retrieve the dataset descriptor */
-    _varia_primitive_renderer_dataset* dataset_ptr = NULL;
+    _varia_primitive_renderer_dataset* dataset_ptr = nullptr;
 
     if (!system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                 dataset_id,
@@ -805,7 +809,7 @@ PUBLIC EMERALD_API void varia_primitive_renderer_change_dataset_data(varia_primi
         goto end;
     }
 
-    if (dataset_ptr == NULL)
+    if (dataset_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Requested dataset has been deleted");
@@ -817,19 +821,19 @@ PUBLIC EMERALD_API void varia_primitive_renderer_change_dataset_data(varia_primi
     if (dataset_ptr->n_vertices_allocated < n_vertices)
     {
         /* Need to reallocate the table.. */
-        if (dataset_ptr->vertex_data != NULL)
+        if (dataset_ptr->vertex_data != nullptr)
         {
             delete [] dataset_ptr->vertex_data;
 
-            dataset_ptr->vertex_data = NULL;
+            dataset_ptr->vertex_data = nullptr;
         }
 
         dataset_ptr->vertex_data = new (std::nothrow) GLfloat[n_vertices * 3];
 
-        ASSERT_ALWAYS_SYNC(dataset_ptr->vertex_data != NULL,
+        ASSERT_ALWAYS_SYNC(dataset_ptr->vertex_data != nullptr,
                            "Out of memory");
 
-        if (dataset_ptr->vertex_data == NULL)
+        if (dataset_ptr->vertex_data == nullptr)
         {
             goto end;
         }
@@ -858,10 +862,10 @@ PUBLIC EMERALD_API varia_primitive_renderer varia_primitive_renderer_create(ral_
     /* Spawn the new instance */
     _varia_primitive_renderer* renderer_ptr = new (std::nothrow) _varia_primitive_renderer;
 
-    ASSERT_ALWAYS_SYNC(renderer_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(renderer_ptr != nullptr,
                        "Out of memory while allocating line strip renderer.");
 
-    if (renderer_ptr != NULL)
+    if (renderer_ptr != nullptr)
     {
         memset(renderer_ptr,
                0,
@@ -901,7 +905,7 @@ PUBLIC EMERALD_API bool varia_primitive_renderer_delete_dataset(varia_primitive_
     /* Identify the dataset */
     system_critical_section_enter(renderer_ptr->draw_cs);
     {
-        _varia_primitive_renderer_dataset* dataset_ptr = NULL;
+        _varia_primitive_renderer_dataset* dataset_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                     dataset_id,
@@ -916,7 +920,7 @@ PUBLIC EMERALD_API bool varia_primitive_renderer_delete_dataset(varia_primitive_
         }
 
         /* Deallocate the dataset */
-        if (dataset_ptr == NULL)
+        if (dataset_ptr == nullptr)
         {
             ASSERT_DEBUG_SYNC(false,
                               "Requested dataset has already been deallocated");
@@ -926,12 +930,12 @@ PUBLIC EMERALD_API bool varia_primitive_renderer_delete_dataset(varia_primitive_
         }
 
         delete dataset_ptr;
-        dataset_ptr = NULL;
+        dataset_ptr = nullptr;
 
         /* Mark the entry as deallocated */
         system_resizable_vector_set_element_at(renderer_ptr->datasets,
                                                dataset_id,
-                                               NULL);
+                                               nullptr);
     }
 
 end:
@@ -963,3 +967,4 @@ PUBLIC EMERALD_API void varia_primitive_renderer_draw(varia_primitive_renderer  
     system_critical_section_leave(renderer_ptr->draw_cs);
 }
 
+#endif

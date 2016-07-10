@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef VARIA_SKYBOX_H
@@ -37,8 +37,8 @@ PUBLIC EMERALD_API varia_skybox varia_skybox_create_spherical_projection_texture
                                                                                  system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API void varia_skybox_draw(varia_skybox     skybox,
-                                          system_matrix4x4 modelview,
-                                          system_matrix4x4 inverted_projection);
+PUBLIC EMERALD_API ral_present_task varia_skybox_get_present_task(varia_skybox     skybox,
+                                                                  system_matrix4x4 modelview,
+                                                                  system_matrix4x4 inverted_projection);
 
 #endif /* VARIA_SKYBOX_H */

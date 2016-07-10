@@ -140,7 +140,10 @@ PRIVATE void _ui_button_init(_ui_button*               button_ptr,
     button_ptr->x1y1x2y2[2]                =     x2y2[0];
     button_ptr->x1y1x2y2[3]                = 1 - x1y1[1];
 
-    button_ptr->context            = ui_get_context(ui_instance);
+    ui_get_property(ui_instance,
+                    UI_PROPERTY_CONTEXT,
+                   &button_ptr->context);
+
     button_ptr->fire_proc_user_arg = fire_proc_user_arg;
     button_ptr->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
     button_ptr->text_renderer      = text_renderer;
@@ -257,7 +260,7 @@ PRIVATE void _ui_button_init_program(ui          ui_instance,
                                      _ui_button* button_ptr)
 {
     /* Create all objects */
-    ral_context context = ui_get_context(ui_instance);
+    ral_context context = button_ptr->context;
     ral_shader  fs      = nullptr;
     ral_program program = nullptr;
     ral_shader  vs      = nullptr;
@@ -457,8 +460,8 @@ PRIVATE void _ui_button_update_props_cpu_task_callback(void* button_raw_ptr)
         button_ptr->should_update_border_width = false;
     }
 
-    ral_program_block_buffer_sync(button_ptr->program_ub_fs);
-    ral_program_block_buffer_sync(button_ptr->program_ub_vs);
+    ral_program_block_buffer_sync_immediately(button_ptr->program_ub_fs);
+    ral_program_block_buffer_sync_immediately(button_ptr->program_ub_vs);
 }
 
 /** TODO */

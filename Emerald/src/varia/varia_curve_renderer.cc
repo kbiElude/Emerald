@@ -1,6 +1,10 @@
+#if 0
+
+TODO
+
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -83,26 +87,26 @@ PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph 
 
     uint32_t     duration_ms             = 0;
     uint32_t     n_samples               = 0;
-    float*       ref_traveller_ptr       = NULL;
+    float*       ref_traveller_ptr       = nullptr;
     bool         result                  = true;
     unsigned int result_n_vertices       = 0;
-    float*       result_vertex_data      = NULL;
-    float*       result_view_vector_data = NULL;
+    float*       result_vertex_data      = nullptr;
+    float*       result_view_vector_data = nullptr;
     uint32_t     sample_delta_time       = 0;
-    float*       vertex_traveller_ptr    = NULL;
+    float*       vertex_traveller_ptr    = nullptr;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(graph != NULL,
+    ASSERT_DEBUG_SYNC(graph != nullptr,
                       "Graph is NULL");
-    ASSERT_DEBUG_SYNC(node  != NULL,
+    ASSERT_DEBUG_SYNC(node  != nullptr,
                       "Graph node is NULL");
     ASSERT_DEBUG_SYNC(duration != 0,
                       "Graph duration is 0");
     ASSERT_DEBUG_SYNC(n_samples_per_second != 0,
                       "Samples/second is 0");
-    ASSERT_DEBUG_SYNC(out_n_vertices != NULL,
+    ASSERT_DEBUG_SYNC(out_n_vertices != nullptr,
                       "out_n_vertices is NULL");
-    ASSERT_DEBUG_SYNC(out_vertex_line_strip_data != NULL,
+    ASSERT_DEBUG_SYNC(out_vertex_line_strip_data != nullptr,
                       "out_vertex_data is NULL");
 
     /* How many samples will we need to take? */
@@ -117,10 +121,10 @@ PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph 
 
     result_vertex_data = new float[3 /* x, y, z */ * n_samples];
 
-    ASSERT_ALWAYS_SYNC(result_vertex_data != NULL,
+    ASSERT_ALWAYS_SYNC(result_vertex_data != nullptr,
                        "Out of memory");
 
-    if (result_vertex_data == NULL)
+    if (result_vertex_data == nullptr)
     {
         result = false;
 
@@ -130,20 +134,20 @@ PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph 
     /* If requested, also allocate memory for the lines that will depict the view vectors for
      * each sample.
      */
-    if (out_view_vector_lines_data != NULL)
+    if (out_view_vector_lines_data != nullptr)
     {
         result_view_vector_data = new float[2 /* points */ * 3 /* x, y, z */ * n_samples];
 
-        ASSERT_ALWAYS_SYNC(result_view_vector_data != NULL,
+        ASSERT_ALWAYS_SYNC(result_view_vector_data != nullptr,
                            "Out of memory");
 
-        if (result_view_vector_data == NULL)
+        if (result_view_vector_data == nullptr)
         {
             result = false;
 
             goto end;
         }
-    } /* if (out_view_vector_lines_data != NULL) */
+    }
 
     /* Iterate over all samples and generate vertex data */
     ref_traveller_ptr    = result_view_vector_data;
@@ -164,7 +168,7 @@ PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph 
                                  sample_time);
 
         /* Retrieve the node's transformation matrix */
-        system_matrix4x4 transformation_matrix = NULL;
+        system_matrix4x4 transformation_matrix = nullptr;
 
         scene_graph_node_get_property(node,
                                       SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
@@ -192,7 +196,7 @@ PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph 
 
         vertex_traveller_ptr += 3;
 
-        if (ref_traveller_ptr != NULL)
+        if (ref_traveller_ptr != nullptr)
         {
             /* Compute the position of the other vertex we need to use for the view vector. */
             const float ref_position       [4] = {0.0f, 0.0f, -1.0f, 1.0f}; /* NOTE: OpenGL-specific! */
@@ -239,14 +243,14 @@ PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph 
 
             ref_traveller_ptr += 3;
         }
-    } /* for (all samples) */
+    }
 
     /* Looks like everything's fine! */
     result                      = true;
     *out_n_vertices             = n_samples;
     *out_vertex_line_strip_data = result_vertex_data;
 
-    if (result_view_vector_data != NULL)
+    if (result_view_vector_data != nullptr)
     {
         *out_view_vector_lines_data = result_view_vector_data;
     }
@@ -256,20 +260,20 @@ PRIVATE bool _varia_curve_renderer_get_scene_graph_node_vertex_data(scene_graph 
 end:
     if (!result)
     {
-        if (result_vertex_data != NULL)
+        if (result_vertex_data != nullptr)
         {
             delete [] result_vertex_data;
 
-            result_vertex_data = NULL;
+            result_vertex_data = nullptr;
         }
 
-        if (result_view_vector_data != NULL)
+        if (result_view_vector_data != nullptr)
         {
             delete [] result_view_vector_data;
 
-            result_view_vector_data = NULL;
+            result_view_vector_data = nullptr;
         }
-    } /* if (!result) */
+    }
 
     return result;
 }
@@ -279,32 +283,32 @@ PRIVATE void _varia_curve_renderer_release(void* renderer)
 {
     _varia_curve_renderer* renderer_ptr = (_varia_curve_renderer*) renderer;
 
-    if (renderer_ptr->items != NULL)
+    if (renderer_ptr->items != nullptr)
     {
-        _varia_curve_renderer_item* item_ptr = NULL;
+        _varia_curve_renderer_item* item_ptr = nullptr;
 
         while (system_resizable_vector_pop(renderer_ptr->items,
                                           &item_ptr) )
         {
-            if (item_ptr != NULL)
+            if (item_ptr != nullptr)
             {
                 _varia_curve_renderer_release_item(renderer_ptr,
                                                    item_ptr);
 
                 delete item_ptr;
-                item_ptr = NULL;
+                item_ptr = nullptr;
             }
-        } /* while (there are items left) */
+        }
 
         system_resizable_vector_release(renderer_ptr->items);
-        renderer_ptr->items = NULL;
+        renderer_ptr->items = nullptr;
     }
 
-    if (renderer_ptr->primitive_renderer != NULL)
+    if (renderer_ptr->primitive_renderer != nullptr)
     {
         varia_primitive_renderer_release(renderer_ptr->primitive_renderer);
 
-        renderer_ptr->primitive_renderer = NULL;
+        renderer_ptr->primitive_renderer = nullptr;
     }
 }
 
@@ -335,11 +339,11 @@ PUBLIC EMERALD_API varia_curve_item_id varia_curve_renderer_add_scene_graph_node
     bool                   should_include_view_vectors = (view_vector_length > 1e-5f);
 
     /* Prepare vertex data */
-    _varia_curve_renderer_item* item_ptr               = NULL;
+    _varia_curve_renderer_item* item_ptr               = nullptr;
     unsigned int                n_vertices             = 0;
     bool                        result                 = false;
-    float*                      vertex_data            = NULL;
-    float*                      view_vector_lines_data = NULL;
+    float*                      vertex_data            = nullptr;
+    float*                      view_vector_lines_data = nullptr;
 
     result = _varia_curve_renderer_get_scene_graph_node_vertex_data(graph,
                                                                     node,
@@ -348,14 +352,14 @@ PUBLIC EMERALD_API varia_curve_item_id varia_curve_renderer_add_scene_graph_node
                                                                     view_vector_length,
                                                                    &n_vertices,
                                                                    &vertex_data,
-                                                                   should_include_view_vectors ? &view_vector_lines_data : NULL);
+                                                                   should_include_view_vectors ? &view_vector_lines_data : nullptr);
 
     ASSERT_ALWAYS_SYNC(result              &&
                        n_vertices  != 0    &&
-                       vertex_data != NULL,
+                       vertex_data != nullptr,
                        "Could not generate vertex data");
 
-    if (vertex_data == NULL)
+    if (vertex_data == nullptr)
     {
         goto end;
     }
@@ -363,10 +367,10 @@ PUBLIC EMERALD_API varia_curve_item_id varia_curve_renderer_add_scene_graph_node
     /* Spawn new item descriptor */
     item_ptr = new (std::nothrow) _varia_curve_renderer_item;
 
-    ASSERT_ALWAYS_SYNC(item_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(item_ptr != nullptr,
                        "Out of memory");
 
-    if (item_ptr == NULL)
+    if (item_ptr == nullptr)
     {
         goto end;
     }
@@ -400,7 +404,7 @@ PUBLIC EMERALD_API varia_curve_item_id varia_curve_renderer_add_scene_graph_node
     /* Good to release the vertex data */
     delete [] vertex_data;
 
-    vertex_data = NULL;
+    vertex_data = nullptr;
 
 end:
     return item_id;
@@ -412,12 +416,12 @@ PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ral_context 
 {
     _varia_curve_renderer* new_instance = new (std::nothrow) _varia_curve_renderer;
 
-    ASSERT_DEBUG_SYNC(new_instance != NULL,
+    ASSERT_DEBUG_SYNC(new_instance != nullptr,
                       "Out of memory");
 
-    if (new_instance != NULL)
+    if (new_instance != nullptr)
     {
-        new_instance->conversion_array_items   = NULL;
+        new_instance->conversion_array_items   = nullptr;
         new_instance->items                    = system_resizable_vector_create(4 /* capacity */);
         new_instance->n_conversion_array_items = 0;
         new_instance->primitive_renderer       = varia_primitive_renderer_create(context,
@@ -429,7 +433,7 @@ PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ral_context 
                                                        OBJECT_TYPE_VARIA_CURVE_RENDERER,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Varia Curve Renderers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
-    } /* if (new_instance != NULL) */
+    }
 
     return (varia_curve_renderer) new_instance;
 }
@@ -438,7 +442,7 @@ PUBLIC EMERALD_API varia_curve_renderer varia_curve_renderer_create(ral_context 
 PUBLIC EMERALD_API void varia_curve_renderer_delete_curve(varia_curve_renderer renderer,
                                                           varia_curve_item_id  item_id)
 {
-    _varia_curve_renderer_item* item_ptr     = NULL;
+    _varia_curve_renderer_item* item_ptr     = nullptr;
     _varia_curve_renderer*      renderer_ptr = (_varia_curve_renderer*) renderer;
 
     if (!system_resizable_vector_get_element_at(renderer_ptr->items,
@@ -456,12 +460,12 @@ PUBLIC EMERALD_API void varia_curve_renderer_delete_curve(varia_curve_renderer r
                                        item_ptr);
 
     delete item_ptr;
-    item_ptr = NULL;
+    item_ptr = nullptr;
 
     /* Mark the item as released */
     system_resizable_vector_set_element_at(renderer_ptr->items,
                                            item_id,
-                                           NULL);
+                                           nullptr);
 
     /* All done */
 end:
@@ -487,19 +491,19 @@ PUBLIC EMERALD_API void varia_curve_renderer_draw(varia_curve_renderer       ren
     {
         LOG_INFO("Performance warning: scaling up conversion array");
 
-        if (renderer_ptr->conversion_array_items != NULL)
+        if (renderer_ptr->conversion_array_items != nullptr)
         {
             delete [] renderer_ptr->conversion_array_items;
 
-            renderer_ptr->conversion_array_items = NULL;
+            renderer_ptr->conversion_array_items = nullptr;
         }
 
         renderer_ptr->conversion_array_items = new varia_primitive_renderer_dataset_id[2 * (2 * n_item_ids)];
 
-        ASSERT_ALWAYS_SYNC(renderer_ptr->conversion_array_items != NULL,
+        ASSERT_ALWAYS_SYNC(renderer_ptr->conversion_array_items != nullptr,
                            "Out of memory");
 
-        if (renderer_ptr->conversion_array_items == NULL)
+        if (renderer_ptr->conversion_array_items == nullptr)
         {
             goto end;
         }
@@ -512,7 +516,7 @@ PUBLIC EMERALD_API void varia_curve_renderer_draw(varia_curve_renderer       ren
                       n_item_id < n_item_ids;
                     ++n_item_id)
     {
-        _varia_curve_renderer_item* item_ptr = NULL;
+        _varia_curve_renderer_item* item_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(renderer_ptr->items,
                                                     item_ids[n_item_id],
@@ -532,7 +536,7 @@ PUBLIC EMERALD_API void varia_curve_renderer_draw(varia_curve_renderer       ren
             renderer_ptr->conversion_array_items[n_items_used] = item_ptr->view_vector_dataset_id;
             n_items_used++;
         }
-    } /* for (all item IDs) */
+    }
 
     varia_primitive_renderer_draw(renderer_ptr->primitive_renderer,
                                   mvp,
@@ -543,3 +547,4 @@ end:
     ;
 }
 
+#endif

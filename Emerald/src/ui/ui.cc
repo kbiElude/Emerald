@@ -351,7 +351,11 @@ PRIVATE void _ui_init(_ui*                      ui_ptr,
                       system_hashed_ansi_string name,
                       varia_text_renderer       text_renderer)
 {
-    ral_context context = varia_text_renderer_get_context(text_renderer);
+    ral_context context = nullptr;
+
+    varia_text_renderer_get_property(text_renderer,
+                                     VARIA_TEXT_RENDERER_PROPERTY_CONTEXT,
+                                    &context);
 
     ui_ptr->controls                         = system_resizable_vector_create(N_START_CONTROLS);
     ui_ptr->controls_rw_mutex                = system_read_write_mutex_create();
@@ -1096,7 +1100,7 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
                                                      system_hashed_ansi_string name,
                                                      const float*              x1y1,
                                                      const float*              max_size,
-                                                     ral_texture               texture,
+                                                     ral_texture_view          texture_view,
                                                      ui_texture_preview_type   preview_type)
 {
     _ui_control* new_ui_control_ptr = new (std::nothrow) _ui_control;
@@ -1114,7 +1118,7 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
                                                name,
                                                x1y1,
                                                max_size,
-                                               texture,
+                                               texture_view,
                                                preview_type);
 
         memset(new_ui_control_ptr,
@@ -1204,12 +1208,6 @@ PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
                                                   property,
                                                   out_result);
     }
-}
-
-/** Please see header for specification */
-PUBLIC ral_context ui_get_context(ui ui_instance)
-{
-    return varia_text_renderer_get_context( (reinterpret_cast<_ui*>(ui_instance) )->text_renderer);
 }
 
 /** Please see header for specification */
@@ -1389,6 +1387,32 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC void ui_get_property(ui          ui_instance,
+                            ui_property property,
+                            void*       out_result_ptr)
+{
+    _ui* ui_ptr = reinterpret_cast<_ui*>(ui_instance);
+
+    switch (property)
+    {
+        case UI_PROPERTY_CONTEXT:
+        {
+            varia_text_renderer_get_property(ui_ptr->text_renderer,
+                                             VARIA_TEXT_RENDERER_PROPERTY_CONTEXT,
+                                             out_result_ptr);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ui_property value specified.");
+        }
+    }
+}
+
+/** Please see header for specification */
 PUBLIC ral_program ui_get_registered_program(ui                        ui_instance,
                                              system_hashed_ansi_string name)
 {
@@ -1401,7 +1425,13 @@ PUBLIC ral_program ui_get_registered_program(ui                        ui_instan
 
     if (result != nullptr)
     {
-        ral_context_retain_object(varia_text_renderer_get_context(ui_ptr->text_renderer),
+        ral_context context = nullptr;
+
+        varia_text_renderer_get_property(ui_ptr->text_renderer,
+                                         VARIA_TEXT_RENDERER_PROPERTY_CONTEXT,
+                                        &context);
+
+        ral_context_retain_object(context,
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                   result);
     }
@@ -1510,6 +1540,7 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
                                 system_hashed_ansi_string program_name,
                                 ral_program               program)
 {
+    ral_context         context           = nullptr;
     const system_hash64 program_name_hash = system_hashed_ansi_string_get_hash(program_name);
     bool                result            = false;
     _ui*                ui_ptr            = reinterpret_cast<_ui*>(ui_instance);
@@ -1517,13 +1548,19 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
     if (!system_hash64map_contains(ui_ptr->registered_ui_control_programs,
                                    program_name_hash) )
     {
+        ral_context context = nullptr;
+
+        varia_text_renderer_get_property(ui_ptr->text_renderer,
+                                         VARIA_TEXT_RENDERER_PROPERTY_CONTEXT,
+                                        &context);
+
         system_hash64map_insert(ui_ptr->registered_ui_control_programs,
                                 program_name_hash,
                                 program,
                                 nullptr,
                                 nullptr);
 
-        ral_context_retain_object(varia_text_renderer_get_context(ui_ptr->text_renderer),
+        ral_context_retain_object(context,
                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                   program);
 

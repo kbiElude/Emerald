@@ -427,7 +427,6 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
                                        _ui_dropdown* dropdown_ptr)
 {
     /* Create all objects */
-    ral_context context      = ui_get_context(ui_instance);
     ral_shader  fs_bg        = nullptr;
     ral_shader  fs_label_bg  = nullptr;
     ral_shader  fs_separator = nullptr;
@@ -529,7 +528,7 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
     ral_program result_programs[n_program_create_info_items];
     ral_shader  result_shaders [n_shader_create_info_items];
 
-    if (!ral_context_create_programs(context,
+    if (!ral_context_create_programs(dropdown_ptr->context,
                                      n_program_create_info_items,
                                      program_create_info_items,
                                      result_programs) )
@@ -538,7 +537,7 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
                           "RAL program creation failed.");
     }
 
-    if (!ral_context_create_shaders(context,
+    if (!ral_context_create_shaders(dropdown_ptr->context,
                                     n_shader_create_info_items,
                                     shader_create_info_items,
                                     result_shaders) )
@@ -663,7 +662,7 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
     };
     const uint32_t n_shaders_to_release = sizeof(shaders_to_release) / sizeof(shaders_to_release[0]);
 
-    ral_context_delete_objects(context,
+    ral_context_delete_objects(dropdown_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
                                (const void**) shaders_to_release);
@@ -1305,13 +1304,13 @@ PRIVATE void _ui_dropdown_cpu_task_callback(void* dropdown_raw_ptr)
                                                            slider_x1y1x2y2,
                                                            sizeof(float) * 4);
 
-    ral_program_block_buffer_sync(dropdown_ptr->program_bg_ub_fs);
-    ral_program_block_buffer_sync(dropdown_ptr->program_bg_ub_vs);
-    ral_program_block_buffer_sync(dropdown_ptr->program_label_bg_ub_vs);
-    ral_program_block_buffer_sync(dropdown_ptr->program_slider_ub_fs);
-    ral_program_block_buffer_sync(dropdown_ptr->program_slider_ub_vs);
-    ral_program_block_buffer_sync(dropdown_ptr->program_ub_fs);
-    ral_program_block_buffer_sync(dropdown_ptr->program_ub_vs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_bg_ub_fs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_bg_ub_vs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_label_bg_ub_vs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_slider_ub_fs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_slider_ub_vs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_ub_fs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_ub_vs);
 }
 
 /** Please see header for specification */
@@ -1949,7 +1948,10 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
                0,
                sizeof(_ui_dropdown) );
 
-        new_dropdown_ptr->context             = ui_get_context                (instance);
+        ui_get_property(instance,
+                        UI_PROPERTY_CONTEXT,
+                       &new_dropdown_ptr->context);
+
         new_dropdown_ptr->entries             = system_resizable_vector_create(4 /* capacity */);
         new_dropdown_ptr->fire_proc_user_arg  = fire_proc_user_arg;
         new_dropdown_ptr->is_button_lbm       = false;

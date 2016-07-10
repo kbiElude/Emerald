@@ -243,7 +243,6 @@ PRIVATE void _ui_checkbox_init_program(ui            ui_instance,
                                        _ui_checkbox* checkbox_ptr)
 {
     /* Create all objects */
-    ral_context context = ui_get_context(ui_instance);
     ral_shader  fs      = nullptr;
     ral_shader  vs      = nullptr;
 
@@ -270,7 +269,7 @@ PRIVATE void _ui_checkbox_init_program(ui            ui_instance,
     const uint32_t n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
     ral_shader     result_shaders[n_shader_create_info_items];
 
-    if (!ral_context_create_shaders(context,
+    if (!ral_context_create_shaders(checkbox_ptr->context,
                                     n_shader_create_info_items,
                                     shader_create_info_items,
                                     result_shaders) )
@@ -282,7 +281,7 @@ PRIVATE void _ui_checkbox_init_program(ui            ui_instance,
     fs = result_shaders[0];
     vs = result_shaders[1];
 
-    if (!ral_context_create_programs(context,
+    if (!ral_context_create_programs(checkbox_ptr->context,
                                      1, /* n_create_info_items */
                                     &program_create_info,
                                     &checkbox_ptr->program) )
@@ -420,8 +419,8 @@ PRIVATE void _ui_checkbox_update_props_cpu_task(void* checkbox_raw_ptr)
                                                            checkbox_ptr->x1y1x2y2,
                                                            sizeof(float) * 4);
 
-    ral_program_block_buffer_sync(checkbox_ptr->program_ub_fs);
-    ral_program_block_buffer_sync(checkbox_ptr->program_ub_vs);
+    ral_program_block_buffer_sync_immediately(checkbox_ptr->program_ub_fs);
+    ral_program_block_buffer_sync_immediately(checkbox_ptr->program_ub_vs);
 }
 
 /** TODO */
@@ -837,7 +836,10 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
         new_checkbox_ptr->base_x1y1[0] = x1y1[0];
         new_checkbox_ptr->base_x1y1[1] = x1y1[1];
 
-        new_checkbox_ptr->context            = ui_get_context(instance);
+        ui_get_property(instance,
+                        UI_PROPERTY_CONTEXT,
+                       &new_checkbox_ptr->context);
+
         new_checkbox_ptr->fire_proc_user_arg = fire_proc_user_arg;
         new_checkbox_ptr->name               = name;
         new_checkbox_ptr->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;

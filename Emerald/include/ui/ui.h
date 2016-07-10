@@ -16,6 +16,13 @@
 REFCOUNT_INSERT_DECLARATIONS(ui,
                              ui);
 
+typedef enum
+{
+    /* not settable; ral_context */
+    UI_PROPERTY_CONTEXT
+
+} ui_property;
+
 /** TODO */
 PUBLIC EMERALD_API ui_control ui_add_button(ui                        ui_instance,
                                             system_hashed_ansi_string name,
@@ -68,7 +75,7 @@ PUBLIC EMERALD_API ui_control ui_add_texture_preview(ui                        u
                                                      system_hashed_ansi_string name,
                                                      const float*              x1y1,
                                                      const float*              max_size,
-                                                     ral_texture               texture,
+                                                     ral_texture_view          texture_view,
                                                      ui_texture_preview_type   preview_type);
 /** TODO */
 PUBLIC ui ui_create(varia_text_renderer       text_renderer,
@@ -79,18 +86,17 @@ PUBLIC EMERALD_API void ui_get_control_property(ui_control          control,
                                                 ui_control_property property,
                                                 void*               out_result);
 
-/** INTERNAL USAGE ONLY.
- *
- *  TODO
- **/
-PUBLIC ral_context ui_get_context(ui ui_instance);
-
 /** TODO
  *
  *  It is caller's responsibility to release the present task when no longer needed.
  */
 PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
                                             ral_texture_view target_texture_view);
+
+/** TODO */
+PUBLIC void ui_get_property(ui          ui_instance,
+                            ui_property property,
+                            void*       out_result_ptr);
 
 /** INTERNAL USAGE ONLY.
  *

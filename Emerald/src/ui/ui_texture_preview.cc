@@ -135,8 +135,8 @@ PRIVATE void _ui_texture_preview_cpu_task_callback(void* texture_preview_raw_ptr
                                                           &layer_index,
                                                            sizeof(float) );
 
-    ral_program_block_buffer_sync(texture_preview_ptr->program_ub_fs);
-    ral_program_block_buffer_sync(texture_preview_ptr->program_ub_vs);
+    ral_program_block_buffer_sync_immediately(texture_preview_ptr->program_ub_fs);
+    ral_program_block_buffer_sync_immediately(texture_preview_ptr->program_ub_vs);
 }
 
 /** TODO */
@@ -157,9 +157,8 @@ PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
                                               _ui_texture_preview* texture_preview_ptr)
 {
     /* Create all objects */
-    ral_context context = nullptr;
-    ral_shader  fs      = nullptr;
-    ral_shader  vs      = nullptr;
+    ral_shader fs = nullptr;
+    ral_shader vs = nullptr;
 
     const ral_shader_create_info fs_create_info =
     {
@@ -189,8 +188,6 @@ PRIVATE void _ui_texture_preview_init_program(ui                   ui_instance,
 
     ral_shader     result_shaders[n_shader_create_info_items];
 
-
-    context = ui_get_context(ui_instance);
 
     if (!ral_context_create_shaders(texture_preview_ptr->context,
                                     n_shader_create_info_items,
@@ -956,7 +953,10 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
         new_texture_preview_ptr->x1y1x2y2[0] =     x1y1[0];
         new_texture_preview_ptr->x1y1x2y2[1] = 1 - x1y1[1];
 
-        new_texture_preview_ptr->context                  = ui_get_context(instance);
+        ui_get_property(instance,
+                        UI_PROPERTY_CONTEXT,
+                       &new_texture_preview_ptr->context);
+
         new_texture_preview_ptr->layer_shown              = 1;
         new_texture_preview_ptr->name                     = name;
         new_texture_preview_ptr->preview_type             = preview_type;

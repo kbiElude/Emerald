@@ -39,10 +39,10 @@ PUBLIC EMERALD_API bool varia_primitive_renderer_delete_dataset(varia_primitive_
                                                                 varia_primitive_renderer_dataset_id dataset_id);
 
 /** TODO */
-PUBLIC EMERALD_API void varia_primitive_renderer_draw(varia_primitive_renderer             renderer,
-                                                      system_matrix4x4                     mvp,
-                                                      unsigned int                         n_dataset_ids,
-                                                      varia_primitive_renderer_dataset_id* dataset_ids);
+PUBLIC EMERALD_API ral_present_task varia_primitive_renderer_get_present_task(varia_primitive_renderer             renderer,
+                                                                              system_matrix4x4                     mvp,
+                                                                              unsigned int                         n_dataset_ids,
+                                                                              varia_primitive_renderer_dataset_id* dataset_ids);
 
 
 #endif /* VARIA_PRIMITIVE_RENDERER_H */

@@ -629,7 +629,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(voi
 
         text_ptr->data_buffer_contents_length = summed_text_length;
         text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
-        text_ptr->data_buffer_contents        = (char*) new (std::nothrow) char[text_ptr->data_buffer_contents_size];
+        text_ptr->data_buffer_contents        = reinterpret_cast<char*>(new (std::nothrow) char[text_ptr->data_buffer_contents_size]);
 
         ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != nullptr,
                            "Out of memory");
@@ -669,7 +669,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(voi
     }
 
     /* Iterate through each character and prepare the data for uploading */
-    float*   character_data_traveller_ptr = (float*) text_ptr->data_buffer_contents;
+    float*   character_data_traveller_ptr = reinterpret_cast<float*>(text_ptr->data_buffer_contents);
     uint32_t largest_height               = 0;
     uint32_t summed_width                 = 0;
 
@@ -741,7 +741,7 @@ end:
 PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_string(varia_text_renderer text)
 {
     varia_text_renderer_text_string_id result          = 0;
-    _varia_text_renderer*              text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer*              text_ptr        = reinterpret_cast<_varia_text_renderer*>(text);
     _varia_text_renderer_text_string*  text_string_ptr = nullptr;
 
     text_string_ptr = new (std::nothrow) _varia_text_renderer_text_string;
@@ -876,7 +876,7 @@ PUBLIC EMERALD_API const unsigned char* varia_text_renderer_get(varia_text_rende
                                                                 varia_text_renderer_text_string_id text_string_id)
 {
     const unsigned char*              result          = nullptr;
-    _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer*             text_ptr        = reinterpret_cast<_varia_text_renderer*>(text);
     _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
     if (system_resizable_vector_get_element_at(text_ptr->strings,
@@ -885,18 +885,6 @@ PUBLIC EMERALD_API const unsigned char* varia_text_renderer_get(varia_text_rende
     {
         result = text_string_ptr->string;
     }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API uint32_t varia_text_renderer_get_added_strings_counter(varia_text_renderer instance)
-{
-    uint32_t result = 0;
-
-    system_resizable_vector_get_property(((_varia_text_renderer*) instance)->strings,
-                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                         &result);
 
     return result;
 }
@@ -1234,12 +1222,45 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void varia_text_renderer_get_property(varia_text_renderer          text,
+                                                         varia_text_renderer_property property,
+                                                         void*                        out_result_ptr)
+{
+    _varia_text_renderer* text_ptr = reinterpret_cast<_varia_text_renderer*>(text);
+
+    switch (property)
+    {
+        case VARIA_TEXT_RENDERER_PROPERTY_CONTEXT:
+        {
+            *reinterpret_cast<ral_context*>(out_result_ptr) = text_ptr->context;
+
+            break;
+        }
+
+        case VARIA_TEXT_RENDERER_PROPERTY_N_ADDED_TEXT_STRINGS:
+        {
+            system_resizable_vector_get_property(text_ptr->strings,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized varia_text_renderer_property value specified.");
+        }
+    }
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_renderer                      text,
                                                                      varia_text_renderer_text_string_property property,
                                                                      varia_text_renderer_text_string_id       text_string_id,
                                                                      void*                                    out_result_ptr)
 {
-    _varia_text_renderer* text_ptr = (_varia_text_renderer*) text;
+    _varia_text_renderer* text_ptr = reinterpret_cast<_varia_text_renderer*>(text);
 
     switch(property)
     {
@@ -1287,7 +1308,7 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
             {
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX)
                 {
-                    int* position = (int*) out_result_ptr;
+                    int* position = reinterpret_cast<int*>(out_result_ptr);
 
                     position[0] = (int) ((text_string_ptr->position[0]) * (float) text_ptr->screen_width);
                     position[1] = (int) ((text_string_ptr->position[1]) * (float) text_ptr->screen_height);
@@ -1295,7 +1316,7 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS)
                 {
-                    float* position = (float*) out_result_ptr;
+                    float* position = reinterpret_cast<float*>(out_result_ptr);
 
                     position[0] = text_string_ptr->position[0];
                     position[1] = text_string_ptr->position[1];
@@ -1310,23 +1331,23 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX)
                 {
-                    *(int*) out_result_ptr = int( float(text_string_ptr->height_px) * (1-text_string_ptr->scale));
+                    *reinterpret_cast<int*>(out_result_ptr) = int( float(text_string_ptr->height_px) * (1-text_string_ptr->scale));
                 }
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS)
                 {
                     unsigned int window_height = 0;
 
-                    *(float*) out_result_ptr = (float(text_string_ptr->height_px) * (1 - text_string_ptr->scale)) / float(text_ptr->screen_height);
+                    *reinterpret_cast<float*>(out_result_ptr) = (float(text_string_ptr->height_px) * (1 - text_string_ptr->scale)) / float(text_ptr->screen_height);
                 }
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX)
                 {
-                    *(int*) out_result_ptr = int( float(text_string_ptr->width_px) * (1-text_string_ptr->scale));
+                    *reinterpret_cast<int*>(out_result_ptr) = int( float(text_string_ptr->width_px) * (1-text_string_ptr->scale));
                 }
                 else
                 {
-                    *(bool*) out_result_ptr = text_string_ptr->visible;
+                    *reinterpret_cast<bool*>(out_result_ptr) = text_string_ptr->visible;
                 }
             }
             else
@@ -1345,14 +1366,14 @@ PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_
 
             if (text_string_id == VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT)
             {
-                *(float*) out_result_ptr = text_ptr->default_scale;
+                *reinterpret_cast<float*>(out_result_ptr) = text_ptr->default_scale;
             }
             else
             if (system_resizable_vector_get_element_at(text_ptr->strings,
                                                        text_string_id,
                                                       &text_string_ptr) )
             {
-                *(float*) out_result_ptr = text_string_ptr->scale;
+                *reinterpret_cast<float*>(out_result_ptr) = text_string_ptr->scale;
             }
             else
             {
@@ -1377,7 +1398,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
                                                 const char*                        raw_text_ptr)
 {
     size_t                            raw_text_length = 0;
-    _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer*             text_ptr        = reinterpret_cast<_varia_text_renderer*>(text);
     _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
     system_critical_section_enter(text_ptr->draw_cs);
@@ -1405,7 +1426,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
     }
 
     /* Update text width and height properties */
-    raw_text_length = strlen((const char*) raw_text_ptr);
+    raw_text_length = strlen(reinterpret_cast<const char*>(raw_text_ptr) );
 
     text_string_ptr->height_px = 0;
     text_string_ptr->width_px  = 0;
@@ -1467,7 +1488,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
 
         text_string_ptr->string[raw_text_length] = 0;
 
-        memcpy((void*) text_string_ptr->string,
+        memcpy(reinterpret_cast<void*>(text_string_ptr->string),
                raw_text_ptr,
                raw_text_length);
 
@@ -1487,7 +1508,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
                                                                      varia_text_renderer_text_string_property property,
                                                                      const void*                              data)
 {
-    _varia_text_renderer*             text_ptr        = (_varia_text_renderer*) text;
+    _varia_text_renderer*             text_ptr        = reinterpret_cast<_varia_text_renderer*>(text);
     _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
     switch (property)
@@ -1520,7 +1541,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
 
         case VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE:
         {
-            float new_scale = *(float*) data;
+            float new_scale = *reinterpret_cast<const float*>(data);
 
             ASSERT_DEBUG_SYNC(new_scale >= 0 && new_scale <= 1,
                               "Scale out of supported range - adapt the shaders");
@@ -1556,7 +1577,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
             {
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX)
                 {
-                    const int* position = (const int*) data;
+                    const int* position = reinterpret_cast<const int*>(data);
 
                     text_string_ptr->position[0] = (float) (position[0]) / (float) text_ptr->screen_width;
                     text_string_ptr->position[1] = (float) (position[1]) / (float) text_ptr->screen_height;
@@ -1564,7 +1585,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
                 else
                 if (property == VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS)
                 {
-                    const float* position = (const float*) data;
+                    const float* position = reinterpret_cast<const float*>(data);
 
                     text_string_ptr->position[0] = position[0];
                     text_string_ptr->position[1] = position[1];
@@ -1578,7 +1599,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
                 }
                 else
                 {
-                    text_string_ptr->visible = *(bool*) data;
+                    text_string_ptr->visible = *reinterpret_cast<const bool*>(data);
                 }
             }
             else

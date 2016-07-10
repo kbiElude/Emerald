@@ -33,9 +33,10 @@ PUBLIC EMERALD_API void varia_curve_renderer_delete_curve(varia_curve_renderer r
                                                           varia_curve_item_id  item_id);
 
 /** TODO */
-PUBLIC EMERALD_API void varia_curve_renderer_draw(varia_curve_renderer       renderer,
-                                                  unsigned int               n_item_ids,
-                                                  const varia_curve_item_id* item_ids,
-                                                  system_matrix4x4           mvp);
+PUBLIC EMERALD_API ral_present_task varia_curve_renderer_get_present_task(varia_curve_renderer       renderer,
+                                                                          unsigned int               n_item_ids,
+                                                                          const varia_curve_item_id* item_ids,
+                                                                          system_matrix4x4           mvp,
+                                                                          ral_texture_view           target_texture_view);
 
 #endif /* VARIA_CURVE_RENDERER_H */

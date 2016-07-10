@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef VARIA_TEXT_H
@@ -17,6 +17,16 @@ REFCOUNT_INSERT_DECLARATIONS(varia_text_renderer,
 
 typedef uint32_t varia_text_renderer_text_string_id;
 const            varia_text_renderer_text_string_id VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT = (varia_text_renderer_text_string_id) -1;
+
+typedef enum
+{
+    /* not settable; ral_context */
+    VARIA_TEXT_RENDERER_PROPERTY_CONTEXT,
+
+    /* not settable; uint32_t */
+    VARIA_TEXT_RENDERER_PROPERTY_N_ADDED_TEXT_STRINGS,
+
+} varia_text_renderer_property;
 
 typedef enum
 {
@@ -77,11 +87,13 @@ PUBLIC EMERALD_API const unsigned char* varia_text_renderer_get(varia_text_rende
                                                                 varia_text_renderer_text_string_id text_string_id);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t varia_text_renderer_get_added_strings_counter(varia_text_renderer instance);
-
-/** TODO */
 PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer text,
                                                              ral_texture_view    target_texture_view);
+
+/** TODO */
+PUBLIC EMERALD_API void varia_text_renderer_get_property(varia_text_renderer          text,
+                                                         varia_text_renderer_property property,
+                                                         void*                        out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void varia_text_renderer_get_text_string_property(varia_text_renderer                      text,
