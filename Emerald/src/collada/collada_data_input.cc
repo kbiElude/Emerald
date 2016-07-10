@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -15,7 +15,8 @@ typedef struct _collada_data_input_set
     int                 offset;
     collada_data_source source;
 
-    explicit _collada_data_input_set(int in_offset, collada_data_source in_source)
+    explicit _collada_data_input_set(int                 in_offset,
+                                     collada_data_source in_source)
     {
         offset = in_offset;
         source = in_source;
@@ -44,22 +45,26 @@ _collada_data_input::_collada_data_input(_collada_data_input_type in_type)
 /** TODO */
 _collada_data_input::~_collada_data_input()
 {
-    if (sets != NULL)
+    if (sets != nullptr)
     {
-        _collada_data_input_set* input_set_ptr  = NULL;
+        _collada_data_input_set* input_set_ptr  = nullptr;
         system_hash64            input_set_hash = 0;
 
-        while (system_hash64map_get_element_at(sets, 0, &input_set_ptr, NULL) )
+        while (system_hash64map_get_element_at(sets,
+                                               0,
+                                              &input_set_ptr,
+                                               nullptr) )
         {
             delete input_set_ptr;
-            input_set_ptr = NULL;
+            input_set_ptr = nullptr;
 
-            system_hash64map_remove(sets, input_set_hash);
+            system_hash64map_remove(sets,
+                                    input_set_hash);
         }
 
         system_hash64map_release(sets);
-        sets = NULL;
-    } /* if (sets != NULL) */
+        sets = nullptr;
+    }
 }
 
 /* Please see header for spec */
@@ -67,16 +72,17 @@ PUBLIC void collada_data_input_add_input_set(collada_data_input     input,
                                              unsigned int           n_set_id,
                                              collada_data_input_set input_set)
 {
-    _collada_data_input* input_ptr = (_collada_data_input*) input;
+    _collada_data_input* input_ptr = reinterpret_cast<_collada_data_input*>(input);
 
-    ASSERT_DEBUG_SYNC(!system_hash64map_contains(input_ptr->sets, n_set_id),
+    ASSERT_DEBUG_SYNC(!system_hash64map_contains(input_ptr->sets,
+                                                 n_set_id),
                       "Set descriptor already stored.");
 
     system_hash64map_insert(input_ptr->sets,
                             n_set_id,
                             input_set,
-                            NULL,
-                            NULL);
+                            nullptr,
+                            nullptr);
 }
 
 /* Please see header for spec */
@@ -84,18 +90,22 @@ PUBLIC collada_data_input collada_data_input_create(_collada_data_input_type typ
 {
     _collada_data_input* new_input = new (std::nothrow) _collada_data_input(type);
 
-    ASSERT_ALWAYS_SYNC(new_input != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_input != nullptr,
+                       "Out of memory");
 
-    return (collada_data_input) new_input;
+    return reinterpret_cast<collada_data_input>(new_input);
 }
 
 /* Please see header for spec */
 PUBLIC collada_data_input_set collada_data_input_set_create(int                 offset,
                                                             collada_data_source source)
 {
-    _collada_data_input_set* new_input_set = new (std::nothrow) _collada_data_input_set(offset, source);
+    _collada_data_input_set* new_input_set = new (std::nothrow) _collada_data_input_set(offset,
+                                                                                        source);
 
-    ASSERT_ALWAYS_SYNC(new_input_set != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_input_set != nullptr,
+                       "Out of memory");
+
     return (collada_data_input_set) new_input_set;
 }
 
@@ -132,40 +142,40 @@ PUBLIC _collada_data_input_type collada_data_input_convert_from_string(system_ha
 }
 
 /* Please see header for properties */
-PUBLIC void collada_data_input_get_properties(collada_data_input        input,
+PUBLIC void collada_data_input_get_properties(const collada_data_input  input,
                                               unsigned int              n_set,
-                                              unsigned int*             out_n_sets,
-                                              int*                      out_offset,
-                                              collada_data_source*      out_source,
-                                              _collada_data_input_type* out_type)
+                                              unsigned int*             out_n_sets_ptr,
+                                              int*                      out_offset_ptr,
+                                              collada_data_source*      out_source_ptr,
+                                              _collada_data_input_type* out_type_ptr)
 {
-    _collada_data_input*     input_ptr = (_collada_data_input*) input;
-    _collada_data_input_set* set_ptr   = NULL;
+    const _collada_data_input* input_ptr = reinterpret_cast<const _collada_data_input*>(input);
+    _collada_data_input_set*   set_ptr   = nullptr;
 
-    if (out_n_sets != NULL)
+    if (out_n_sets_ptr != nullptr)
     {
         system_hash64map_get_property(input_ptr->sets,
                                       SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                      out_n_sets);
+                                      out_n_sets_ptr);
     }
 
-    if (out_type != NULL)
+    if (out_type_ptr != nullptr)
     {
-        *out_type = input_ptr->type;
+        *out_type_ptr = input_ptr->type;
     }
 
     if (system_hash64map_get(input_ptr->sets,
                              n_set,
                             &set_ptr) )
     {
-        if (out_offset != NULL)
+        if (out_offset_ptr != nullptr)
         {
-            *out_offset = set_ptr->offset;
+            *out_offset_ptr = set_ptr->offset;
         }
 
-        if (out_source != NULL)
+        if (out_source_ptr != nullptr)
         {
-            *out_source = set_ptr->source;
+            *out_source_ptr = set_ptr->source;
         }
     }
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -31,10 +31,10 @@ PUBLIC collada_value collada_value_create(collada_value_type type,
 /** TODO */
 PUBLIC void collada_value_get_property(const collada_value    value,
                                        collada_value_property property,
-                                       void*                  out_result);
+                                       void*                  out_result_ptr);
 
 /** TODO */
-PUBLIC void collada_value_release(collada_value);
+PUBLIC void collada_value_release(collada_value value);
 
 /** TODO */
 PUBLIC void collada_value_set(collada_value      value,

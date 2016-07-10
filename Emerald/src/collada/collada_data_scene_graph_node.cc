@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -32,8 +32,8 @@ typedef struct _collada_data_scene_graph_node_item
 
     explicit _collada_data_scene_graph_node_item()
     {
-        data = NULL;
-        sid  = NULL;
+        data = nullptr;
+        sid  = nullptr;
         type = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
     }
 } _collada_data_scene_graph_node_item;
@@ -75,9 +75,9 @@ _collada_data_scene_graph_node::_collada_data_scene_graph_node(void* parent)
 /** TODO */
 _collada_data_scene_graph_node::~_collada_data_scene_graph_node()
 {
-    if (node_items != NULL)
+    if (node_items != nullptr)
     {
-        _collada_data_scene_graph_node_item* node_item_ptr = NULL;
+        _collada_data_scene_graph_node_item* node_item_ptr = nullptr;
 
         while (!system_resizable_vector_pop(node_items, &node_item_ptr) )
         {
@@ -87,7 +87,7 @@ _collada_data_scene_graph_node::~_collada_data_scene_graph_node()
                 {
                     collada_data_scene_graph_node_camera_instance_release( (collada_data_scene_graph_node_camera_instance) node_item_ptr->data);
 
-                    node_item_ptr->data = NULL;
+                    node_item_ptr->data = nullptr;
                     break;
                 }
 
@@ -95,7 +95,7 @@ _collada_data_scene_graph_node::~_collada_data_scene_graph_node()
                 {
                     collada_data_scene_graph_node_geometry_instance_release( (collada_data_scene_graph_node_geometry_instance) node_item_ptr->data);
 
-                    node_item_ptr->data = NULL;
+                    node_item_ptr->data = nullptr;
                     break;
                 }
 
@@ -103,7 +103,7 @@ _collada_data_scene_graph_node::~_collada_data_scene_graph_node()
                 {
                     collada_data_scene_graph_node_light_instance_release( (collada_data_scene_graph_node_light_instance) node_item_ptr->data);
 
-                    node_item_ptr->data = NULL;
+                    node_item_ptr->data = nullptr;
                     break;
                 }
 
@@ -113,19 +113,19 @@ _collada_data_scene_graph_node::~_collada_data_scene_graph_node()
 
                     break;
                 }
-            } /* switch (node_item_ptr->type) */
-        } /* while (!system_resizable_vector_pop(node_items, &node_item_ptr) ) */
+            }
+        }
 
         system_resizable_vector_release(node_items);
-        node_items = NULL;
-    } /* if (node_items != NULL) */
+        node_items = nullptr;
+    }
 }
 
 /** TODO */
 PUBLIC void collada_data_scene_graph_node_add_node_item(collada_data_scene_graph_node      node,
                                                         collada_data_scene_graph_node_item node_item)
 {
-    _collada_data_scene_graph_node* node_ptr = (_collada_data_scene_graph_node*) node;
+    _collada_data_scene_graph_node* node_ptr = reinterpret_cast<_collada_data_scene_graph_node*>(node);
 
     system_resizable_vector_push(node_ptr->node_items,
                                  node_item);
@@ -136,7 +136,7 @@ PUBLIC collada_data_scene_graph_node collada_data_scene_graph_node_create(void* 
 {
     _collada_data_scene_graph_node* new_node_ptr = new (std::nothrow) _collada_data_scene_graph_node(parent);
 
-    ASSERT_ALWAYS_SYNC(new_node_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_node_ptr != nullptr,
                        "Out of memory");
 
     return (collada_data_scene_graph_node) new_node_ptr;
@@ -149,10 +149,10 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 {
     _collada_data_scene_graph_node_item* new_node_item_ptr = new (std::nothrow) _collada_data_scene_graph_node_item();
 
-    ASSERT_ALWAYS_SYNC(new_node_item_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_node_item_ptr != nullptr,
                        "Out of memory");
 
-    if (new_node_item_ptr == NULL)
+    if (new_node_item_ptr == nullptr)
     {
         goto end;
     }
@@ -170,17 +170,17 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                                                                                          collada_data_scene_graph_node parent_node,
                                                                                          collada_data                  collada_data)
 {
-    tinyxml2::XMLElement*                current_node_child_ptr    = NULL;
+    tinyxml2::XMLElement*                current_node_child_ptr    = nullptr;
     bool                                 is_lw10_file              = false;
-    _collada_data_scene_graph_node_item* item_ptr                  = NULL;
+    _collada_data_scene_graph_node_item* item_ptr                  = nullptr;
     float                                last_rotate_pivot     [3] = {0};
     _collada_data_scene_graph_node*      new_node_ptr              = new (std::nothrow) _collada_data_scene_graph_node(parent_node);
-    const char*                          type                      = NULL;
+    const char*                          type                      = nullptr;
 
-    ASSERT_ALWAYS_SYNC(new_node_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_node_ptr != nullptr,
                        "Out of memory");
 
-    if (new_node_ptr == NULL)
+    if (new_node_ptr == nullptr)
     {
         goto end;
     }
@@ -194,7 +194,7 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 
     new_node_ptr->type = COLLADA_DATA_NODE_TYPE_NODE;
 
-    if (type != NULL)
+    if (type != nullptr)
     {
         if (strcmp(type,
                    "NODE") == 0)
@@ -214,7 +214,7 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized node type found");
         }
-    } /* if (type != NULL) */
+    }
 
     /* Nodes can be described by a number of different node types. Iterate over
      * all children and parse them recursively */
@@ -224,10 +224,10 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                               COLLADA_DATA_PROPERTY_IS_LW10_COLLADA_FILE,
                              &is_lw10_file);
 
-    while (current_node_child_ptr != NULL)
+    while (current_node_child_ptr != nullptr)
     {
         system_hashed_ansi_string          current_node_type = system_hashed_ansi_string_create(current_node_child_ptr->Name() );
-        collada_data_scene_graph_node_item new_node_item     = NULL;
+        collada_data_scene_graph_node_item new_node_item     = nullptr;
 
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
                                                              "lookat"))
@@ -290,18 +290,18 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                 {
                     should_enforce_inversed_rotatePivot_vector = true;
                 }
-            } /* if (is_lw10_file) */
+            }
 
             new_node_item = collada_data_scene_graph_node_translate_create(current_node_child_ptr,
-                                                                           (should_enforce_inversed_rotatePivot_vector      ? inversed_rotate_pivot : NULL),
-                                                                           (should_cache_as_last_rotatePivot_transformation ? last_rotate_pivot     : NULL) );
+                                                                           (should_enforce_inversed_rotatePivot_vector      ? inversed_rotate_pivot : nullptr),
+                                                                           (should_cache_as_last_rotatePivot_transformation ? last_rotate_pivot     : nullptr) );
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
                                                              "instance_camera"))
         {
-            system_hash64map                              cameras_by_id_map   = NULL;
-            collada_data_scene_graph_node_camera_instance new_camera_instance = NULL;
+            system_hash64map                              cameras_by_id_map   = nullptr;
+            collada_data_scene_graph_node_camera_instance new_camera_instance = nullptr;
 
             collada_data_get_property(collada_data,
                                       COLLADA_DATA_PROPERTY_CAMERAS_BY_ID_MAP,
@@ -314,7 +314,7 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
             /* Wrap the descriptor in an item descriptor */
             new_node_item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_CAMERA_INSTANCE,
                                                                       new_camera_instance,
-                                                                      NULL /* sid */);
+                                                                      nullptr /* sid */);
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
@@ -326,9 +326,9 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
                                                              "instance_geometry"))
         {
-            system_hash64map                                geometries_by_id_map  = NULL;
-            system_hash64map                                materials_by_id_map   = NULL;
-            collada_data_scene_graph_node_geometry_instance new_geometry_instance = NULL;
+            system_hash64map                                geometries_by_id_map  = nullptr;
+            system_hash64map                                materials_by_id_map   = nullptr;
+            collada_data_scene_graph_node_geometry_instance new_geometry_instance = nullptr;
 
             collada_data_get_property(collada_data,
                                       COLLADA_DATA_PROPERTY_GEOMETRIES_BY_ID_MAP,
@@ -345,14 +345,14 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
             /* Wrap the descriptor in an item */
             new_node_item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_GEOMETRY_INSTANCE,
                                                                       new_geometry_instance,
-                                                                      NULL /* sid */);
+                                                                      nullptr /* sid */);
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
                                                              "instance_light"))
         {
-            system_hash64map                             lights_by_id_map   = NULL;
-            collada_data_scene_graph_node_light_instance new_light_instance = NULL;
+            system_hash64map                             lights_by_id_map   = nullptr;
+            collada_data_scene_graph_node_light_instance new_light_instance = nullptr;
 
             collada_data_get_property(collada_data,
                                       COLLADA_DATA_PROPERTY_LIGHTS_BY_ID_MAP,
@@ -365,13 +365,13 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
             /* Wrap the descriptor in an item descriptor */
             new_node_item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_LIGHT_INSTANCE,
                                                                       new_light_instance,
-                                                                      NULL /* sid */);
+                                                                      nullptr /* sid */);
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
                                                              "node"))
         {
-            _collada_data_scene_graph_node* new_subnode = NULL;
+            _collada_data_scene_graph_node* new_subnode = nullptr;
 
             new_subnode = new (std::nothrow) _collada_data_scene_graph_node(new_node_ptr);
 
@@ -394,7 +394,7 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                               "Unrecognized sub-node type");
         }
 
-        if (new_node_item != NULL)
+        if (new_node_item != nullptr)
         {
             system_resizable_vector_push(new_node_ptr->node_items,
                                          new_node_item);
@@ -402,15 +402,15 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 
         /* Move on */
         current_node_child_ptr = current_node_child_ptr->NextSiblingElement();
-    } /* while (current_node_child_ptr != NULL) */
+    }
 
     /* Wrap the node in a node item descriptor */
     item_ptr = new (std::nothrow) _collada_data_scene_graph_node_item;
 
-    ASSERT_ALWAYS_SYNC(item_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(item_ptr != nullptr,
                        "Out of memory");
 
-    if (item_ptr == NULL)
+    if (item_ptr == nullptr)
     {
         goto end;
     }
@@ -425,15 +425,15 @@ end:
 /* Please see header for properties */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(collada_data_scene_graph_node          node,
                                                                    collada_data_scene_graph_node_property property,
-                                                                   void*                                  out_result)
+                                                                   void*                                  out_result_ptr)
 {
-    _collada_data_scene_graph_node* node_ptr = (_collada_data_scene_graph_node*) node;
+    _collada_data_scene_graph_node* node_ptr = reinterpret_cast<_collada_data_scene_graph_node*>(node);
 
     switch (property)
     {
         case COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_ID:
         {
-            *(system_hashed_ansi_string*) out_result = node_ptr->id;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = node_ptr->id;
 
             break;
         }
@@ -442,21 +442,21 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(collada_data_
         {
             system_resizable_vector_get_property(node_ptr->node_items,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                 out_result);
+                                                 out_result_ptr);
 
             break;
         }
 
         case COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = node_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = node_ptr->name;
 
             break;
         }
 
         case COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_TYPE:
         {
-            *(_collada_data_node_type*) out_result = node_ptr->type;
+            *reinterpret_cast<_collada_data_node_type*>(out_result_ptr) = node_ptr->type;
 
             break;
         }
@@ -464,45 +464,45 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(collada_data_
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "UNrecognized collada_data_scene_graph_node_property value");
+                              "Unrecognized collada_data_scene_graph_node_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_get_node_item(collada_data_scene_graph_node       node,
                                                                     unsigned int                        n_node_item,
-                                                                    collada_data_scene_graph_node_item* out_node_item)
+                                                                    collada_data_scene_graph_node_item* out_node_item_ptr)
 {
-    _collada_data_scene_graph_node* node_ptr = (_collada_data_scene_graph_node*) node;
+    _collada_data_scene_graph_node* node_ptr = reinterpret_cast<_collada_data_scene_graph_node*>(node);
 
-    if (out_node_item != NULL)
+    if (out_node_item_ptr != nullptr)
     {
         system_resizable_vector_get_element_at(node_ptr->node_items,
                                                n_node_item,
-                                               out_node_item);
+                                               out_node_item_ptr);
     }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_item_get_property(collada_data_scene_graph_node_item          node_item,
                                                                         collada_data_scene_graph_node_item_property property,
-                                                                        void*                                       out_result)
+                                                                        void*                                       out_result_ptr)
 {
-    _collada_data_scene_graph_node_item* node_item_ptr = (_collada_data_scene_graph_node_item*) node_item;
+    _collada_data_scene_graph_node_item* node_item_ptr = reinterpret_cast<_collada_data_scene_graph_node_item*>(node_item);
 
     switch (property)
     {
         case COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_DATA_HANDLE:
         {
-            *((void**)out_result) = node_item_ptr->data;
+            *reinterpret_cast<void**>(out_result_ptr) = node_item_ptr->data;
 
             break;
         }
 
         case COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_SID:
         {
-            *((system_hashed_ansi_string*) out_result) = node_item_ptr->sid;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = node_item_ptr->sid;
 
             break;
         }
@@ -512,7 +512,7 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_item_get_property(collada_
             ASSERT_DEBUG_SYNC(node_item_ptr->type != COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED,
                               "Unrecognized node item property type");
 
-            *(_collada_data_node_item_type*) out_result = node_item_ptr->type;
+            *reinterpret_cast<_collada_data_node_item_type*>(out_result_ptr) = node_item_ptr->type;
 
             break;
         }
@@ -522,6 +522,6 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_item_get_property(collada_
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized collada_data_scene_graph_node_iten_property value");
         }
-    } /* switch (property) */
+    }
 }
 

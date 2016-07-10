@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -41,13 +41,13 @@ _collada_data_polylist::_collada_data_polylist()
            0,
            sizeof(inputs) );
 
-    material_name       = NULL;
+    material_name       = nullptr;
     n_inputs            = 0;
     n_vertices          = 0;
     polygon_indices_max = -1;
     polygon_indices_min = -1;
-    polygon_indices     = NULL;
-    vertex_counts       = NULL;
+    polygon_indices     = nullptr;
+    vertex_counts       = nullptr;
 }
 
 /** TODO */
@@ -57,26 +57,26 @@ _collada_data_polylist::~_collada_data_polylist()
              n_input < COLLADA_DATA_INPUT_TYPE_COUNT;
            ++n_input)
     {
-        if (inputs[n_input] != NULL)
+        if (inputs[n_input] != nullptr)
         {
             delete inputs[n_input];
 
-            inputs[n_input] = NULL;
+            inputs[n_input] = nullptr;
         }
     }
 
-    if (polygon_indices != NULL)
+    if (polygon_indices != nullptr)
     {
         delete [] polygon_indices;
 
-        polygon_indices = NULL;
+        polygon_indices = nullptr;
     }
 
-    if (vertex_counts != NULL)
+    if (vertex_counts != nullptr)
     {
         delete [] vertex_counts;
 
-        vertex_counts = NULL;
+        vertex_counts = nullptr;
     }
 }
 
@@ -103,23 +103,23 @@ PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement* 
                                                           collada_data_geometry_mesh geometry_mesh,
                                                           collada_data               data)
 {
-    system_hashed_ansi_string blob_file_name            = NULL;
-    tinyxml2::XMLElement*     current_input_element_ptr = NULL;
+    system_hashed_ansi_string blob_file_name            = nullptr;
+    tinyxml2::XMLElement*     current_input_element_ptr = nullptr;
     bool                      has_loaded_cached_blob    = false;
-    unsigned int*             index_data                = NULL;
-    const char*               material_name             = NULL;
-    system_hashed_ansi_string material_name_has         = NULL;
+    unsigned int*             index_data                = nullptr;
+    const char*               material_name             = nullptr;
+    system_hashed_ansi_string material_name_has         = nullptr;
     unsigned int              n_inputs                  = 0;
     unsigned int              polylist_count            = 0;
     _collada_data_polylist*   result_polylist_ptr       = new (std::nothrow) _collada_data_polylist;
     bool                      should_cache_blobs        = false;
     unsigned int              total_vcount              = 0;
-    unsigned int*             vcount_data               = NULL;
+    unsigned int*             vcount_data               = nullptr;
 
-    ASSERT_ALWAYS_SYNC(result_polylist_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(result_polylist_ptr != nullptr,
                        "Out of memory");
 
-    if (result_polylist_ptr == NULL)
+    if (result_polylist_ptr == nullptr)
     {
         goto end;
     }
@@ -129,29 +129,31 @@ PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement* 
     material_name             = polylist_element_ptr->Attribute        ("material");
     polylist_count            = polylist_element_ptr->IntAttribute     ("count");
 
-    while (current_input_element_ptr != NULL)
+    while (current_input_element_ptr != nullptr)
     {
         _collada_data_input_type input_type;
         collada_data_input_set   new_input_set;
         unsigned int             offset        = current_input_element_ptr->IntAttribute("offset");
         const char*              semantic      = current_input_element_ptr->Attribute   ("semantic");
         unsigned int             set           = current_input_element_ptr->IntAttribute("set");
-        collada_data_source      source        = NULL;
+        collada_data_source      source        = nullptr;
         const char*              source_name   = current_input_element_ptr->Attribute   ("source");
 
         /* Sanity checks */
-        if (semantic == NULL)
+        if (semantic == nullptr)
         {
-            LOG_FATAL        ("Semantic not defined for <input> sub-node of <polylist>");
+            LOG_FATAL("Semantic not defined for <input> sub-node of <polylist>");
+
             ASSERT_DEBUG_SYNC(false,
                               "Will skip an input");
 
             goto next_input;
         }
 
-        if (source_name == NULL)
+        if (source_name == nullptr)
         {
-            LOG_FATAL        ("Source not defined for <input> sub-node of <polylist>");
+            LOG_FATAL("Source not defined for <input> sub-node of <polylist>");
+
             ASSERT_DEBUG_SYNC(false,
                               "Will skip an input");
 
@@ -170,7 +172,8 @@ PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement* 
 
         if (input_type == COLLADA_DATA_INPUT_TYPE_UNDEFINED)
         {
-            LOG_FATAL        ("Unrecognized semantic used for a polylist input");
+            LOG_FATAL("Unrecognized semantic used for a polylist input");
+
             ASSERT_DEBUG_SYNC(false,
                               "Will skip an input");
 
@@ -181,9 +184,10 @@ PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement* 
         source = collada_data_geometry_mesh_get_source_by_id(geometry_mesh,
                                                              system_hashed_ansi_string_create(source_name) );
 
-        if (source == NULL)
+        if (source == nullptr)
         {
-            LOG_FATAL        ("Unrecognized source used in a polylist input");
+            LOG_FATAL("Unrecognized source used in a polylist input");
+
             ASSERT_DEBUG_SYNC(false,
                               "Will skip an input");
 
@@ -191,18 +195,17 @@ PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement* 
         }
 
         /* We've got everything we need */
-        /* NOTE: VS 2010 code analysis claims input_type can go through the roof here. Well.. */
         ASSERT_DEBUG_SYNC(input_type <= COLLADA_DATA_INPUT_TYPE_UNDEFINED,
                           "Invalid input type");
 
-        if (result_polylist_ptr->inputs[input_type] == NULL)
+        if (result_polylist_ptr->inputs[input_type] == nullptr)
         {
             collada_data_input new_input = collada_data_input_create(input_type);
 
-            ASSERT_DEBUG_SYNC(new_input != NULL,
+            ASSERT_DEBUG_SYNC(new_input != nullptr,
                               "Out of memory");
 
-            if (new_input == NULL)
+            if (new_input == nullptr)
             {
                 goto next_input;
             }
@@ -214,10 +217,10 @@ PUBLIC collada_data_polylist collada_data_polylist_create(tinyxml2::XMLElement* 
         new_input_set = collada_data_input_set_create(offset,
                                                       source);
 
-        ASSERT_DEBUG_SYNC(new_input_set != NULL,
+        ASSERT_DEBUG_SYNC(new_input_set != nullptr,
                           "Out of memory");
 
-        if (new_input_set == NULL)
+        if (new_input_set == nullptr)
         {
             goto next_input;
         }
@@ -246,8 +249,8 @@ next_input:
 
     if (should_cache_blobs)
     {
-        collada_data_geometry     geometry_mesh_parent = NULL;
-        system_hashed_ansi_string geometry_name        = NULL;
+        collada_data_geometry     geometry_mesh_parent = nullptr;
+        system_hashed_ansi_string geometry_name        = nullptr;
 
         collada_data_geometry_mesh_get_property(geometry_mesh,
                                                 COLLADA_DATA_GEOMETRY_MESH_PROPERTY_PARENT_GEOMETRY,
@@ -269,13 +272,13 @@ next_input:
          */
         system_file_serializer blob_serializer = system_file_serializer_create_for_reading(blob_file_name,
                                                                                            false); /* async_read */
-        const void*            blob_data       = NULL;
+        const void*            blob_data       = nullptr;
 
         system_file_serializer_get_property(blob_serializer,
                                             SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
                                            &blob_data);
 
-        if (blob_data != NULL)
+        if (blob_data != nullptr)
         {
             system_file_serializer_read(blob_serializer,
                                         sizeof(unsigned int),
@@ -286,12 +289,12 @@ next_input:
             vcount_data = new (std::nothrow) unsigned int [polylist_count];
             index_data  = new (std::nothrow) unsigned int [n_indices];
 
-            ASSERT_ALWAYS_SYNC(vcount_data != NULL &&
-                               index_data  != NULL,
+            ASSERT_ALWAYS_SYNC(vcount_data != nullptr &&
+                               index_data  != nullptr,
                                "Out of memory");
 
-            if (vcount_data != NULL &&
-                index_data  != NULL)
+            if (vcount_data != nullptr &&
+                index_data  != nullptr)
             {
                 system_file_serializer_read(blob_serializer,
                                             sizeof(unsigned int) * polylist_count,
@@ -311,24 +314,24 @@ next_input:
             }
             else
             {
-                if (vcount_data != NULL)
+                if (vcount_data != nullptr)
                 {
                     delete [] vcount_data;
 
-                    vcount_data = NULL;
+                    vcount_data = nullptr;
                 }
 
-                if (index_data != NULL)
+                if (index_data != nullptr)
                 {
                     delete [] index_data;
 
-                    index_data = NULL;
+                    index_data = nullptr;
                 }
             }
 
             LOG_INFO("Loaded cached blob for [%s]",
                      system_hashed_ansi_string_get_buffer(blob_file_name) );
-        } /* if (blob_data != NULL) */
+        }
         else
         {
             LOG_INFO("Could not load cached blob for [%s]",
@@ -336,24 +339,24 @@ next_input:
         }
 
         system_file_serializer_release(blob_serializer);
-    } /* if (should_cache_blobs) */
+    }
 
     if (!has_loaded_cached_blob)
     {
         /* Step 2) Retrieve vcount data */
         tinyxml2::XMLElement* vcount_element_ptr = polylist_element_ptr->FirstChildElement("vcount");
 
-        ASSERT_DEBUG_SYNC(vcount_element_ptr != NULL,
+        ASSERT_DEBUG_SYNC(vcount_element_ptr != nullptr,
                           "<vcount> node was not found");
 
-        if (vcount_element_ptr != NULL)
+        if (vcount_element_ptr != nullptr)
         {
             vcount_data = new (std::nothrow) unsigned int[polylist_count];
 
-            ASSERT_DEBUG_SYNC(vcount_data != NULL,
+            ASSERT_DEBUG_SYNC(vcount_data != nullptr,
                               "Out of memory");
 
-            if (vcount_data != NULL)
+            if (vcount_data != nullptr)
             {
                 const char*  traveller_ptr = vcount_element_ptr->GetText();
                 unsigned int n_counts_read = 0;
@@ -386,23 +389,23 @@ next_input:
                     total_vcount += vcount_data[n_counts_read];
                     n_counts_read++;
                 }
-            } /* if (vcount_data != NULL) */
+            }
         }
 
         /* Step 3) Retrieve polygon construction data */
         tinyxml2::XMLElement* index_element_ptr = polylist_element_ptr->FirstChildElement("p");
 
-        ASSERT_DEBUG_SYNC(index_element_ptr != NULL,
+        ASSERT_DEBUG_SYNC(index_element_ptr != nullptr,
                           "<p> node was not found");
 
-        if (index_element_ptr != NULL)
+        if (index_element_ptr != nullptr)
         {
             index_data = new (std::nothrow) unsigned int[total_vcount * n_inputs];
 
-            ASSERT_DEBUG_SYNC(index_data != NULL,
+            ASSERT_DEBUG_SYNC(index_data != nullptr,
                               "Out of memory");
 
-            if (index_data != NULL)
+            if (index_data != nullptr)
             {
                 const char*  traveller_ptr  = index_element_ptr->GetText();
                 unsigned int n_indices_read = 0;
@@ -418,8 +421,8 @@ next_input:
                     /* Move on */
                     n_indices_read++;
                 }
-            } /* if (index_data != NULL) */
-        } /* if (index_element_ptr != NULL) */
+            }
+        }
 
         /* Step 3.5) If the 'cache blobs' mode is on, store the data we've read */
         if (should_cache_blobs)
@@ -448,11 +451,11 @@ next_input:
             LOG_INFO("Stored a cached polylist blob for [%s]",
                      system_hashed_ansi_string_get_buffer(blob_file_name) );
         }
-    } /* if (!has_loaded_cached_blob) */
+    }
 
     /* Step 4) Store the results */
-    material_name_has = (material_name != NULL) ? system_hashed_ansi_string_create                  (material_name)
-                                                : system_hashed_ansi_string_get_default_empty_string();
+    material_name_has = (material_name != nullptr) ? system_hashed_ansi_string_create                  (material_name)
+                                                   : system_hashed_ansi_string_get_default_empty_string();
 
     result_polylist_ptr->material_name   = material_name_has;
     result_polylist_ptr->n_inputs        = n_inputs;
@@ -467,93 +470,93 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_polylist_get_input(collada_data_polylist    polylist,
                                                         _collada_data_input_type type,
-                                                        collada_data_input*      out_input)
+                                                        collada_data_input*      out_input_ptr)
 {
-    _collada_data_polylist* polylist_ptr = (_collada_data_polylist*) polylist;
+    _collada_data_polylist* polylist_ptr = reinterpret_cast<_collada_data_polylist*>(polylist);
 
-    if (out_input != NULL)
+    if (out_input_ptr != nullptr)
     {
-        *out_input = (collada_data_input) polylist_ptr->inputs[type];
+        *out_input_ptr = reinterpret_cast<collada_data_input>(polylist_ptr->inputs[type]);
     }
 }
 
 /* Please see header for properties */
 PUBLIC EMERALD_API void collada_data_polylist_get_input_types(collada_data_polylist     polylist,
-                                                              unsigned int*             out_n_input_types,
-                                                              _collada_data_input_type* out_input_types)
+                                                              unsigned int*             out_n_input_types_ptr,
+                                                              _collada_data_input_type* out_input_types_ptr)
 {
     unsigned int            input_type_counter   = 0;
     unsigned int            result_n_input_types = 0;
-    _collada_data_polylist* polylist_ptr         = (_collada_data_polylist*) polylist;
+    _collada_data_polylist* polylist_ptr         = reinterpret_cast<_collada_data_polylist*>(polylist);
 
     for (unsigned int n_input_type = 0;
                       n_input_type < COLLADA_DATA_INPUT_TYPE_COUNT;
                     ++n_input_type)
     {
-        if (polylist_ptr->inputs[n_input_type] != NULL)
+        if (polylist_ptr->inputs[n_input_type] != nullptr)
         {
             result_n_input_types++;
 
-            if (out_input_types != NULL)
+            if (out_input_types_ptr != nullptr)
             {
-                out_input_types[input_type_counter++] = (_collada_data_input_type) n_input_type;
+                out_input_types_ptr[input_type_counter++] = static_cast<_collada_data_input_type>(n_input_type);
             }
         }
-    } /* for (all input types) */
+    }
 
-    if (out_n_input_types != NULL)
+    if (out_n_input_types_ptr != nullptr)
     {
-        *out_n_input_types = result_n_input_types;
+        *out_n_input_types_ptr = result_n_input_types;
     }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_polylist_get_property(const collada_data_polylist    polylist,
                                                            collada_data_polylist_property property,
-                                                           void*                          out_result)
+                                                           void*                          out_result_ptr)
 {
-    const _collada_data_polylist* polylist_ptr = (const _collada_data_polylist*) polylist;
+    const _collada_data_polylist* polylist_ptr = reinterpret_cast<const _collada_data_polylist*>(polylist);
 
     switch (property)
     {
         case COLLADA_DATA_POLYLIST_PROPERTY_INDEX_DATA:
         {
-            *((unsigned int**) out_result) = polylist_ptr->polygon_indices;
+            *reinterpret_cast<unsigned int**>(out_result_ptr) = polylist_ptr->polygon_indices;
 
             break;
         }
 
         case COLLADA_DATA_POLYLIST_PROPERTY_INDEX_MAXIMUM_VALUE:
         {
-            *((unsigned int*) out_result) = polylist_ptr->polygon_indices_max;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = polylist_ptr->polygon_indices_max;
 
             break;
         }
 
         case COLLADA_DATA_POLYLIST_PROPERTY_INDEX_MINIMUM_VALUE:
         {
-            *((unsigned int*) out_result) = polylist_ptr->polygon_indices_min;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = polylist_ptr->polygon_indices_min;
 
             break;
         }
 
         case COLLADA_DATA_POLYLIST_PROPERTY_MATERIAL_SYMBOL_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = polylist_ptr->material_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = polylist_ptr->material_name;
 
             break;
         }
 
         case COLLADA_DATA_POLYLIST_PROPERTY_N_INDICES:
         {
-            *(unsigned int*) out_result = polylist_ptr->n_inputs * polylist_ptr->n_vertices;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = polylist_ptr->n_inputs * polylist_ptr->n_vertices;
 
             break;
         }
 
         case COLLADA_DATA_POLYLIST_PROPERTY_N_INPUTS:
         {
-            *(unsigned int*) out_result = polylist_ptr->n_inputs;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = polylist_ptr->n_inputs;
 
             break;
         }
@@ -563,13 +566,13 @@ PUBLIC EMERALD_API void collada_data_polylist_get_property(const collada_data_po
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized COLLADA data polylist property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for spec */
 PUBLIC void collada_data_polylist_release(collada_data_polylist polylist)
 {
-    delete (_collada_data_polylist*) polylist;
+    delete reinterpret_cast<_collada_data_polylist*>(polylist);
 
-    polylist = NULL;
+    polylist = nullptr;
 }

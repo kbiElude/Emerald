@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -12,7 +12,7 @@
 /** TODO */
 PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_rotate_create(tinyxml2::XMLElement* element_ptr)
 {
-    collada_data_scene_graph_node_item item          = NULL;
+    collada_data_scene_graph_node_item item          = nullptr;
     const char*                        text          = element_ptr->GetText();
     const char*                        traveller_ptr = text;
 
@@ -27,16 +27,16 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_rotate_c
     /* Read SID */
     const char* sid = element_ptr->Attribute("sid");
 
-    ASSERT_ALWAYS_SYNC(sid != NULL,
+    ASSERT_ALWAYS_SYNC(sid != nullptr,
                        "Could not read <rotate> node's SID");
 
     /* Instantiate new descriptor */
     collada_data_transformation new_transformation = collada_data_transformation_create_rotate(element_ptr, data);
 
-    ASSERT_ALWAYS_SYNC(new_transformation != NULL,
+    ASSERT_ALWAYS_SYNC(new_transformation != nullptr,
                        "Could not create COLLADA transformation descriptor");
 
-    if (new_transformation == NULL)
+    if (new_transformation == nullptr)
     {
         goto end;
     }

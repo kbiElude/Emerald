@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -49,9 +49,9 @@ typedef struct _collada_mesh_generator_input_data_stream
 
     _collada_mesh_generator_input_data_stream()
     {
-        array_data                = NULL;
+        array_data                = nullptr;
         array_data_size           = -1;
-        index_data                = NULL;
+        index_data                = nullptr;
         index_delta               = -1;
         max_index                 = -1;
         min_index                 = -1;
@@ -60,11 +60,11 @@ typedef struct _collada_mesh_generator_input_data_stream
 
     ~_collada_mesh_generator_input_data_stream()
     {
-        if (index_data != NULL)
+        if (index_data != nullptr)
         {
             delete [] index_data;
 
-            index_data = NULL;
+            index_data = nullptr;
         }
     }
 } _collada_mesh_generator_input_data_stream;
@@ -79,7 +79,7 @@ typedef struct _collada_mesh_generator_input_data
 
     _collada_mesh_generator_input_data()
     {
-        array_data      = NULL;
+        array_data      = nullptr;
         array_data_size = 0;
         n_indices       = 0;
         streams         = system_resizable_vector_create(4 /* capacity */);
@@ -88,27 +88,27 @@ typedef struct _collada_mesh_generator_input_data
 
     ~_collada_mesh_generator_input_data()
     {
-        if (array_data != NULL)
+        if (array_data != nullptr)
         {
             delete [] array_data;
 
-            array_data = NULL;
+            array_data = nullptr;
         }
 
-        if (streams != NULL)
+        if (streams != nullptr)
         {
-            _collada_mesh_generator_input_data_stream* stream_ptr = NULL;
+            _collada_mesh_generator_input_data_stream* stream_ptr = nullptr;
 
             while (system_resizable_vector_pop(streams,
                                               &stream_ptr) )
             {
                 delete stream_ptr;
 
-                stream_ptr = NULL;
+                stream_ptr = nullptr;
             }
 
             system_resizable_vector_release(streams);
-            streams = NULL;
+            streams = nullptr;
         }
     }
 } _collada_mesh_generator_input_data;
@@ -131,8 +131,8 @@ PRIVATE mesh_material                       _collada_mesh_generator_get_geometry
 PRIVATE collada_data_polylist               _collada_mesh_generator_get_geometry_polylist                                                   (collada_data_geometry            geometry,
                                                                                                                                              unsigned int                     n_polylist);
 PRIVATE void                                _collada_mesh_generator_get_input_type_properties                                               (_collada_data_input_type         input_type,
-                                                                                                                                             unsigned int*                    out_component_size,
-                                                                                                                                             unsigned int*                    out_n_components);
+                                                                                                                                             unsigned int*                    out_component_size_ptr,
+                                                                                                                                             unsigned int*                    out_n_components_ptr);
 PRIVATE mesh_layer_data_stream_type         _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type             (_collada_data_input_type         input_type);
 
 
@@ -179,7 +179,7 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
                                "Unrecognized effect shading [%d]",
                                effect_shading);
         }
-    } /* switch (effect_shading) */
+    }
 
     /* Iterate over items */
     for (int n_shading_item = 0;
@@ -193,14 +193,14 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
         {
             /* How does it correspond to mesh_material representation? */
             bool                           can_continue  = true;
-            mesh_material_shading_property item_property = _collada_mesh_generator_get_mesh_material_shading_property_from_collada_data_shading_factor_item( (collada_data_shading_factor_item) effect_shading_item_value);
+            mesh_material_shading_property item_property = _collada_mesh_generator_get_mesh_material_shading_property_from_collada_data_shading_factor_item(static_cast<collada_data_shading_factor_item>(effect_shading_item_value));
 
             can_continue = (item_property != MESH_MATERIAL_SHADING_PROPERTY_UNKNOWN);
 
             if (can_continue)
             {
                 collada_data_effect_get_shading_factor_item_properties(effect,
-                                                                       (collada_data_shading_factor_item) effect_shading_item_value,
+                                                                       static_cast<collada_data_shading_factor_item>(effect_shading_item_value),
                                                                        &effect_shading_factor);
 
                 switch (effect_shading_factor)
@@ -210,7 +210,7 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
                         float shading_factor_float;
 
                         collada_data_effect_get_shading_factor_item_float_properties(effect,
-                                                                                     (collada_data_shading_factor_item) effect_shading_item_value,
+                                                                                     static_cast<collada_data_shading_factor_item>(effect_shading_item_value),
                                                                                     &shading_factor_float);
 
                         mesh_material_set_shading_property_to_float(material,
@@ -222,16 +222,16 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
 
                     case COLLADA_DATA_SHADING_FACTOR_TEXTURE:
                     {
-                        collada_data_image           shading_factor_image           = NULL;
-                        system_hashed_ansi_string    shading_factor_image_file_name = NULL;
-                        system_hashed_ansi_string    shading_factor_image_name      = NULL;
-                        ral_texture                  shading_factor_texture         = NULL;
+                        collada_data_image           shading_factor_image           = nullptr;
+                        system_hashed_ansi_string    shading_factor_image_file_name = nullptr;
+                        system_hashed_ansi_string    shading_factor_image_name      = nullptr;
+                        ral_texture                  shading_factor_texture         = nullptr;
                         _collada_data_sampler_filter shading_factor_mag_filter      = COLLADA_DATA_SAMPLER_FILTER_UNKNOWN;
                         _collada_data_sampler_filter shading_factor_min_filter      = COLLADA_DATA_SAMPLER_FILTER_UNKNOWN;
-                        system_hashed_ansi_string    texcoord_name                  = NULL;
+                        system_hashed_ansi_string    texcoord_name                  = nullptr;
 
                         collada_data_effect_get_shading_factor_item_texture_properties(effect,
-                                                                                       (collada_data_shading_factor_item) effect_shading_item_value,
+                                                                                       static_cast<collada_data_shading_factor_item>(effect_shading_item_value),
                                                                                       &shading_factor_image,
                                                                                       &shading_factor_mag_filter,
                                                                                       &shading_factor_min_filter,
@@ -240,14 +240,14 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
                         collada_data_image_get_properties(shading_factor_image,
                                                          &shading_factor_image_name,
                                                          &shading_factor_image_file_name,
-                                                          NULL,  /* out_file_name_with_path */
-                                                          NULL); /* out_requires_mipmaps */
+                                                          nullptr,  /* out_file_name_with_path */
+                                                          nullptr); /* out_requires_mipmaps */
 
                         /* Identify ogl_texture with the specified name */
                         shading_factor_texture = ral_context_get_texture_by_name(context,
                                                                                  shading_factor_image_file_name);
 
-                        ASSERT_ALWAYS_SYNC(shading_factor_texture != NULL,
+                        ASSERT_ALWAYS_SYNC(shading_factor_texture != nullptr,
                                            "Could not retrieve ogl_texture instance for image [%s]",
                                            system_hashed_ansi_string_get_buffer(shading_factor_image_name) );
 
@@ -277,7 +277,7 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
                         float shading_factor_float4[4];
 
                         collada_data_effect_get_shading_factor_item_float4_properties(effect,
-                                                                                      (collada_data_shading_factor_item) effect_shading_item_value,
+                                                                                      static_cast<collada_data_shading_factor_item>(effect_shading_item_value),
                                                                                       shading_factor_float4);
 
                         mesh_material_set_shading_property_to_vec4(material,
@@ -293,10 +293,10 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
                                            "Unrecognized COLLADA effect shading factor [%d]",
                                            effect_shading_factor);
                     }
-                } /* switch (effect_shading_factor) */
+                }
             }
-        } /* if (effect_shading_item_bitmask & (1 << n_shading_item) ) */
-    } /* for (all shading items) */
+        }
+    }
 }
 
 /** TODO */
@@ -306,17 +306,17 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
                                                                                         unsigned int             n_polylist)
 {
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(geometry != NULL,
-                      "Geometry is NULL");
+    ASSERT_DEBUG_SYNC(geometry != nullptr,
+                      "Geometry is nullptr");
 
     /* Retrieve geometry properties */
-    collada_data_geometry_mesh          geometry_mesh        = NULL;
+    collada_data_geometry_mesh          geometry_mesh        = nullptr;
     unsigned int                        n_material_instances = 0;
     unsigned int                        n_polylists          = 0;
-    _collada_mesh_generator_input_data* result               = NULL;
+    _collada_mesh_generator_input_data* result_ptr           = nullptr;
 
     collada_data_geometry_get_properties(geometry,
-                                         NULL, /* out_name */
+                                         nullptr, /* out_name */
                                          &geometry_mesh,
                                          &n_material_instances);
 
@@ -330,13 +330,13 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
     if (n_polylists != 0)
     {
         /* Look for polylist's input that defines offset and source data for the requested input type */
-        collada_data_polylist current_polylist = NULL;
+        collada_data_polylist current_polylist = nullptr;
 
         collada_data_geometry_mesh_get_polylist(geometry_mesh,
                                                 n_polylist,
                                                &current_polylist);
 
-        if (current_polylist == NULL)
+        if (current_polylist == nullptr)
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not find zeroth polylist");
@@ -345,10 +345,10 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
         }
 
         /* Retrieve polylist properties */
-        system_hashed_ansi_string material_symbol_name    = NULL;
+        system_hashed_ansi_string material_symbol_name    = nullptr;
               unsigned int        n_polylist_indices      = 0;
               unsigned int        n_polylist_inputs       = 0;
-        const unsigned int*       polylist_index_data     = NULL;
+        const unsigned int*       polylist_index_data     = nullptr;
               unsigned int        polylist_index_data_max = -1;
               unsigned int        polylist_index_data_min = -1;
 
@@ -372,39 +372,39 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
                                           &polylist_index_data_min);
 
         /* Identify material instance */
-        collada_data_material                           material             = NULL;
+        collada_data_material                           material             = nullptr;
         collada_data_effect                             material_effect      = _collada_mesh_generator_get_geometry_effect               (geometry,
                                                                                                                                           current_polylist);
         collada_data_scene_graph_node_material_instance material_instance    = collada_data_geometry_get_material_instance_by_symbol_name(geometry,
                                                                                                                                           material_symbol_name);
 
         /* Identify source of requested input type */
-        collada_data_input requested_input = NULL;
+        collada_data_input requested_input = nullptr;
 
         collada_data_polylist_get_input(current_polylist,
                                         requested_input_type,
                                        &requested_input);
 
-        if (requested_input == NULL)
+        if (requested_input == nullptr)
         {
             /* Nope */
             goto end;
         }
 
         /* Looks good! Allocate the descriptor before we start */
-        result = new (std::nothrow) _collada_mesh_generator_input_data;
+        result_ptr = new (std::nothrow) _collada_mesh_generator_input_data;
 
-        ASSERT_DEBUG_SYNC(result != NULL,
+        ASSERT_DEBUG_SYNC(result_ptr != nullptr,
                           "Out of memory");
 
-        if (result == NULL)
+        if (result_ptr == nullptr)
         {
             goto end;
         }
 
         /* Allocate enough space to hold array & index data */
-        result->n_indices = n_polylist_indices / n_polylist_inputs;
-        result->type      = requested_input_type;
+        result_ptr->n_indices = n_polylist_indices / n_polylist_inputs;
+        result_ptr->type      = requested_input_type;
 
         /* Retrieve input properties we'll need to construct array & index data */
         unsigned int n_sets = 0;
@@ -412,9 +412,9 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
         collada_data_input_get_properties(requested_input,
                                           0, /* n_set */
                                          &n_sets,
-                                          NULL,  /* out_offset */
-                                          NULL,  /* out_source */
-                                          NULL); /* out_type */
+                                          nullptr,  /* out_offset */
+                                          nullptr,  /* out_source */
+                                          nullptr); /* out_type */
 
         /* More than a single set is only expected for texcoords at the moment .. */
         unsigned int index_counter         = 0;
@@ -428,16 +428,16 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
                           input_set < n_sets;
                         ++input_set)
         {
-            collada_data_source               input_source                 = NULL;
-            collada_data_float_array          source_data_float_array      = NULL;
+            collada_data_source               input_source                 = nullptr;
+            collada_data_float_array          source_data_float_array      = nullptr;
             collada_data_shading_factor_item  texcoord_shading_factor_item = COLLADA_DATA_SHADING_FACTOR_ITEM_UNKNOWN;
 
             collada_data_input_get_properties(requested_input,
                                               input_set,
-                                              NULL,         /* out_n_sets */
-                                              NULL,         /* out_offset */
+                                              nullptr,         /* out_n_sets */
+                                              nullptr,         /* out_offset */
                                              &input_source,
-                                              NULL);        /* out_type */
+                                              nullptr);        /* out_type */
 
             collada_data_source_get_source_float_data(input_source,
                                                      &source_data_float_array);
@@ -456,10 +456,10 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
                     ASSERT_DEBUG_SYNC(false,
                                       "Input type not supported");
                 }
-            } /* switch (requested_input_type) */
+            }
 
             /* Retrieve source data float array properties */
-            const float* source_data_float_array_data         = NULL;
+            const float* source_data_float_array_data         = nullptr;
             unsigned int source_data_float_array_n_components = 0;
             unsigned int source_data_float_array_n_values     = 0;
 
@@ -491,12 +491,12 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "Could not retrieve material binding index");
-                } /* if (material_binding_index != -1) */
+                }
                 else
                 {
-                    collada_data_geometry_material_binding material_binding        = NULL;
-                    system_hashed_ansi_string              material_input_semantic = NULL;
-                    system_hashed_ansi_string              material_semantic_name  = NULL;
+                    collada_data_geometry_material_binding material_binding        = nullptr;
+                    system_hashed_ansi_string              material_input_semantic = nullptr;
+                    system_hashed_ansi_string              material_semantic_name  = nullptr;
 
                     collada_data_scene_graph_node_material_instance_get_material_binding(material_instance,
                                                                                          material_binding_index,
@@ -504,7 +504,7 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
 
                     collada_data_geometry_material_binding_get_properties(material_binding,
                                                                          &material_input_semantic,
-                                                                          NULL, /* out_input_set */
+                                                                          nullptr, /* out_input_set */
                                                                          &material_semantic_name);
 
                     /* Find a texture that uses the texture coordinate set */
@@ -515,17 +515,17 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
                     {
                         ASSERT_DEBUG_SYNC(false,
                                           "Could not associate an UV set with actual effect");
-                    } /* if (shading_factor_item == COLLADA_DATA_SHADING_FACTOR_ITEM_UNKNOWN) */
+                    }
                 }
-            } /* if (requested_input_type == COLLADA_DATA_INPUT_TYPE_TEXCOORD) */
+            }
 
             /* Form the stream descriptor */
             _collada_mesh_generator_input_data_stream* stream_ptr = new (std::nothrow) _collada_mesh_generator_input_data_stream;
 
-            ASSERT_DEBUG_SYNC(stream_ptr != NULL,
+            ASSERT_DEBUG_SYNC(stream_ptr != nullptr,
                               "Out of memory");
 
-            if (stream_ptr == NULL)
+            if (stream_ptr == nullptr)
             {
                 goto end;
             }
@@ -544,15 +544,15 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
 
             collada_data_input_get_properties(requested_input,
                                               input_set,
-                                              NULL,        /* out_n_sets */
+                                              nullptr,        /* out_n_sets */
                                               &current_index_offset,
-                                              NULL,         /* out_source */
-                                              NULL);        /* out_type */
+                                              nullptr,         /* out_source */
+                                              nullptr);        /* out_type */
 
             /* Allocate space for index data */
-            stream_ptr->index_data = new (std::nothrow) unsigned int[result->n_indices];
+            stream_ptr->index_data = new (std::nothrow) unsigned int[result_ptr->n_indices];
 
-            if (stream_ptr->index_data == NULL)
+            if (stream_ptr->index_data == nullptr)
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Out of memory");
@@ -562,31 +562,32 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
 
             /* Retrieve index data */
             for (unsigned int n_index = 0;
-                              n_index < result->n_indices;
+                              n_index < result_ptr->n_indices;
                             ++n_index, current_index_offset += n_polylist_inputs)
             {
                 stream_ptr->index_data[n_index] = polylist_index_data[current_index_offset];
-            } /* for (all indices) */
+            }
 
             stream_ptr->max_index = polylist_index_data_max;
             stream_ptr->min_index = polylist_index_data_min;
 
             /* Store the stream */
-            system_resizable_vector_push(result->streams, stream_ptr);
+            system_resizable_vector_push(result_ptr->streams,
+                                         stream_ptr);
 
             /* Update offset monitors */
             total_array_data_size += stream_ptr->array_data_size;
-            index_counter         += result->n_indices;
-        } /* for (unsigned int input_set = 0; input_set < n_sets; ++input_set) */
+            index_counter         += result_ptr->n_indices;
+        }
 
         /* Combine data from all streams into a single array data */
         unsigned char* combined_array_data = new unsigned char[total_array_data_size];
         unsigned char* traveller_ptr       = combined_array_data;
 
-        ASSERT_DEBUG_SYNC(combined_array_data != NULL,
+        ASSERT_DEBUG_SYNC(combined_array_data != nullptr,
                           "Out of memory");
 
-        if (combined_array_data == NULL)
+        if (combined_array_data == nullptr)
         {
             goto end;
         }
@@ -595,9 +596,9 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
                           input_set < n_sets;
                         ++input_set)
         {
-            _collada_mesh_generator_input_data_stream* stream_ptr = NULL;
+            _collada_mesh_generator_input_data_stream* stream_ptr = nullptr;
 
-            if (system_resizable_vector_get_element_at(result->streams,
+            if (system_resizable_vector_get_element_at(result_ptr->streams,
                                                        input_set,
                                                       &stream_ptr) )
             {
@@ -614,12 +615,12 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
             }
         }
 
-        result->array_data      = combined_array_data;
-        result->array_data_size = total_array_data_size;
-    } /* if (n_polylists != 0) */
+        result_ptr->array_data      = combined_array_data;
+        result_ptr->array_data_size = total_array_data_size;
+    }
 
 end:
-    return result;
+    return result_ptr;
 }
 
 /** TODO */
@@ -627,13 +628,13 @@ PRIVATE collada_data_effect _collada_mesh_generator_get_geometry_effect(collada_
                                                                         collada_data_polylist polylist)
 {
     /* Retrieve polylist properties */
-    collada_data_effect material_effect      = NULL;
-    mesh_material       result_mesh_material = NULL;
+    collada_data_effect material_effect      = nullptr;
+    mesh_material       result_mesh_material = nullptr;
 
-    system_hashed_ansi_string material_symbol_name = NULL;
+    system_hashed_ansi_string material_symbol_name = nullptr;
           unsigned int        n_polylist_indices   = 0;
           unsigned int        n_polylist_inputs    = 0;
-    const unsigned int*       polylist_index_data  = NULL;
+    const unsigned int*       polylist_index_data  = nullptr;
 
     collada_data_polylist_get_property(polylist,
                                        COLLADA_DATA_POLYLIST_PROPERTY_MATERIAL_SYMBOL_NAME,
@@ -649,16 +650,16 @@ PRIVATE collada_data_effect _collada_mesh_generator_get_geometry_effect(collada_
                                       &polylist_index_data);
 
     /* Retrieve the effect associated with the material bound to the polylist */
-    collada_data_material                           material             = NULL;
-    collada_data_scene_graph_node_material_instance material_instance    = collada_data_geometry_get_material_instance_by_symbol_name(geometry,
-                                                                                                                                      material_symbol_name);
+    collada_data_material                           material          = nullptr;
+    collada_data_scene_graph_node_material_instance material_instance = collada_data_geometry_get_material_instance_by_symbol_name(geometry,
+                                                                                                                                   material_symbol_name);
 
-    if (material_instance == NULL)
+    if (material_instance == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not find descriptor of material instance with symbol [%s]",
                            system_hashed_ansi_string_get_buffer(material_symbol_name) );
-    } /* if (material_instance == NULL) */
+    }
     else
     {
         /* Retrieve effect assigned to the material. Effect tells us how the shading should
@@ -666,28 +667,28 @@ PRIVATE collada_data_effect _collada_mesh_generator_get_geometry_effect(collada_
          */
         collada_data_scene_graph_node_material_instance_get_properties(material_instance,
                                                                       &material,
-                                                                       NULL,  /* out_symbol_name */
-                                                                       NULL); /* out_n_bindings */
+                                                                       nullptr,  /* out_symbol_name */
+                                                                       nullptr); /* out_n_bindings */
 
-        if (material == NULL)
+        if (material == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Could not retrieve material associated with material instance [%s]",
                                system_hashed_ansi_string_get_buffer(material_symbol_name) );
-        } /* if (material == NULL) */
+        }
         else
         {
             collada_data_material_get_properties(material,
                                                  &material_effect,
-                                                 NULL,  /* out_id */
-                                                 NULL); /* out_name */
+                                                 nullptr,  /* out_id */
+                                                 nullptr); /* out_name */
 
-            if (material_effect == NULL)
+            if (material_effect == nullptr)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Could not retrieve effect associated with material instance [%s]",
                                    system_hashed_ansi_string_get_buffer(material_symbol_name) );
-            } /* if (material_effect == NULL) */
+            }
         }
     }
 
@@ -704,33 +705,33 @@ PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(ral_context 
                                                                     unsigned int          n_polylist)
 {
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(geometry != NULL,
-                      "Geometry is NULL");
+    ASSERT_DEBUG_SYNC(geometry != nullptr,
+                      "Geometry is nullptr");
 
     /* Retrieve geometry properties */
-    collada_data_polylist current_polylist     = NULL;
-    mesh_material         result_mesh_material = NULL;
+    collada_data_polylist current_polylist     = nullptr;
+    mesh_material         result_mesh_material = nullptr;
 
     current_polylist = _collada_mesh_generator_get_geometry_polylist(geometry,
                                                                      n_polylist);
 
-    ASSERT_DEBUG_SYNC(current_polylist != NULL,
-                      "Could not retrievfe requested polylist");
+    ASSERT_DEBUG_SYNC(current_polylist != nullptr,
+                      "Could not retrieve requested polylist");
 
-    if (current_polylist != NULL)
+    if (current_polylist != nullptr)
     {
         /* Retrieve polylist properties */
-        system_hashed_ansi_string material_symbol_name = NULL;
+        system_hashed_ansi_string material_symbol_name = nullptr;
 
         collada_data_polylist_get_property(current_polylist,
                                            COLLADA_DATA_POLYLIST_PROPERTY_MATERIAL_SYMBOL_NAME,
                                           &material_symbol_name);
 
         /* Identify material instance */
-        collada_data_material     material                    = NULL;
+        collada_data_material     material                    = nullptr;
         collada_data_effect       material_effect             = _collada_mesh_generator_get_geometry_effect(geometry,
                                                                                                             current_polylist);
-        system_hashed_ansi_string material_effect_uv_map_name = NULL;
+        system_hashed_ansi_string material_effect_uv_map_name = nullptr;
 
         collada_data_effect_get_property(material_effect,
                                          COLLADA_DATA_EFFECT_PROPERTY_UV_MAP_NAME,
@@ -739,7 +740,7 @@ PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(ral_context 
         /* Create a mesh_material instance out of the effect */
         result_mesh_material = mesh_material_create(material_symbol_name,
                                                     context,
-                                                    NULL); /* object_manager_path */
+                                                    nullptr); /* object_manager_path */
 
         mesh_material_set_property(result_mesh_material,
                                    MESH_MATERIAL_PROPERTY_UV_MAP_NAME,
@@ -748,7 +749,7 @@ PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(ral_context 
         _collada_mesh_generator_configure_mesh_material_from_effect(context,
                                                                     material_effect,
                                                                     result_mesh_material);
-    } /* if (n_polylists != 0) */
+    }
 
     return result_mesh_material;
 }
@@ -758,21 +759,21 @@ PRIVATE collada_data_polylist _collada_mesh_generator_get_geometry_polylist(coll
                                                                             unsigned int          n_polylist)
 {
     /* Retrieve geometry properties */
-    collada_data_geometry_mesh geometry_mesh = NULL;
+    collada_data_geometry_mesh geometry_mesh = nullptr;
 
     collada_data_geometry_get_properties(geometry,
-                                         NULL, /* out_name */
+                                         nullptr, /* out_name */
                                         &geometry_mesh,
-                                         NULL); /* out_n_material_instances */
+                                         nullptr); /* out_n_material_instances */
 
     /* Look for requested polylist */
-    collada_data_polylist result_polylist = NULL;
+    collada_data_polylist result_polylist = nullptr;
 
     collada_data_geometry_mesh_get_polylist(geometry_mesh,
                                             n_polylist,
                                            &result_polylist);
 
-    if (result_polylist == NULL)
+    if (result_polylist == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not find requested polylist");
@@ -783,8 +784,8 @@ PRIVATE collada_data_polylist _collada_mesh_generator_get_geometry_polylist(coll
 
 /** TODO */
 PRIVATE void _collada_mesh_generator_get_input_type_properties(_collada_data_input_type input_type,
-                                                               unsigned int*            out_component_size,
-                                                               unsigned int*            out_n_components)
+                                                               unsigned int*            out_component_size_ptr,
+                                                               unsigned int*            out_n_components_ptr)
 {
     unsigned int result_component_size = 0;
     unsigned int result_n_components   = 0;
@@ -810,18 +811,19 @@ PRIVATE void _collada_mesh_generator_get_input_type_properties(_collada_data_inp
 
         default:
         {
-            ASSERT_ALWAYS_SYNC(false, "Unrecognized COLLADA data input type");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized COLLADA data input type");
         }
-    } /* switch (input_type) */
-
-    if (out_component_size != NULL)
-    {
-        *out_component_size = result_component_size;
     }
 
-    if (out_n_components != NULL)
+    if (out_component_size_ptr != nullptr)
     {
-        *out_n_components = result_n_components;
+        *out_component_size_ptr = result_component_size;
+    }
+
+    if (out_n_components_ptr != nullptr)
+    {
+        *out_n_components_ptr = result_n_components;
     }
 }
 
@@ -892,7 +894,7 @@ PRIVATE mesh_material_shading_property _collada_mesh_generator_get_mesh_material
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized COLLADA data shading factor item");
         }
-    } /* switch (item) */
+    }
 
     return result;
 }
@@ -915,7 +917,7 @@ PRIVATE mesh_material_texture_filtering _collada_mesh_generator_get_mesh_materia
         {
             ASSERT_ALWAYS_SYNC(false, "Unrecognized COLLADA data sampler filter");
         }
-    } /* switch (filter) */
+    }
 
     return result;
 }
@@ -926,19 +928,19 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                                           collada_data data,
                                           unsigned int n_geometry)
 {
-    collada_data_geometry      geometry                      = NULL;
-    system_hashed_ansi_string  geometry_id                   = NULL;
-    collada_data_geometry_mesh geometry_mesh                 = NULL;
+    collada_data_geometry      geometry                      = nullptr;
+    system_hashed_ansi_string  geometry_id                   = nullptr;
+    collada_data_geometry_mesh geometry_mesh                 = nullptr;
     bool                       has_normals_data_been_defined = false;
     unsigned int               n_polylists                   = 0;
     static int                 name_counter                  = 1;
-    mesh                       result                        = NULL;
+    mesh                       result                        = nullptr;
 
     collada_data_get_geometry(data,
                               n_geometry,
                              &geometry);
 
-    if (geometry == NULL)
+    if (geometry == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "COLLADA geometry at index [%d] not found",
@@ -952,7 +954,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                                        COLLADA_DATA_GEOMETRY_PROPERTY_ID,
                                        &geometry_id);
 
-    /* Name is potentially NULL. If this is the case, come with our own one */
+    /* Name is potentially nullptr. If this is the case, come with our own one */
     if (system_hashed_ansi_string_get_length(geometry_id) == 0)
     {
         /* Use enough characters to fit really large numbers */
@@ -970,7 +972,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
     result = mesh_create_regular_mesh(MESH_CREATION_FLAGS_SAVE_SUPPORT,
                                       geometry_id);
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not create a new Emerald mesh");
@@ -1010,7 +1012,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
         const unsigned int                  n_input_types             = sizeof(input_types) / sizeof(input_types[0]);
         const unsigned int                  n_normal_input_type       = 0; /* corresponds to index of COLLADA_DATA_INPUT_TYPE_NORMAL value in input_types */
         const unsigned int                  n_texcoord_input_type     = 1; /* corresponds to index of COLLADA_DATA_INPUT_TYPE_TEXCOORD value in input_types */
-        _collada_mesh_generator_input_data* input_data[n_input_types] = {NULL};
+        _collada_mesh_generator_input_data* input_data[n_input_types] = {nullptr};
 
         for (unsigned int n_input_type = 0;
                           n_input_type < n_input_types;
@@ -1034,7 +1036,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                           n_input_type < n_input_types;
                         ++n_input_type)
         {
-            if (input_data[n_input_type] != NULL)
+            if (input_data[n_input_type] != nullptr)
             {
                 unsigned int                   component_size = 0;
                 const _collada_data_input_type input_type     = input_types[n_input_type];
@@ -1057,7 +1059,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                     n_vertex_indices = input_data[n_input_type]->n_indices;
                 }
             }
-        } /* for (all input types) */
+        }
 
         /* Add a new layer pass */
         ASSERT_DEBUG_SYNC(n_vertex_indices != 0,
@@ -1072,7 +1074,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                           n_input_type < n_input_types;
                         ++n_input_type)
         {
-            if (input_data[n_input_type] != NULL)
+            if (input_data[n_input_type] != nullptr)
             {
                 const _collada_data_input_type input_type  = input_types[n_input_type];
                 unsigned int                   n_streams   = 0;
@@ -1086,7 +1088,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                                   n_set < n_streams;
                                 ++n_set)
                 {
-                    _collada_mesh_generator_input_data_stream* stream_ptr = NULL;
+                    _collada_mesh_generator_input_data_stream* stream_ptr = nullptr;
 
                     if (system_resizable_vector_get_element_at(input_data[n_input_type]->streams,
                                                                n_set,
@@ -1118,7 +1120,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                 /* Good to release the helper instance */
                 delete input_data[n_input_type];
 
-                input_data[n_input_type] = NULL;
+                input_data[n_input_type] = nullptr;
             }
 
             /* Sanity check: for cases where there are multiple polylists declared for a single mesh,
@@ -1126,13 +1128,13 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
              *               cases have *not* been tested and are likely to crash Emerald
              */
             if (n_input_type             == n_normal_input_type &&
-                input_data[n_input_type] == NULL)
+                input_data[n_input_type] == nullptr)
             {
                 ASSERT_DEBUG_SYNC(!has_normals_data_been_defined,
                                   "Some polylists of a geometry mesh declare normals data, and some don't");
             }
-        } /* for (all supported COLLADA data input types) */
-    } /* for (all polylists) */
+        }
+    }
 
     /* If no data on normals is in the COLLADA container, we need to generate them
      * manually..
@@ -1140,7 +1142,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
     if (!has_normals_data_been_defined)
     {
         /* If the caching mode is enabled, the data may have already been stashed */
-        system_hashed_ansi_string blob_name              = NULL;
+        system_hashed_ansi_string blob_name              = nullptr;
         bool                      has_loaded_normal_data = false;
         bool                      is_caching_enabled     = false;
 
@@ -1164,13 +1166,13 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
 
             /* Is the blob cached? */
             system_file_serializer serializer      = system_file_serializer_create_for_reading(blob_name);
-            const void*            serializer_data = NULL;
+            const void*            serializer_data = nullptr;
 
             system_file_serializer_get_property(serializer,
                                                 SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
                                                &serializer_data);
 
-            if (serializer_data != NULL)
+            if (serializer_data != nullptr)
             {
                 unsigned int n_result_layers     = 0;
                 unsigned int n_serialized_layers = 0;
@@ -1190,11 +1192,11 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                                       "Serialized blob describes [%d] layers, whereas the created mesh object offers [%d] layers",
                                       n_serialized_layers,
                                       n_result_layers);
-                } /* if (n_result_layers != n_serialized_layers) */
+                }
                 else
                 {
                     unsigned int n_serialized_normals = 0;
-                    const void*  serialized_normals   = NULL;
+                    const void*  serialized_normals   = nullptr;
 
                     for (unsigned int n_layer = 0;
                                       n_layer < n_serialized_layers;
@@ -1210,7 +1212,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                                                             SYSTEM_FILE_SERIALIZER_PROPERTY_CURRENT_OFFSET,
                                                            &serializer_current_offset);
 
-                        serialized_normals = (const unsigned char*) serializer_data + serializer_current_offset;
+                        serialized_normals = reinterpret_cast<const unsigned char*>(serializer_data) + serializer_current_offset;
 
                         /* Carry on and add the layer data */
                         mesh_add_layer_data_stream_from_client_memory(result,
@@ -1222,13 +1224,13 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
 
                         system_file_serializer_read(serializer,
                                                     n_serialized_normals * sizeof(float) * 3,
-                                                    NULL);
+                                                    nullptr);
                     }
 
                     /* Reading complete! */
                     has_loaded_normal_data = true;
                 }
-            } /* if (serializer_data != NULL) */
+            }
 
             system_file_serializer_release(serializer);
         }
@@ -1261,7 +1263,7 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                                 ++n_layer)
                 {
                     unsigned int n_normal_items   = 0;
-                    const void*   normal_data_ptr = NULL;
+                    const void*   normal_data_ptr = nullptr;
 
                     mesh_get_layer_data_stream_data(result,
                                                     n_layer,
@@ -1275,12 +1277,12 @@ PUBLIC mesh collada_mesh_generator_create(ral_context  context,
                     system_file_serializer_write(serializer,
                                                  n_normal_items * sizeof(float) * 3,
                                                  normal_data_ptr);
-                } /* for (all layers) */
+                }
 
                 /* All done */
                 system_file_serializer_release(serializer);
-            } /* if (is_caching_enabled) */
-        } /* if (!has_loaded_normal_data) */
+            }
+        }
     }
 end:
     return result;

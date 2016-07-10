@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -17,9 +17,9 @@ PUBLIC collada_data_geometry_material_binding collada_data_geometry_material_bin
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_geometry_material_binding_get_properties(collada_data_geometry_material_binding binding,
-                                                                              system_hashed_ansi_string*             out_input_semantic_name,
-                                                                              unsigned int*                          out_input_set,
-                                                                              system_hashed_ansi_string*             out_semantic_name);
+                                                                              system_hashed_ansi_string*             out_input_semantic_name_ptr,
+                                                                              unsigned int*                          out_input_set_ptr,
+                                                                              system_hashed_ansi_string*             out_semantic_name_ptr);
 
 /** TODO */
 PUBLIC void collada_data_geometry_material_binding_release(collada_data_geometry_material_binding binding);

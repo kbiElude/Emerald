@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -19,55 +19,51 @@ typedef enum
 
 /** TODO */
 PUBLIC collada_data_transformation collada_data_transformation_create_lookat(tinyxml2::XMLElement* element_ptr,
-                                                                             const float*          data);
+                                                                             const float*          data_ptr);
 
 /** TODO */
 PUBLIC collada_data_transformation collada_data_transformation_create_matrix(tinyxml2::XMLElement* element_ptr,
-                                                                             const float*          data);
+                                                                             const float*          data_ptr);
 
 /** TODO */
 PUBLIC collada_data_transformation collada_data_transformation_create_rotate(tinyxml2::XMLElement* element_ptr,
-                                                                             const float*          data);
+                                                                             const float*          data_ptr);
 
 /** TODO */
 PUBLIC collada_data_transformation collada_data_transformation_create_scale(tinyxml2::XMLElement* element_ptr,
-                                                                            const float*          data);
+                                                                            const float*          data_ptr);
 
 /** TODO */
 PUBLIC collada_data_transformation collada_data_transformation_create_skew(tinyxml2::XMLElement* element_ptr,
-                                                                           const float*          data);
+                                                                           const float*          data_ptr);
 
 /** TODO */
 PUBLIC collada_data_transformation collada_data_transformation_create_translate(tinyxml2::XMLElement* element_ptr,
-                                                                                const float*          data);
+                                                                                const float*          data_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_transformation_get_matrix_properties(collada_data_transformation transformation,
-                                                                          collada_value*              out_data);
+                                                                          collada_value*              out_data_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_transformation_get_property(collada_data_transformation          transformation,
                                                                  collada_data_transformation_property property,
-                                                                 void*                                out_result);
+                                                                 void*                                out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_transformation_get_rotate_properties(collada_data_transformation transformation,
-                                                                          collada_value*              axis_vector,
-                                                                          collada_value*              angle);
+                                                                          collada_value*              out_axis_vector_ptr,
+                                                                          collada_value*              out_angle_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_transformation_get_scale_properties(collada_data_transformation transformation,
-                                                                         collada_value*              scale_vector);
+                                                                         collada_value*              out_scale_vector_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_transformation_get_translate_properties(collada_data_transformation transformation,
-                                                                             collada_value*              translation_vector);
+                                                                             collada_value*              out_translation_vector_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_transformation_get_type(collada_data_transformation,
-                                                             _collada_data_transformation_type* out_type);
-
-/** TODO */
-PUBLIC EMERALD_API void collada_data_transformation_release(collada_data_transformation);
+PUBLIC EMERALD_API void collada_data_transformation_release(collada_data_transformation transformation);
 
 #endif /* COLLADA_DATA_TRANSFORMATION_H */

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -39,9 +39,9 @@ PUBLIC collada_data_geometry collada_data_geometry_create_async(tinyxml2::XMLEle
                                                                 system_hash64map        result_geometries_by_id_map);
 
 /** TODO */
-PUBLIC void collada_data_geometry_get_property(const collada_data_geometry          geometry,
-                                                     collada_data_geometry_property property,
-                                                     void*                          out_result_ptr);
+PUBLIC void collada_data_geometry_get_property(const collada_data_geometry    geometry,
+                                               collada_data_geometry_property property,
+                                               void*                          out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_geometry_get_properties(collada_data_geometry       geometry,
@@ -69,6 +69,6 @@ PUBLIC void collada_data_geometry_release(collada_data_geometry geometry);
 /** TODO */
 PUBLIC void collada_data_geometry_set_property(collada_data_geometry          geometry,
                                                collada_data_geometry_property property,
-                                               void*                          data);
+                                               const void*                    data);
 
 #endif /* COLLADA_DATA_GEOMETRY_H */

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -43,8 +43,8 @@ PUBLIC collada_data_camera collada_data_camera_create(tinyxml2::XMLElement* curr
 {
     _collada_data_camera* new_camera_ptr = new (std::nothrow) _collada_data_camera;
 
-    ASSERT_DEBUG_SYNC(new_camera_ptr != NULL, "Out of memory")
-    if (new_camera_ptr != NULL)
+    ASSERT_DEBUG_SYNC(new_camera_ptr != nullptr, "Out of memory")
+    if (new_camera_ptr != nullptr)
     {
         new_camera_ptr->id   = system_hashed_ansi_string_create(current_camera_element_ptr->Attribute("id") );
         new_camera_ptr->name = system_hashed_ansi_string_create(current_camera_element_ptr->Attribute("name") );
@@ -52,26 +52,26 @@ PUBLIC collada_data_camera collada_data_camera_create(tinyxml2::XMLElement* curr
         /* Look for <optics> node inside the node */
         tinyxml2::XMLElement* optics_element_ptr = current_camera_element_ptr->FirstChildElement("optics");
 
-        if (optics_element_ptr != NULL)
+        if (optics_element_ptr != nullptr)
         {
             /* Find <technique_common> node */
             tinyxml2::XMLElement* technique_common_element_ptr = optics_element_ptr->FirstChildElement("technique_common");
 
-            if (technique_common_element_ptr != NULL)
+            if (technique_common_element_ptr != nullptr)
             {
                 /* Two options here: orthogonal or perspective. We only support <perspective>
                  * at the moment */
                 tinyxml2::XMLElement* orthogonal_element_ptr  = technique_common_element_ptr->FirstChildElement("orthogonal");
                 tinyxml2::XMLElement* perspective_element_ptr = technique_common_element_ptr->FirstChildElement("perspective");
 
-                if (orthogonal_element_ptr != NULL)
+                if (orthogonal_element_ptr != nullptr)
                 {
                     LOG_FATAL        ("Orthogonal camera [%s] found which is unsuppoted",
                                       system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
                     ASSERT_DEBUG_SYNC(false, "Orthogonal cameras are not supported");
                 }
                 else
-                if (perspective_element_ptr != NULL)
+                if (perspective_element_ptr != nullptr)
                 {
                     tinyxml2::XMLElement* ar_element_ptr    = perspective_element_ptr->FirstChildElement("aspect_ratio");
                     tinyxml2::XMLElement* xfov_element_ptr  = perspective_element_ptr->FirstChildElement("xfov");
@@ -89,7 +89,7 @@ PUBLIC collada_data_camera collada_data_camera_create(tinyxml2::XMLElement* curr
                      * We only support case 4) which is used by Blender. Expand
                      * with support for other cases as necessary.
                      */
-                    if (xfov_element_ptr != NULL && ar_element_ptr != NULL)
+                    if (xfov_element_ptr != nullptr && ar_element_ptr != nullptr)
                     {
                         system_text_get_float_from_text(ar_element_ptr->GetText(),
                                                        &new_camera_ptr->aspect_ratio);
@@ -99,7 +99,7 @@ PUBLIC collada_data_camera collada_data_camera_create(tinyxml2::XMLElement* curr
                         new_camera_ptr->yfov = new_camera_ptr->xfov / new_camera_ptr->aspect_ratio;
                     }
                     else
-                    if (yfov_element_ptr != NULL && ar_element_ptr != NULL)
+                    if (yfov_element_ptr != nullptr && ar_element_ptr != nullptr)
                     {
                         system_text_get_float_from_text(ar_element_ptr->GetText(),
                                                        &new_camera_ptr->aspect_ratio);
@@ -110,111 +110,121 @@ PUBLIC collada_data_camera collada_data_camera_create(tinyxml2::XMLElement* curr
                     }
                     else
                     {
-                        LOG_FATAL        ("Perspective camera [%s] uses unsupported parameter combination",
-                                          system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
-                        ASSERT_DEBUG_SYNC(false, "Unsupported perspective camera configuration");
+                        LOG_FATAL("Perspective camera [%s] uses unsupported parameter combination",
+                                  system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
+
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unsupported perspective camera configuration");
                     }
 
-                    if (zfar_element_ptr != NULL)
+                    if (zfar_element_ptr != nullptr)
                     {
                         system_text_get_float_from_text(zfar_element_ptr->GetText(),
                                                        &new_camera_ptr->zfar);
                     }
                     else
                     {
-                        LOG_FATAL        ("Perspective camera [%s] does not define a required <zfar> attribute",
-                                          system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
-                        ASSERT_DEBUG_SYNC(false, "<zfar> attribute is missing");
+                        LOG_FATAL("Perspective camera [%s] does not define a required <zfar> attribute",
+                                  system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
+
+                        ASSERT_DEBUG_SYNC(false,
+                                          "<zfar> attribute is missing");
                     }
 
-                    if (znear_element_ptr != NULL)
+                    if (znear_element_ptr != nullptr)
                     {
                         system_text_get_float_from_text(znear_element_ptr->GetText(),
                                                        &new_camera_ptr->znear);
                     }
                     else
                     {
-                        LOG_FATAL        ("Perspective camera [%s] does not define a required <znear> attribute",
-                                          system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
-                        ASSERT_DEBUG_SYNC(false, "<znear> attribute is missing");
+                        LOG_FATAL("Perspective camera [%s] does not define a required <znear> attribute",
+                                  system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
+
+                        ASSERT_DEBUG_SYNC(false,
+                                          "<znear> attribute is missing");
                     }
-                } /* if (perspective_element_ptr != NULL) */
+                }
                 else
                 {
                     LOG_FATAL("Camera [%s] uses an unsupported type",
                               system_hashed_ansi_string_get_buffer(new_camera_ptr->name) );
                 }
-            } /* if (technique_common_element_ptr != NULL) */
+            }
             else
             {
-                LOG_FATAL        ("No <technique_common> node defined for <camera>/<technique_common>");
-                ASSERT_DEBUG_SYNC(false, "Cannot add camera");
+                LOG_FATAL("No <technique_common> node defined for <camera>/<technique_common>");
+
+                ASSERT_DEBUG_SYNC(false,
+                                  "Cannot add camera");
             }
-        } /* if (optics_element_ptr != NULL) */
+        }
         else
         {
-            LOG_FATAL        ("No <optics> node defined for <camera>");
-            ASSERT_DEBUG_SYNC(false, "Cannot add camera");
-        }
-    } /* if (new_camera_ptr != NULL) */
+            LOG_FATAL("No <optics> node defined for <camera>");
 
-    return (collada_data_camera) new_camera_ptr;
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot add camera");
+        }
+    }
+
+    return reinterpret_cast<collada_data_camera>(new_camera_ptr);
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void collada_data_camera_get_property(collada_data_camera          camera,
                                                          collada_data_camera_property property,
-                                                         void*                        out_result)
+                                                         void*                        out_result_ptr)
 {
-    _collada_data_camera* camera_ptr = (_collada_data_camera*) camera;
+    _collada_data_camera* camera_ptr = reinterpret_cast<_collada_data_camera*>(camera);
 
     switch (property)
     {
         case COLLADA_DATA_CAMERA_PROPERTY_AR:
         {
-            *(float*) out_result = camera_ptr->aspect_ratio;
+            *reinterpret_cast<float*>(out_result_ptr) = camera_ptr->aspect_ratio;
 
             break;
         }
 
         case COLLADA_DATA_CAMERA_PROPERTY_ID:
         {
-            *(system_hashed_ansi_string*) out_result = camera_ptr->id;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = camera_ptr->id;
 
             break;
         }
 
         case COLLADA_DATA_CAMERA_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = camera_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = camera_ptr->name;
 
             break;
         }
 
         case COLLADA_DATA_CAMERA_PROPERTY_XFOV:
         {
-            *(float*) out_result = camera_ptr->xfov;
+            *reinterpret_cast<float*>(out_result_ptr) = camera_ptr->xfov;
 
             break;
         }
 
         case COLLADA_DATA_CAMERA_PROPERTY_YFOV:
         {
-            *(float*) out_result = camera_ptr->yfov;
+            *reinterpret_cast<float*>(out_result_ptr) = camera_ptr->yfov;
 
             break;
         }
 
         case COLLADA_DATA_CAMERA_PROPERTY_ZFAR:
         {
-            *(float*) out_result = camera_ptr->zfar;
+            *reinterpret_cast<float*>(out_result_ptr) = camera_ptr->zfar;
 
             break;
         }
 
         case COLLADA_DATA_CAMERA_PROPERTY_ZNEAR:
         {
-            *(float*) out_result = camera_ptr->znear;
+            *reinterpret_cast<float*>(out_result_ptr) = camera_ptr->znear;
 
             break;
         }
@@ -224,16 +234,16 @@ PUBLIC EMERALD_API void collada_data_camera_get_property(collada_data_camera    
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized collada_data_camera_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for spec */
 PUBLIC void collada_data_camera_release(collada_data_camera camera)
 {
-    if (camera != NULL)
+    if (camera != nullptr)
     {
-        delete (_collada_data_camera*) camera;
+        delete reinterpret_cast<_collada_data_camera*>(camera);
 
-        camera = NULL;
+        camera = nullptr;
     }
 }

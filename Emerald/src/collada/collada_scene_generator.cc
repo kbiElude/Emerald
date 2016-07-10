@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -70,26 +70,26 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 /** TODO */
 PRIVATE curve_container _collada_scene_generator_create_curve_container_from_collada_value(collada_value value)
 {
-    collada_data_animation    animation                       = NULL;
-    collada_data_sampler      animation_sampler               = NULL;
+    collada_data_animation    animation                       = nullptr;
+    collada_data_sampler      animation_sampler               = nullptr;
     static int                curve_counter = 0;
     char                      curve_name_buffer[64];
-    system_variant            end_value_variant               = NULL;
-    collada_data_float_array  input_float_array               = NULL;
-    const float*              input_float_array_data          = NULL;
+    system_variant            end_value_variant               = nullptr;
+    collada_data_float_array  input_float_array               = nullptr;
+    const float*              input_float_array_data          = nullptr;
     uint32_t                  input_float_array_n_components  = 0;
     uint32_t                  input_float_array_n_values      = 0;
-    collada_data_source       input_source                    = NULL;
-    system_resizable_vector   interpolation_vector            = NULL;
+    collada_data_source       input_source                    = nullptr;
+    system_resizable_vector   interpolation_vector            = nullptr;
     uint32_t                  interpolation_vector_n_values   = 0;
-    collada_data_float_array  output_float_array              = NULL;
-    const float*              output_float_array_data         = NULL;
+    collada_data_float_array  output_float_array              = nullptr;
+    const float*              output_float_array_data         = nullptr;
     uint32_t                  output_float_array_n_components = 0;
     uint32_t                  output_float_array_n_values     = 0;
-    collada_data_source       output_source                   = NULL;
-    curve_container           result                          = NULL;
-    system_variant            start_value_variant             = NULL;
-    system_hashed_ansi_string value_id                        = NULL;
+    collada_data_source       output_source                   = nullptr;
+    curve_container           result                          = nullptr;
+    system_variant            start_value_variant             = nullptr;
+    system_hashed_ansi_string value_id                        = nullptr;
     collada_value_type        value_type                      = COLLADA_VALUE_TYPE_UNKNOWN;
 
     /* Retrieve value type */
@@ -109,15 +109,15 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
      */
     if (value_type == COLLADA_VALUE_TYPE_COLLADA_DATA_ANIMATION)
     {
-        collada_data_animation    value_animation    = NULL;
-        system_hashed_ansi_string value_animation_id = NULL;
+        collada_data_animation    value_animation    = nullptr;
+        system_hashed_ansi_string value_animation_id = nullptr;
 
         collada_value_get_property(value,
                                    COLLADA_VALUE_PROPERTY_COLLADA_DATA_ANIMATION,
                                   &value_animation);
 
-        ASSERT_DEBUG_SYNC(value_animation != NULL,
-                          "COLLADA value holds a NULL animation instance");
+        ASSERT_DEBUG_SYNC(value_animation != nullptr,
+                          "COLLADA value holds a nullptr animation instance");
 
         collada_data_animation_get_property(value_animation,
                                             COLLADA_DATA_ANIMATION_PROPERTY_ID,
@@ -142,7 +142,7 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
     /* Spawn the new container */
     result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(value_id),
                                                                                             " curve container"),
-                                    NULL,                  /* object_manager_path */
+                                    nullptr,                  /* object_manager_path */
                                     SYSTEM_VARIANT_FLOAT); /* n_dimension */
 
     /* If this is a static value, things are simple */
@@ -280,7 +280,7 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
                                                  end_time_msec,
                                                  start_value_variant,
                                                  end_value_variant,
-                                                 NULL); /* curve_segment_id */
+                                                 nullptr); /* curve_segment_id */
 
                 break;
             }
@@ -290,21 +290,21 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
                 ASSERT_DEBUG_SYNC(false,
                                   "Unsupported interpolation type encountered");
             }
-        } /* switch (interpolation) */
+        }
     }
 
-    if (start_value_variant != NULL)
+    if (start_value_variant != nullptr)
     {
         system_variant_release(start_value_variant);
 
-        start_value_variant = NULL;
+        start_value_variant = nullptr;
     }
 
-    if (end_value_variant != NULL)
+    if (end_value_variant != nullptr)
     {
         system_variant_release(end_value_variant);
 
-        end_value_variant = NULL;
+        end_value_variant = nullptr;
     }
 
 end:
@@ -318,15 +318,15 @@ PRIVATE void _collada_scene_generator_create_scene_graph(collada_data       data
                                                          ral_context        context)
 {
     scene_graph                   scene_graph           = scene_graph_create(result_scene,
-                                                                             NULL); /* object_manager_path */
-    system_hashed_ansi_string     scene_name            = NULL;
-    collada_data_scene_graph_node scene_root_node       = NULL;
+                                                                             nullptr); /* object_manager_path */
+    system_hashed_ansi_string     scene_name            = nullptr;
+    collada_data_scene_graph_node scene_root_node       = nullptr;
     system_hash64map              scene_to_dag_node_map = system_hash64map_create(sizeof(system_dag_node) );
 
-    ASSERT_DEBUG_SYNC(scene_graph != NULL,
+    ASSERT_DEBUG_SYNC(scene_graph != nullptr,
                       "Could not create a scene graph instance");
 
-    if (scene_graph == NULL)
+    if (scene_graph == nullptr)
     {
         goto end;
     }
@@ -351,11 +351,11 @@ PRIVATE void _collada_scene_generator_create_scene_graph(collada_data       data
                                                        context);
 
 end:
-    if (scene_to_dag_node_map != NULL)
+    if (scene_to_dag_node_map != nullptr)
     {
         system_hash64map_release(scene_to_dag_node_map);
 
-        scene_to_dag_node_map = NULL;
+        scene_to_dag_node_map = nullptr;
     }
 }
 
@@ -375,32 +375,32 @@ struct _texture_loader_workload
 
     _texture_loader_workload()
     {
-        data                      = NULL;
-        file_name                 = NULL;
-        file_name_with_path       = NULL;
-        image                     = NULL;
+        data                      = nullptr;
+        file_name                 = nullptr;
+        file_name_with_path       = nullptr;
+        image                     = nullptr;
         n_workload                = 0;
-        n_workloads_processed_ptr = NULL;
+        n_workloads_processed_ptr = nullptr;
         n_workloads_to_process    = 0;
-        texture                   = NULL;
+        texture                   = nullptr;
         texture_has_mipmaps       = false;
-        workloads_processed_event = NULL;
+        workloads_processed_event = nullptr;
     }
 };
 
 /** TODO */
 volatile void _collada_scene_generator_process_workload(system_thread_pool_callback_argument data)
 {
-    _texture_loader_workload* workload_ptr = (_texture_loader_workload*) data;
+    _texture_loader_workload* workload_ptr = reinterpret_cast<_texture_loader_workload*>(data);
 
     /* Retrieve image properties */
-    system_hashed_ansi_string collada_file_name_with_path     = NULL;
-    const char*               collada_file_name_with_path_raw = NULL;
-    collada_data_image        image                           = NULL;
-    system_hashed_ansi_string image_file_name                 = NULL;
-    system_hashed_ansi_string image_file_name_with_path       = NULL;
-    system_hashed_ansi_string name                            = NULL;
-    collada_data_image        result_image                    = NULL;
+    system_hashed_ansi_string collada_file_name_with_path     = nullptr;
+    const char*               collada_file_name_with_path_raw = nullptr;
+    collada_data_image        image                           = nullptr;
+    system_hashed_ansi_string image_file_name                 = nullptr;
+    system_hashed_ansi_string image_file_name_with_path       = nullptr;
+    system_hashed_ansi_string name                            = nullptr;
+    collada_data_image        result_image                    = nullptr;
 
     collada_data_get_image           (workload_ptr->data,
                                       workload_ptr->n_workload,
@@ -409,19 +409,19 @@ volatile void _collada_scene_generator_process_workload(system_thread_pool_callb
                                      &name,
                                      &image_file_name,
                                      &image_file_name_with_path,
-                                      NULL); /* out_requires_mipmaps */
+                                      nullptr); /* out_requires_mipmaps */
 
     /* Try to create a gfx_image instance of the image */
     if ( (workload_ptr->image = gfx_image_create_from_file(name,
                                                            image_file_name,
-                                                           true)) == NULL) /* use_alternative_filename_getter */
+                                                           true)) == nullptr) /* use_alternative_filename_getter */
     {
         if ( (workload_ptr->image = gfx_image_create_from_file(name,
                                                                image_file_name_with_path,
-                                                               true)) == NULL) /* use_alternative_filename_getter */
+                                                               true)) == nullptr) /* use_alternative_filename_getter */
         {
             /* Extract path from the COLLADA scene file and use it for the image file */
-            const char* path_terminator = NULL;
+            const char* path_terminator = nullptr;
 
             collada_data_get_property(workload_ptr->data,
                                       COLLADA_DATA_PROPERTY_FILE_NAME,
@@ -430,7 +430,7 @@ volatile void _collada_scene_generator_process_workload(system_thread_pool_callb
             collada_file_name_with_path_raw = system_hashed_ansi_string_get_buffer(collada_file_name_with_path);
             path_terminator                 = strrchr(collada_file_name_with_path_raw, '/');
 
-            if (path_terminator != NULL)
+            if (path_terminator != nullptr)
             {
                 system_hashed_ansi_string new_path                = system_hashed_ansi_string_create_substring             (collada_file_name_with_path_raw,
                                                                                                                             0, /* offset */
@@ -441,9 +441,9 @@ volatile void _collada_scene_generator_process_workload(system_thread_pool_callb
                 workload_ptr->image = gfx_image_create_from_file(name,
                                                                  new_path_with_file_name,
                                                                  true); /* use_alternative_filename_getter */
-            } /* if (path_terminator != NULL) */
-        } /* if (GFX image could not have been loaded from working directory) */
-    } /* if (GFX image could not have been loaded from original location) */
+            }
+        }
+    }
 
     /* Check if we should signal the event */
     if (system_atomics_increment(workload_ptr->n_workloads_processed_ptr) == workload_ptr->n_workloads_to_process)
@@ -476,30 +476,30 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                       n_image < n_images;
                     ++n_image)
     {
-        collada_data_image        image                     = NULL;
-        system_hashed_ansi_string image_file_name           = NULL;
-        system_hashed_ansi_string image_file_name_with_path = NULL;
+        collada_data_image        image                     = nullptr;
+        system_hashed_ansi_string image_file_name           = nullptr;
+        system_hashed_ansi_string image_file_name_with_path = nullptr;
 
         collada_data_get_image           (data,
                                           n_image,
                                          &image);
         collada_data_image_get_properties(image,
-                                          NULL  /* out_name */,
+                                          nullptr  /* out_name */,
                                          &image_file_name,
                                          &image_file_name_with_path,
-                                          NULL); /* out_requires_mipmaps */
+                                          nullptr); /* out_requires_mipmaps */
 
         /* Is this filename already cached? */
         if (!system_hash64map_get(workloads_map,
                                   system_hashed_ansi_string_get_hash(image_file_name),
-                                  NULL) )
+                                  nullptr) )
         {
             _texture_loader_workload* new_workload = new (std::nothrow) _texture_loader_workload;
 
-            ASSERT_ALWAYS_SYNC(new_workload != NULL,
+            ASSERT_ALWAYS_SYNC(new_workload != nullptr,
                                "Out of memory");
 
-            if (new_workload != NULL)
+            if (new_workload != nullptr)
             {
                 new_workload->data                      = data;
                 new_workload->file_name                 = image_file_name;
@@ -511,15 +511,15 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                 if (!system_hash64map_insert(workloads_map,
                                              system_hashed_ansi_string_get_hash(image_file_name),
                                              new_workload,
-                                             NULL,   /* on_remove_callback */
-                                             NULL) ) /* on_remove_callback_user_arg */
+                                             nullptr,   /* on_remove_callback */
+                                             nullptr) ) /* on_remove_callback_user_arg */
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "Could not insert new owrkload");
                 }
-            } /* if (new_workload != NULL) */
-        } /* if (workload not defined) */
-    } /* for (all COLLADA images) */
+            }
+        }
+    }
 
     /* Process all workloads */
     unsigned int n_workloads = 0;
@@ -534,12 +534,12 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                           n_workload < n_workloads;
                         ++n_workload)
         {
-            _texture_loader_workload* current_workload = NULL;
+            _texture_loader_workload* current_workload = nullptr;
 
             if (system_hash64map_get_element_at(workloads_map,
                                                 n_workload,
                                                &current_workload,
-                                                NULL /* pOutHash */) )
+                                                nullptr /* pOutHash */) )
             {
                 /* Before we set off, update the descriptor so that it tells how many workloads
                  * we will be launching */
@@ -556,27 +556,27 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve workload descriptor");
             }
-        } /* for (all workloads) */
+        }
 
         /* Wait for the processing to finish */
         system_event_wait_single(workloads_processed_event);
-    } /* if (n_workloads > 0) */
+    }
 
     /* Release stuff before we continue */
     system_event_release(workloads_processed_event);
-    workloads_processed_event = NULL;
+    workloads_processed_event = nullptr;
 
     /* Create textures off the images we've loaded */
     for (unsigned int n_image = 0;
                       n_image < n_images;
                     ++n_image)
     {
-        system_hashed_ansi_string image_file_name           = NULL;
-        system_hashed_ansi_string image_file_name_with_path = NULL;
-        _texture_loader_workload* image_workload_ptr        = NULL;
-        system_hashed_ansi_string name                      = NULL;
+        system_hashed_ansi_string image_file_name           = nullptr;
+        system_hashed_ansi_string image_file_name_with_path = nullptr;
+        _texture_loader_workload* image_workload_ptr        = nullptr;
+        system_hashed_ansi_string name                      = nullptr;
         bool                      requires_mipmaps          = false;
-        collada_data_image        result_image              = NULL;
+        collada_data_image        result_image              = nullptr;
 
         /* Retrieve workload corresponding to the image we're processing */
         collada_data_get_image           (data,
@@ -592,20 +592,20 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                              system_hashed_ansi_string_get_hash(image_file_name),
                              &image_workload_ptr);
 
-        if (image_workload_ptr->image == NULL)
+        if (image_workload_ptr->image == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Could not load image [%s] from file [%s]",
                                system_hashed_ansi_string_get_buffer(name),
                                system_hashed_ansi_string_get_buffer(image_file_name) );
-        } /* if (image_workload_ptr->image == NULL) */
+        }
         else
         {
             bool        has_created_texture = false;
-            ral_texture result_ral_texture  = NULL;
+            ral_texture result_ral_texture  = nullptr;
 
             /* Has an ogl_texture object already been spawned for this image? */
-            if (image_workload_ptr->texture == NULL)
+            if (image_workload_ptr->texture == nullptr)
             {
                 /* Try to spawn ral_texture object */
                 ral_context_create_textures_from_gfx_images(context,
@@ -613,13 +613,13 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                                                            &image_workload_ptr->image,
                                                            &result_ral_texture);
 
-                if (result_ral_texture == NULL)
+                if (result_ral_texture == nullptr)
                 {
                     ASSERT_ALWAYS_SYNC(false,
                                        "Could not create ogl_texture [%s] from file [%s]",
                                        system_hashed_ansi_string_get_buffer(name),
                                        system_hashed_ansi_string_get_buffer(image_file_name) );
-                } /* if (result_ogl_texture == NULL) */
+                }
                 else
                 {
                     /* Cache the ogl_texture instance */
@@ -634,17 +634,17 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
 
             /* Spawn scene_texture instance */
             scene_texture result_texture = scene_texture_create(name,
-                                                                NULL, /* scene_name */
+                                                                nullptr, /* scene_name */
                                                                 image_file_name_with_path,
                                                                 context);
 
-            if (result_texture == NULL)
+            if (result_texture == nullptr)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Could not create scene_texture [%s] from file [%s]",
                                    system_hashed_ansi_string_get_buffer(name),
                                    system_hashed_ansi_string_get_buffer(image_file_name_with_path) );
-            } /* if (result_texture == NULL) */
+            }
             else
             {
                 /* If mip-maps are required, generate them now */
@@ -676,11 +676,11 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                 scene_texture_release(result_texture);
             }
         }
-    } /* for (all images) */
+    }
 
     /* Good to release all workload descriptors at this point */
     system_hash64             current_workload_hash = 0;
-    _texture_loader_workload* current_workload_ptr  = NULL;
+    _texture_loader_workload* current_workload_ptr  = nullptr;
 
     while (system_hash64map_get_element_at(workloads_map,
                                            0,
@@ -688,17 +688,17 @@ PRIVATE void _collada_scene_generator_create_textures(collada_data       data,
                                           &current_workload_hash) )
     {
         gfx_image_release(current_workload_ptr->image);
-        current_workload_ptr->image = NULL;
+        current_workload_ptr->image = nullptr;
 
         delete current_workload_ptr;
-        current_workload_ptr = NULL;
+        current_workload_ptr = nullptr;
 
         system_hash64map_remove(workloads_map,
                                 current_workload_hash);
-    } /* while (images are cached in hash map) */
+    }
 
     system_hash64map_release(workloads_map);
-    workloads_map = NULL;
+    workloads_map = nullptr;
 }
 
 /** TODO */
@@ -710,7 +710,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
                                                                 system_hash64map              scene_to_dag_node_map,
                                                                 ral_context                   context)
 {
-    scene_graph_node        current_node = NULL;
+    scene_graph_node        current_node = nullptr;
     _collada_data_node_type node_type    = COLLADA_DATA_NODE_TYPE_UNDEFINED;
     unsigned int            n_node_items = 0;
 
@@ -722,7 +722,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
                                               &n_node_items);
 
     /* Create a corresponding scene graph node */
-    scene_graph_node new_scene_graph_node = NULL;
+    scene_graph_node new_scene_graph_node = nullptr;
 
     switch (node_type)
     {
@@ -731,7 +731,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
             /* This corresponds to a general node in scene graph speak */
             new_scene_graph_node = scene_graph_create_general_node(graph);
 
-            ASSERT_DEBUG_SYNC(new_scene_graph_node != NULL,
+            ASSERT_DEBUG_SYNC(new_scene_graph_node != nullptr,
                               "Could not create a general scene graph node");
 
             scene_graph_add_node(graph,
@@ -747,7 +747,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
 
             goto end;
         }
-    } /* switch (node_type) */
+    }
 
     /* Iterate through COLLADA data node's node items. */
     current_node = new_scene_graph_node;
@@ -756,9 +756,9 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
                       n_node_item < n_node_items;
                     ++n_node_item)
     {
-        collada_data_scene_graph_node_item node_item      = NULL;
-        void*                              node_item_data = NULL;
-        system_hashed_ansi_string          node_item_sid  = NULL;
+        collada_data_scene_graph_node_item node_item      = nullptr;
+        void*                              node_item_data = nullptr;
+        system_hashed_ansi_string          node_item_sid  = nullptr;
         _collada_data_node_item_type       node_item_type = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
 
         collada_data_scene_graph_node_get_node_item(node,
@@ -786,7 +786,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
                                                                                          node_item_sid);
 
                 break;
-            } /* case COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION: */
+            }
 
             case COLLADA_DATA_NODE_ITEM_TYPE_CAMERA_INSTANCE:
             {
@@ -809,7 +809,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
                                                                              context);
 
                 break;
-            } /* case COLLADA_DATA_NODE_ITEM_TYPE_GEOMETRY_INSTANCE: */
+            }
 
             case COLLADA_DATA_NODE_ITEM_TYPE_LIGHT_INSTANCE:
             {
@@ -833,15 +833,15 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(collada_data    
                                                                    context);
 
                 break;
-            } /* case COLLADA_DATA_NODE_ITEM_TYPE_NODE: */
+            }
 
             default:
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Unsupported COLLADA node item type encountered");
             }
-        } /* switch (node_item_type) */
-    } /* for (all sub-items) */
+        }
+    }
 
 end:
     ;
@@ -854,9 +854,9 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(collada_
                                                                         scene_graph_node parent_node,
                                                                         void*            node_item_data)
 {
-    collada_data_camera       collada_camera = NULL;
-    system_hashed_ansi_string camera_name    = NULL;
-    system_hashed_ansi_string instance_name  = NULL;
+    collada_data_camera       collada_camera = nullptr;
+    system_hashed_ansi_string camera_name    = nullptr;
+    system_hashed_ansi_string instance_name  = nullptr;
 
     collada_data_scene_graph_node_camera_instance_get_property( (collada_data_scene_graph_node_camera_instance) node_item_data,
                                                                 COLLADA_DATA_SCENE_GRAPH_NODE_CAMERA_INSTANCE_PROPERTY_CAMERA,
@@ -865,22 +865,22 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(collada_
                                                                 COLLADA_DATA_SCENE_GRAPH_NODE_CAMERA_INSTANCE_PROPERTY_NAME,
                                                                &instance_name);
 
-    ASSERT_DEBUG_SYNC(collada_camera != NULL,
-                      "Camera is NULL");
-    ASSERT_DEBUG_SYNC(instance_name  != NULL,
-                      "Camera instance name is NULL");
+    ASSERT_DEBUG_SYNC(collada_camera != nullptr,
+                      "Camera is nullptr");
+    ASSERT_DEBUG_SYNC(instance_name  != nullptr,
+                      "Camera instance name is nullptr");
 
     /* TODO: For now we assume the properties are static. */
     scene_camera new_camera_instance = scene_camera_create(instance_name,
-                                                           NULL /* scene_name */);
+                                                           nullptr /* scene_name */);
 
     /* Set camera instance properties */
     _scene_camera_type        camera_type  = SCENE_CAMERA_TYPE_PERSPECTIVE;
-    system_hashed_ansi_string name         = NULL;
+    system_hashed_ansi_string name         = nullptr;
     float                     xfov         = 0.0f;
-    curve_container           yfov_curve   = NULL;
+    curve_container           yfov_curve   = nullptr;
     float                     yfov_value   = 0.0f;
-    system_variant            yfov_variant = NULL;
+    system_variant            yfov_variant = nullptr;
     float                     zfar         = 0.0f;
     float                     znear        = 0.0f;
 
@@ -943,10 +943,10 @@ PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(collad
                                                                           void*            node_item_data,
                                                                           ral_context      context)
 {
-    collada_data_geometry     geometry      = NULL;
-    system_hashed_ansi_string instance_name = NULL;
-    mesh                      mesh          = NULL;
-    system_hashed_ansi_string mesh_name     = NULL;
+    collada_data_geometry     geometry      = nullptr;
+    system_hashed_ansi_string instance_name = nullptr;
+    mesh                      mesh          = nullptr;
+    system_hashed_ansi_string mesh_name     = nullptr;
 
     collada_data_scene_graph_node_geometry_instance_get_property( (collada_data_scene_graph_node_geometry_instance) node_item_data,
                                                                   COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_GEOMETRY,
@@ -962,8 +962,8 @@ PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(collad
     mesh = collada_data_get_emerald_mesh_by_name(data,
                                                  context,
                                                  mesh_name);
-    ASSERT_DEBUG_SYNC(mesh != NULL,
-                      "Mesh is NULL");
+    ASSERT_DEBUG_SYNC(mesh != nullptr,
+                      "Mesh is nullptr");
 
     bool result = scene_add_mesh_instance(scene,
                                           mesh,
@@ -977,10 +977,10 @@ PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(collad
         scene_mesh mesh_instance = scene_get_mesh_instance_by_name(scene,
                                                                    instance_name);
 
-        ASSERT_ALWAYS_SYNC(mesh_instance != NULL,
+        ASSERT_ALWAYS_SYNC(mesh_instance != nullptr,
                            "Could not retrieve mesh instance");
 
-        if (mesh_instance != NULL)
+        if (mesh_instance != nullptr)
         {
             scene_graph_attach_object_to_node(graph,
                                               parent_node,
@@ -997,19 +997,19 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(collada_d
                                                                        scene_graph_node parent_node,
                                                                        void*            node_item_data)
 {
-    collada_data_light        collada_light                     = NULL;
-    system_hashed_ansi_string instance_name                     = NULL;
-    curve_container           light_color_curves[3]             = {NULL};
-    const float*              light_color_values                = NULL;
+    collada_data_light        collada_light                     = nullptr;
+    system_hashed_ansi_string instance_name                     = nullptr;
+    curve_container           light_color_curves[3]             = {nullptr};
+    const float*              light_color_values                = nullptr;
     float                     light_constant_attenuation        = 1.0f;
-    curve_container           light_constant_attenuation_curve  = NULL;
+    curve_container           light_constant_attenuation_curve  = nullptr;
     float                     light_linear_attenuation          = 0.0f;
-    curve_container           light_linear_attenuation_curve    = NULL;
+    curve_container           light_linear_attenuation_curve    = nullptr;
     float                     light_quadratic_attenuation       = 0.0f;
-    curve_container           light_quadratic_attenuation_curve = NULL;
-    system_hashed_ansi_string light_name                        = NULL;
+    curve_container           light_quadratic_attenuation_curve = nullptr;
+    system_hashed_ansi_string light_name                        = nullptr;
     collada_data_light_type   light_type                        = COLLADA_DATA_LIGHT_TYPE_UNKNOWN;
-    scene_light               new_light                         = NULL;
+    scene_light               new_light                         = nullptr;
     system_variant            temp_variant                      = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     collada_data_scene_graph_node_light_instance_get_property( (collada_data_scene_graph_node_light_instance) node_item_data,
@@ -1019,10 +1019,10 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(collada_d
                                                                COLLADA_DATA_SCENE_GRAPH_NODE_LIGHT_INSTANCE_PROPERTY_NAME,
                                                               &instance_name);
 
-    ASSERT_DEBUG_SYNC(collada_light != NULL,
-                      "Light is NULL");
-    ASSERT_DEBUG_SYNC(instance_name != NULL,
-                      "Light instance name is NULL");
+    ASSERT_DEBUG_SYNC(collada_light != nullptr,
+                      "Light is nullptr");
+    ASSERT_DEBUG_SYNC(instance_name != nullptr,
+                      "Light instance name is nullptr");
 
     /* Convert collada_data_light to scene_light */
     collada_data_light_get_property(collada_light,
@@ -1046,7 +1046,7 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(collada_d
         case COLLADA_DATA_LIGHT_TYPE_DIRECTIONAL:
         {
             new_light = scene_light_create_directional(instance_name,
-                                                       NULL); /* scene_name */
+                                                       nullptr); /* scene_name */
 
             scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_COLOR,
@@ -1069,7 +1069,7 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(collada_d
         case COLLADA_DATA_LIGHT_TYPE_POINT:
         {
             new_light = scene_light_create_point(instance_name,
-                                                 NULL); /* scene_name */
+                                                 nullptr); /* scene_name */
 
             scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_COLOR,
@@ -1118,9 +1118,9 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(collada_d
             ASSERT_ALWAYS_SYNC(false,
                                "Unsupported light type");
         }
-    } /* switch (light_type) */
+    }
 
-    if (new_light != NULL)
+    if (new_light != nullptr)
     {
         bool result = scene_add_light(scene,
                                       new_light);
@@ -1146,7 +1146,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                                                                                    void*                     node_item_data,
                                                                                    system_hashed_ansi_string node_item_sid)
 {
-    scene_graph_node                  result              = NULL;
+    scene_graph_node                  result              = nullptr;
     _collada_data_transformation_type transformation_type = COLLADA_DATA_TRANSFORMATION_TYPE_UNDEFINED;
 
     collada_data_transformation_get_property( (collada_data_transformation) node_item_data,
@@ -1159,7 +1159,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
         {
             system_matrix4x4 transformation_matrix = system_matrix4x4_create();
             {
-                collada_value transformation_matrix_collada_value[16] = {NULL};
+                collada_value transformation_matrix_collada_value[16] = {nullptr};
                 float         transformation_matrix_data[16]          = {0};
 
                 /* TODO: If necessary, implement support for animated matrix components */
@@ -1182,7 +1182,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                                                                                  transformation_matrix,
                                                                                  SCENE_GRAPH_NODE_TAG_UNDEFINED);
 
-                ASSERT_DEBUG_SYNC(result != NULL,
+                ASSERT_DEBUG_SYNC(result != nullptr,
                                   "Could not create a static matrix 4x4 transformation node");
 
                 scene_graph_add_node(graph,
@@ -1197,9 +1197,9 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
         case COLLADA_DATA_TRANSFORMATION_TYPE_ROTATE:
         {
             float                rotation_angle                 = 0.0f;
-            collada_value        rotation_angle_collada_value   = NULL;
+            collada_value        rotation_angle_collada_value   = nullptr;
             float                rotation_axis[3]               = {0};
-            collada_value        rotation_axis_collada_value[3] = {NULL};
+            collada_value        rotation_axis_collada_value[3] = {nullptr};
             scene_graph_node_tag result_node_tag                = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
             /* Convert SID to a node tag.
@@ -1245,25 +1245,25 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                     break;
                 }
-            } /* for (all components) */
+            }
 
             if (is_dynamic)
             {
-                curve_container rotation_vector_curves[4] = {NULL};
+                curve_container rotation_vector_curves[4] = {nullptr};
 
                 for (uint32_t n_component = 0;
                               n_component < sizeof(collada_values) / sizeof(collada_values[0]);
                             ++n_component)
                 {
                     rotation_vector_curves[n_component] = _collada_scene_generator_create_curve_container_from_collada_value(collada_values[n_component]);
-                } /* for (all components) */
+                }
 
                 result = scene_graph_create_rotation_dynamic_node(graph,
                                                                   rotation_vector_curves,
                                                                   false, /* COLLADA uses degrees for angle representation */
                                                                   result_node_tag);
 
-                ASSERT_DEBUG_SYNC(result != NULL,
+                ASSERT_DEBUG_SYNC(result != nullptr,
                                   "Could not create a scene graph rotation dynamic node");
 
                 scene_graph_add_node(graph,
@@ -1277,7 +1277,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                             ++n_component)
                 {
                     curve_container_release(rotation_vector_curves[n_component]);
-                } /* for (all components) */
+                }
             }
             else
             {
@@ -1296,13 +1296,15 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                                           &rotation_angle);
 
                 system_matrix4x4_set_to_identity(rotation_matrix);
-                system_matrix4x4_rotate         (rotation_matrix, DEG_TO_RAD(rotation_angle), rotation_axis);
+                system_matrix4x4_rotate         (rotation_matrix,
+                                                 DEG_TO_RAD(rotation_angle),
+                                                 rotation_axis);
 
                 result = scene_graph_create_static_matrix4x4_transformation_node(graph,
                                                                                  rotation_matrix,
                                                                                  result_node_tag);
 
-                ASSERT_DEBUG_SYNC(result != NULL,
+                ASSERT_DEBUG_SYNC(result != nullptr,
                                   "Could not create a scene graph 4x4 matrix transformation node");
 
                 scene_graph_add_node(graph,
@@ -1319,7 +1321,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
         {
             scene_graph_node_tag result_node_tag               = SCENE_GRAPH_NODE_TAG_UNDEFINED;
             system_matrix4x4     scale_matrix                  = system_matrix4x4_create();
-            collada_value        scale_vector_collada_value[3] = {NULL};
+            collada_value        scale_vector_collada_value[3] = {nullptr};
             float                scale_vector[3]               = {0};
 
             /* Convert SID to a node tag */
@@ -1345,7 +1347,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                     collada_value_get_property(scale_vector_collada_value[n_component],
                                                COLLADA_VALUE_PROPERTY_FLOAT_VALUE,
                                                scale_vector + n_component);
-                } /* for (all components) */
+                }
 
                 system_matrix4x4_set_to_identity(scale_matrix);
                 system_matrix4x4_scale          (scale_matrix,
@@ -1355,7 +1357,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                                                                                  scale_matrix,
                                                                                  result_node_tag);
 
-                ASSERT_DEBUG_SYNC(result != NULL,
+                ASSERT_DEBUG_SYNC(result != nullptr,
                                   "Could not create a scene graph 4x4 static matrix transformation node");
 
                 scene_graph_add_node(graph,
@@ -1371,7 +1373,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
         {
             scene_graph_node_tag result_node_tag                     = SCENE_GRAPH_NODE_TAG_UNDEFINED;
             system_matrix4x4     translation_matrix                  = system_matrix4x4_create();
-            collada_value        translation_vector_collada_value[3] = {NULL};
+            collada_value        translation_vector_collada_value[3] = {nullptr};
 
             /* Convert SID to a node tag.
              *
@@ -1409,26 +1411,26 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                         break;
                     }
-                } /* for (all components) */
+                }
 
                 if (is_dynamic)
                 {
                     static const bool negate_vector_curves     [3] = {false, false, false};
-                    curve_container   translation_vector_curves[3] = {NULL};
+                    curve_container   translation_vector_curves[3] = {nullptr};
 
                     for (uint32_t n_component = 0;
                                   n_component < 3;
                                 ++n_component)
                     {
                         translation_vector_curves[n_component] = _collada_scene_generator_create_curve_container_from_collada_value(translation_vector_collada_value[n_component]);
-                    } /* for (all components) */
+                    }
 
                     result = scene_graph_create_translation_dynamic_node(graph,
                                                                          translation_vector_curves,
                                                                          negate_vector_curves,
                                                                          result_node_tag);
 
-                    ASSERT_DEBUG_SYNC(result != NULL,
+                    ASSERT_DEBUG_SYNC(result != nullptr,
                                       "Could not create a scene graph translation dynamic node");
 
                     scene_graph_add_node(graph,
@@ -1442,7 +1444,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                                 ++n_component)
                     {
                         curve_container_release(translation_vector_curves[n_component]);
-                    } /* for (all components) */
+                    }
                 }
                 else
                 {
@@ -1465,7 +1467,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                                                                                      translation_matrix,
                                                                                      result_node_tag);
 
-                    ASSERT_DEBUG_SYNC(result != NULL,
+                    ASSERT_DEBUG_SYNC(result != nullptr,
                                       "Could not create a scene graph static matrix4x4 transformation node");
 
                     scene_graph_add_node(graph,
@@ -1482,7 +1484,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
         {
             ASSERT_ALWAYS_SYNC(false, "Unsupported COLLADA transformation type");
         }
-    } /* switch (transformation_type) */
+    }
 
     return result;
 }
@@ -1493,16 +1495,16 @@ PUBLIC scene collada_scene_generator_create(collada_data data,
                                             unsigned int n_scene)
 {
     float                         animation_time    = 0.0f;
-    collada_data_scene_graph_node collada_root_node = NULL;
-    collada_data_scene            collada_scene     = NULL;
-    scene                         result            = NULL;
-    system_hashed_ansi_string     scene_name        = NULL;
+    collada_data_scene_graph_node collada_root_node = nullptr;
+    collada_data_scene            collada_scene     = nullptr;
+    scene                         result            = nullptr;
+    system_hashed_ansi_string     scene_name        = nullptr;
 
     collada_data_get_scene(data,
                            n_scene,
                           &collada_scene);
 
-    if (collada_scene == NULL)
+    if (collada_scene == nullptr)
     {
         LOG_FATAL("No scene found at index [%u]",
                   n_scene);
@@ -1522,7 +1524,7 @@ PUBLIC scene collada_scene_generator_create(collada_data data,
     result = scene_create(context,
                           scene_name);
 
-    if (result == NULL)
+    if (result == nullptr)
     {
         LOG_FATAL("Could not create a scene instance");
 

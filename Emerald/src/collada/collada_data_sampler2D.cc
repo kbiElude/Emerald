@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -26,7 +26,7 @@ _collada_data_sampler2D::_collada_data_sampler2D()
     id         = system_hashed_ansi_string_get_default_empty_string();
     mag_filter = COLLADA_DATA_SAMPLER_FILTER_UNKNOWN;
     min_filter = COLLADA_DATA_SAMPLER_FILTER_UNKNOWN;
-    surface    = NULL;
+    surface    = nullptr;
 }
 
 /** TODO */
@@ -43,7 +43,8 @@ PUBLIC _collada_data_sampler_filter _collada_data_get_sampler_filter_from_filter
     if (strcmp(node_text, "NEAREST_MIPMAP_LINEAR")  == 0) result = COLLADA_DATA_SAMPLER_FILTER_NEAREST_MIPMAP_LINEAR;  else
     if (strcmp(node_text, "LINEAR_MIPMAP_LINEAR")   == 0) result = COLLADA_DATA_SAMPLER_FILTER_LINEAR_MIPMAP_LINEAR;   else
     {
-        ASSERT_DEBUG_SYNC(false, "Unrecognized <fx_sampler_filter_common> node value");
+        ASSERT_DEBUG_SYNC(false,
+                          "Unrecognized <fx_sampler_filter_common> node value");
     }
 
     return result;
@@ -58,20 +59,26 @@ PUBLIC collada_data_sampler2D collada_data_sampler2D_create(system_hashed_ansi_s
     tinyxml2::XMLElement* minfilter_element_ptr = element_ptr->FirstChildElement("minfilter");
     tinyxml2::XMLElement* source_element_ptr    = element_ptr->FirstChildElement("source");
 
-    ASSERT_DEBUG_SYNC(source_element_ptr != NULL, "Source is NULL");
+    ASSERT_DEBUG_SYNC(source_element_ptr != nullptr,
+                      "Source is nullptr");
 
     /* Spawn the descriptor */
     _collada_data_sampler2D* new_sampler = new (std::nothrow) _collada_data_sampler2D;
 
-    ASSERT_ALWAYS_SYNC(new_sampler != NULL, "Out of memory");
-    if (new_sampler != NULL)
+    ASSERT_ALWAYS_SYNC(new_sampler != nullptr,
+                       "Out of memory");
+
+    if (new_sampler != nullptr)
     {
         /* Identify the surface the sampler is to operate on */
         system_hashed_ansi_string surface_name = system_hashed_ansi_string_create(source_element_ptr->GetText() );
-        collada_data_surface      surface      = NULL;
+        collada_data_surface      surface      = nullptr;
 
-        system_hash64map_get(surfaces_by_id_map, system_hashed_ansi_string_get_hash(surface_name), &surface);
-        ASSERT_DEBUG_SYNC(surface != NULL,
+        system_hash64map_get(surfaces_by_id_map,
+                             system_hashed_ansi_string_get_hash(surface_name),
+                            &surface);
+
+        ASSERT_DEBUG_SYNC(surface != nullptr,
                           "Could not find a surface by the name of [%s]",
                           system_hashed_ansi_string_get_buffer(surface_name) );
 
@@ -82,7 +89,8 @@ PUBLIC collada_data_sampler2D collada_data_sampler2D_create(system_hashed_ansi_s
         new_sampler->surface    = surface;
 
         /* If this sampler uses mipmap filtering, flag the requirement in the texture descriptor */
-        if (new_sampler->min_filter != GL_NEAREST && new_sampler->min_filter != GL_LINEAR)
+        if (new_sampler->min_filter != GL_NEAREST &&
+            new_sampler->min_filter != GL_LINEAR)
         {
             bool new_value = true;
 
@@ -90,39 +98,39 @@ PUBLIC collada_data_sampler2D collada_data_sampler2D_create(system_hashed_ansi_s
                                               COLLADA_DATA_SURFACE_PROPERTY_TEXTURE_REQUIRES_MIPMAPS,
                                               &new_value);
         }
-    } /* if (new_sampler != NULL) */
+    }
 
-    return (collada_data_sampler2D) new_sampler;
+    return reinterpret_cast<collada_data_sampler2D>(new_sampler);
 }
 
 /* Please see header for spec */
-PUBLIC void collada_data_sampler2D_get_properties(const collada_data_sampler2D        sampler,
-                                                       collada_data_surface*         out_surface,
-                                                       _collada_data_sampler_filter* out_mag_filter,
-                                                       _collada_data_sampler_filter* out_min_filter)
+PUBLIC void collada_data_sampler2D_get_properties(const collada_data_sampler2D  sampler,
+                                                  collada_data_surface*         out_surface_ptr,
+                                                  _collada_data_sampler_filter* out_mag_filter_ptr,
+                                                  _collada_data_sampler_filter* out_min_filter_ptr)
 {
     const _collada_data_sampler2D* sampler_ptr = (const _collada_data_sampler2D*) sampler;
 
-    if (out_surface != NULL)
+    if (out_surface_ptr != nullptr)
     {
-        *out_surface = sampler_ptr->surface;
+        *out_surface_ptr = sampler_ptr->surface;
     }
 
-    if (out_mag_filter != NULL)
+    if (out_mag_filter_ptr != nullptr)
     {
-        *out_mag_filter = sampler_ptr->mag_filter;
+        *out_mag_filter_ptr = sampler_ptr->mag_filter;
     }
 
-    if (out_min_filter != NULL)
+    if (out_min_filter_ptr != nullptr)
     {
-        *out_min_filter = sampler_ptr->min_filter;
+        *out_min_filter_ptr = sampler_ptr->min_filter;
     }
 }
 
 /* Please see header for spec */
 PUBLIC void collada_data_sampler2D_release(collada_data_sampler2D sampler)
 {
-    delete (_collada_data_sampler2D*) sampler;
+    delete reinterpret_cast<_collada_data_sampler2D*>(sampler);
 
-    sampler = NULL;
+    sampler = nullptr;
 }

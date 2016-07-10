@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -17,13 +17,10 @@ PUBLIC collada_data_sampler2D collada_data_sampler2D_create(system_hashed_ansi_s
                                                             system_hash64map          surfaces_by_id_map);
 
 /** TODO */
-PUBLIC void collada_data_sampler2D_get_properties(const collada_data_sampler2D        sampler,
-                                                       collada_data_surface*         out_surface,
-                                                       _collada_data_sampler_filter* out_mag_filter,
-                                                       _collada_data_sampler_filter* out_min_filter);
-
-/** TODO */
-PUBLIC _collada_data_sampler_filter collada_data_get_sampler_filter_from_filter_node(tinyxml2::XMLElement* element_ptr);
+PUBLIC void collada_data_sampler2D_get_properties(const collada_data_sampler2D  sampler,
+                                                  collada_data_surface*         out_surface_ptr,
+                                                  _collada_data_sampler_filter* out_mag_filter_ptr,
+                                                  _collada_data_sampler_filter* out_min_filter_ptr);
 
 /** TODO */
 PUBLIC void collada_data_sampler2D_release(collada_data_sampler2D sampler);

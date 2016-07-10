@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * The object creates a BASS stream which is responsible for decoding the audio stream.
  * It then can be assigned to a system_window instance. When paired with an audio_device
@@ -78,7 +78,7 @@ PUBLIC EMERALD_API bool audio_stream_get_fft_averages(audio_stream stream,
 /** TODO */
 PUBLIC EMERALD_API void audio_stream_get_property(audio_stream          stream,
                                                   audio_stream_property property,
-                                                  void*                 out_result);
+                                                  void*                 out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool audio_stream_pause(audio_stream stream);

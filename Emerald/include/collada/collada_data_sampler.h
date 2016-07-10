@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -22,8 +22,10 @@ typedef enum
 
 typedef enum
 {
-    COLLADA_DATA_SAMPLER_INPUT_PROPERTY_INTERPOLATION_DATA, /* not settable, vector of collada_data_sampler_input_interpolation as defined by <input>
-                                                             * with INTERPOLATION semantic */
+    /* not settable, vector of collada_data_sampler_input_interpolation as defined by <input>
+     * with INTERPOLATION semantic */
+    COLLADA_DATA_SAMPLER_INPUT_PROPERTY_INTERPOLATION_DATA,
+
     COLLADA_DATA_SAMPLER_INPUT_PROPERTY_SOURCE
 } collada_data_sampler_input_property;
 
@@ -40,7 +42,8 @@ typedef enum
 
 typedef enum
 {
-    COLLADA_DATA_SAMPLER_PROPERTY_ID, /* not settable, system_hashed_ansi_string */
+    /* not settable, system_hashed_ansi_string */
+    COLLADA_DATA_SAMPLER_PROPERTY_ID,
 } collada_data_sampler_property;
 
 
@@ -52,12 +55,12 @@ PUBLIC collada_data_sampler collada_data_sampler_create(tinyxml2::XMLElement* el
 PUBLIC bool collada_data_sampler_get_input_property(collada_data_sampler                sampler,
                                                     collada_data_sampler_input_semantic semantic,
                                                     collada_data_sampler_input_property property,
-                                                    void*                               out_result);
+                                                    void*                               out_result_ptr);
 
 /** TODO */
 PUBLIC void collada_data_sampler_get_property(collada_data_sampler          sampler,
                                               collada_data_sampler_property property,
-                                              void*                         out_result);
+                                              void*                         out_result_ptr);
 
 /** TODO */
 PUBLIC void collada_data_sampler_release(collada_data_sampler sampler_instance);

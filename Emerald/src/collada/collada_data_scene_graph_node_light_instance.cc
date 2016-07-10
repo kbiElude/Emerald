@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -25,7 +25,7 @@ typedef struct _collada_data_scene_graph_node_light_instance
 /** TODO */
 _collada_data_scene_graph_node_light_instance::_collada_data_scene_graph_node_light_instance()
 {
-    light = NULL;
+    light = nullptr;
     name  = system_hashed_ansi_string_get_default_empty_string();
 }
 
@@ -36,15 +36,15 @@ PUBLIC collada_data_scene_graph_node_light_instance collada_data_scene_graph_nod
 {
     const char*        light_name      = element_ptr->Attribute("url");
     system_hash64      light_name_hash = 0;
-    collada_data_light light           = NULL;
+    collada_data_light light           = nullptr;
 
     /* Allocate space for the descriptor */
     _collada_data_scene_graph_node_light_instance* new_light_instance_ptr = new (std::nothrow) _collada_data_scene_graph_node_light_instance;
 
-    ASSERT_DEBUG_SYNC(new_light_instance_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_light_instance_ptr != nullptr,
                       "Out of memory");
 
-    if (new_light_instance_ptr == NULL)
+    if (new_light_instance_ptr == nullptr)
     {
         goto end;
     }
@@ -52,10 +52,10 @@ PUBLIC collada_data_scene_graph_node_light_instance collada_data_scene_graph_nod
     /* Locate the light the instance is referring to */
     light_name = element_ptr->Attribute("url");
 
-    ASSERT_DEBUG_SYNC(light_name != NULL,
+    ASSERT_DEBUG_SYNC(light_name != nullptr,
                       "url attribute missing");
 
-    if (light_name == NULL)
+    if (light_name == nullptr)
     {
         goto end;
     }
@@ -76,36 +76,36 @@ PUBLIC collada_data_scene_graph_node_light_instance collada_data_scene_graph_nod
                          light_name_hash,
                         &light);
 
-    ASSERT_DEBUG_SYNC(light != NULL,
-                      "NULL pointer returned for a light URL");
+    ASSERT_DEBUG_SYNC(light != nullptr,
+                      "nullptr pointer returned for a light URL");
 
     /* Init the descriptor */
     new_light_instance_ptr->light = light;
     new_light_instance_ptr->name  = name;
 
 end:
-    return (collada_data_scene_graph_node_light_instance) new_light_instance_ptr;
+    return reinterpret_cast<collada_data_scene_graph_node_light_instance>(new_light_instance_ptr);
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_light_instance_get_property(collada_data_scene_graph_node_light_instance          light_instance,
                                                                                   collada_data_scene_graph_node_light_instance_property property,
-                                                                                  void*                                                 out_result)
+                                                                                  void*                                                 out_result_ptr)
 {
-    _collada_data_scene_graph_node_light_instance* instance_ptr = (_collada_data_scene_graph_node_light_instance*) light_instance;
+    _collada_data_scene_graph_node_light_instance* instance_ptr = reinterpret_cast<_collada_data_scene_graph_node_light_instance*>(light_instance);
 
     switch (property)
     {
         case COLLADA_DATA_SCENE_GRAPH_NODE_LIGHT_INSTANCE_PROPERTY_LIGHT:
         {
-            *(collada_data_light*) out_result = instance_ptr->light;
+            *reinterpret_cast<collada_data_light*>(out_result_ptr) = instance_ptr->light;
 
             break;
         }
 
         case COLLADA_DATA_SCENE_GRAPH_NODE_LIGHT_INSTANCE_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = instance_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = instance_ptr->name;
 
             break;
         }
@@ -121,7 +121,7 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_light_instance_get_propert
 /** Please see header for spec */
 PUBLIC void collada_data_scene_graph_node_light_instance_release(collada_data_scene_graph_node_light_instance light_instance)
 {
-    delete (_collada_data_scene_graph_node_light_instance*) light_instance;
+    delete reinterpret_cast<_collada_data_scene_graph_node_light_instance*>(light_instance);
 
-    light_instance = NULL;
+    light_instance = nullptr;
 }

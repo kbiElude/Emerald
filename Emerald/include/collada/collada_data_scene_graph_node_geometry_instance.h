@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -14,8 +14,11 @@
 
 typedef enum
 {
-    COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_GEOMETRY, /* not settable, collada_data_scene_graph_node_geometry_instance */
-    COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_NAME      /* not settable, system_hashed_ansi_string */
+    /* not settable, collada_data_scene_graph_node_geometry_instance */
+    COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_GEOMETRY,
+
+    /* not settable, system_hashed_ansi_string */
+    COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_NAME
 } collada_data_scene_graph_node_geometry_instance_property;
 
 /** TODO */
@@ -27,7 +30,7 @@ PUBLIC collada_data_scene_graph_node_geometry_instance collada_data_scene_graph_
 /** TODO */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_geometry_instance_get_property(collada_data_scene_graph_node_geometry_instance          geometry_instance,
                                                                                      collada_data_scene_graph_node_geometry_instance_property property,
-                                                                                     void*                                                    out_result);
+                                                                                     void*                                                    out_result_ptr);
 
 
 /** TODO */

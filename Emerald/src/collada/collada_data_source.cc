@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -39,8 +39,8 @@ typedef struct _collada_data_source
 /** TODO */
 _collada_data_source::_collada_data_source()
 {
-    data_float_array = NULL;
-    data_name_array  = NULL;
+    data_float_array = nullptr;
+    data_name_array  = nullptr;
     id               = system_hashed_ansi_string_get_default_empty_string();
 }
 
@@ -48,18 +48,18 @@ _collada_data_source::_collada_data_source()
 /** TODO */
 _collada_data_source::~_collada_data_source()
 {
-    if (data_float_array != NULL)
+    if (data_float_array != nullptr)
     {
         collada_data_float_array_release(data_float_array);
 
-        data_float_array = NULL;
+        data_float_array = nullptr;
     }
 
-    if (data_name_array != NULL)
+    if (data_name_array != nullptr)
     {
         collada_data_name_array_release(data_name_array);
 
-        data_name_array = NULL;
+        data_name_array = nullptr;
     }
 }
 
@@ -71,25 +71,27 @@ PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     
 {
     _collada_data_source* result_source_ptr = new (std::nothrow) _collada_data_source;
 
-    ASSERT_ALWAYS_SYNC(result_source_ptr != NULL, "Out of memory");
-    if (result_source_ptr != NULL)
+    ASSERT_ALWAYS_SYNC(result_source_ptr != nullptr,
+                       "Out of memory");
+
+    if (result_source_ptr != nullptr)
     {
         const char* source_element_id = element_ptr->Attribute("id");
 
-        if (source_element_id == NULL)
+        if (source_element_id == nullptr)
         {
             source_element_id = "[unknown]";
         }
 
         /* Is it a float array? */
         unsigned int          array_count             = 0;
-        tinyxml2::XMLElement* float_array_element_ptr = NULL;
-        tinyxml2::XMLElement* name_array_element_ptr  = NULL;
+        tinyxml2::XMLElement* float_array_element_ptr = nullptr;
+        tinyxml2::XMLElement* name_array_element_ptr  = nullptr;
 
         float_array_element_ptr = element_ptr->FirstChildElement("float_array");
         name_array_element_ptr  = element_ptr->FirstChildElement("Name_array");
 
-        if (float_array_element_ptr != NULL)
+        if (float_array_element_ptr != nullptr)
         {
             array_count = float_array_element_ptr->IntAttribute("count");
 
@@ -97,7 +99,7 @@ PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     
                               "count attribute of <float_array> is 0");
         }
         else
-        if (name_array_element_ptr != NULL)
+        if (name_array_element_ptr != nullptr)
         {
             /* Is it a name array? */
             array_count = name_array_element_ptr->IntAttribute("count");
@@ -118,10 +120,13 @@ PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     
         unsigned int          accessor_stride              = 0;
         tinyxml2::XMLElement* technique_common_element_ptr = element_ptr->FirstChildElement("technique_common");
 
-        if (technique_common_element_ptr == NULL)
+        if (technique_common_element_ptr == nullptr)
         {
-            LOG_FATAL        ("Source [%s] is not defined by a technique_common which is not supported", source_element_id);
-            ASSERT_DEBUG_SYNC(false, "technique_common sub-node missing");
+            LOG_FATAL("Source [%s] is not defined by a technique_common which is not supported",
+                      source_element_id);
+
+            ASSERT_DEBUG_SYNC(false,
+                              "technique_common sub-node missing");
 
             goto end;
         }
@@ -130,10 +135,12 @@ PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     
             /* There should be a 'accessor' sub-node here. */
             tinyxml2::XMLElement* accessor_element_ptr = technique_common_element_ptr->FirstChildElement("accessor");
 
-            if (accessor_element_ptr == NULL)
+            if (accessor_element_ptr == nullptr)
             {
-                LOG_FATAL        ("Accessor sub-node not defined for a <source>/<technique_common>/<accessor> path which is invalid.");
-                ASSERT_DEBUG_SYNC(false, "<accessor> sub-node missing");
+                LOG_FATAL("Accessor sub-node not defined for a <source>/<technique_common>/<accessor> path which is invalid.");
+
+                ASSERT_DEBUG_SYNC(false,
+                                  "<accessor> sub-node missing");
 
                 goto end;
             }
@@ -142,18 +149,22 @@ PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     
             accessor_stride = accessor_element_ptr->IntAttribute("stride");
 
             /* Sanity checks to guard us against use cases that we currently do not support. */
-            ASSERT_DEBUG_SYNC(accessor_count  != 0, "count attribute not defined for a <accessor> node");
-            ASSERT_DEBUG_SYNC(accessor_stride != 0, "stride attribute not defined for a <accessor> node");
+            ASSERT_DEBUG_SYNC(accessor_count != 0,
+                              "count attribute not defined for a <accessor> node");
+            ASSERT_DEBUG_SYNC(accessor_stride != 0,
+                              "stride attribute not defined for a <accessor> node");
 
-            ASSERT_DEBUG_SYNC((array_count     % accessor_stride) == 0,           "Unsupported stride configuration");
-            ASSERT_DEBUG_SYNC((accessor_stride * accessor_count)  == array_count, "Invalid count attribute value for a <float_array> node");
+            ASSERT_DEBUG_SYNC((array_count % accessor_stride) == 0,
+                              "Unsupported stride configuration");
+            ASSERT_DEBUG_SYNC((accessor_stride * accessor_count) == array_count,
+                              "Invalid count attribute value for a <float_array> node");
 
             /* Good to assume stride = n_components */
             accessor_n_components = accessor_stride;
         }
 
         /* Parse the array and fill the descriptor */
-        if (float_array_element_ptr != NULL)
+        if (float_array_element_ptr != nullptr)
         {
             result_source_ptr->data_float_array = collada_data_float_array_create(float_array_element_ptr,
                                                                                   accessor_n_components,
@@ -162,7 +173,7 @@ PUBLIC collada_data_source collada_data_source_create(tinyxml2::XMLElement*     
                                                                                   parent_geometry_name);
         }
         else
-        if (name_array_element_ptr != NULL)
+        if (name_array_element_ptr != nullptr)
         {
             result_source_ptr->data_name_array = collada_data_name_array_create(name_array_element_ptr);
         }
@@ -182,13 +193,13 @@ PUBLIC void collada_data_source_get_property(collada_data_source          source
                                              collada_data_source_property property,
                                              void*                        result_ptr)
 {
-    _collada_data_source* source_ptr = (_collada_data_source*) source;
+    _collada_data_source* source_ptr = reinterpret_cast<_collada_data_source*>(source);
 
     switch (property)
     {
         case COLLADA_DATA_SOURCE_PROPERTY_ID:
         {
-            *((system_hashed_ansi_string*) result_ptr) = source_ptr->id;
+            *reinterpret_cast<system_hashed_ansi_string*>(result_ptr) = source_ptr->id;
 
             break;
         }
@@ -198,19 +209,19 @@ PUBLIC void collada_data_source_get_property(collada_data_source          source
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized COLLADA source property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC void collada_data_source_get_source_float_data(collada_data_source       source,
                                                       collada_data_float_array* out_float_array_ptr)
 {
-    _collada_data_source* source_ptr = (_collada_data_source*) source;
+    _collada_data_source* source_ptr = reinterpret_cast<_collada_data_source*>(source);
 
-    if (out_float_array_ptr != NULL)
+    if (out_float_array_ptr != nullptr)
     {
-        ASSERT_DEBUG_SYNC(source_ptr->data_float_array != NULL,
-                          "Requested float array is NULL");
+        ASSERT_DEBUG_SYNC(source_ptr->data_float_array != nullptr,
+                          "Requested float array is nullptr");
 
         *out_float_array_ptr = source_ptr->data_float_array;
     }
@@ -220,12 +231,12 @@ PUBLIC void collada_data_source_get_source_float_data(collada_data_source       
 PUBLIC void collada_data_source_get_source_name_data(collada_data_source      source,
                                                      collada_data_name_array* out_name_array_ptr)
 {
-    _collada_data_source* source_ptr = (_collada_data_source*) source;
+    _collada_data_source* source_ptr = reinterpret_cast<_collada_data_source*>(source);
 
-    if (out_name_array_ptr != NULL)
+    if (out_name_array_ptr != nullptr)
     {
-        ASSERT_DEBUG_SYNC(source_ptr->data_name_array != NULL,
-                          "Requested name array is NULL");
+        ASSERT_DEBUG_SYNC(source_ptr->data_name_array != nullptr,
+                          "Requested name array is nullptr");
 
         *out_name_array_ptr = source_ptr->data_name_array;
     }
@@ -234,8 +245,8 @@ PUBLIC void collada_data_source_get_source_name_data(collada_data_source      so
 /** Please see header for a spec */
 PUBLIC void collada_data_source_release(collada_data_source source)
 {
-    _collada_data_source* source_ptr = (_collada_data_source*) source;
+    _collada_data_source* source_ptr = reinterpret_cast<_collada_data_source*>(source);
 
     delete source_ptr;
-    source_ptr = NULL;
+    source_ptr = nullptr;
 }

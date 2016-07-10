@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -15,7 +15,7 @@ typedef struct _collada_value
 
     _collada_value()
     {
-        animation   = NULL;
+        animation   = nullptr;
         float_value = 0.0f;
         type        = COLLADA_VALUE_TYPE_UNKNOWN;
     }
@@ -28,9 +28,9 @@ PUBLIC collada_value collada_value_create(collada_value_type type,
 {
     _collada_value* new_value_ptr = new (std::nothrow) _collada_value;
 
-    ASSERT_DEBUG_SYNC(new_value_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_value_ptr != nullptr,
                       "Out of memory");
-    if (new_value_ptr == NULL)
+    if (new_value_ptr == nullptr)
     {
         goto end;
     }
@@ -46,9 +46,9 @@ end:
 /** Please see header for spec */
 PUBLIC void collada_value_get_property(const collada_value    value,
                                        collada_value_property property,
-                                       void*                  out_result)
+                                       void*                  out_result_ptr)
 {
-    _collada_value* value_ptr = (_collada_value*) value;
+    _collada_value* value_ptr = reinterpret_cast<_collada_value*>(value);
 
     switch (property)
     {
@@ -57,7 +57,7 @@ PUBLIC void collada_value_get_property(const collada_value    value,
             ASSERT_DEBUG_SYNC(value_ptr->type == COLLADA_VALUE_TYPE_COLLADA_DATA_ANIMATION,
                               "Requested a COLLADA_DATA_ANIMATION instance from an incompatible collada_value");
 
-            *(collada_data_animation*) out_result = value_ptr->animation;
+            *reinterpret_cast<collada_data_animation*>(out_result_ptr) = value_ptr->animation;
             break;
         }
 
@@ -66,13 +66,13 @@ PUBLIC void collada_value_get_property(const collada_value    value,
             ASSERT_DEBUG_SYNC(value_ptr->type == COLLADA_VALUE_TYPE_FLOAT,
                               "Requested a FLOAT instance from an incompatible collada_value");
 
-            *(float*) out_result = value_ptr->float_value;
+            *reinterpret_cast<float*>(out_result_ptr) = value_ptr->float_value;
             break;
         }
 
         case COLLADA_VALUE_PROPERTY_TYPE:
         {
-            *(collada_value_type*) out_result = value_ptr->type;
+            *reinterpret_cast<collada_value_type*>(out_result_ptr) = value_ptr->type;
 
             break;
         }
@@ -82,13 +82,13 @@ PUBLIC void collada_value_get_property(const collada_value    value,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized collada_value_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void collada_value_release(collada_value value)
 {
-    delete (_collada_value*) value;
+    delete reinterpret_cast<_collada_value*>(value);
 }
 
 /** Please see header for spec */
@@ -96,13 +96,13 @@ PUBLIC void collada_value_set(collada_value      value,
                               collada_value_type type,
                               const void*        data_ptr)
 {
-    _collada_value* value_ptr = (_collada_value*) value;
+    _collada_value* value_ptr = reinterpret_cast<_collada_value*>(value);
 
     switch (type)
     {
         case COLLADA_VALUE_TYPE_COLLADA_DATA_ANIMATION:
         {
-            value_ptr->animation = *((collada_data_animation*) data_ptr);
+            value_ptr->animation = *reinterpret_cast<const collada_data_animation*>(data_ptr);
             value_ptr->type      = type;
 
             break;
@@ -110,7 +110,7 @@ PUBLIC void collada_value_set(collada_value      value,
 
         case COLLADA_VALUE_TYPE_FLOAT:
         {
-            value_ptr->float_value = *((float*) data_ptr);
+            value_ptr->float_value = *reinterpret_cast<const float*>(data_ptr);
             value_ptr->type        = type;
 
             break;
@@ -121,5 +121,5 @@ PUBLIC void collada_value_set(collada_value      value,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized COLLADA value type");
         }
-    } /* switch (type) */
+    }
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -23,8 +23,8 @@ typedef struct _audio_device
                            bool        in_is_default,
                            const char* in_name)
     {
-        ASSERT_DEBUG_SYNC(in_name != NULL,
-                          "Audio device name is NULL");
+        ASSERT_DEBUG_SYNC(in_name != nullptr,
+                          "Audio device name is nullptr");
 
         device_index = in_device_index;
         is_activated = false;
@@ -36,8 +36,8 @@ typedef struct _audio_device
 
 
 /** TODO */
-PRIVATE system_resizable_vector audio_devices             = NULL;
-PRIVATE audio_device            default_audio_device      = NULL;
+PRIVATE system_resizable_vector audio_devices             = nullptr;
+PRIVATE audio_device            default_audio_device      = nullptr;
 PRIVATE unsigned int            n_audio_devices_activated = 0;
 
 
@@ -48,17 +48,17 @@ PUBLIC bool audio_device_activate(audio_device  device,
     _audio_device* device_ptr = (_audio_device*) device;
     bool           result     = false;
 
-    ASSERT_DEBUG_SYNC(device_ptr != NULL,
-                      "Input audio_device instance is NULL");
-    ASSERT_DEBUG_SYNC(owner_window != NULL,
-                      "Owner window instance cannot be NULL");
+    ASSERT_DEBUG_SYNC(device_ptr != nullptr,
+                      "Input audio_device instance is nullptr");
+    ASSERT_DEBUG_SYNC(owner_window != nullptr,
+                      "Owner window instance cannot be nullptr");
     ASSERT_DEBUG_SYNC(!device_ptr->is_activated,
                       "Input audio_device instance is already activated.");
 
     if (!device_ptr->is_activated)
     {
         BASS_INFO            binding_info;
-        system_window_handle window_handle = (system_window_handle) NULL;
+        system_window_handle window_handle = (system_window_handle) nullptr;
 
         /* Retrieve the window system handle. We need it for latency calculations */
         system_window_get_property(owner_window,
@@ -75,9 +75,9 @@ PUBLIC bool audio_device_activate(audio_device  device,
 #ifdef _WIN32
                             window_handle,
 #else
-                            NULL,                /* win - ignored */
+                            nullptr,                /* win - ignored */
 #endif
-                            NULL) == TRUE);      /* dsguid - ignored */
+                            nullptr) == TRUE);      /* dsguid - ignored */
 
         ASSERT_DEBUG_SYNC(result,
                           "Failed to initialize an audio device");
@@ -104,9 +104,9 @@ PUBLIC bool audio_device_activate(audio_device  device,
                     ASSERT_ALWAYS_SYNC(false,
                                        "Only one audio device may be activated at the same time");
                 }
-            } /* if (result) */
-        } /* if (result) */
-    } /* if (!device_ptr->is_activated) */
+            }
+        }
+    }
 
     return result;
 }
@@ -117,8 +117,8 @@ PUBLIC EMERALD_API bool audio_device_bind_to_thread(audio_device device)
     _audio_device* device_ptr = (_audio_device*) device;
     bool           result     = false;
 
-    ASSERT_DEBUG_SYNC(device != NULL,
-                      "Input audio_device instance is NULL.");
+    ASSERT_DEBUG_SYNC(device != nullptr,
+                      "Input audio_device instance is nullptr.");
 
     if (BASS_SetDevice(device_ptr->device_index) == FALSE)
     {
@@ -136,21 +136,21 @@ PUBLIC EMERALD_API bool audio_device_bind_to_thread(audio_device device)
 /** Please see header for spec */
 PUBLIC void audio_device_deinit()
 {
-    _audio_device* current_audio_device_ptr = NULL;
+    _audio_device* current_audio_device_ptr = nullptr;
 
-    if (audio_devices != NULL)
+    if (audio_devices != nullptr)
     {
         while (system_resizable_vector_pop(audio_devices,
                                           &current_audio_device_ptr) )
         {
             delete current_audio_device_ptr;
 
-            current_audio_device_ptr = NULL;
+            current_audio_device_ptr = nullptr;
         }
 
         system_resizable_vector_release(audio_devices);
-        audio_devices = NULL;
-    } /* if (audio_devices != NULL) */
+        audio_devices = nullptr;
+    }
 }
 
 /** Please see header for spec */
@@ -162,36 +162,36 @@ PUBLIC EMERALD_API audio_device audio_device_get_default_device()
 /** Please see header for spec */
 PUBLIC EMERALD_API void audio_device_get_property(audio_device          device,
                                                   audio_device_property property,
-                                                  void*                 out_result)
+                                                  void*                 out_result_ptr)
 {
-    const _audio_device* device_ptr = (const _audio_device*) device;
+    const _audio_device* device_ptr = reinterpret_cast<const _audio_device*>(device);
 
     switch (property)
     {
         case AUDIO_DEVICE_PROPERTY_IS_ACTIVATED:
         {
-            *(bool*) out_result = device_ptr->is_activated;
+            *reinterpret_cast<bool*>(out_result_ptr) = device_ptr->is_activated;
 
             break;
         }
 
         case AUDIO_DEVICE_PROPERTY_IS_DEFAULT:
         {
-            *(bool*) out_result = device_ptr->is_default;
+            *reinterpret_cast<bool*>(out_result_ptr) = device_ptr->is_default;
 
             break;
         }
 
         case AUDIO_DEVICE_PROPERTY_LATENCY:
         {
-            *(system_time*) out_result = device_ptr->latency;
+            *reinterpret_cast<system_time*>(out_result_ptr) = device_ptr->latency;
 
             break;
         }
 
         case AUDIO_DEVICE_PROPERTY_NAME:
         {
-            *(const char**) out_result = device_ptr->name;
+            *reinterpret_cast<const char**>(out_result_ptr) = device_ptr->name;
 
             break;
         }
@@ -201,7 +201,7 @@ PUBLIC EMERALD_API void audio_device_get_property(audio_device          device,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized audio_device_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
@@ -215,12 +215,12 @@ PUBLIC void audio_device_init()
     unsigned int n_current_device = 1; /* different situation under Linux */
 #endif
 
-    ASSERT_DEBUG_SYNC(audio_devices == NULL,
-                      "Audio devices vector is not NULL");
+    ASSERT_DEBUG_SYNC(audio_devices == nullptr,
+                      "Audio devices vector is not nullptr");
 
     audio_devices = system_resizable_vector_create(16); /* capacity */
 
-    ASSERT_DEBUG_SYNC(audio_devices != NULL,
+    ASSERT_DEBUG_SYNC(audio_devices != nullptr,
                       "Could not create the audio devices vector");
 
     /* Verify that the right BASS version was loaded before proceeding  */
@@ -248,12 +248,12 @@ PUBLIC void audio_device_init()
                                                                          (current_device_info.flags & BASS_DEVICE_DEFAULT) != 0, /* is_device_enabled */
                                                                          current_device_info.name);
 
-        ASSERT_ALWAYS_SYNC(new_device_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(new_device_ptr != nullptr,
                            "Out of memory");
 
         if (new_device_ptr->is_default)
         {
-            ASSERT_DEBUG_SYNC(default_audio_device == NULL,
+            ASSERT_DEBUG_SYNC(default_audio_device == nullptr,
                               "More than one default audio devices were reported!");
 
             default_audio_device = (audio_device) new_device_ptr;
@@ -265,7 +265,7 @@ PUBLIC void audio_device_init()
 
         /* Move on */
         ++n_current_device;
-    } /* while (true) */
+    }
 
 end:
     ;

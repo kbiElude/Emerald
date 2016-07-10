@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -80,12 +80,12 @@ typedef struct _collada_data_effect
 } _collada_data_effect;
 
 /** Forward declarations */
-PRIVATE void _collada_data_effect_init_lambert     (_collada_data_effect*               effect_ptr,
-                                                    tinyxml2::XMLElement*               element_ptr,
-                                                    system_hash64map                    samplers_by_id_map);
-PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*               element_ptr,
-                                                    _collada_data_shading_factor_item*  result_ptr,
-                                                    system_hash64map                    samplers_by_id_map);
+PRIVATE void _collada_data_effect_init_lambert     (_collada_data_effect*              effect_ptr,
+                                                    tinyxml2::XMLElement*              element_ptr,
+                                                    system_hash64map                   samplers_by_id_map);
+PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*              element_ptr,
+                                                    _collada_data_shading_factor_item* result_ptr,
+                                                    system_hash64map                   samplers_by_id_map);
 
 /** TODO */
 _collada_data_effect::_collada_data_effect()
@@ -98,7 +98,7 @@ _collada_data_effect::_collada_data_effect()
 /** TODO */
 _collada_data_shading_factor_item::_collada_data_shading_factor_item()
 {
-    data = NULL;
+    data = nullptr;
     type = COLLADA_DATA_SHADING_FACTOR_NONE;
 }
 
@@ -109,7 +109,8 @@ _collada_data_shading_factor_item::~_collada_data_shading_factor_item()
     {
         case COLLADA_DATA_SHADING_FACTOR_NONE:
         {
-            ASSERT_DEBUG_SYNC(data == NULL, "Shading factor item type is 'none' but data is not NULL");
+            ASSERT_DEBUG_SYNC(data == nullptr,
+                              "Shading factor item type is 'none' but data is not nullptr");
 
             break;
         }
@@ -117,41 +118,42 @@ _collada_data_shading_factor_item::~_collada_data_shading_factor_item()
         case COLLADA_DATA_SHADING_FACTOR_FLOAT:
         {
             /* data is a single float */
-            delete (float*) data;
+            delete reinterpret_cast<float*>(data);
 
-            data = NULL;
+            data = nullptr;
             break;
         }
 
         case COLLADA_DATA_SHADING_FACTOR_TEXTURE:
         {
             /* data is a _collada_data_shading_factor_item_texture* instance */
-            delete (_collada_data_shading_factor_item_texture*) data;
+            delete reinterpret_cast<_collada_data_shading_factor_item_texture*>(data);
 
-            data = NULL;
+            data = nullptr;
             break;
         }
 
         case COLLADA_DATA_SHADING_FACTOR_VEC4:
         {
             /* data is a float[4] instance */
-            delete (float*) data;
+            delete reinterpret_cast<float*>(data);
 
-            data = NULL;
+            data = nullptr;
             break;
         }
 
         default:
         {
-            ASSERT_ALWAYS_SYNC(false, "Unrecognized COLLADA data shading factor item");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized COLLADA data shading factor item");
         }
-    } /* switch (type) */
+    }
 }
 
 /** TODO */
 _collada_data_shading_factor_item_texture::_collada_data_shading_factor_item_texture()
 {
-    image         = NULL;
+    image         = nullptr;
     mag_filter    = COLLADA_DATA_SAMPLER_FILTER_UNKNOWN;
     min_filter    = COLLADA_DATA_SAMPLER_FILTER_UNKNOWN;
     texcoord_name = system_hashed_ansi_string_get_default_empty_string();
@@ -162,7 +164,7 @@ _collada_data_shading_factor_item_texture::_collada_data_shading_factor_item_tex
 PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_factor_item(_collada_data_effect*            effect_ptr,
                                                                                         collada_data_shading_factor_item item)
 {
-    _collada_data_shading_factor_item* result = NULL;
+    _collada_data_shading_factor_item* result = nullptr;
 
     switch (item)
     {
@@ -222,11 +224,11 @@ PRIVATE void _collada_data_effect_init_lambert(_collada_data_effect* effect_ptr,
     /* Iterate through all children and make create relevant descriptors */
     tinyxml2::XMLElement* child_element_ptr = element_ptr->FirstChildElement();
 
-    while (child_element_ptr != NULL)
+    while (child_element_ptr != nullptr)
     {
         const char* child_name = child_element_ptr->Name();
-        ASSERT_DEBUG_SYNC(child_name != NULL,
-                          "<lambert> child node name is NULL");
+        ASSERT_DEBUG_SYNC(child_name != nullptr,
+                          "<lambert> child node name is nullptr");
 
         if (strcmp(child_name, "emission") == 0)
         {
@@ -256,7 +258,7 @@ PRIVATE void _collada_data_effect_init_lambert(_collada_data_effect* effect_ptr,
 
         /* Move to next child */
         child_element_ptr = child_element_ptr->NextSiblingElement();
-    } /* while (child_element_ptr != NULL) */
+    }
 }
 
 
@@ -267,7 +269,7 @@ PRIVATE void _collada_data_effect_init_float_shading_item(_collada_data_shading_
     result_ptr->data = new float;
     result_ptr->type = COLLADA_DATA_SHADING_FACTOR_FLOAT;
 
-    ASSERT_ALWAYS_SYNC(result_ptr->data != NULL,
+    ASSERT_ALWAYS_SYNC(result_ptr->data != nullptr,
                        "Out of memory");
 
     *(float*)result_ptr->data = value;
@@ -282,8 +284,8 @@ PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*       
     tinyxml2::XMLElement* child_element_ptr  = element_ptr->FirstChildElement();
     const char*           child_element_name = child_element_ptr->Name();
 
-    ASSERT_DEBUG_SYNC(child_element_name != NULL,
-                      "Child node name is NULL");
+    ASSERT_DEBUG_SYNC(child_element_name != nullptr,
+                      "Child node name is nullptr");
 
     if (strcmp(child_element_name,
                "color") == 0)
@@ -291,15 +293,15 @@ PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*       
         result_ptr->data = new (std::nothrow) float[4];
         result_ptr->type = COLLADA_DATA_SHADING_FACTOR_VEC4;
 
-        ASSERT_ALWAYS_SYNC(result_ptr->data != NULL,
+        ASSERT_ALWAYS_SYNC(result_ptr->data != nullptr,
                            "Out of memory");
 
         sscanf(child_element_ptr->GetText(),
                "%f %f %f %f",
-               ((float*) result_ptr->data) + 0,
-               ((float*) result_ptr->data) + 1,
-               ((float*) result_ptr->data) + 2,
-               ((float*) result_ptr->data) + 3);
+               reinterpret_cast<float*>(result_ptr->data) + 0,
+               reinterpret_cast<float*>(result_ptr->data) + 1,
+               reinterpret_cast<float*>(result_ptr->data) + 2,
+               reinterpret_cast<float*>(result_ptr->data) + 3);
     }
     else
     if (strcmp(child_element_name,
@@ -307,16 +309,16 @@ PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*       
     {
         _collada_data_shading_factor_item_texture* new_data = new (std::nothrow) _collada_data_shading_factor_item_texture;
 
-        ASSERT_ALWAYS_SYNC(new_data != NULL,
+        ASSERT_ALWAYS_SYNC(new_data != nullptr,
                            "Out of memory");
 
         /* Identify the sampler we will be sampling from */
         const char*               sampler_name     = child_element_ptr->Attribute("texture");
-        system_hashed_ansi_string sampler_name_has = NULL;
-        collada_data_sampler2D    sampler          = NULL;
+        system_hashed_ansi_string sampler_name_has = nullptr;
+        collada_data_sampler2D    sampler          = nullptr;
 
-        ASSERT_DEBUG_SYNC(sampler_name != NULL,
-                          "Sampler name is NULL");
+        ASSERT_DEBUG_SYNC(sampler_name != nullptr,
+                          "Sampler name is nullptr");
 
         sampler_name_has = system_hashed_ansi_string_create(sampler_name);
 
@@ -324,21 +326,21 @@ PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*       
                              system_hashed_ansi_string_get_hash(sampler_name_has),
                             &sampler);
 
-        ASSERT_DEBUG_SYNC(sampler != NULL,
+        ASSERT_DEBUG_SYNC(sampler != nullptr,
                           "Could not find a sampler named [%s]",
                           sampler_name);
 
         /* Identify texcoord that will be used in material binding definition */
         const char*               texcoord_name     = child_element_ptr->Attribute("texcoord");
-        system_hashed_ansi_string texcoord_name_has = NULL;
+        system_hashed_ansi_string texcoord_name_has = nullptr;
 
-        ASSERT_DEBUG_SYNC(texcoord_name != NULL,
-                          "Texcoord name is NULL");
+        ASSERT_DEBUG_SYNC(texcoord_name != nullptr,
+                          "Texcoord name is nullptr");
 
         texcoord_name_has = system_hashed_ansi_string_create(texcoord_name);
 
         /* Form the descriptor */
-        collada_data_surface sampler_surface = NULL;
+        collada_data_surface sampler_surface = nullptr;
 
         collada_data_sampler2D_get_properties(sampler,
                                              &sampler_surface,
@@ -357,7 +359,7 @@ PRIVATE void _collada_data_effect_init_shading_item(tinyxml2::XMLElement*       
     }
     else
     {
-        ASSERT_DEBUG_SYNC(child_element_name != NULL,
+        ASSERT_DEBUG_SYNC(child_element_name != nullptr,
                           "Unsupported child node name [%s]",
                           child_element_name);
     }
@@ -372,35 +374,36 @@ PRIVATE bool _collada_data_effect_read_float_xml_node(tinyxml2::XMLElement* elem
     /* Indeed! Extract the float information */
     tinyxml2::XMLElement* float_element_ptr = element_ptr->FirstChildElement("float");
 
-    ASSERT_DEBUG_SYNC(float_element_ptr != NULL,
+    ASSERT_DEBUG_SYNC(float_element_ptr != nullptr,
                       "Animated information is not supported");
 
-    if (float_element_ptr != NULL)
+    if (float_element_ptr != nullptr)
     {
         result = (sscanf(float_element_ptr->GetText(),
                          "%f",
                          out_result_ptr)) == 1;
-    } /* if (float_element_ptr != NULL) */
+    }
 
     return result;
 }
+
 /** TODO */
 PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(tinyxml2::XMLElement*           root_element_ptr,
                                                                      unsigned int                    n_traversal_nodes,
                                                                      const _xml_tree_traversal_node* traversal_nodes)
 {
-    ASSERT_DEBUG_SYNC(root_element_ptr != NULL,
-                      "Root element is NULL");
+    ASSERT_DEBUG_SYNC(root_element_ptr != nullptr,
+                      "Root element is nullptr");
     ASSERT_DEBUG_SYNC(n_traversal_nodes != 0,
                       "n_traversal_nodes is zero");
-    ASSERT_DEBUG_SYNC(traversal_nodes != NULL,
-                      "traversal_nodes is NULL");
+    ASSERT_DEBUG_SYNC(traversal_nodes != nullptr,
+                      "traversal_nodes is nullptr");
 
     /* Traverse the tree */
-    tinyxml2::XMLElement* result = root_element_ptr;
+    tinyxml2::XMLElement* result_ptr = root_element_ptr;
 
     for (unsigned int n_traversal_node = 0;
-                      n_traversal_node < n_traversal_nodes && result != NULL;
+                      n_traversal_node < n_traversal_nodes && result_ptr != nullptr;
                     ++n_traversal_node)
     {
         const _xml_tree_traversal_node& current_node_descriptor = traversal_nodes[n_traversal_node];
@@ -409,22 +412,22 @@ PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(tinyxml2::X
         {
             case XML_TREE_TRAVERSAL_NODE_TYPE_NODE:
             {
-                result = result->FirstChildElement(current_node_descriptor.node_name);
+                result_ptr = result_ptr->FirstChildElement(current_node_descriptor.node_name);
 
                 break;
-            } /* case XML_TREE_TRAVERSAL_NODE_TYPE_NODE: */
+            }
 
             case XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE:
             {
-                result = result->FirstChildElement(current_node_descriptor.node_name);
+                result_ptr = result_ptr->FirstChildElement(current_node_descriptor.node_name);
 
-                if (result != NULL)
+                if (result_ptr != nullptr)
                 {
-                    while (result != NULL)
+                    while (result_ptr != nullptr)
                     {
-                        const char* attribute_sid = result->Attribute(current_node_descriptor.attribute_name);
+                        const char* attribute_sid = result_ptr->Attribute(current_node_descriptor.attribute_name);
 
-                        if (attribute_sid != NULL                           &&
+                        if (attribute_sid != nullptr                           &&
                             strcmp(attribute_sid,
                                    current_node_descriptor.attribute_value) == 0)
                         {
@@ -432,22 +435,22 @@ PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(tinyxml2::X
                         }
 
                         /* "Shader" attribute was not found, iterate */
-                        result = result->NextSiblingElement(current_node_descriptor.node_name);
-                    } /* while (result != NULL) */
-                } /* if (result != NULL) */
+                        result_ptr = result_ptr->NextSiblingElement(current_node_descriptor.node_name);
+                    }
+                }
 
                 break;
-            } /* case XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE: */
+            }
 
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized traversal node descriptor type");
             }
-        } /* switch (current_node_descriptor.type) */
-    } /* for (all traversal nodes) */
+        }
+    }
 
-    return result;
+    return result_ptr;
 }
 
 /** TODO */
@@ -456,10 +459,10 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
 {
     _collada_data_effect* new_effect_ptr = new (std::nothrow) _collada_data_effect;
 
-    ASSERT_ALWAYS_SYNC(new_effect_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_effect_ptr != nullptr,
                        "Out of memory");
 
-    if (new_effect_ptr != NULL)
+    if (new_effect_ptr != nullptr)
     {
         new_effect_ptr->id = system_hashed_ansi_string_create(current_effect_element_ptr->Attribute("id") );
 
@@ -469,15 +472,15 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
         tinyxml2::XMLElement* profile_gles_element_ptr   = current_effect_element_ptr->FirstChildElement("profile_GLES");
         tinyxml2::XMLElement* profile_glsl_element_ptr   = current_effect_element_ptr->FirstChildElement("profile_GLSL");
 
-        ASSERT_DEBUG_SYNC(profile_cg_element_ptr   == NULL &&
-                          profile_gles_element_ptr == NULL &&
-                          profile_glsl_element_ptr == NULL,
+        ASSERT_DEBUG_SYNC(profile_cg_element_ptr   == nullptr &&
+                          profile_gles_element_ptr == nullptr &&
+                          profile_glsl_element_ptr == nullptr,
                           "COLLADA data file uses an incommon profile for one of the effects - only COMMON profiles are supported");
 
-        ASSERT_DEBUG_SYNC(profile_common_element_ptr != NULL,
+        ASSERT_DEBUG_SYNC(profile_common_element_ptr != nullptr,
                           "COLLADA data file does not define a COMMON profile for at least one effect");
 
-        if (profile_common_element_ptr != NULL)
+        if (profile_common_element_ptr != nullptr)
         {
             /* <profile_COMMON> node should define exactly one technique */
             tinyxml2::XMLElement*   child_element_ptr        = profile_common_element_ptr->FirstChildElement();
@@ -486,7 +489,7 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
             system_resizable_vector surfaces                 = system_resizable_vector_create(4 /* capacity */);
             system_hash64map        surfaces_by_id_map       = system_hash64map_create       (4 /* capacity */);
 
-            while (child_element_ptr != NULL)
+            while (child_element_ptr != nullptr)
             {
                 /* Which element is this? */
                 const char* child_element_type = child_element_ptr->Name();
@@ -500,12 +503,12 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                     bool                  has_shading_been_defined = false;
                     tinyxml2::XMLElement* technique_item_element_ptr = child_element_ptr->FirstChildElement();
 
-                    while (technique_item_element_ptr != NULL)
+                    while (technique_item_element_ptr != nullptr)
                     {
                         const char* item_name = technique_item_element_ptr->Name();
 
-                        ASSERT_DEBUG_SYNC(item_name != NULL,
-                                          "Node name is NULL");
+                        ASSERT_DEBUG_SYNC(item_name != nullptr,
+                                          "Node name is nullptr");
 
                         if (strcmp(item_name, "lambert") == 0)
                         {
@@ -523,21 +526,21 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
 
                         /* Iterate to next technique item */
                         technique_item_element_ptr = technique_item_element_ptr->NextSiblingElement();
-                    } /* while (technique_item_element_ptr != NULL) */
+                    }
                 }
                 else
                 if (strcmp(child_element_type, "newparam") == 0)
                 {
                     const char* child_element_sid = child_element_ptr->Attribute("sid");
 
-                    ASSERT_DEBUG_SYNC(child_element_sid != NULL,
+                    ASSERT_DEBUG_SYNC(child_element_sid != nullptr,
                                       "No sid attribute associated with a <surface> node");
 
                     /* Take the first child subnode of the node */
                     tinyxml2::XMLElement* child_subelement_ptr = child_element_ptr->FirstChildElement();
 
-                    ASSERT_DEBUG_SYNC(child_subelement_ptr != NULL,
-                                      "Child sub-element is NULL");
+                    ASSERT_DEBUG_SYNC(child_subelement_ptr != nullptr,
+                                      "Child sub-element is nullptr");
 
                     const char* child_subelement_type = child_subelement_ptr->Name();
 
@@ -555,8 +558,8 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                         system_hash64map_insert(surfaces_by_id_map,
                                                 system_hashed_ansi_string_get_hash(new_surface_id),
                                                 new_surface,
-                                                NULL,
-                                                NULL);
+                                                nullptr,
+                                                nullptr);
                     }
                     else
                     if (strcmp(child_subelement_type, "sampler2D") == 0)
@@ -567,12 +570,12 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                                                                                                                surfaces_by_id_map);
                         tinyxml2::XMLElement*     source_element_ptr = child_subelement_ptr->FirstChildElement("source");
                         system_hashed_ansi_string surface_name       = system_hashed_ansi_string_create       (source_element_ptr->GetText() );
-                        collada_data_surface      surface            = NULL;
+                        collada_data_surface      surface            = nullptr;
 
                         system_hash64map_get(surfaces_by_id_map,
                                              system_hashed_ansi_string_get_hash(surface_name),
                                              &surface);
-                        ASSERT_DEBUG_SYNC   (surface != NULL,
+                        ASSERT_DEBUG_SYNC   (surface != nullptr,
                                              "Could not find a surface by the name of [%s]",
                                              system_hashed_ansi_string_get_buffer(surface_name) );
 
@@ -582,8 +585,8 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                         system_hash64map_insert     (samplers_by_id_map,
                                                      system_hashed_ansi_string_get_hash(new_sampler_id),
                                                      new_sampler,
-                                                     NULL,
-                                                     NULL);
+                                                     nullptr,
+                                                     nullptr);
                     }
                     else
                     {
@@ -603,24 +606,24 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
             }
 
             /* Release helper vectors */
-            collada_data_sampler2D sampler = NULL;
-            collada_data_surface   surface = NULL;
+            collada_data_sampler2D sampler = nullptr;
+            collada_data_surface   surface = nullptr;
 
             while (system_resizable_vector_pop(samplers,
                                               &sampler))
             {
                 collada_data_sampler2D_release(sampler);
 
-                sampler = NULL;
+                sampler = nullptr;
             }
             system_resizable_vector_release(samplers);
-            samplers = NULL;
+            samplers = nullptr;
 
-            if (samplers_by_id_map != NULL)
+            if (samplers_by_id_map != nullptr)
             {
                 system_hash64map_release(samplers_by_id_map);
 
-                samplers_by_id_map = NULL;
+                samplers_by_id_map = nullptr;
             }
 
             while (system_resizable_vector_pop(surfaces,
@@ -628,18 +631,18 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
             {
                 collada_data_surface_release(surface);
 
-                surface = NULL;
+                surface = nullptr;
             }
             system_resizable_vector_release(surfaces);
-            surfaces = NULL;
+            surfaces = nullptr;
 
-            if (surfaces_by_id_map != NULL)
+            if (surfaces_by_id_map != nullptr)
             {
                 system_hash64map_release(surfaces_by_id_map);
 
-                surfaces_by_id_map = NULL;
+                surfaces_by_id_map = nullptr;
             }
-        } /* if (profile_common_element_ptr != NULL) */
+        }
         else
         {
             LOG_FATAL("No <profile_COMMON> node defined for <effect>");
@@ -663,7 +666,7 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                                                                                                           n_traverse_to_shaders_component_node_path_nodes,
                                                                                                           traverse_to_shaders_component_node_path);
 
-        if (root_shaders_component_element_ptr != NULL)
+        if (root_shaders_component_element_ptr != nullptr)
         {
             const _xml_tree_traversal_node traverse_to_shader_attribute_path[] =
             {
@@ -678,7 +681,7 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                                                                                               n_traverse_to_shader_attribute_path_nodes,
                                                                                               traverse_to_shader_attribute_path);
 
-            if (shader_element_ptr != NULL)
+            if (shader_element_ptr != nullptr)
             {
                 /* This attribute stores various interesting stuff. Of our particular interest are:
                  *
@@ -732,14 +735,14 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                 tinyxml2::XMLElement* UvMapName_string_element_ptr = _collada_data_effect_traverse_xml_tree(shader_element_ptr,
                                                                                                             n_traverse_to_UvMapName_node_path_nodes,
                                                                                                             traverse_to_UvMapName_node_path);
-                if (UvMapName_string_element_ptr != NULL)
+                if (UvMapName_string_element_ptr != nullptr)
                 {
                     /* UV map name information is present! */
                     new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(UvMapName_string_element_ptr->GetText() );
-                } /* if (UvMapName_string_element_ptr != NULL) */
+                }
 
                 /* Read float values */
-                if (glosiness_element_ptr != NULL)
+                if (glosiness_element_ptr != nullptr)
                 {
                     float glosiness_value = 0.0f;
 
@@ -749,9 +752,9 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                         _collada_data_effect_init_float_shading_item(&new_effect_ptr->shininess,
                                                                      glosiness_value);
                     }
-                } /* if (glosiness_element_ptr != NULL) */
+                }
 
-                if (luminosity_element_ptr != NULL)
+                if (luminosity_element_ptr != nullptr)
                 {
                     float luminosity_value = 0.0f;
 
@@ -761,9 +764,9 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                         _collada_data_effect_init_float_shading_item(&new_effect_ptr->luminosity,
                                                                      luminosity_value);
                     }
-                } /* if (luminosity_element_ptr != NULL) */
+                }
 
-                if (specularity_element_ptr != NULL)
+                if (specularity_element_ptr != nullptr)
                 {
                     float specularity_value = 0.0f;
 
@@ -773,8 +776,8 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                         _collada_data_effect_init_float_shading_item(&new_effect_ptr->specular,
                                                                      specularity_value);
                     }
-                } /* if (specularity_element_ptr != NULL) */
-            } /* if (shader_component_element_ptr != NULL) */
+                }
+            }
 
             /* If UV Map Name was not found, it can still be defined under <attribute> with sid="Name",
              * under the <string> node.
@@ -793,26 +796,26 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                                                                                                   n_traverse_to_name_string_node_path_nodes,
                                                                                                   traverse_to_name_string_node_path);
 
-                if (string_element_ptr != NULL)
+                if (string_element_ptr != nullptr)
                 {
                     /* UV map name information is present! */
                     new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(string_element_ptr->GetText() );
                 }
-            } /* if (uv map name data was not found) */
-        } /* if (root_shaders_component_element_ptr != NULL) */
-    } /* if (new_effect_ptr != NULL) */
+            }
+        }
+    }
 
-    return (collada_data_effect) new_effect_ptr;
+    return reinterpret_cast<collada_data_effect>(new_effect_ptr);
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_effect_get_properties( collada_data_effect    effect,
-                                                           _collada_data_shading* out_shading,
-                                                           int*                   out_shading_factor_item_bitmask)
+PUBLIC EMERALD_API void collada_data_effect_get_properties(collada_data_effect    effect,
+                                                           _collada_data_shading* out_shading_ptr,
+                                                           int*                   out_shading_factor_item_bitmask_ptr)
 {
-    _collada_data_effect* effect_ptr = (_collada_data_effect*) effect;
+    _collada_data_effect* effect_ptr = reinterpret_cast<_collada_data_effect*>(effect);
 
-    if (out_shading != NULL)
+    if (out_shading_ptr != nullptr)
     {
         /* NOTE: LW exporter seems to be always toggling the Lambert lighting. However,
          *       if shininess & specular values are provided, we should actually be using
@@ -820,22 +823,21 @@ PUBLIC EMERALD_API void collada_data_effect_get_properties( collada_data_effect 
         if (effect_ptr->shininess.type != COLLADA_DATA_SHADING_FACTOR_NONE &&
             effect_ptr->specular.type  != COLLADA_DATA_SHADING_FACTOR_NONE)
         {
-            *out_shading = COLLADA_DATA_SHADING_PHONG;
+            *out_shading_ptr = COLLADA_DATA_SHADING_PHONG;
         }
         else
         {
-            *out_shading = effect_ptr->shading;
+            *out_shading_ptr = effect_ptr->shading;
         }
     }
 
-    if (out_shading_factor_item_bitmask != NULL)
+    if (out_shading_factor_item_bitmask_ptr != nullptr)
     {
-        *out_shading_factor_item_bitmask =
-                                           (int) ((effect_ptr->ambient.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT    : 0) |
-                                           (int) ((effect_ptr->diffuse.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE    : 0) |
-                                           (int) ((effect_ptr->luminosity.type != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY : 0) |
-                                           (int) ((effect_ptr->shininess.type  != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS  : 0) |
-                                           (int) ((effect_ptr->specular.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR   : 0);
+        *out_shading_factor_item_bitmask_ptr = (int) ((effect_ptr->ambient.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT    : 0) |
+                                               (int) ((effect_ptr->diffuse.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE    : 0) |
+                                               (int) ((effect_ptr->luminosity.type != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY : 0) |
+                                               (int) ((effect_ptr->shininess.type  != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS  : 0) |
+                                               (int) ((effect_ptr->specular.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR   : 0);
     }
 }
 
@@ -844,36 +846,37 @@ PUBLIC EMERALD_API void collada_data_effect_get_property(const collada_data_effe
                                                                collada_data_effect_property property,
                                                                void*                        out_data_ptr)
 {
-    const _collada_data_effect* effect_ptr = (const _collada_data_effect*) effect;
+    const _collada_data_effect* effect_ptr = reinterpret_cast<const _collada_data_effect*>(effect);
 
     switch (property)
     {
         case COLLADA_DATA_EFFECT_PROPERTY_ID:
         {
-            *((system_hashed_ansi_string*) out_data_ptr) = effect_ptr->id;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_data_ptr) = effect_ptr->id;
 
             break;
         }
 
         case COLLADA_DATA_EFFECT_PROPERTY_UV_MAP_NAME:
         {
-            *((system_hashed_ansi_string*) out_data_ptr) = effect_ptr->uv_map_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_data_ptr) = effect_ptr->uv_map_name;
 
             break;
         }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized COLLADA effect property");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized COLLADA effect property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shading_factor_item_by_texcoord(collada_data_effect       effect,
                                                                                                             system_hashed_ansi_string texcoord_name)
 {
-    _collada_data_effect*            effect_ptr = (_collada_data_effect*) effect;
+    _collada_data_effect*            effect_ptr = reinterpret_cast<_collada_data_effect*>( effect);
     collada_data_shading_factor_item result     = COLLADA_DATA_SHADING_FACTOR_ITEM_UNKNOWN;
 
     struct _data_item
@@ -916,8 +919,8 @@ PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shad
         const _data_item& data_item = data[n_data_item];
 
         if (data_item.item_ptr->type == COLLADA_DATA_SHADING_FACTOR_TEXTURE &&
-            system_hashed_ansi_string_is_equal_to_hash_string( ((_collada_data_shading_factor_item_texture*) data_item.item_ptr->data)->texcoord_name,
-                                                               texcoord_name) )
+            system_hashed_ansi_string_is_equal_to_hash_string(reinterpret_cast<_collada_data_shading_factor_item_texture*>(data_item.item_ptr->data)->texcoord_name,
+                                                              texcoord_name) )
         {
             result = data_item.result_value;
 
@@ -935,43 +938,43 @@ PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shad
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(collada_data_effect              effect,
                                                                                collada_data_shading_factor_item item,
-                                                                               collada_data_shading_factor*     out_type)
+                                                                               collada_data_shading_factor*     out_type_ptr)
 {
-    _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
+    _collada_data_effect*              effect_ptr = reinterpret_cast<_collada_data_effect*>(effect);
     collada_data_shading_factor        result     = COLLADA_DATA_SHADING_FACTOR_UNKNOWN;
     _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
                                                                                                  item);
 
-    if (item_ptr != NULL)
+    if (item_ptr != nullptr)
     {
         result = item_ptr->type;
     }
 
-    if (out_type != NULL)
+    if (out_type_ptr != nullptr)
     {
-        *out_type = result;
+        *out_type_ptr = result;
     }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_properties(collada_data_effect              effect,
                                                                                      collada_data_shading_factor_item item,
-                                                                                     float*                           out_float)
+                                                                                     float*                           out_float_ptr)
 {
-    _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
+    _collada_data_effect*              effect_ptr = reinterpret_cast<_collada_data_effect*>(effect);
     _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
                                                                                                  item);
 
-    if (item_ptr != NULL)
+    if (item_ptr != nullptr)
     {
         ASSERT_DEBUG_SYNC(item_ptr->type == COLLADA_DATA_SHADING_FACTOR_FLOAT,
                           "Requested shading factor item is not a float");
 
-        const float* data_ptr = (const float*) item_ptr->data;
+        const float* data_ptr = reinterpret_cast<const float*>(item_ptr->data);
 
-        if (out_float != NULL)
+        if (out_float_ptr != nullptr)
         {
-            *out_float = *data_ptr;
+            *out_float_ptr = *data_ptr;
         }
     }
 }
@@ -979,22 +982,22 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_proper
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_properties(collada_data_effect              effect,
                                                                                       collada_data_shading_factor_item item,
-                                                                                      float*                           out_float4)
+                                                                                      float*                           out_float4_ptr)
 {
-    _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
+    _collada_data_effect*              effect_ptr = reinterpret_cast<_collada_data_effect*>(effect);
     _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
                                                                                                  item);
 
-    if (item_ptr != NULL)
+    if (item_ptr != nullptr)
     {
         ASSERT_DEBUG_SYNC(item_ptr->type == COLLADA_DATA_SHADING_FACTOR_VEC4,
                           "Requested shading factor item is not a vec4");
 
-        const float* data_ptr = (const float*) item_ptr->data;
+        const float* data_ptr = reinterpret_cast<const float*>(item_ptr->data);
 
-        if (out_float4 != NULL)
+        if (out_float4_ptr != nullptr)
         {
-            memcpy(out_float4,
+            memcpy(out_float4_ptr,
                    data_ptr,
                    sizeof(float) * 4);
         }
@@ -1004,39 +1007,40 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_prope
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_texture_properties(collada_data_effect              effect,
                                                                                        collada_data_shading_factor_item item,
-                                                                                       collada_data_image*              out_image,
-                                                                                       _collada_data_sampler_filter*    out_mag_filter,
-                                                                                       _collada_data_sampler_filter*    out_min_filter,
-                                                                                       system_hashed_ansi_string*       out_texcoord_name)
+                                                                                       collada_data_image*              out_image_ptr,
+                                                                                       _collada_data_sampler_filter*    out_mag_filter_ptr,
+                                                                                       _collada_data_sampler_filter*    out_min_filter_ptr,
+                                                                                       system_hashed_ansi_string*       out_texcoord_name_ptr)
 {
-    _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
-    _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr, item);
+    _collada_data_effect*              effect_ptr = reinterpret_cast<_collada_data_effect*>(effect);
+    _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
+                                                                                                 item);
 
-    if (item_ptr != NULL)
+    if (item_ptr != nullptr)
     {
         ASSERT_DEBUG_SYNC(item_ptr->type == COLLADA_DATA_SHADING_FACTOR_TEXTURE,
                           "Requested shading factor item is not a texture");
 
-        const _collada_data_shading_factor_item_texture* texture_ptr = (const _collada_data_shading_factor_item_texture*) item_ptr->data;
+        const _collada_data_shading_factor_item_texture* texture_ptr = reinterpret_cast<const _collada_data_shading_factor_item_texture*>(item_ptr->data);
 
-        if (out_image != NULL)
+        if (out_image_ptr != nullptr)
         {
-            *out_image = (collada_data_image) texture_ptr->image;
+            *out_image_ptr = (collada_data_image) texture_ptr->image;
         }
 
-        if (out_mag_filter != NULL)
+        if (out_mag_filter_ptr != nullptr)
         {
-            *out_mag_filter = texture_ptr->mag_filter;
+            *out_mag_filter_ptr = texture_ptr->mag_filter;
         }
 
-        if (out_min_filter != NULL)
+        if (out_min_filter_ptr != nullptr)
         {
-            *out_min_filter = texture_ptr->min_filter;
+            *out_min_filter_ptr = texture_ptr->min_filter;
         }
 
-        if (out_texcoord_name != NULL)
+        if (out_texcoord_name_ptr != nullptr)
         {
-            *out_texcoord_name = texture_ptr->texcoord_name;
+            *out_texcoord_name_ptr = texture_ptr->texcoord_name;
         }
     }
 }
@@ -1044,7 +1048,7 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_texture_prop
 /** Please see header for spec */
 PUBLIC void collada_data_effect_release(collada_data_effect effect)
 {
-    delete (_collada_data_effect*) effect;
+    delete reinterpret_cast<_collada_data_effect*>(effect);
 
-    effect = NULL;
+    effect = nullptr;
 }

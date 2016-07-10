@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -26,14 +26,14 @@ PUBLIC EMERALD_API collada_data_material collada_data_material_create(tinyxml2::
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_material_get_properties(collada_data_material      material,
-                                                             collada_data_effect*       out_effect,
-                                                             system_hashed_ansi_string* out_id,
-                                                             system_hashed_ansi_string* out_name);
+                                                             collada_data_effect*       out_effect_ptr,
+                                                             system_hashed_ansi_string* out_id_ptr,
+                                                             system_hashed_ansi_string* out_name_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_material_get_property(const collada_data_material          material,
-                                                                 collada_data_material_property property,
-                                                                 void*                          out_value_ptr);
+PUBLIC EMERALD_API void collada_data_material_get_property(const collada_data_material    material,
+                                                           collada_data_material_property property,
+                                                           void*                          out_value_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_material_release(collada_data_material material);

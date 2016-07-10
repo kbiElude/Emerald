@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -29,11 +29,11 @@ _collada_data_name_array::_collada_data_name_array()
 /* TODO */
 _collada_data_name_array::~_collada_data_name_array()
 {
-    if (strings != NULL)
+    if (strings != nullptr)
     {
         system_resizable_vector_release(strings);
 
-        strings = NULL;
+        strings = nullptr;
     }
 }
 
@@ -43,15 +43,17 @@ PUBLIC collada_data_name_array collada_data_name_array_create(tinyxml2::XMLEleme
 {
     _collada_data_name_array* result_ptr = new (std::nothrow) _collada_data_name_array;
 
-    ASSERT_ALWAYS_SYNC(result_ptr != NULL, "Out of memory");
-    if (result_ptr != NULL)
+    ASSERT_ALWAYS_SYNC(result_ptr != nullptr,
+                       "Out of memory");
+
+    if (result_ptr != nullptr)
     {
         unsigned int count = name_array_element_ptr->UnsignedAttribute("count");
         const char*  data  = name_array_element_ptr->GetText          ();
         const char*  id    = name_array_element_ptr->Attribute        ("id");
 
         /* Sanity checks */
-        if (id == NULL)
+        if (id == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Name array ID is undefined");
@@ -59,16 +61,18 @@ PUBLIC collada_data_name_array collada_data_name_array_create(tinyxml2::XMLEleme
             goto end;
         }
 
-        if (data == NULL)
+        if (data == nullptr)
         {
-            ASSERT_ALWAYS_SYNC(false, "Null value reported for name_array value");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Null value reported for name_array value");
 
             goto end;
         }
 
         if (count == 0)
         {
-            ASSERT_ALWAYS_SYNC(false, "Zero count encountered in a name_array - this is invalid");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Zero count encountered in a name_array - this is invalid");
 
             goto end;
         }
@@ -81,7 +85,7 @@ PUBLIC collada_data_name_array collada_data_name_array_create(tinyxml2::XMLEleme
         {
             const char* traveller_space_ptr = strchr(traveller_ptr, ' ');
 
-            ASSERT_DEBUG_SYNC(traveller_space_ptr != NULL,
+            ASSERT_DEBUG_SYNC(traveller_space_ptr != nullptr,
                               "Could not find a space character");
 
             /* Spawn the entry */
@@ -96,7 +100,7 @@ PUBLIC collada_data_name_array collada_data_name_array_create(tinyxml2::XMLEleme
             traveller_ptr = traveller_space_ptr + 1;
             n_value      ++;
         }
-    } /* if (result_ptr != NULL) */
+    }
 
 end:
     return (collada_data_name_array) result_ptr;
@@ -105,9 +109,9 @@ end:
 /** Please see header for spec */
 PUBLIC void collada_data_name_array_get_property(collada_data_name_array          array,
                                                  collada_data_name_array_property property,
-                                                 void*                            out_result)
+                                                 void*                            out_result_ptr)
 {
-    _collada_data_name_array* array_ptr = (_collada_data_name_array*) array;
+    _collada_data_name_array* array_ptr = reinterpret_cast<_collada_data_name_array*>(array);
 
     switch (property)
     {
@@ -119,7 +123,7 @@ PUBLIC void collada_data_name_array_get_property(collada_data_name_array        
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_strings);
 
-            *(uint32_t*) out_result = n_strings;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = n_strings;
 
             break;
         }
@@ -129,7 +133,7 @@ PUBLIC void collada_data_name_array_get_property(collada_data_name_array        
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized collada_data_name_array_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
@@ -137,7 +141,7 @@ PUBLIC system_hashed_ansi_string collada_data_name_array_get_value_at_index(coll
                                                                             uint32_t                index)
 {
     _collada_data_name_array* array_ptr = (_collada_data_name_array*) array;
-    system_hashed_ansi_string result    = NULL;
+    system_hashed_ansi_string result    = nullptr;
 
     system_resizable_vector_get_element_at(array_ptr->strings,
                                            index,
@@ -149,7 +153,7 @@ PUBLIC system_hashed_ansi_string collada_data_name_array_get_value_at_index(coll
 /** Please see header for spec */
 PUBLIC void collada_data_name_array_release(collada_data_name_array array)
 {
-    delete (_collada_data_name_array*) array;
+    delete reinterpret_cast<_collada_data_name_array*>(array);
 
-    array = NULL;
+    array = nullptr;
 }

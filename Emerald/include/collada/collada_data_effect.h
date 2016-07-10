@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -14,7 +14,9 @@
 enum collada_data_effect_property
 {
     COLLADA_DATA_EFFECT_PROPERTY_ID,
-    COLLADA_DATA_EFFECT_PROPERTY_UV_MAP_NAME, /* NOTE: LW-specific */
+
+    /* NOTE: LW-specific */
+    COLLADA_DATA_EFFECT_PROPERTY_UV_MAP_NAME,
 
     /* always last */
     COLLADA_DATA_EFFECT_COUNT
@@ -25,9 +27,9 @@ PUBLIC collada_data_effect collada_data_effect_create(tinyxml2::XMLElement* curr
                                                       system_hash64map      images_by_id_map);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_effect_get_properties( collada_data_effect    effect,
-                                                           _collada_data_shading* out_shading,
-                                                           int*                   out_shading_factor_item_bitmask);
+PUBLIC EMERALD_API void collada_data_effect_get_properties(collada_data_effect    effect,
+                                                           _collada_data_shading* out_shading_ptr,
+                                                           int*                   out_shading_factor_item_bitmask_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_effect_get_property(const collada_data_effect          effect,
@@ -41,25 +43,25 @@ PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shad
 /** TODO */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(collada_data_effect               effect,
                                                                                collada_data_shading_factor_item item,
-                                                                               collada_data_shading_factor*      out_type);
+                                                                               collada_data_shading_factor*      out_type_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_properties(collada_data_effect              effect,
                                                                                      collada_data_shading_factor_item item,
-                                                                                     float*                           out_float4);
+                                                                                     float*                           out_float4_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_properties(collada_data_effect              effect,
                                                                                       collada_data_shading_factor_item item,
-                                                                                      float*                           out_float4);
+                                                                                      float*                           out_float4_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_texture_properties(collada_data_effect              effect,
                                                                                        collada_data_shading_factor_item item,
-                                                                                       collada_data_image*              out_image,
-                                                                                       _collada_data_sampler_filter*    out_mag_filter,
-                                                                                       _collada_data_sampler_filter*    out_min_filter,
-                                                                                       system_hashed_ansi_string*       out_texcoord_name);
+                                                                                       collada_data_image*              out_image_ptr,
+                                                                                       _collada_data_sampler_filter*    out_mag_filter_ptr,
+                                                                                       _collada_data_sampler_filter*    out_min_filter_ptr,
+                                                                                       system_hashed_ansi_string*       out_texcoord_name_ptr);
 
 /** TODO */
 PUBLIC void collada_data_effect_release(collada_data_effect effect);

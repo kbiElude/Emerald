@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -30,7 +30,7 @@ typedef struct _collada_data_float_array
 _collada_data_float_array::_collada_data_float_array()
 {
     count        = 0;
-    data         = NULL;
+    data         = nullptr;
     n_components = 0;
     stride       = 0;
 
@@ -40,11 +40,11 @@ _collada_data_float_array::_collada_data_float_array()
 /* TODO */
 _collada_data_float_array::~_collada_data_float_array()
 {
-    if (data != NULL)
+    if (data != nullptr)
     {
         delete [] data;
 
-        data = NULL;
+        data = nullptr;
     }
 }
 
@@ -75,17 +75,17 @@ PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLEle
 {
     _collada_data_float_array* result_ptr = new (std::nothrow) _collada_data_float_array;
 
-    ASSERT_ALWAYS_SYNC(result_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(result_ptr != nullptr,
                        "Out of memory");
 
-    if (result_ptr != NULL)
+    if (result_ptr != nullptr)
     {
         unsigned int count = float_array_element_ptr->UnsignedAttribute("count");
         const char*  data  = float_array_element_ptr->GetText          ();
         const char*  name  = float_array_element_ptr->Attribute        ("id");
 
         /* Sanity checks */
-        if (name == NULL)
+        if (name == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Float array ID is undefined - this is valid but unsupported ATM");
@@ -93,7 +93,7 @@ PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLEle
             goto end;
         }
 
-        if (data == NULL)
+        if (data == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Null value reported for float_array value");
@@ -119,7 +119,7 @@ PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLEle
          * it, instead of parsing the string in the COLLADA file, which can take a lot of time for
          * large scenes.
          */
-        system_hashed_ansi_string blob_file_name         = NULL;
+        system_hashed_ansi_string blob_file_name         = nullptr;
         bool                      has_loaded_cached_blob = false;
         bool                      should_cache_blobs     = false;
 
@@ -129,8 +129,8 @@ PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLEle
 
         if (should_cache_blobs)
         {
-            collada_data_geometry     geometry_mesh_parent = NULL;
-            system_hashed_ansi_string geometry_name        = NULL;
+            collada_data_geometry     geometry_mesh_parent = nullptr;
+            system_hashed_ansi_string geometry_name        = nullptr;
 
             blob_file_name = _collada_data_float_array_get_cached_blob_file_name(system_hashed_ansi_string_create(name),
                                                                                  count,
@@ -145,13 +145,13 @@ PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLEle
              **/
             system_file_serializer blob_serializer = system_file_serializer_create_for_reading(blob_file_name,
                                                                                                false); /* async_read */
-            const void*            blob_data       = NULL;
+            const void*            blob_data       = nullptr;
 
             system_file_serializer_get_property(blob_serializer,
                                                 SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
                                                &blob_data);
 
-            if (blob_data != NULL)
+            if (blob_data != nullptr)
             {
                 system_file_serializer_read(blob_serializer,
                                             sizeof(float) * count,
@@ -161,7 +161,7 @@ PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLEle
                          system_hashed_ansi_string_get_buffer(blob_file_name) );
 
                 has_loaded_cached_blob = true;
-            } /* if (blob_data != NULL) */
+            }
             else
             {
                 LOG_INFO("Could not load cached blob for [%s]",
@@ -202,39 +202,39 @@ PUBLIC collada_data_float_array collada_data_float_array_create(tinyxml2::XMLEle
                 LOG_INFO("Stored a cached float array blob for [%s]",
                          system_hashed_ansi_string_get_buffer(blob_file_name) );
             }
-        } /* if (!has_loaded_cached_blob) */
+        }
     }
 
 end:
-    return (collada_data_float_array) result_ptr;
+    return reinterpret_cast<collada_data_float_array>(result_ptr);
 }
 
 /** Please see header for spec */
 PUBLIC void collada_data_float_array_get_property(collada_data_float_array          array,
                                                   collada_data_float_array_property property,
-                                                  void*                             out_result)
+                                                  void*                             out_result_ptr)
 {
-    _collada_data_float_array* array_ptr = (_collada_data_float_array*) array;
+    _collada_data_float_array* array_ptr = reinterpret_cast<_collada_data_float_array*>(array);
 
     switch (property)
     {
         case COLLADA_DATA_FLOAT_ARRAY_PROPERTY_N_COMPONENTS:
         {
-            *(uint32_t*) out_result = array_ptr->n_components;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = array_ptr->n_components;
 
             break;
         }
 
         case COLLADA_DATA_FLOAT_ARRAY_PROPERTY_N_VALUES:
         {
-            *(uint32_t*) out_result = array_ptr->count;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = array_ptr->count;
 
             break;
         }
 
         case COLLADA_DATA_FLOAT_ARRAY_PROPERTY_DATA:
         {
-            *(const float**) out_result = array_ptr->data;
+            *reinterpret_cast<const float**>(out_result_ptr) = array_ptr->data;
 
             break;
         }
@@ -244,13 +244,13 @@ PUBLIC void collada_data_float_array_get_property(collada_data_float_array      
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized collada_data_float_array_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void collada_data_float_array_release(collada_data_float_array array)
 {
-    delete (_collada_data_float_array*) array;
+    delete reinterpret_cast<_collada_data_float_array*>(array);
 
-    array = NULL;
+    array = nullptr;
 }

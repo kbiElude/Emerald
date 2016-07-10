@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -32,9 +32,9 @@ typedef struct _collada_data_animation
 /** TODO */
 _collada_data_animation::_collada_data_animation()
 {
-    channel           = NULL;
+    channel           = nullptr;
     id                = system_hashed_ansi_string_get_default_empty_string();
-    sampler           = NULL;
+    sampler           = nullptr;
     sources           = system_resizable_vector_create(4 /* capacity */);
     sources_by_id_map = system_hash64map_create       (sizeof(collada_data_source) );
 }
@@ -42,40 +42,40 @@ _collada_data_animation::_collada_data_animation()
 /** TODO */
 _collada_data_animation::~_collada_data_animation()
 {
-    if (channel != NULL)
+    if (channel != nullptr)
     {
         collada_data_channel_release(channel);
 
-        channel = NULL;
+        channel = nullptr;
     }
 
-    if (sampler != NULL)
+    if (sampler != nullptr)
     {
         collada_data_sampler_release(sampler);
 
-        sampler = NULL;
+        sampler = nullptr;
     }
 
-    if (sources != NULL)
+    if (sources != nullptr)
     {
-        collada_data_source source = NULL;
+        collada_data_source source = nullptr;
 
         while (system_resizable_vector_pop(sources, &source) )
         {
             collada_data_source_release(source);
 
-            source = NULL;
+            source = nullptr;
         }
 
         system_resizable_vector_release(sources);
-        sources = NULL;
-    } /* if (sources != NULL) */
+        sources = nullptr;
+    }
 
-    if (sources_by_id_map != NULL)
+    if (sources_by_id_map != nullptr)
     {
         system_hash64map_release(sources_by_id_map);
 
-        sources_by_id_map = NULL;
+        sources_by_id_map = nullptr;
     }
 }
 
@@ -86,8 +86,8 @@ PUBLIC collada_data_animation collada_data_animation_create(tinyxml2::XMLElement
 {
     _collada_data_animation* new_animation_ptr = new (std::nothrow) _collada_data_animation;
 
-    ASSERT_DEBUG_SYNC(new_animation_ptr != NULL, "Out of memory")
-    if (new_animation_ptr != NULL)
+    ASSERT_DEBUG_SYNC(new_animation_ptr != nullptr, "Out of memory")
+    if (new_animation_ptr != nullptr)
     {
         new_animation_ptr->data = data;
         new_animation_ptr->id   = system_hashed_ansi_string_create(current_animation_element_ptr->Attribute("id") );
@@ -95,22 +95,22 @@ PUBLIC collada_data_animation collada_data_animation_create(tinyxml2::XMLElement
         /* Iterate through all source elements */
         tinyxml2::XMLElement* source_element_ptr = current_animation_element_ptr->FirstChildElement("source");
 
-        while (source_element_ptr != NULL)
+        while (source_element_ptr != nullptr)
         {
             collada_data_source new_source = collada_data_source_create(source_element_ptr,
                                                                         data,
                                                                         new_animation_ptr->id);
 
-            ASSERT_DEBUG_SYNC(new_source != NULL,
+            ASSERT_DEBUG_SYNC(new_source != nullptr,
                               "Could not create a collada_data_source instance");
-            if (new_source != NULL)
+            if (new_source != nullptr)
             {
                 /* Add the source to the vector.. */
                 system_resizable_vector_push(new_animation_ptr->sources,
                                              new_source);
 
                 /* ..and to a map that maps ids to actual source instances */
-                system_hashed_ansi_string new_source_id = NULL;
+                system_hashed_ansi_string new_source_id = nullptr;
 
                 collada_data_source_get_property(new_source,
                                                  COLLADA_DATA_SOURCE_PROPERTY_ID,
@@ -119,25 +119,25 @@ PUBLIC collada_data_animation collada_data_animation_create(tinyxml2::XMLElement
                 system_hash64map_insert(new_animation_ptr->sources_by_id_map,
                                         system_hashed_ansi_string_get_hash(new_source_id),
                                         new_source,
-                                        NULL,  /* on_remove_callback */
-                                        NULL); /* on_remove_callback_user_arg */
+                                        nullptr,  /* on_remove_callback */
+                                        nullptr); /* on_remove_callback_user_arg */
             }
 
             /* Move to next source element */
             source_element_ptr = source_element_ptr->NextSiblingElement("source");
-        } /* while (source_element_ptr != NULL) */
+        }
 
         /* There should exactly one channel and sampler node */
         tinyxml2::XMLElement* channel_element_ptr = current_animation_element_ptr->FirstChildElement("channel");
         tinyxml2::XMLElement* sampler_element_ptr = current_animation_element_ptr->FirstChildElement("sampler");
 
-        ASSERT_DEBUG_SYNC(channel_element_ptr != NULL,
+        ASSERT_DEBUG_SYNC(channel_element_ptr != nullptr,
                           "No <channel> node defined for <animation>");
-        ASSERT_DEBUG_SYNC(sampler_element_ptr != NULL,
+        ASSERT_DEBUG_SYNC(sampler_element_ptr != nullptr,
                           "No <sampler> node defined for <animation>");
-        ASSERT_DEBUG_SYNC(channel_element_ptr->NextSiblingElement("channel") == NULL,
+        ASSERT_DEBUG_SYNC(channel_element_ptr->NextSiblingElement("channel") == nullptr,
                           "More than one <channel> node defined for <animation>");
-        ASSERT_DEBUG_SYNC(sampler_element_ptr->NextSiblingElement("sampler") == NULL,
+        ASSERT_DEBUG_SYNC(sampler_element_ptr->NextSiblingElement("sampler") == nullptr,
                           "More than one <sampler> node defined for <animation>");
 
         /* Process the sampler node first */
@@ -152,7 +152,7 @@ PUBLIC collada_data_animation collada_data_animation_create(tinyxml2::XMLElement
         /* Store the results in the descriptor */
         new_animation_ptr->channel = channel;
         new_animation_ptr->sampler = sampler;
-    } /* if (new_animation_ptr != NULL) */
+    }
 
     return (collada_data_animation) new_animation_ptr;
 }
@@ -160,29 +160,29 @@ PUBLIC collada_data_animation collada_data_animation_create(tinyxml2::XMLElement
 /** Please see header for specification */
 PUBLIC EMERALD_API void collada_data_animation_get_property(collada_data_animation          animation,
                                                             collada_data_animation_property property,
-                                                            void*                           out_result)
+                                                            void*                           out_result_ptr)
 {
-    _collada_data_animation* animation_ptr = (_collada_data_animation*) animation;
+    _collada_data_animation* animation_ptr = reinterpret_cast<_collada_data_animation*>(animation);
 
     switch (property)
     {
         case COLLADA_DATA_ANIMATION_PROPERTY_CHANNEL:
         {
-            *((collada_data_channel*) out_result) = animation_ptr->channel;
+            *reinterpret_cast<collada_data_channel*>(out_result_ptr) = animation_ptr->channel;
 
             break;
         }
 
         case COLLADA_DATA_ANIMATION_PROPERTY_ID:
         {
-            *((system_hashed_ansi_string*) out_result) = animation_ptr->id;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = animation_ptr->id;
 
             break;
         }
 
         case COLLADA_DATA_ANIMATION_PROPERTY_SAMPLER:
         {
-            *((collada_data_sampler*) out_result) = animation_ptr->sampler;
+            *reinterpret_cast<collada_data_sampler*>(out_result_ptr) = animation_ptr->sampler;
 
             break;
         }
@@ -192,16 +192,16 @@ PUBLIC EMERALD_API void collada_data_animation_get_property(collada_data_animati
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized collada_data_animation_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for spec */
 PUBLIC void collada_data_animation_release(collada_data_animation animation)
 {
-    if (animation != NULL)
+    if (animation != nullptr)
     {
-        delete (_collada_data_animation*) animation;
+        delete reinterpret_cast<_collada_data_animation*>(animation);
 
-        animation = NULL;
+        animation = nullptr;
     }
 }

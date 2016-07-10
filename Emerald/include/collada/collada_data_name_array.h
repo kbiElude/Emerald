@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -12,7 +12,8 @@
 
 enum collada_data_name_array_property
 {
-    COLLADA_DATA_NAME_ARRAY_PROPERTY_N_VALUES, /* not settable, uint32_t */
+    /* not settable, uint32_t */
+    COLLADA_DATA_NAME_ARRAY_PROPERTY_N_VALUES,
 };
 
 /** TODO. **/
@@ -21,13 +22,13 @@ PUBLIC collada_data_name_array collada_data_name_array_create(tinyxml2::XMLEleme
 /** TODO */
 PUBLIC void collada_data_name_array_get_property(collada_data_name_array          array,
                                                  collada_data_name_array_property property,
-                                                 void*                            out_result);
+                                                 void*                            out_result_ptr);
 
 /** TODO */
 PUBLIC system_hashed_ansi_string collada_data_name_array_get_value_at_index(collada_data_name_array array,
                                                                             uint32_t                index);
 
 /** TODO */
-PUBLIC void collada_data_name_array_release(collada_data_name_array);
+PUBLIC void collada_data_name_array_release(collada_data_name_array array);
 
 #endif /* COLLADA_DATA_NAME_ARRAY_H */

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -30,8 +30,10 @@ PUBLIC collada_data_image collada_data_image_create(tinyxml2::XMLElement* curren
 {
     _collada_data_image* new_image_ptr = new (std::nothrow) _collada_data_image;
 
-    ASSERT_DEBUG_SYNC(new_image_ptr != NULL, "Out of memory")
-    if (new_image_ptr != NULL)
+    ASSERT_DEBUG_SYNC(new_image_ptr != nullptr,
+                      "Out of memory")
+
+    if (new_image_ptr != nullptr)
     {
         new_image_ptr->id               = system_hashed_ansi_string_create(current_image_element_ptr->Attribute("id") );
         new_image_ptr->name             = system_hashed_ansi_string_create(current_image_element_ptr->Attribute("name") );
@@ -40,22 +42,23 @@ PUBLIC collada_data_image collada_data_image_create(tinyxml2::XMLElement* curren
         /* Look for <init_from> node inside the node */
         tinyxml2::XMLElement* init_from_element_ptr = current_image_element_ptr->FirstChildElement("init_from");
 
-        if (init_from_element_ptr != NULL)
+        if (init_from_element_ptr != nullptr)
         {
             /* The value inside the node is the file path */
             const char* file_prefix    = "file:///";
             const char* full_file_path = init_from_element_ptr->GetText();
 
-            if (strstr(full_file_path, file_prefix) == full_file_path)
+            if (strstr(full_file_path,
+                       file_prefix) == full_file_path)
             {
                 full_file_path += strlen(file_prefix);
             }
 
             /* Chances are the node text includes a path to the file. If that's the case,
              * we need to extract actual file name. */
-            const char* file_name = NULL;
+            const char* file_name = nullptr;
 
-            if ( (file_name = strrchr(full_file_path, '/')) != NULL)
+            if ( (file_name = strrchr(full_file_path, '/')) != nullptr)
             {
                 file_name++;
             }
@@ -67,11 +70,13 @@ PUBLIC collada_data_image collada_data_image_create(tinyxml2::XMLElement* curren
             /* Store the strings */
             new_image_ptr->file_name           = system_hashed_ansi_string_create(file_name);
             new_image_ptr->file_name_with_path = system_hashed_ansi_string_create(full_file_path);
-        } /* if (init_from_element_ptr != NULL) */
+        }
         else
         {
-            LOG_FATAL        ("No <init_from> node defined for <image>");
-            ASSERT_DEBUG_SYNC(false, "Cannot add image");
+            LOG_FATAL("No <init_from> node defined for <image>");
+
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot add image");
         }
     }
 
@@ -79,71 +84,72 @@ PUBLIC collada_data_image collada_data_image_create(tinyxml2::XMLElement* curren
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_image_get_property(const collada_data_image          image,
-                                                              collada_data_image_property property,
-                                                        void*                             out_data_ptr)
+PUBLIC EMERALD_API void collada_data_image_get_property(const collada_data_image    image,
+                                                        collada_data_image_property property,
+                                                        void*                       out_data_ptr)
 {
-    _collada_data_image* image_ptr = (_collada_data_image*) image;
+    _collada_data_image* image_ptr = reinterpret_cast<_collada_data_image*>(image);
 
     switch (property)
     {
         case COLLADA_DATA_IMAGE_PROPERTY_ID:
         {
-            *((system_hashed_ansi_string*) out_data_ptr) = image_ptr->id;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_data_ptr) = image_ptr->id;
 
             break;
         }
 
         case COLLADA_DATA_IMAGE_PROPERTY_REQUIRES_MIPMAPS:
         {
-            *((bool*) out_data_ptr) = image_ptr->requires_mipmaps;
+            *reinterpret_cast<bool*>(out_data_ptr) = image_ptr->requires_mipmaps;
 
             break;
         }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized COLLADA image property");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized COLLADA image property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void collada_data_image_get_properties(collada_data_image         image,
-                                                          system_hashed_ansi_string* out_name,
-                                                          system_hashed_ansi_string* out_file_name,
-                                                          system_hashed_ansi_string* out_file_name_with_path,
-                                                          bool*                      out_requires_mipmaps)
+                                                          system_hashed_ansi_string* out_name_ptr,
+                                                          system_hashed_ansi_string* out_file_name_ptr,
+                                                          system_hashed_ansi_string* out_file_name_with_path_ptr,
+                                                          bool*                      out_requires_mipmaps_ptr)
 {
-    _collada_data_image* image_ptr = (_collada_data_image*) image;
+    _collada_data_image* image_ptr = reinterpret_cast<_collada_data_image*>(image);
 
-    if (out_name != NULL)
+    if (out_name_ptr != nullptr)
     {
-        *out_name = image_ptr->name;
+        *out_name_ptr = image_ptr->name;
     }
 
-    if (out_file_name != NULL)
+    if (out_file_name_ptr != nullptr)
     {
-        *out_file_name = image_ptr->file_name;
+        *out_file_name_ptr = image_ptr->file_name;
     }
 
-    if (out_file_name_with_path != NULL)
+    if (out_file_name_with_path_ptr != nullptr)
     {
-        *out_file_name_with_path = image_ptr->file_name_with_path;
+        *out_file_name_with_path_ptr = image_ptr->file_name_with_path;
     }
 
-    if (out_requires_mipmaps != NULL)
+    if (out_requires_mipmaps_ptr != nullptr)
     {
-        *out_requires_mipmaps = image_ptr->requires_mipmaps;
+        *out_requires_mipmaps_ptr = image_ptr->requires_mipmaps;
     }
 }
 
 /* Please see header for specification */
 PUBLIC void collada_data_image_release(collada_data_image image)
 {
-    delete (_collada_data_image*) image;
+    delete reinterpret_cast<_collada_data_image*>(image);
 
-    image = NULL;
+    image = nullptr;
 }
 
 /* Please see header for specification */
@@ -151,20 +157,20 @@ PUBLIC void collada_data_image_set_property(collada_data_image          image,
                                             collada_data_image_property property,
                                             const void*                 data)
 {
-    _collada_data_image* image_ptr = (_collada_data_image*) image;
+    _collada_data_image* image_ptr = reinterpret_cast<_collada_data_image*>(image);
 
     switch (property)
     {
         case COLLADA_DATA_IMAGE_PROPERTY_ID:
         {
-            image_ptr->id = *((system_hashed_ansi_string*) data);
+            image_ptr->id = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }
 
         case COLLADA_DATA_IMAGE_PROPERTY_REQUIRES_MIPMAPS:
         {
-            image_ptr->requires_mipmaps = *((bool*) data);
+            image_ptr->requires_mipmaps = *reinterpret_cast<const bool*>(data);
 
             break;
         }
@@ -174,5 +180,5 @@ PUBLIC void collada_data_image_set_property(collada_data_image          image,
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized COLLADA image property requested");
         }
-    } /* switch (property) */
+    }
 }

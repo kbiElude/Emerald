@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -12,10 +12,17 @@
 
 enum collada_data_channel_property
 {
-    COLLADA_DATA_CHANNEL_PROPERTY_SAMPLER,          /* not settable, collada_data_sampler */
-    COLLADA_DATA_CHANNEL_PROPERTY_TARGET,           /* not settable, void* */
-    COLLADA_DATA_CHANNEL_PROPERTY_TARGET_COMPONENT, /* not settable, collada_data_channel_target_component */
-    COLLADA_DATA_CHANNEL_PROPERTY_TARGET_TYPE       /* not settable, collada_data_channel_target_type */
+    /* not settable, collada_data_sampler */
+    COLLADA_DATA_CHANNEL_PROPERTY_SAMPLER,
+
+    /* not settable, void* */
+    COLLADA_DATA_CHANNEL_PROPERTY_TARGET,
+
+    /* not settable, collada_data_channel_target_component */
+    COLLADA_DATA_CHANNEL_PROPERTY_TARGET_COMPONENT,
+
+    /* not settable, collada_data_channel_target_type */
+    COLLADA_DATA_CHANNEL_PROPERTY_TARGET_TYPE
 };
 
 enum collada_data_channel_target_component
@@ -46,7 +53,7 @@ PUBLIC collada_data_channel collada_data_channel_create(tinyxml2::XMLElement* ch
 /** TODO */
 PUBLIC void collada_data_channel_get_property(collada_data_channel          channel,
                                               collada_data_channel_property property,
-                                              void*                         out_result);
+                                              void*                         out_result_ptr);
 
 /** TODO */
 PUBLIC void collada_data_channel_release(collada_data_channel channel);

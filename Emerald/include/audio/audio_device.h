@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #ifndef AUDIO_DEVICE_H
@@ -53,7 +53,7 @@ PUBLIC EMERALD_API audio_device audio_device_get_default_device();
 /** TODO */
 PUBLIC EMERALD_API void audio_device_get_property(audio_device          device,
                                                   audio_device_property property,
-                                                  void*                 out_result);
+                                                  void*                 out_result_ptr);
 
 /** TODO.
  *

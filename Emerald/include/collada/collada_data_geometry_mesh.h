@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -27,7 +27,7 @@ PUBLIC collada_data_geometry_mesh collada_data_geometry_mesh_create(tinyxml2::XM
 /** TODO */
 PUBLIC EMERALD_API void collada_data_geometry_mesh_get_polylist(collada_data_geometry_mesh mesh,
                                                                 unsigned int               n_polylist,
-                                                                collada_data_polylist*     out_polylist);
+                                                                collada_data_polylist*     out_polylist_ptr);
 
 /** TODO */
 PUBLIC void collada_data_geometry_mesh_get_property(collada_data_geometry_mesh          mesh,

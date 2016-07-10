@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -13,8 +13,11 @@
 
 enum collada_data_surface_property
 {
-    COLLADA_DATA_SURFACE_PROPERTY_TEXTURE,                  /* collada_data_image */
-    COLLADA_DATA_SURFACE_PROPERTY_TEXTURE_REQUIRES_MIPMAPS, /* bool */
+    /* collada_data_image */
+    COLLADA_DATA_SURFACE_PROPERTY_TEXTURE,
+
+    /* bool */
+    COLLADA_DATA_SURFACE_PROPERTY_TEXTURE_REQUIRES_MIPMAPS,
 
     /* Always last */
     COLLADA_DATA_SURFACE_PROPERTY_COUNT
@@ -27,9 +30,9 @@ PUBLIC collada_data_surface collada_data_surface_create(tinyxml2::XMLElement*   
                                                         system_hash64map          images_by_id_map);
 
 /** TODO */
-PUBLIC void collada_data_surface_get_property(const collada_data_surface          surface,
-                                                    collada_data_surface_property property,
-                                              void*                               out_data);
+PUBLIC void collada_data_surface_get_property(const collada_data_surface    surface,
+                                              collada_data_surface_property property,
+                                              void*                         out_data_ptr);
 
 /** TODO */
 PUBLIC void collada_data_surface_release(collada_data_surface surface);

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -12,16 +12,35 @@
 
 enum collada_data_light_property
 {
-    COLLADA_DATA_LIGHT_PROPERTY_COLOR,                 /* not settable, float[3] */
-    COLLADA_DATA_LIGHT_PROPERTY_CONSTANT_ATTENUATION,  /* not settable, float */
-    COLLADA_DATA_LIGHT_PROPERTY_FALLOFF_ANGLE,         /* not settable, float, degrees */
-    COLLADA_DATA_LIGHT_PROPERTY_FALLOFF_EXPONENT,      /* not settable, float */
-    COLLADA_DATA_LIGHT_PROPERTY_ID,                    /* not settable, system_hashed_ansi_string */
-    COLLADA_DATA_LIGHT_PROPERTY_NAME,                  /* not settable, system_hashed_ansi_string */
-    COLLADA_DATA_LIGHT_PROPERTY_LINEAR_ATTENUATION,    /* not settable, float */
-    COLLADA_DATA_LIGHT_PROPERTY_QUADRATIC_ATTENUATION, /* not settable, float */
-    COLLADA_DATA_LIGHT_PROPERTY_TYPE,                  /* not settable, collada_data_light_type */
-    COLLADA_DATA_LIGHT_PROPERTY_ZFAR,                  /* not settable, float */
+    /* not settable, float[3] */
+    COLLADA_DATA_LIGHT_PROPERTY_COLOR,
+
+    /* not settable, float */
+    COLLADA_DATA_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
+
+    /* not settable, float, degrees */
+    COLLADA_DATA_LIGHT_PROPERTY_FALLOFF_ANGLE,
+
+    /* not settable, float */
+    COLLADA_DATA_LIGHT_PROPERTY_FALLOFF_EXPONENT,
+
+    /* not settable, system_hashed_ansi_string */
+    COLLADA_DATA_LIGHT_PROPERTY_ID,
+
+    /* not settable, system_hashed_ansi_string */
+    COLLADA_DATA_LIGHT_PROPERTY_NAME,
+
+    /* not settable, float */
+    COLLADA_DATA_LIGHT_PROPERTY_LINEAR_ATTENUATION,
+
+    /* not settable, float */
+    COLLADA_DATA_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
+
+    /* not settable, collada_data_light_type */
+    COLLADA_DATA_LIGHT_PROPERTY_TYPE,
+
+    /* not settable, float */
+    COLLADA_DATA_LIGHT_PROPERTY_ZFAR,
 
     /* Always last */
     COLLADA_DATA_LIGHT_PROPERTY_COUNT
@@ -57,9 +76,9 @@ enum collada_data_light_type
 PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* current_light_element_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void collada_data_light_get_property(const collada_data_light          light,
-                                                              collada_data_light_property property,
-                                                        void*                             out_data_ptr);
+PUBLIC EMERALD_API void collada_data_light_get_property(const collada_data_light    light,
+                                                        collada_data_light_property property,
+                                                        void*                       out_data_ptr);
 
 /** TODO */
 PUBLIC void collada_data_light_release(collada_data_light light);

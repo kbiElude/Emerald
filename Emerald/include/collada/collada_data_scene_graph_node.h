@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Private functions only.
  */
@@ -47,16 +47,16 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 /** TODO */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_get_node_item(collada_data_scene_graph_node       node,
                                                                     unsigned int                        n_node_item,
-                                                                    collada_data_scene_graph_node_item* out_node_item);
+                                                                    collada_data_scene_graph_node_item* out_node_item_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_item_get_property(collada_data_scene_graph_node_item          node_item,
                                                                         collada_data_scene_graph_node_item_property property,
-                                                                        void*                                       out_result);
+                                                                        void*                                       out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(collada_data_scene_graph_node          node,
                                                                    collada_data_scene_graph_node_property property,
-                                                                   void*                                  out_result);
+                                                                   void*                                  out_result_ptr);
 
 #endif /* COLLADA_DATA_SCENE_GRAPH_NODE_H */

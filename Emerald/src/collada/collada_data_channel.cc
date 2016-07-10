@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -33,44 +33,44 @@ typedef struct _collada_data_channel
 /** TODO */
 _collada_data_channel::_collada_data_channel()
 {
-    sampler     = NULL;
-    target      = NULL;
+    sampler     = nullptr;
+    target      = nullptr;
     target_type = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
 }
 
 /** TODO */
 PRIVATE bool _collada_data_channel_get_target(collada_data                           data,
                                               const char*                            path,
-                                              void**                                 out_target,
-                                              collada_data_channel_target_type*      out_target_type,
-                                              collada_data_channel_target_component* out_target_component)
+                                              void**                                 out_target_ptr,
+                                              collada_data_channel_target_type*      out_target_type_ptr,
+                                              collada_data_channel_target_component* out_target_component_ptr)
 
 {
     bool result = false;
 
-    collada_data_scene_graph_node         current_node            = NULL;
-    collada_data_scene_graph_node_item    current_node_item       = NULL;
-    void*                                 current_node_item_data  = NULL;
+    collada_data_scene_graph_node         current_node            = nullptr;
+    collada_data_scene_graph_node_item    current_node_item       = nullptr;
+    void*                                 current_node_item_data  = nullptr;
     _collada_data_node_item_type          current_node_item_type  = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
     bool                                  has_found               = false;
     system_resizable_vector               nodes                   = system_resizable_vector_create(4 /* capacity */);
     uint32_t                              n_current_node_items    = 0;
     uint32_t                              n_scenes                = 0;
-    system_hashed_ansi_string             object_name             = NULL;
-    system_hashed_ansi_string             property_name           = NULL;
-    system_hashed_ansi_string             property_component_name = NULL;
-    collada_data_scene_graph_node         root_node               = NULL;
-    collada_data_scene                    scene                   = NULL;
-    collada_data_scene_graph_node         target_object_node      = NULL;
+    system_hashed_ansi_string             object_name             = nullptr;
+    system_hashed_ansi_string             property_name           = nullptr;
+    system_hashed_ansi_string             property_component_name = nullptr;
+    collada_data_scene_graph_node         root_node               = nullptr;
+    collada_data_scene                    scene                   = nullptr;
+    collada_data_scene_graph_node         target_object_node      = nullptr;
     collada_data_channel_target_component target_component        = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
-    void*                                 target_property_node    = NULL;
+    void*                                 target_property_node    = nullptr;
     collada_data_channel_target_type      target_property_type    = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
     const char*                           traveller_ptr           = strchr(path,
                                                                            '/');
-    const char*                           traveller2_ptr          = NULL;
+    const char*                           traveller2_ptr          = nullptr;
 
     /* Break down the path into actual entities */
-    if (traveller_ptr == NULL)
+    if (traveller_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not identify object name in the channel path");
@@ -87,7 +87,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
     traveller2_ptr = traveller_ptr + 1;
     traveller_ptr  = strchr(traveller2_ptr, '.');
 
-    if (traveller_ptr == NULL)
+    if (traveller_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not identify property name in the channel path");
@@ -120,9 +120,9 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
                            0, /* n_scene */
                           &scene);
 
-    ASSERT_DEBUG_SYNC(scene != NULL,
+    ASSERT_DEBUG_SYNC(scene != nullptr,
                       "Could not retrieve scene instance");
-    if (scene == NULL)
+    if (scene == nullptr)
     {
         goto end;
     }
@@ -131,10 +131,10 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
                                     COLLADA_DATA_SCENE_PROPERTY_ROOT_NODE,
                                    &root_node);
 
-    ASSERT_DEBUG_SYNC(root_node != NULL,
+    ASSERT_DEBUG_SYNC(root_node != nullptr,
                       "Could not retrieve root node");
 
-    if (root_node == NULL)
+    if (root_node == nullptr)
     {
         goto end;
     }
@@ -143,7 +143,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
     system_resizable_vector_push(nodes,
                                  root_node);
 
-    while (target_object_node == NULL                &&
+    while (target_object_node == nullptr                &&
            system_resizable_vector_pop(nodes,
                                       &current_node) )
     {
@@ -153,7 +153,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
                                                   &n_current_node_items);
 
         for (uint32_t n_current_node_item = 0;
-                      n_current_node_item < n_current_node_items && (target_object_node== NULL);
+                      n_current_node_item < n_current_node_items && (target_object_node== nullptr);
                     ++n_current_node_item)
         {
             collada_data_scene_graph_node_get_node_item(current_node,
@@ -172,15 +172,15 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
             {
                 case COLLADA_DATA_NODE_ITEM_TYPE_NODE:
                 {
-                    system_hashed_ansi_string sid = NULL;
+                    system_hashed_ansi_string sid = nullptr;
 
-                    collada_data_scene_graph_node_get_property( (collada_data_scene_graph_node) current_node_item_data,
+                    collada_data_scene_graph_node_get_property( reinterpret_cast<collada_data_scene_graph_node>(current_node_item_data),
                                                                 COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_ID,
                                                                &sid);
 
                     /* Sanity check */
-                    ASSERT_DEBUG_SYNC(sid != NULL,
-                                      "sid is NULL");
+                    ASSERT_DEBUG_SYNC(sid != nullptr,
+                                      "sid is nullptr");
 
                     /* Is this a match? */
                     if (system_hashed_ansi_string_is_equal_to_hash_string(sid, object_name) )
@@ -203,11 +203,11 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
                                       "Unrecognized COLLADA node item type");
                 }
 #endif
-            } /* switch (current_node_item_type) */
-        } /* for (all children node items) */
-    } /* while (!has_found_object && system_resizable_vector_pop(nodes, &current_node) ) */
+            }
+        }
+    }
 
-    if (target_object_node == NULL)
+    if (target_object_node == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not find an object <channel> refers to.");
@@ -220,7 +220,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
     system_resizable_vector_push (nodes,
                                   target_object_node);
 
-    while ((target_property_node == NULL) && system_resizable_vector_pop(nodes,
+    while ((target_property_node == nullptr) && system_resizable_vector_pop(nodes,
                                                                         &current_node) )
     {
         collada_data_scene_graph_node_get_property(current_node,
@@ -228,7 +228,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
                                                   &n_current_node_items);
 
         for (uint32_t n_current_node_item = 0;
-                      n_current_node_item < n_current_node_items && (target_property_node == NULL);
+                      n_current_node_item < n_current_node_items && (target_property_node == nullptr);
                     ++n_current_node_item)
         {
             collada_data_scene_graph_node_get_node_item(target_object_node,
@@ -258,14 +258,14 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
                 case COLLADA_DATA_NODE_ITEM_TYPE_LIGHT_INSTANCE:
                 case COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION:
                 {
-                    system_hashed_ansi_string sid = NULL;
+                    system_hashed_ansi_string sid = nullptr;
 
                     /* Retrieve the name */
                     switch(current_node_item_type)
                     {
                         case COLLADA_DATA_NODE_ITEM_TYPE_CAMERA_INSTANCE:
                         {
-                            collada_data_scene_graph_node_camera_instance camera_instance = (collada_data_scene_graph_node_camera_instance) current_node_item_data;
+                            collada_data_scene_graph_node_camera_instance camera_instance = reinterpret_cast<collada_data_scene_graph_node_camera_instance>(current_node_item_data);
 
                             collada_data_scene_graph_node_camera_instance_get_property(camera_instance,
                                                                                        COLLADA_DATA_SCENE_GRAPH_NODE_CAMERA_INSTANCE_PROPERTY_NAME,
@@ -278,7 +278,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
 
                         case COLLADA_DATA_NODE_ITEM_TYPE_GEOMETRY_INSTANCE:
                         {
-                            collada_data_scene_graph_node_geometry_instance geometry_instance = (collada_data_scene_graph_node_geometry_instance) current_node_item_data;
+                            collada_data_scene_graph_node_geometry_instance geometry_instance = reinterpret_cast<collada_data_scene_graph_node_geometry_instance>(current_node_item_data);
 
                             collada_data_scene_graph_node_geometry_instance_get_property(geometry_instance,
                                                                                          COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_NAME,
@@ -291,7 +291,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
 
                         case COLLADA_DATA_NODE_ITEM_TYPE_LIGHT_INSTANCE:
                         {
-                            collada_data_scene_graph_node_light_instance light_instance = (collada_data_scene_graph_node_light_instance) current_node_item_data;
+                            collada_data_scene_graph_node_light_instance light_instance = reinterpret_cast<collada_data_scene_graph_node_light_instance>(current_node_item_data);
 
                             collada_data_scene_graph_node_light_instance_get_property(light_instance,
                                                                                       COLLADA_DATA_SCENE_GRAPH_NODE_LIGHT_INSTANCE_PROPERTY_NAME,
@@ -304,7 +304,7 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
 
                         case COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION:
                         {
-                            collada_data_transformation transformation = (collada_data_transformation) current_node_item_data;
+                            collada_data_transformation transformation = reinterpret_cast<collada_data_transformation>(current_node_item_data);
 
                             collada_data_transformation_get_property(transformation,
                                                                      COLLADA_DATA_TRANSFORMATION_PROPERTY_SID,
@@ -314,11 +314,11 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
 
                             break;
                         }
-                    } /* switch(current_node_item_type) */
+                    }
 
                     /* Sanity check */
-                    ASSERT_DEBUG_SYNC(sid != NULL,
-                                      "sid is NULL");
+                    ASSERT_DEBUG_SYNC(sid != nullptr,
+                                      "sid is nullptr");
 
                     /* Is this a match? */
                     if (system_hashed_ansi_string_is_equal_to_hash_string(sid, property_name) )
@@ -329,11 +329,11 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
                     /* Done */
                     break;
                 }
-            } /* switch (current_node_item_type) */
-        } /* for (all node items) */
-    } /* while ((target_property_node == NULL) && system_resizable_vector_pop(nodes, &current_node) ) */
+            }
+        }
+    }
 
-    if (target_property_node == NULL)
+    if (target_property_node == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not find a property <channel> refers to.");
@@ -354,17 +354,17 @@ PRIVATE bool _collada_data_channel_get_target(collada_data                      
     }
 
     /* All done */
-    *out_target           = target_property_node;
-    *out_target_component = target_component;
-    *out_target_type      = target_property_type;
-    result                = true;
+    *out_target_ptr           = target_property_node;
+    *out_target_component_ptr = target_component;
+    *out_target_type_ptr      = target_property_type;
+    result                    = true;
 
 end:
-    if (nodes != NULL)
+    if (nodes != nullptr)
     {
         system_resizable_vector_release(nodes);
 
-        nodes = NULL;
+        nodes = nullptr;
     }
 
     return result;
@@ -376,20 +376,20 @@ PUBLIC collada_data_channel collada_data_channel_create(tinyxml2::XMLElement* ch
                                                         collada_data_sampler  sampler,
                                                         collada_data          data)
 {
-    _collada_data_channel*                channel_ptr      = NULL;
-    system_hashed_ansi_string             sampler_id       = NULL;
-    const char*                           target_name      = NULL;
-    void*                                 target           = NULL;
+    _collada_data_channel*                channel_ptr      = nullptr;
+    system_hashed_ansi_string             sampler_id       = nullptr;
+    const char*                           target_name      = nullptr;
+    void*                                 target           = nullptr;
     collada_data_channel_target_component target_component = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
     collada_data_channel_target_type      target_type      = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
 
     /* Retrieve the source instance */
     const char* source_name = channel_element_ptr->Attribute("source");
 
-    ASSERT_DEBUG_SYNC(source_name != NULL,
+    ASSERT_DEBUG_SYNC(source_name != nullptr,
                       "Source attribute not defined for <channel> node");
 
-    if (source_name == NULL)
+    if (source_name == nullptr)
     {
         goto end;
     }
@@ -417,10 +417,10 @@ PUBLIC collada_data_channel collada_data_channel_create(tinyxml2::XMLElement* ch
     /* Identify the target instance */
     target_name = channel_element_ptr->Attribute("target");
 
-    ASSERT_DEBUG_SYNC(target_name != NULL,
+    ASSERT_DEBUG_SYNC(target_name != nullptr,
                       "Target attribute not defined for <channel> node");
 
-    if (target_name == NULL)
+    if (target_name == nullptr)
     {
         goto end;
     }
@@ -441,10 +441,10 @@ PUBLIC collada_data_channel collada_data_channel_create(tinyxml2::XMLElement* ch
     /* Spawn the descriptor */
     channel_ptr = new (std::nothrow) _collada_data_channel;
 
-    ASSERT_ALWAYS_SYNC(channel_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(channel_ptr != nullptr,
                        "Out of memory");
 
-    if (channel_ptr != NULL)
+    if (channel_ptr != nullptr)
     {
         /* Fill it with pointers we earlier came up with */
         channel_ptr->sampler          = sampler;
@@ -454,42 +454,42 @@ PUBLIC collada_data_channel collada_data_channel_create(tinyxml2::XMLElement* ch
     }
 
 end:
-    return (collada_data_channel) channel_ptr;
+    return reinterpret_cast<collada_data_channel>(channel_ptr);
 }
 
 /** Please see header for spec */
 PUBLIC void collada_data_channel_get_property(collada_data_channel          channel,
                                               collada_data_channel_property property,
-                                              void*                         out_result)
+                                              void*                         out_result_ptr)
 {
-    _collada_data_channel* channel_ptr = (_collada_data_channel*) channel;
+    _collada_data_channel* channel_ptr = reinterpret_cast<_collada_data_channel*>(channel);
 
     switch (property)
     {
         case COLLADA_DATA_CHANNEL_PROPERTY_SAMPLER:
         {
-            *(collada_data_sampler*) out_result = channel_ptr->sampler;
+            *reinterpret_cast<collada_data_sampler*>(out_result_ptr) = channel_ptr->sampler;
 
             break;
         }
 
         case COLLADA_DATA_CHANNEL_PROPERTY_TARGET:
         {
-            *(void**) out_result = channel_ptr->target;
+            *reinterpret_cast<void**>(out_result_ptr) = channel_ptr->target;
 
             break;
         }
 
         case COLLADA_DATA_CHANNEL_PROPERTY_TARGET_COMPONENT:
         {
-            *(collada_data_channel_target_component*) out_result = channel_ptr->target_component;
+            *reinterpret_cast<collada_data_channel_target_component*>(out_result_ptr) = channel_ptr->target_component;
 
             break;
         }
 
         case COLLADA_DATA_CHANNEL_PROPERTY_TARGET_TYPE:
         {
-            *(collada_data_channel_target_type*) out_result = channel_ptr->target_type;
+            *reinterpret_cast<collada_data_channel_target_type*>(out_result_ptr) = channel_ptr->target_type;
 
             break;
         }
@@ -499,13 +499,13 @@ PUBLIC void collada_data_channel_get_property(collada_data_channel          chan
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized collada_data_channel_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void collada_data_channel_release(collada_data_channel channel)
 {
-    delete (_collada_data_channel*) channel;
+    delete reinterpret_cast<_collada_data_channel*>(channel);
 
-    channel = NULL;
+    channel = nullptr;
 }

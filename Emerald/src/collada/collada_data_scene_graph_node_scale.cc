@@ -12,14 +12,14 @@
 /** TODO */
 PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_scale_create(tinyxml2::XMLElement* element_ptr)
 {
-    collada_data_scene_graph_node_item item          = NULL;
+    collada_data_scene_graph_node_item item          = nullptr;
     const char*                        text          = element_ptr->GetText();
     const char*                        traveller_ptr = text;
 
     /* Read SID */
     const char* sid = element_ptr->Attribute("sid");
 
-    ASSERT_ALWAYS_SYNC(sid != NULL,
+    ASSERT_ALWAYS_SYNC(sid != nullptr,
                        "Could not read <scale> node's SID");
 
     /* Retrieve matrix data */
@@ -33,10 +33,10 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_scale_cr
     collada_data_transformation new_transformation = collada_data_transformation_create_scale(element_ptr,
                                                                                               data);
 
-    ASSERT_ALWAYS_SYNC(new_transformation != NULL,
+    ASSERT_ALWAYS_SYNC(new_transformation != nullptr,
                        "Could not create COLLADA transformation descriptor");
 
-    if (new_transformation == NULL)
+    if (new_transformation == nullptr)
     {
         goto end;
     }

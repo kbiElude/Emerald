@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -30,7 +30,7 @@ typedef struct _collada_data_scene
 /** TODO */
 _collada_data_scene::_collada_data_scene()
 {
-    emerald_scene = NULL;
+    emerald_scene = nullptr;
 
     id   = system_hashed_ansi_string_get_default_empty_string();
     name = system_hashed_ansi_string_get_default_empty_string();
@@ -39,11 +39,11 @@ _collada_data_scene::_collada_data_scene()
 /** TODO */
 _collada_data_scene::~_collada_data_scene()
 {
-    if (emerald_scene != NULL)
+    if (emerald_scene != nullptr)
     {
         scene_release(emerald_scene);
 
-        emerald_scene = NULL;
+        emerald_scene = nullptr;
     }
 }
 
@@ -54,12 +54,12 @@ PUBLIC collada_data_scene collada_data_scene_create(tinyxml2::XMLElement* scene_
 {
     tinyxml2::XMLElement* current_node_element_ptr = scene_element_ptr->FirstChildElement("node");
     _collada_data_scene*  new_scene_ptr            = new (std::nothrow) _collada_data_scene;
-    system_hash64map      nodes_by_id_map          = NULL;
+    system_hash64map      nodes_by_id_map          = nullptr;
 
-    ASSERT_DEBUG_SYNC(new_scene_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_scene_ptr != nullptr,
                       "Out of memory");
 
-    if (new_scene_ptr == NULL)
+    if (new_scene_ptr == nullptr)
     {
         goto end;
     }
@@ -78,16 +78,16 @@ PUBLIC collada_data_scene collada_data_scene_create(tinyxml2::XMLElement* scene_
                               COLLADA_DATA_PROPERTY_NODES_BY_ID_MAP,
                              &nodes_by_id_map);
 
-    while (current_node_element_ptr != NULL)
+    while (current_node_element_ptr != nullptr)
     {
         /* Parse the node */
         collada_data_scene_graph_node_item new_node_item = collada_data_scene_graph_node_item_create_node(current_node_element_ptr,
-                                                                                                          NULL,
+                                                                                                          nullptr,
                                                                                                           collada_data);
 
         /* Add the node to the scene */
-        collada_data_scene_graph_node node       = NULL;
-        system_hashed_ansi_string     scene_name = NULL;
+        collada_data_scene_graph_node node       = nullptr;
+        system_hashed_ansi_string     scene_name = nullptr;
 
         collada_data_scene_graph_node_item_get_property(new_node_item,
                                                         COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_DATA_HANDLE,
@@ -99,7 +99,8 @@ PUBLIC collada_data_scene collada_data_scene_create(tinyxml2::XMLElement* scene_
         system_hash64 entry_hash = system_hash64_calculate(system_hashed_ansi_string_get_buffer(scene_name),
                                                            system_hashed_ansi_string_get_length(scene_name) );
 
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(nodes_by_id_map, entry_hash),
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(nodes_by_id_map,
+                                                     entry_hash),
                           "Item already added to a hash-map");
 
         collada_data_scene_graph_node_add_node_item(new_scene_ptr->fake_root_node,
@@ -107,7 +108,7 @@ PUBLIC collada_data_scene collada_data_scene_create(tinyxml2::XMLElement* scene_
 
         /* Move on */
         current_node_element_ptr = current_node_element_ptr->NextSiblingElement("node");
-    } /* while (current_node_element_ptr != NULL) */
+    }
 
 end:
     return (collada_data_scene) new_scene_ptr;
@@ -118,72 +119,74 @@ PUBLIC EMERALD_API void collada_data_scene_get_property(const collada_data_scene
                                                               collada_data_scene_property property,
                                                         void*                             out_data_ptr)
 {
-    const _collada_data_scene* scene_ptr = (const _collada_data_scene*) in_scene;
+    const _collada_data_scene* scene_ptr = reinterpret_cast<const _collada_data_scene*>(in_scene);
 
     switch (property)
     {
         case COLLADA_DATA_SCENE_PROPERTY_EMERALD_SCENE:
         {
-            *((scene*) out_data_ptr) = scene_ptr->emerald_scene;
+            *reinterpret_cast<scene*>(out_data_ptr) = scene_ptr->emerald_scene;
 
             break;
         }
 
         case COLLADA_DATA_SCENE_PROPERTY_NAME:
         {
-            *((system_hashed_ansi_string*) out_data_ptr) = scene_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_data_ptr) = scene_ptr->name;
 
             break;
         }
 
         case COLLADA_DATA_SCENE_PROPERTY_ROOT_NODE:
         {
-            *((collada_data_scene_graph_node*) out_data_ptr) = (collada_data_scene_graph_node) scene_ptr->fake_root_node;
+            *reinterpret_cast<collada_data_scene_graph_node*>(out_data_ptr) = reinterpret_cast<collada_data_scene_graph_node>(scene_ptr->fake_root_node);
 
             break;
         }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized COLLADA scene property");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized COLLADA scene property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for spec */
 PUBLIC void collada_data_scene_release(collada_data_scene scene)
 {
-    delete (_collada_data_scene*) scene;
+    delete reinterpret_cast<_collada_data_scene*>(scene);
 
-    scene = NULL;
+    scene = nullptr;
 }
 
 /* Please see header for spec */
 PUBLIC EMERALD_API void collada_data_scene_set_property(collada_data_scene          in_scene,
                                                         collada_data_scene_property property,
-                                                        void*                       data_ptr)
+                                                        const void*                 data_ptr)
 {
-    _collada_data_scene* scene_ptr = (_collada_data_scene*) in_scene;
+    _collada_data_scene* scene_ptr = reinterpret_cast<_collada_data_scene*>(in_scene);
 
     switch (property)
     {
         case COLLADA_DATA_SCENE_PROPERTY_EMERALD_SCENE:
         {
-            scene_ptr->emerald_scene = *((scene*) data_ptr);
+            scene_ptr->emerald_scene = *reinterpret_cast<const scene*>(data_ptr);
 
             break;
         }
 
         case COLLADA_DATA_SCENE_PROPERTY_NAME:
         {
-            scene_ptr->name = *((system_hashed_ansi_string*) data_ptr);
+            scene_ptr->name = *reinterpret_cast<const system_hashed_ansi_string*>(data_ptr);
 
             break;
         }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized COLLADA scene property");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized COLLADA scene property");
         }
-    } /* switch (property) */
+    }
 }

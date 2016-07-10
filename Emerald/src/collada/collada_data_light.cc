@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
@@ -46,10 +46,10 @@ PRIVATE bool _collada_data_light_parse_color(tinyxml2::XMLElement* element_ptr,
     tinyxml2::XMLElement* color_element_ptr = element_ptr->FirstChildElement("color");
     bool                  result            = false;
 
-    ASSERT_DEBUG_SYNC(color_element_ptr != NULL,
+    ASSERT_DEBUG_SYNC(color_element_ptr != nullptr,
                       "Required <color> sub-node not found.");
 
-    if (color_element_ptr == NULL)
+    if (color_element_ptr == nullptr)
     {
         goto end;
     }
@@ -69,15 +69,15 @@ end:
 /** Please see header for spec */
 PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* current_light_element_ptr)
 {
-    tinyxml2::XMLElement* current_child_element_ptr    = NULL;
+    tinyxml2::XMLElement* current_child_element_ptr    = nullptr;
     bool                  has_parsed_light             = false;
-    _collada_data_light*  new_light_ptr                = NULL;
-    tinyxml2::XMLElement* technique_common_element_ptr = NULL;
+    _collada_data_light*  new_light_ptr                = nullptr;
+    tinyxml2::XMLElement* technique_common_element_ptr = nullptr;
 
     /* Try to find <technique_common> sub-node */
     technique_common_element_ptr = current_light_element_ptr->FirstChildElement("technique_common");
 
-    if (technique_common_element_ptr == NULL)
+    if (technique_common_element_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "<light> node does not contain a <technique_common> sub-node");
@@ -88,10 +88,10 @@ PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* curren
    /* Create the descriptor */
     new_light_ptr = new (std::nothrow) _collada_data_light;
 
-    ASSERT_DEBUG_SYNC(new_light_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_light_ptr != nullptr,
                       "Out of memory")
 
-    if (new_light_ptr == NULL)
+    if (new_light_ptr == nullptr)
     {
         goto end;
     }
@@ -99,7 +99,7 @@ PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* curren
     /* Parse the light details, given its type */
     current_child_element_ptr = technique_common_element_ptr->FirstChildElement();
 
-    while (current_child_element_ptr != NULL)
+    while (current_child_element_ptr != nullptr)
     {
         const char* current_child_name = current_child_element_ptr->Name();
 
@@ -143,7 +143,7 @@ PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* curren
 
             const tinyxml2::XMLElement* quadratic_attenuation_element_ptr = current_child_element_ptr->FirstChildElement("quadratic_attenuation");
 
-            if (quadratic_attenuation_element_ptr != NULL)
+            if (quadratic_attenuation_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(quadratic_attenuation_element_ptr->GetText(),
                                                &new_light_ptr->quadratic_attenuation);
@@ -158,19 +158,19 @@ PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* curren
             const tinyxml2::XMLElement* linear_attenuation_element_ptr   = current_child_element_ptr->FirstChildElement("linear_attenuation");
             const tinyxml2::XMLElement* zfar_element_ptr                 = current_child_element_ptr->FirstChildElement("zfar");
 
-            if (constant_attenuation_element_ptr != NULL)
+            if (constant_attenuation_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(constant_attenuation_element_ptr->GetText(),
                                                &new_light_ptr->constant_attenuation);
             }
 
-            if (linear_attenuation_element_ptr != NULL)
+            if (linear_attenuation_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(linear_attenuation_element_ptr->GetText(),
                                                &new_light_ptr->linear_attenuation);
             }
 
-            if (zfar_element_ptr != NULL)
+            if (zfar_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(zfar_element_ptr->GetText(),
                                                &new_light_ptr->zfar);
@@ -195,37 +195,37 @@ PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* curren
             const tinyxml2::XMLElement* quadratic_attenuation_element_ptr = current_child_element_ptr->FirstChildElement("quadratic_attenuation");
             const tinyxml2::XMLElement* zfar_element_ptr                  = current_child_element_ptr->FirstChildElement("zfar");
 
-            if (constant_attenuation_element_ptr != NULL)
+            if (constant_attenuation_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(constant_attenuation_element_ptr->GetText(),
                                                &new_light_ptr->constant_attenuation);
             }
 
-            if (falloff_angle_element_ptr != NULL)
+            if (falloff_angle_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(falloff_angle_element_ptr->GetText(),
                                                &new_light_ptr->falloff_angle);
             }
 
-            if (falloff_exponent_element_ptr != NULL)
+            if (falloff_exponent_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(falloff_exponent_element_ptr->GetText(),
                                                &new_light_ptr->falloff_exponent);
             }
 
-            if (linear_attenuation_element_ptr != NULL)
+            if (linear_attenuation_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(linear_attenuation_element_ptr->GetText(),
                                                &new_light_ptr->linear_attenuation);
             }
 
-            if (quadratic_attenuation_element_ptr != NULL)
+            if (quadratic_attenuation_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(quadratic_attenuation_element_ptr->GetText(),
                                                &new_light_ptr->quadratic_attenuation);
             }
 
-            if (zfar_element_ptr != NULL)
+            if (zfar_element_ptr != nullptr)
             {
                 system_text_get_float_from_text(zfar_element_ptr->GetText(),
                                                &new_light_ptr->zfar);
@@ -240,108 +240,109 @@ PUBLIC collada_data_light collada_data_light_create(tinyxml2::XMLElement* curren
 
         /* Move on */
         current_child_element_ptr = current_child_element_ptr->NextSiblingElement();
-    } /* while (current_child_element_ptr != NULL) */
+    }
 
     {
         new_light_ptr->id   = system_hashed_ansi_string_create(current_light_element_ptr->Attribute("id") );
         new_light_ptr->name = system_hashed_ansi_string_create(current_light_element_ptr->Attribute("name") );
-    } /* if (new_light_ptr != NULL) */
+    }
 
 end:
-    return (collada_data_light) new_light_ptr;
+    return reinterpret_cast<collada_data_light>(new_light_ptr);
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void collada_data_light_get_property(const collada_data_light          light,
-                                                              collada_data_light_property property,
-                                                        void*                             out_data_ptr)
+PUBLIC EMERALD_API void collada_data_light_get_property(const collada_data_light    light,
+                                                        collada_data_light_property property,
+                                                        void*                       out_data_ptr)
 {
-    _collada_data_light* light_ptr = (_collada_data_light*) light;
+    _collada_data_light* light_ptr = reinterpret_cast<_collada_data_light*>(light);
 
     switch (property)
     {
         case COLLADA_DATA_LIGHT_PROPERTY_COLOR:
         {
-            *((float**) out_data_ptr) = light_ptr->color;
+            *reinterpret_cast<float**>(out_data_ptr) = light_ptr->color;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_CONSTANT_ATTENUATION:
         {
-            *((float*) out_data_ptr) = light_ptr->constant_attenuation;
+            *reinterpret_cast<float*>(out_data_ptr) = light_ptr->constant_attenuation;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_FALLOFF_ANGLE:
         {
-            *((float*) out_data_ptr) = light_ptr->falloff_angle;
+            *reinterpret_cast<float*>(out_data_ptr) = light_ptr->falloff_angle;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_FALLOFF_EXPONENT:
         {
-            *((float*) out_data_ptr) = light_ptr->falloff_exponent;
+            *reinterpret_cast<float*>(out_data_ptr) = light_ptr->falloff_exponent;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_ID:
         {
-            *((system_hashed_ansi_string*) out_data_ptr) = light_ptr->id;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_data_ptr) = light_ptr->id;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_LINEAR_ATTENUATION:
         {
-            *((float*) out_data_ptr) = light_ptr->linear_attenuation;
+            *reinterpret_cast<float*>(out_data_ptr) = light_ptr->linear_attenuation;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_NAME:
         {
-            *((system_hashed_ansi_string*) out_data_ptr) = light_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_data_ptr) = light_ptr->name;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_QUADRATIC_ATTENUATION:
         {
-            *((float*) out_data_ptr) = light_ptr->quadratic_attenuation;
+            *reinterpret_cast<float*>(out_data_ptr) = light_ptr->quadratic_attenuation;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_TYPE:
         {
-            *((collada_data_light_type*) out_data_ptr) = light_ptr->type;
+            *reinterpret_cast<collada_data_light_type*>(out_data_ptr) = light_ptr->type;
 
             break;
         }
 
         case COLLADA_DATA_LIGHT_PROPERTY_ZFAR:
         {
-            *((float*) out_data_ptr) = light_ptr->zfar;
+            *reinterpret_cast<float*>(out_data_ptr) = light_ptr->zfar;
 
             break;
         }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized COLLADA light property");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized COLLADA light property");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC void collada_data_light_release(collada_data_light light)
 {
-    delete (_collada_data_light*) light;
+    delete reinterpret_cast<_collada_data_light*>(light);
 
-    light = NULL;
+    light = nullptr;
 }
 
