@@ -49,9 +49,10 @@ typedef struct
 
 typedef struct
 {
-    /* NOTE: Unique input objects may be set to null if input object should be extracted during run-time */
+    /* NOTE: May be null, in which case the task is a nop. */
     ral_command_buffer         command_buffer;
 
+    /* NOTE: Unique input objects may be set to null if input object should be extracted during run-time */
     uint32_t                   n_unique_inputs;
     uint32_t                   n_unique_outputs;
     const ral_present_task_io* unique_inputs;

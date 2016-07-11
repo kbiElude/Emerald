@@ -1,7 +1,3 @@
-#if 0
-
-TODO
-
 /**
  *
  * Emerald (kbi/elude @2015-2016)
@@ -49,6 +45,15 @@ PUBLIC EMERALD_API scalar_field_metaballs scalar_field_metaballs_create(ral_cont
                                                                         const unsigned int*       grid_size_xyz,
                                                                         system_hashed_ansi_string name);
 
+/** Returns a present task instance which updates the scalar field data (if necessary), and exposes
+ *  the data buffer at 0th unique output.
+ *
+ *  @param metaballs Metaballs instance to use for the request.
+ *
+ *  @return As per description.
+ **/
+PUBLIC EMERALD_API ral_present_task scalar_field_metaballs_get_present_task(scalar_field_metaballs metaballs);
+
 /** TODO */
 PUBLIC EMERALD_API void scalar_field_metaballs_get_property(scalar_field_metaballs          metaballs,
                                                             scalar_field_metaballs_property property,
@@ -65,13 +70,4 @@ PUBLIC EMERALD_API void scalar_field_metaballs_set_property(scalar_field_metabal
                                                             scalar_field_metaballs_property property,
                                                             const void*                     data);
 
-/** Updates the scalar field data in the internally managed buffer memory, if necessary.
- *
- *  @param metaballs Metaballs instance to use for the request.
- *
- *  @return true if the internal buffer memory was updated, false otherwise.
- **/
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool scalar_field_metaballs_update(scalar_field_metaballs metaballs);
-
 #endif /* SCALAR_FIELD_METABALLS_H */
-#endif

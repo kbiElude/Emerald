@@ -2886,6 +2886,32 @@ PUBLIC void raGL_backend_get_property(void*                backend,
             break;
         }
 
+        case RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_COUNT:
+        {
+            const ogl_context_gl_limits* limits_ptr = nullptr;
+
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_LIMITS,
+                                    &limits_ptr);
+
+            *(const GLint**) out_result_ptr = limits_ptr->max_compute_work_group_count;
+
+            break;
+        }
+
+        case RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_INVOCATIONS:
+        {
+            const ogl_context_gl_limits* limits_ptr = nullptr;
+
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_LIMITS,
+                                    &limits_ptr);
+
+            *(uint32_t*) out_result_ptr = limits_ptr->max_compute_work_group_invocations;
+
+            break;
+        }
+
         case RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_SIZE:
         {
             const ogl_context_gl_limits* limits_ptr = nullptr;
@@ -2895,6 +2921,19 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                     &limits_ptr);
 
             *(const GLint**) out_result_ptr = limits_ptr->max_compute_work_group_size;
+
+            break;
+        }
+
+        case RAL_CONTEXT_PROPERTY_MAX_UNIFORM_BLOCK_SIZE:
+        {
+            const ogl_context_gl_limits* limits_ptr = nullptr;
+
+            ogl_context_get_property(backend_ptr->context_gl,
+                                     OGL_CONTEXT_PROPERTY_LIMITS,
+                                    &limits_ptr);
+
+            *(uint32_t*) out_result_ptr = limits_ptr->max_uniform_block_size;
 
             break;
         }

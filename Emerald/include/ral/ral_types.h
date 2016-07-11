@@ -677,7 +677,25 @@ typedef enum
      *
      * NOTE: This query will be passed to the rendering back-end.
      **/
+    RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_COUNT,
+
+    /* not settable, uint32_t.
+     *
+     * NOTE: This query will be passed to the rendeering back-end.
+     */
+    RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_INVOCATIONS,
+
+    /* not settable, uint32_t[3].
+     *
+     * NOTE: This query will be passed to the rendering back-end.
+     **/
     RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_SIZE,
+
+    /* not settable, uint32_t.
+     *
+     * NOTE: This query will be passed to the rendeering back-end.
+     */
+    RAL_CONTEXT_PROPERTY_MAX_UNIFORM_BLOCK_SIZE,
 
     /* not settable; ral_rendering_handler */
     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
