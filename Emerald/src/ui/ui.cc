@@ -1540,7 +1540,6 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
                                 system_hashed_ansi_string program_name,
                                 ral_program               program)
 {
-    ral_context         context           = nullptr;
     const system_hash64 program_name_hash = system_hashed_ansi_string_get_hash(program_name);
     bool                result            = false;
     _ui*                ui_ptr            = reinterpret_cast<_ui*>(ui_instance);

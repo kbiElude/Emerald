@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef MESH_TYPES_H
@@ -14,35 +14,31 @@ DECLARE_HANDLE(mesh_material);
 
 typedef struct mesh_draw_call_arguments
 {
-    /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS draw call type. */
-    GLint count;
-
     /* ID of the BO which should be bound to the GL_DRAW_INDIRECT_BUFFER binding point before
      * the indirect draw call is dispatched.
      *
      * Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT draw call type. */
-    GLuint draw_indirect_bo_binding;
+    ral_buffer draw_indirect_bo;
 
     /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS draw call type. */
-    GLint first;
+    uint32_t n_base_vertex;
 
     /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT draw call type. */
-    const void* indirect;
+    uint32_t indirect_offset;
+
+    /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS draw call type. */
+    uint32_t n_vertices;
 
     /* Must be filled for the MESH_DRAW_CALL_TYPE_ARRAYS and MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT draw call types. */
-    GLenum mode;
-
-    /* Optional. Should be set to bits accepted by glMemoryBarrier(), or 0 if no synchronization is needed. */
-    GLenum pre_draw_call_barriers;
+    ral_primitive_type primitive_type;
 
     mesh_draw_call_arguments()
     {
-        count                    = 0;
-        draw_indirect_bo_binding = 0;
-        first                    = 0;
-        indirect                 = NULL;
-        mode                     = 0xFFFFFFFF;
-        pre_draw_call_barriers   = 0;
+        draw_indirect_bo = nullptr;
+        indirect_offset  = 0;
+        n_base_vertex    = 0;
+        n_vertices       = 0;
+        primitive_type   = RAL_PRIMITIVE_TYPE_UNKNOWN; /* ex mode */
     }
 } mesh_draw_call_arguments;
 

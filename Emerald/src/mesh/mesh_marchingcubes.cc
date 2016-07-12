@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -8,9 +8,10 @@
 #include "mesh/mesh_material.h"
 #include "mesh/mesh_marchingcubes.h"
 #include "ogl/ogl_context.h"
-#include "raGL/raGL_program.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
@@ -20,7 +21,6 @@
 
 typedef struct _mesh_marchingcubes
 {
-    raGL_backend              backend;
     ral_context               context;  /* DO NOT release */
     unsigned int              grid_size[3];
     float                     isolevel;
@@ -39,23 +39,21 @@ typedef struct _mesh_marchingcubes
     ral_buffer      polygonized_data_normals_subregion_bo;
     ral_buffer      polygonized_data_vertices_subregion_bo;
 
+    ral_present_task present_task_with_compute;
+    ral_present_task present_task_wo_compute;
+
     ral_program              po_scalar_field_polygonizer;
     ral_program_block_buffer po_scalar_field_polygonizer_data_ub;
-    GLuint                   po_scalar_field_polygonizer_data_ub_bo_size;
-    GLuint                   po_scalar_field_polygonizer_data_ub_bp;
-    GLuint                   po_scalar_field_polygonizer_data_ub_isolevel_offset;
+    uint32_t                 po_scalar_field_polygonizer_data_ub_bo_size;
+    uint32_t                 po_scalar_field_polygonizer_data_ub_isolevel_offset;
     unsigned int             po_scalar_field_polygonizer_global_wg_size[3];
     ral_program_block_buffer po_scalar_field_polygonizer_indirect_draw_call_count_ssb;
-    GLuint                   po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp;
     ral_program_block_buffer po_scalar_field_polygonizer_precomputed_tables_ub;
-    GLuint                   po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset;
-    GLuint                   po_scalar_field_polygonizer_precomputed_tables_ub_bo_size;
-    GLuint                   po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset;
-    GLuint                   po_scalar_field_polygonizer_precomputed_tables_ub_bp;
+    uint32_t                 po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset;
+    uint32_t                 po_scalar_field_polygonizer_precomputed_tables_ub_bo_size;
+    uint32_t                 po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset;
     ral_program_block_buffer po_scalar_field_polygonizer_result_data_ssb;
-    GLuint                   po_scalar_field_polygonizer_result_data_ssb_bp;
     ral_program_block_buffer po_scalar_field_polygonizer_scalar_field_data_ssb;
-    GLuint                   po_scalar_field_polygonizer_scalar_field_data_ssb_bp;
 
     REFCOUNT_INSERT_VARIABLES;
 
@@ -66,61 +64,54 @@ typedef struct _mesh_marchingcubes
                0,
                sizeof(grid_size) );
 
-        backend                         = NULL;
-        context                         = NULL;
+        context                         = nullptr;
         isolevel                        = 0.0f;
-        material                        = NULL;
-        mesh_instance                   = NULL;
+        material                        = nullptr;
+        mesh_instance                   = nullptr;
         needs_polygonization            = true;
         polygonized_data_size_reduction = 0;
-        scalar_data_bo                  = NULL;
+        scalar_data_bo                  = nullptr;
 
         indirect_draw_call_args_bo_count_arg_offset = 0;
-        indirect_draw_call_args_bo                  = NULL;
+        indirect_draw_call_args_bo                  = nullptr;
 
-        polygonized_data_bo                    = NULL;
-        polygonized_data_normals_subregion_bo  = NULL;
-        polygonized_data_vertices_subregion_bo = NULL;
+        polygonized_data_bo                    = nullptr;
+        polygonized_data_normals_subregion_bo  = nullptr;
+        polygonized_data_vertices_subregion_bo = nullptr;
 
-        po_scalar_field_polygonizer                                                = NULL;
-        po_scalar_field_polygonizer_data_ub                                        = NULL;
+        po_scalar_field_polygonizer                                                = nullptr;
+        po_scalar_field_polygonizer_data_ub                                        = nullptr;
         po_scalar_field_polygonizer_data_ub_bo_size                                = 0;
-        po_scalar_field_polygonizer_data_ub_bp                                     = -1;
         po_scalar_field_polygonizer_data_ub_isolevel_offset                        = -1;
-        po_scalar_field_polygonizer_data_ub                                        = NULL;
-        po_scalar_field_polygonizer_indirect_draw_call_count_ssb                   = NULL;
-        po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp                = -1;
+        po_scalar_field_polygonizer_data_ub                                        = nullptr;
+        po_scalar_field_polygonizer_indirect_draw_call_count_ssb                   = nullptr;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset     = -1;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_size                  = 0;
         po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset = -1;
-        po_scalar_field_polygonizer_precomputed_tables_ub_bp                       = -1;
-        po_scalar_field_polygonizer_precomputed_tables_ub                          = NULL;
-        po_scalar_field_polygonizer_result_data_ssb_bp                             = NULL;
-        po_scalar_field_polygonizer_result_data_ssb                                = NULL;
-        po_scalar_field_polygonizer_scalar_field_data_ssb_bp                       = NULL;
-        po_scalar_field_polygonizer_scalar_field_data_ssb                          = NULL;
+        po_scalar_field_polygonizer_precomputed_tables_ub                          = nullptr;
+        po_scalar_field_polygonizer_result_data_ssb                                = nullptr;
+        po_scalar_field_polygonizer_scalar_field_data_ssb                          = nullptr;
     }
 } _mesh_marchingcubes;
 
 /* Forward declarations */
-PRIVATE void                      _mesh_marchingcubes_deinit_rendering_thread_callback (ogl_context                  context,
-                                                                                        void*                        user_arg);
-PRIVATE void                      _mesh_marchingcubes_get_aabb                         (const void*                  user_arg,
-                                                                                        float*                       out_aabb_model_vec3_min,
-                                                                                        float*                       out_aabb_model_vec3_max);
-PRIVATE system_hashed_ansi_string _mesh_marchingcubes_get_polygonizer_name             (_mesh_marchingcubes*         mesh_ptr);
-PRIVATE void                      _mesh_marchingcubes_get_token_key_value_arrays       (const _mesh_marchingcubes*   mesh_ptr,
-                                                                                        const ogl_context_gl_limits* limits_ptr,
-                                                                                        system_hashed_ansi_string**  out_token_key_array_ptr,
-                                                                                        system_hashed_ansi_string**  out_token_value_array_ptr,
-                                                                                        unsigned int*                out_n_token_key_value_pairs_ptr,
-                                                                                        unsigned int*                out_global_wg_size_uvec3_ptr);
-PRIVATE void                      _mesh_marchingcubes_init_mesh_instance               (_mesh_marchingcubes*         mesh_ptr);
-PRIVATE void                      _mesh_marchingcubes_init_polygonizer_po              (_mesh_marchingcubes*         mesh_ptr);
-PRIVATE void                      _mesh_marchingcubes_init_rendering_thread_callback   (ogl_context                  context,
-                                                                                        void*                        user_arg);
-PRIVATE void                      _mesh_marchingcubes_release                          (void*                        arg);
-
+PRIVATE void                      _mesh_marchingcubes_deinit                          (ogl_context                 context,
+                                                                                       void*                       user_arg);
+PRIVATE void                      _mesh_marchingcubes_get_aabb                        (const void*                 user_arg,
+                                                                                       float*                      out_aabb_model_vec3_min,
+                                                                                       float*                      out_aabb_model_vec3_max);
+PRIVATE system_hashed_ansi_string _mesh_marchingcubes_get_polygonizer_name            (_mesh_marchingcubes*        mesh_ptr);
+PRIVATE void                      _mesh_marchingcubes_get_token_key_value_arrays      (const _mesh_marchingcubes*  mesh_ptr,
+                                                                                       system_hashed_ansi_string** out_token_key_array_ptr,
+                                                                                       system_hashed_ansi_string** out_token_value_array_ptr,
+                                                                                       unsigned int*               out_n_token_key_value_pairs_ptr,
+                                                                                       unsigned int*               out_global_wg_size_uvec3_ptr);
+PRIVATE void                      _mesh_marchingcubes_init                            (_mesh_marchingcubes*        mesh_ptr);
+PRIVATE void                      _mesh_marchingcubes_init_mesh_instance              (_mesh_marchingcubes*        mesh_ptr);
+PRIVATE void                      _mesh_marchingcubes_init_polygonizer_po             (_mesh_marchingcubes*        mesh_ptr);
+PRIVATE void                      _mesh_marchingcubes_init_present_tasks              (_mesh_marchingcubes*        mesh_ptr);
+PRIVATE void                      _mesh_marchingcubes_release                         (void*                       arg);
+PRIVATE void                      _mesh_marchingcubes_update_ub_data_cpu_task_callback(void*                       mesh_raw_ptr);
 
 /** Precomputed tables (adapted from http://paulbourke.net/geometry/polygonise/) */
 PRIVATE const int _edge_table[256]={0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -413,6 +404,399 @@ PRIVATE const int _triangle_table[256 * 15] = {-1, -1, -1, -1, -1, -1, -1, -1, -
                                                0,  3,  8,  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                                                -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
+static const char* _mesh_marchingcubes_cs_body =
+    "#version 430 core\n"
+    "\n"
+    "layout(local_size_x = LOCAL_WG_SIZE_X, local_size_y = LOCAL_WG_SIZE_Y, local_size_z = LOCAL_WG_SIZE_Z) in;\n"
+    "\n"
+    "const uint n_ids_per_row    = BLOB_SIZE_X;\n"
+    "const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
+    "\n"
+    "layout(packed) uniform dataUB\n"
+    "{\n"
+    "    float isolevel;\n"
+    "};\n"
+    "\n"
+    "layout(std430) buffer indirect_draw_callSSB\n"
+    "{\n"
+    "    restrict uint indirect_draw_call_count;\n"
+    "};\n"
+    "\n"
+    "layout(std140) uniform precomputed_tablesUB\n"
+    "{\n"
+    "    int edge_table    [256];\n"
+    "    int triangle_table[256 * 15];\n"
+    "};\n"
+    "\n"
+    "layout(std430) writeonly buffer result_dataSSB\n"
+    "{\n"
+    /* 4 floats: vertex data (model space). We need to include W since some of the vertices need to be discarded.
+     * 3 floats: normal data (model space) */
+    "    restrict float result_data[];\n"
+    "};\n"
+    "\n"
+    "layout(std430) readonly buffer scalar_field_dataSSB\n"
+    "{\n"
+    "    restrict vec4 scalar_field[];\n"
+    "};\n"
+    "\n"
+    "void get_interpolated_data(in  vec3  vertex1,\n"
+    "                           in  vec3  vertex2,\n"
+    "                           in  float vertex1_value,\n"
+    "                           in  float vertex2_value,\n"
+    "                           in  uint  base_index1,\n"
+    "                           in  uint  base_index2,"
+    "                           out vec3  result_normal,\n"
+    "                           out vec3  result_vertex)\n"
+    "{\n"
+    /* TODO: Use the improved version? */
+    "    uvec3 vertex1_preceding_step_size  = uvec3(clamp(base_index1 - BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index1 - BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index1 - BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+    "    uvec3 vertex1_proceeding_step_size = uvec3(clamp(base_index1 + BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index1 + BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index1 + BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+    "    uvec3 vertex2_preceding_step_size  = uvec3(clamp(base_index2 - BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index2 - BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index2 - BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+    "    uvec3 vertex2_proceeding_step_size = uvec3(clamp(base_index2 + BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index2 + BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
+    "                                               clamp(base_index2 + BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
+    "\n"
+    "    vec3 vertex1_scalar_preceeding = vec3(scalar_field[vertex1_preceding_step_size.x  / 4][vertex1_preceding_step_size.x  % 4],\n"
+    "                                          scalar_field[vertex1_preceding_step_size.y  / 4][vertex1_preceding_step_size.y  % 4],\n"
+    "                                          scalar_field[vertex1_preceding_step_size.z  / 4][vertex1_preceding_step_size.z  % 4]);\n"
+    "    vec3 vertex1_scalar_proceeding = vec3(scalar_field[vertex1_proceeding_step_size.x / 4][vertex1_proceeding_step_size.x % 4],\n"
+    "                                          scalar_field[vertex1_proceeding_step_size.y / 4][vertex1_proceeding_step_size.y % 4],\n"
+    "                                          scalar_field[vertex1_proceeding_step_size.z / 4][vertex1_proceeding_step_size.z % 4]);\n"
+    "    vec3 vertex2_scalar_preceeding = vec3(scalar_field[vertex2_preceding_step_size.x  / 4][vertex2_preceding_step_size.x  % 4],\n"
+    "                                          scalar_field[vertex2_preceding_step_size.y  / 4][vertex2_preceding_step_size.y  % 4],\n"
+    "                                          scalar_field[vertex2_preceding_step_size.z  / 4][vertex2_preceding_step_size.z  % 4]);\n"
+    "    vec3 vertex2_scalar_proceeding = vec3(scalar_field[vertex2_proceeding_step_size.x / 4][vertex2_proceeding_step_size.x % 4],\n"
+    "                                          scalar_field[vertex2_proceeding_step_size.y / 4][vertex2_proceeding_step_size.y % 4],\n"
+    "                                          scalar_field[vertex2_proceeding_step_size.z / 4][vertex2_proceeding_step_size.z % 4]);\n"
+    "\n"
+    "    vec3 vertex1_normal = (vertex1_scalar_proceeding - vertex1_scalar_preceeding);\n"
+    "    vec3 vertex2_normal = (vertex2_scalar_proceeding - vertex2_scalar_preceeding);\n"
+    "\n"
+    "    if (abs(isolevel      - vertex1_value) < 1e-5 ||\n"
+    "        abs(vertex1_value - vertex2_value) < 1e-5)\n"
+    "    {\n"
+    "        result_normal = normalize(vertex1_normal);\n"
+    "        result_vertex = vertex1;\n"
+    "    }\n"
+    "    else\n"
+    "    if (abs(isolevel - vertex2_value) < 1e-5)\n"
+    "    {\n"
+    "        result_normal = normalize(vertex2_normal);\n"
+    "        result_vertex = vertex2;\n"
+    "    }\n"
+    "    else\n"
+    "    {\n"
+    "        float coeff = (isolevel - vertex1_value) / (vertex2_value - vertex1_value);\n"
+    "\n"
+    "        result_normal = vertex1_normal + vec3(coeff) * (vertex2_normal - vertex1_normal);\n"
+    "        result_vertex = vertex1        + vec3(coeff) * (vertex2        - vertex1);\n"
+    "    }\n"
+    "}\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    const uint global_invocation_id_flat = (gl_GlobalInvocationID.z * (LOCAL_WG_SIZE_X * LOCAL_WG_SIZE_Y) +\n"
+    "                                            gl_GlobalInvocationID.y * (LOCAL_WG_SIZE_X)                   +\n"
+    "                                            gl_GlobalInvocationID.x);\n"
+    "\n"
+    /* Extract scalar field values */
+    "    const uvec3 cube_xyz = uvec3( global_invocation_id_flat                                % BLOB_SIZE_X,\n"
+    "                                 (global_invocation_id_flat /  BLOB_SIZE_X)                % BLOB_SIZE_Y,\n"
+    "                                  global_invocation_id_flat / (BLOB_SIZE_X * BLOB_SIZE_Y));\n"
+    "\n"
+    "    if (cube_xyz.z >= BLOB_SIZE_Z)\n"
+    "    {\n"
+    "        return;\n"
+    "    }\n"
+    "\n"
+    "    const vec3 cube_x1y1z1         = vec3(cube_xyz) / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
+    "    const vec3 cube_size           = vec3(1.0)      / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
+    "    const vec3 cube_aabb_min_model = cube_x1y1z1;\n"
+    "    const vec3 cube_aabb_max_model = cube_x1y1z1 + cube_size;\n"
+    "\n"
+    "    const uvec4 top_plane_ids = uvec4(global_invocation_id_flat,\n"
+    "                                      global_invocation_id_flat                   + 1,\n"
+    "                                      global_invocation_id_flat + n_ids_per_slice + 1,\n"
+    "                                      global_invocation_id_flat + n_ids_per_slice);\n"
+    "\n"
+    /* The scalar_values vector array holds scalar field values for vertices in the following order: (XZ plane is assumed)
+     *
+     * [0]: BOTTOM PLANE, top-left     vertex
+     * [1]: BOTTOM PLANE, top-right    vertex
+     * [2]: BOTTOM PLANE, bottom-right vertex
+     * [3]: BOTTOM PLANE, bottom-left  vertex
+     * [4]: TOP    PLANE, top-left     vertex
+     * [5]: TOP    PLANE, top-right    vertex
+     * [6]: TOP    PLANE, bottom-right vertex
+     * [7]: TOP    PLANE, bottom-left  vertex
+     */
+    "    vec4 scalar_values[2];\n"
+    "\n"
+    "    if (cube_xyz[0] > 0 && cube_xyz[0] < (BLOB_SIZE_X - 1)  &&\n"
+    "        cube_xyz[1] > 0 && cube_xyz[1] < (BLOB_SIZE_Y - 1)  &&\n"
+    "        cube_xyz[2] > 0 && cube_xyz[2] < (BLOB_SIZE_Z - 1) )\n"
+    "    {\n"
+    "        scalar_values[1].x = scalar_field[ top_plane_ids[0]                  / 4][ top_plane_ids[0]                  % 4];\n"
+    "        scalar_values[1].y = scalar_field[ top_plane_ids[1]                  / 4][ top_plane_ids[1]                  % 4];\n"
+    "        scalar_values[1].z = scalar_field[ top_plane_ids[2]                  / 4][ top_plane_ids[2]                  % 4];\n"
+    "        scalar_values[1].w = scalar_field[ top_plane_ids[3]                  / 4][ top_plane_ids[3]                  % 4];\n"
+    "        scalar_values[0].x = scalar_field[(top_plane_ids[0] + n_ids_per_row) / 4][(top_plane_ids[0] + n_ids_per_row) % 4];\n"
+    "        scalar_values[0].y = scalar_field[(top_plane_ids[1] + n_ids_per_row) / 4][(top_plane_ids[1] + n_ids_per_row) % 4];\n"
+    "        scalar_values[0].z = scalar_field[(top_plane_ids[2] + n_ids_per_row) / 4][(top_plane_ids[2] + n_ids_per_row) % 4];\n"
+    "        scalar_values[0].w = scalar_field[(top_plane_ids[3] + n_ids_per_row) / 4][(top_plane_ids[3] + n_ids_per_row) % 4];\n"
+    "    }\n"
+    "    else\n"
+    "    {\n"
+    "        return;\n"
+    "    }\n"
+    "\n"
+    /* Determine edge index */
+    "    int edge_index = 0;\n"
+    "\n"
+    "    if (scalar_values[0].x < isolevel) edge_index |= 1;\n"
+    "    if (scalar_values[0].y < isolevel) edge_index |= 2;\n"
+    "    if (scalar_values[0].z < isolevel) edge_index |= 4;\n"
+    "    if (scalar_values[0].w < isolevel) edge_index |= 8;\n"
+    "    if (scalar_values[1].x < isolevel) edge_index |= 16;\n"
+    "    if (scalar_values[1].y < isolevel) edge_index |= 32;\n"
+    "    if (scalar_values[1].z < isolevel) edge_index |= 64;\n"
+    "    if (scalar_values[1].w < isolevel) edge_index |= 128;\n"
+    "\n"
+    "    if (edge_table[edge_index] == 0)\n"
+    "    {\n"
+    "        return;\n"
+    "    }\n"
+    "\n"
+    /* Build an array of interpolated vertices for the edge we're processing
+     *
+     * TOP PLANE:    0->1
+     *                  |
+     *               3<-2
+     *
+     * BOTTOM PLANE: 4->5
+     *                  |
+     *               7<-6
+     */
+    "          vec3 lerped_normal_list[12];\n"
+    "          vec3 lerped_vertex_list[12];\n"
+    "    const vec3 vertex_model      [8] =\n"
+    "    {\n"
+    /* 0: */
+    "        vec3(cube_aabb_min_model.x,  cube_aabb_max_model.y,  cube_aabb_min_model.z),\n"
+    /* 1: */
+    "        vec3(cube_aabb_max_model.xy, cube_aabb_min_model.z),\n"
+    /* 2: */
+    "             cube_aabb_max_model,\n"
+    /* 3: */
+    "        vec3(cube_aabb_min_model.x,  cube_aabb_max_model.yz),\n"
+    /* 4: */
+    "             cube_aabb_min_model,\n"
+    /* 5: */
+    "        vec3(cube_aabb_max_model.x,  cube_aabb_min_model.yz),\n"
+    /* 6: */
+    "        vec3(cube_aabb_max_model.x,  cube_aabb_min_model.y,  cube_aabb_max_model.z),\n"
+    /* 7: */
+    "        vec3(cube_aabb_min_model.xy, cube_aabb_max_model.z),\n"
+    "    };\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 1) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[0],\n"
+    "                              vertex_model[1],\n"
+    "                              scalar_values[0].x,\n"
+    "                              scalar_values[0].y,\n"
+    "                              top_plane_ids[0] + n_ids_per_row,\n"
+    "                              top_plane_ids[1] + n_ids_per_row,\n"
+    "                              lerped_normal_list[0],\n"
+    "                              lerped_vertex_list[0]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 2) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[1],\n"
+    "                              vertex_model[2],\n"
+    "                              scalar_values[0].y,\n"
+    "                              scalar_values[0].z,\n"
+    "                              top_plane_ids[1] + n_ids_per_row,\n"
+    "                              top_plane_ids[2] + n_ids_per_row,\n"
+    "                              lerped_normal_list[1],\n"
+    "                              lerped_vertex_list[1]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 4) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[2],\n"
+    "                              vertex_model[3],\n"
+    "                              scalar_values[0].z,\n"
+    "                              scalar_values[0].w,\n"
+    "                              top_plane_ids[2] + n_ids_per_row,\n"
+    "                              top_plane_ids[3] + n_ids_per_row,\n"
+    "                              lerped_normal_list[2],\n"
+    "                              lerped_vertex_list[2]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 8) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[3],\n"
+    "                              vertex_model[0],\n"
+    "                              scalar_values[0].w,\n"
+    "                              scalar_values[0].x,\n"
+    "                              top_plane_ids[3] + n_ids_per_row,\n"
+    "                              top_plane_ids[0] + n_ids_per_row,\n"
+    "                              lerped_normal_list[3],\n"
+    "                              lerped_vertex_list[3]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 16) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[4],\n"
+    "                              vertex_model[5],\n"
+    "                              scalar_values[1].x,\n"
+    "                              scalar_values[1].y,\n"
+    "                              top_plane_ids[0],\n"
+    "                              top_plane_ids[1],\n"
+    "                              lerped_normal_list[4],\n"
+    "                              lerped_vertex_list[4]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 32) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[5],\n"
+    "                              vertex_model[6],\n"
+    "                              scalar_values[1].y,\n"
+    "                              scalar_values[1].z,\n"
+    "                              top_plane_ids[1],\n"
+    "                              top_plane_ids[2],\n"
+    "                              lerped_normal_list[5],\n"
+    "                              lerped_vertex_list[5]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 64) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[6],\n"
+    "                              vertex_model[7],\n"
+    "                              scalar_values[1].z,\n"
+    "                              scalar_values[1].w,\n"
+    "                              top_plane_ids[2],\n"
+    "                              top_plane_ids[3],\n"
+    "                              lerped_normal_list[6],\n"
+    "                              lerped_vertex_list[6]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 128) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[7],\n"
+    "                              vertex_model[4],\n"
+    "                              scalar_values[1].w,\n"
+    "                              scalar_values[1].x,\n"
+    "                              top_plane_ids[3],\n"
+    "                              top_plane_ids[0],\n"
+    "                              lerped_normal_list[7],\n"
+    "                              lerped_vertex_list[7]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 256) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[0],\n"
+    "                              vertex_model[4],\n"
+    "                              scalar_values[0].x,\n"
+    "                              scalar_values[1].x,\n"
+    "                              top_plane_ids[0] + n_ids_per_row,\n"
+    "                              top_plane_ids[0],\n"
+    "                              lerped_normal_list[8],\n"
+    "                              lerped_vertex_list[8]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 512) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[1],\n"
+    "                              vertex_model[5],\n"
+    "                              scalar_values[0].y,\n"
+    "                              scalar_values[1].y,\n"
+    "                              top_plane_ids[1] + n_ids_per_row,\n"
+    "                              top_plane_ids[1],\n"
+    "                              lerped_normal_list[9],\n"
+    "                              lerped_vertex_list[9]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 1024) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[2],\n"
+    "                              vertex_model[6],\n"
+    "                              scalar_values[0].z,\n"
+    "                              scalar_values[1].z,\n"
+    "                              top_plane_ids[2] + n_ids_per_row,\n"
+    "                              top_plane_ids[2],\n"
+    "                              lerped_normal_list[10],\n"
+    "                              lerped_vertex_list[10]);\n"
+    "    }\n"
+    "\n"
+    "    if ((edge_table[edge_index] & 2048) != 0)\n"
+    "    {\n"
+    "        get_interpolated_data(vertex_model[3],\n"
+    "                              vertex_model[7],\n"
+    "                              scalar_values[0].w,\n"
+    "                              scalar_values[1].w,\n"
+    "                              top_plane_ids[3] + n_ids_per_row,\n"
+    "                              top_plane_ids[3],\n"
+    "                              lerped_normal_list[11],\n"
+    "                              lerped_vertex_list[11]);\n"
+    "    }\n"
+    "\n"
+    /* Emit triangles. Note that we need to generate more triangles than we actually need in
+     * order to make sure the flow remains uniform.
+     *
+     * NOTE: This atomic add op is required, since the number of triangles emitted by all
+     *       workgroups depends on the scalar field configuration, as well as the isolevel,
+     *       both of which may be changed between consecutive frames. If we replaced it with
+     *       a constant number of triangles, derived from the blob size dimensions, some of
+     *       the triangles, generated in previous passes, would pollute the renderbuffer.
+     */
+    "    const uint n_result_triangle_base_vertex = atomicAdd(indirect_draw_call_count, 3 * 5);\n"
+    "\n"
+    "    for (uint n_triangle = 0;\n"
+    "              n_triangle < 5;\n"
+    "              n_triangle++)\n"
+    "    {\n"
+    "        const uint n_result_triangle_start_vertex = n_result_triangle_base_vertex + n_triangle * 3;\n"
+    "        const uint n_triangle_base_vertex         = edge_index * 15               + n_triangle * 3;\n"
+    "\n"
+    "        if (triangle_table[n_triangle_base_vertex] == -1)\n"
+    "        {\n"
+    "            for (uint n_vertex = 0;\n"
+    "                      n_vertex < 3;\n"
+    "                      n_vertex++)\n"
+    "            {\n"
+    /* Just discard the vertex..*/
+    "                result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 0.0;\n"
+    "            }\n"
+    "        }\n"
+    "        else\n"
+    "        for (uint n_vertex = 0;\n"
+    "                  n_vertex < 3;\n"
+    "                  n_vertex++)\n"
+    "        {\n"
+    "            const int  list_index     = triangle_table    [ n_triangle_base_vertex + n_vertex ];\n"
+    "            const vec3 current_normal = lerped_normal_list[ list_index ];\n"
+    "            const vec3 current_vertex = lerped_vertex_list[ list_index ];\n"
+    "\n"
+    "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 0] = current_vertex.x;\n"
+    "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 1] = current_vertex.y;\n"
+    "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 2] = current_vertex.z;\n"
+    "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 1.0;\n"
+    "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 4] = current_normal.x;\n"
+    "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 5] = current_normal.y;\n"
+    "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 6] = current_normal.z;\n"
+    "        }\n"
+    "    }\n"
+    "}\n";
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(mesh_marchingcubes,
@@ -421,48 +805,52 @@ REFCOUNT_INSERT_IMPLEMENTATION(mesh_marchingcubes,
 
 
 /** TODO */
-PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context context,
-                                                                  void*       user_arg)
+PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
 {
-    _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) user_arg;
+    ral_present_task* present_tasks[] =
+    {
+        &mesh_ptr->present_task_with_compute,
+        &mesh_ptr->present_task_wo_compute
+    };
+    const uint32_t n_present_tasks = sizeof(present_tasks) / sizeof(present_tasks[0]);
 
-    if (mesh_ptr->indirect_draw_call_args_bo != NULL)
+    if (mesh_ptr->indirect_draw_call_args_bo != nullptr)
     {
         ral_context_delete_objects(mesh_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
                                    (const void**) &mesh_ptr->indirect_draw_call_args_bo);
 
-        mesh_ptr->indirect_draw_call_args_bo = NULL;
+        mesh_ptr->indirect_draw_call_args_bo = nullptr;
     }
 
-    if (mesh_ptr->mesh_instance != NULL)
+    if (mesh_ptr->mesh_instance != nullptr)
     {
         mesh_release(mesh_ptr->mesh_instance);
 
-        mesh_ptr->mesh_instance = NULL;
+        mesh_ptr->mesh_instance = nullptr;
     }
 
-    if (mesh_ptr->polygonized_data_bo != NULL)
+    if (mesh_ptr->polygonized_data_bo != nullptr)
     {
-        if (mesh_ptr->polygonized_data_normals_subregion_bo != NULL)
+        if (mesh_ptr->polygonized_data_normals_subregion_bo != nullptr)
         {
             ral_context_delete_objects(mesh_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
                                        (const void**) &mesh_ptr->polygonized_data_normals_subregion_bo);
 
-            mesh_ptr->polygonized_data_normals_subregion_bo = NULL;
+            mesh_ptr->polygonized_data_normals_subregion_bo = nullptr;
         }
 
-        if (mesh_ptr->polygonized_data_vertices_subregion_bo != NULL)
+        if (mesh_ptr->polygonized_data_vertices_subregion_bo != nullptr)
         {
             ral_context_delete_objects(mesh_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
                                        (const void**) &mesh_ptr->polygonized_data_vertices_subregion_bo);
 
-            mesh_ptr->polygonized_data_vertices_subregion_bo = NULL;
+            mesh_ptr->polygonized_data_vertices_subregion_bo = nullptr;
         }
 
         ral_context_delete_objects(mesh_ptr->context,
@@ -470,53 +858,65 @@ PRIVATE void _mesh_marchingcubes_deinit_rendering_thread_callback(ogl_context co
                                    1, /* n_objects */
                                    (const void**) &mesh_ptr->polygonized_data_bo);
 
-        mesh_ptr->polygonized_data_bo = NULL;
+        mesh_ptr->polygonized_data_bo = nullptr;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb != NULL)
+    if (mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb != nullptr)
     {
         ral_program_block_buffer_release(mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb);
 
-        mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb = NULL;
+        mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb = nullptr;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer_result_data_ssb != NULL)
+    if (mesh_ptr->po_scalar_field_polygonizer_result_data_ssb != nullptr)
     {
         ral_program_block_buffer_release(mesh_ptr->po_scalar_field_polygonizer_result_data_ssb);
 
-        mesh_ptr->po_scalar_field_polygonizer_result_data_ssb = NULL;
+        mesh_ptr->po_scalar_field_polygonizer_result_data_ssb = nullptr;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb != NULL)
+    if (mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb != nullptr)
     {
         ral_program_block_buffer_release(mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb);
 
-        mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb = NULL;
+        mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb = nullptr;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer != NULL)
+    if (mesh_ptr->po_scalar_field_polygonizer != nullptr)
     {
         ral_context_delete_objects(mesh_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
                                    (const void**) &mesh_ptr->po_scalar_field_polygonizer);
 
-        mesh_ptr->po_scalar_field_polygonizer = NULL;
+        mesh_ptr->po_scalar_field_polygonizer = nullptr;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer_data_ub != NULL)
+    if (mesh_ptr->po_scalar_field_polygonizer_data_ub != nullptr)
     {
         ral_program_block_buffer_release(mesh_ptr->po_scalar_field_polygonizer_data_ub);
 
-        mesh_ptr->po_scalar_field_polygonizer_data_ub = NULL;
+        mesh_ptr->po_scalar_field_polygonizer_data_ub = nullptr;
     }
 
-    if (mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub != NULL)
+    if (mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub != nullptr)
     {
         /* TODO: This data could be re-used across mesh_marchingcubes instances! */
         ral_program_block_buffer_release(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
 
-        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub = NULL;
+        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub = nullptr;
+    }
+
+    for (uint32_t n_present_task = 0;
+                  n_present_task < n_present_tasks;
+                ++n_present_task)
+    {
+        if (*present_tasks[n_present_task] != nullptr)
+        {
+            ral_present_task_release(*present_tasks[n_present_task]);
+
+            *present_tasks[n_present_task] = nullptr;
+        }
     }
 }
 
@@ -549,18 +949,31 @@ PRIVATE system_hashed_ansi_string _mesh_marchingcubes_get_polygonizer_name(_mesh
 }
 
 /** TODO */
-PRIVATE void _mesh_marchingcubes_get_token_key_value_arrays(const _mesh_marchingcubes*   mesh_ptr,
-                                                            const ogl_context_gl_limits* limits_ptr,
-                                                            system_hashed_ansi_string**  out_token_key_array_ptr,
-                                                            system_hashed_ansi_string**  out_token_value_array_ptr,
-                                                            unsigned int*                out_n_token_key_value_pairs_ptr,
-                                                            unsigned int*                out_global_wg_size_uvec3_ptr)
+PRIVATE void _mesh_marchingcubes_get_token_key_value_arrays(const _mesh_marchingcubes*  mesh_ptr,
+                                                            system_hashed_ansi_string** out_token_key_array_ptr,
+                                                            system_hashed_ansi_string** out_token_value_array_ptr,
+                                                            unsigned int*               out_n_token_key_value_pairs_ptr,
+                                                            unsigned int*               out_global_wg_size_uvec3_ptr)
 {
+    const uint32_t* max_compute_work_group_count;
+    const uint32_t* max_compute_work_group_size;
+    uint32_t        max_compute_work_group_invocations;
+
+    ral_context_get_property(mesh_ptr->context,
+                             RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_COUNT,
+                            &max_compute_work_group_count);
+    ral_context_get_property(mesh_ptr->context,
+                             RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_INVOCATIONS,
+                            &max_compute_work_group_invocations);
+    ral_context_get_property(mesh_ptr->context,
+                             RAL_CONTEXT_PROPERTY_MAX_COMPUTE_WORK_GROUP_SIZE,
+                            &max_compute_work_group_size);
+
     *out_token_key_array_ptr   = new system_hashed_ansi_string[9];
     *out_token_value_array_ptr = new system_hashed_ansi_string[9];
 
-    ASSERT_ALWAYS_SYNC(*out_token_key_array_ptr   != NULL &&
-                       *out_token_value_array_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(*out_token_key_array_ptr   != nullptr &&
+                       *out_token_value_array_ptr != nullptr,
                        "Out of memory");
 
     (*out_token_key_array_ptr)[0] = system_hashed_ansi_string_create("LOCAL_WG_SIZE_X"),
@@ -577,7 +990,7 @@ PRIVATE void _mesh_marchingcubes_get_token_key_value_arrays(const _mesh_marching
 
     /* Compute global work-group size */
     const uint32_t n_total_scalars  = mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2];
-    const uint32_t wg_local_size_x  = limits_ptr->max_compute_work_group_size[0]; /* TODO: smarterize me */
+    const uint32_t wg_local_size_x  = max_compute_work_group_size[0]; /* TODO: smarterize me */
     const uint32_t wg_local_size_y  = 1;
     const uint32_t wg_local_size_z  = 1;
 
@@ -585,11 +998,11 @@ PRIVATE void _mesh_marchingcubes_get_token_key_value_arrays(const _mesh_marching
     out_global_wg_size_uvec3_ptr[1] = 1;
     out_global_wg_size_uvec3_ptr[2] = 1;
 
-    ASSERT_DEBUG_SYNC(wg_local_size_x * wg_local_size_y * wg_local_size_z <= (uint32_t) limits_ptr->max_compute_work_group_invocations,
+    ASSERT_DEBUG_SYNC(wg_local_size_x * wg_local_size_y * wg_local_size_z <= max_compute_work_group_invocations,
                       "Invalid local work-group size requested");
-    ASSERT_DEBUG_SYNC(out_global_wg_size_uvec3_ptr[0] < (uint32_t) limits_ptr->max_compute_work_group_count[0] &&
-                      out_global_wg_size_uvec3_ptr[1] < (uint32_t) limits_ptr->max_compute_work_group_count[1] &&
-                      out_global_wg_size_uvec3_ptr[2] < (uint32_t) limits_ptr->max_compute_work_group_count[2],
+    ASSERT_DEBUG_SYNC(out_global_wg_size_uvec3_ptr[0] < max_compute_work_group_count[0] &&
+                      out_global_wg_size_uvec3_ptr[1] < max_compute_work_group_count[1] &&
+                      out_global_wg_size_uvec3_ptr[2] < max_compute_work_group_count[2],
                       "Invalid global work-group size requested");
 
     /* Fill the token value array */
@@ -651,6 +1064,32 @@ PRIVATE void _mesh_marchingcubes_get_token_key_value_arrays(const _mesh_marching
 }
 
 /** TODO */
+PRIVATE void _mesh_marchingcubes_init(_mesh_marchingcubes* mesh_ptr)
+{
+    system_hashed_ansi_string polygonizer_name_has = nullptr;
+    ral_program               polygonizer_po       = nullptr;
+
+    /* Initialize the polygonizer, if one has not been already instantiated */
+    polygonizer_name_has = _mesh_marchingcubes_get_polygonizer_name(mesh_ptr);
+    polygonizer_po       = ral_context_get_program_by_name         (mesh_ptr->context,
+                                                                    polygonizer_name_has);
+
+    if (polygonizer_po == nullptr)
+    {
+        _mesh_marchingcubes_init_polygonizer_po(mesh_ptr);
+    }
+    else
+    {
+        ral_context_retain_object(mesh_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                  polygonizer_po);
+    }
+
+    /* Initialize present tasks */
+    _mesh_marchingcubes_init_present_tasks(mesh_ptr);
+}
+
+/** TODO */
 PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_ptr)
 {
     char name_buffer[128];
@@ -679,38 +1118,9 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
     mesh_layer_id            new_layer_id                  = mesh_add_layer(mesh_ptr->mesh_instance);
     mesh_layer_pass_id       new_layer_pass_id;
 
-    GLuint      indirect_draw_call_args_bo_id           = 0;
-    raGL_buffer indirect_draw_call_args_bo_raGL         = NULL;
-    uint32_t    indirect_draw_call_args_bo_start_offset = -1;
-    GLuint      polygonized_data_bo_id                  = 0;
-    raGL_buffer polygonized_data_bo_raGL                = NULL;
-    uint32_t    polygonized_data_bo_start_offset        = -1;
-
-    raGL_backend_get_buffer(mesh_ptr->backend,
-                            mesh_ptr->indirect_draw_call_args_bo,
-                  (void**) &indirect_draw_call_args_bo_raGL);
-    raGL_backend_get_buffer(mesh_ptr->backend,
-                            mesh_ptr->polygonized_data_bo,
-                  (void**) &polygonized_data_bo_raGL);
-
-    raGL_buffer_get_property(indirect_draw_call_args_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &indirect_draw_call_args_bo_id);
-    raGL_buffer_get_property(indirect_draw_call_args_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &indirect_draw_call_args_bo_start_offset);
-    raGL_buffer_get_property(polygonized_data_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &polygonized_data_bo_id);
-    raGL_buffer_get_property(polygonized_data_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &polygonized_data_bo_start_offset);
-
-
-    draw_call_arguments.draw_indirect_bo_binding        = indirect_draw_call_args_bo_id;
-    draw_call_arguments.indirect                        = (const GLvoid*) indirect_draw_call_args_bo_start_offset;
-    draw_call_arguments.mode                            = GL_TRIANGLES;
-    draw_call_arguments.pre_draw_call_barriers          = GL_COMMAND_BARRIER_BIT | GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+    draw_call_arguments.draw_indirect_bo = mesh_ptr->indirect_draw_call_args_bo;
+    draw_call_arguments.indirect_offset  = 0;
+    draw_call_arguments.primitive_type   = RAL_PRIMITIVE_TYPE_TRIANGLES;
 
     new_layer_pass_id = mesh_add_layer_pass_for_gpu_stream_mesh(mesh_ptr->mesh_instance,
                                                                 new_layer_id,
@@ -757,7 +1167,6 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                            MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
                                                            mesh_ptr->indirect_draw_call_args_bo,
-                                                           // sizeof(unsigned int),
                                                            true); /* does_read_require_memory_barrier */
 
     mesh_set_layer_data_stream_property_with_buffer_memory(mesh_ptr->mesh_instance,
@@ -765,426 +1174,26 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
                                                            MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                            MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS,
                                                            mesh_ptr->indirect_draw_call_args_bo,
-                                                           // sizeof(unsigned int),
                                                            true); /* does_read_require_memory_barrier */
 }
 
 /** TODO */
 PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_ptr)
 {
-    const char* cs_body = "#version 430 core\n"
-                          "\n"
-                          "layout(local_size_x = LOCAL_WG_SIZE_X, local_size_y = LOCAL_WG_SIZE_Y, local_size_z = LOCAL_WG_SIZE_Z) in;\n"
-                          "\n"
-                          "const uint n_ids_per_row    = BLOB_SIZE_X;\n"
-                          "const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
-                          "\n"
-                          "layout(packed) uniform dataUB\n"
-                          "{\n"
-                          "    float isolevel;\n"
-                          "};\n"
-                          "\n"
-                          "layout(std430) buffer indirect_draw_callSSB\n"
-                          "{\n"
-                          "    restrict uint indirect_draw_call_count;\n"
-                          "};\n"
-                          "\n"
-                          "layout(std140) uniform precomputed_tablesUB\n"
-                          "{\n"
-                          "    int edge_table    [256];\n"
-                          "    int triangle_table[256 * 15];\n"
-                          "};\n"
-                          "\n"
-                          "layout(std430) writeonly buffer result_dataSSB\n"
-                          "{\n"
-                          /* 4 floats: vertex data (model space). We need to include W since some of the vertices need to be discarded.
-                           * 3 floats: normal data (model space) */
-                          "    restrict float result_data[];\n"
-                          "};\n"
-                          "\n"
-                          "layout(std430) readonly buffer scalar_field_dataSSB\n"
-                          "{\n"
-                          "    restrict vec4 scalar_field[];\n"
-                          "};\n"
-                          "\n"
-                          "void get_interpolated_data(in  vec3  vertex1,\n"
-                          "                           in  vec3  vertex2,\n"
-                          "                           in  float vertex1_value,\n"
-                          "                           in  float vertex2_value,\n"
-                          "                           in  uint  base_index1,\n"
-                          "                           in  uint  base_index2,"
-                          "                           out vec3  result_normal,\n"
-                          "                           out vec3  result_vertex)\n"
-                          "{\n"
-                          /* TODO: Use the improved version? */
-                          "    uvec3 vertex1_preceding_step_size  = uvec3(clamp(base_index1 - BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 - BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 - BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
-                          "    uvec3 vertex1_proceeding_step_size = uvec3(clamp(base_index1 + BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 + BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index1 + BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
-                          "    uvec3 vertex2_preceding_step_size  = uvec3(clamp(base_index2 - BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 - BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 - BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
-                          "    uvec3 vertex2_proceeding_step_size = uvec3(clamp(base_index2 + BLOB_SIZE_X / 25 * 1,               0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 + BLOB_SIZE_Y / 25 * n_ids_per_row,   0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1),\n"
-                          "                                               clamp(base_index2 + BLOB_SIZE_Z / 25 * n_ids_per_slice, 0, BLOB_SIZE_X * BLOB_SIZE_Y * BLOB_SIZE_Z - 1) );\n"
-                          "\n"
-                          "    vec3 vertex1_scalar_preceeding = vec3(scalar_field[vertex1_preceding_step_size.x  / 4][vertex1_preceding_step_size.x  % 4],\n"
-                          "                                          scalar_field[vertex1_preceding_step_size.y  / 4][vertex1_preceding_step_size.y  % 4],\n"
-                          "                                          scalar_field[vertex1_preceding_step_size.z  / 4][vertex1_preceding_step_size.z  % 4]);\n"
-                          "    vec3 vertex1_scalar_proceeding = vec3(scalar_field[vertex1_proceeding_step_size.x / 4][vertex1_proceeding_step_size.x % 4],\n"
-                          "                                          scalar_field[vertex1_proceeding_step_size.y / 4][vertex1_proceeding_step_size.y % 4],\n"
-                          "                                          scalar_field[vertex1_proceeding_step_size.z / 4][vertex1_proceeding_step_size.z % 4]);\n"
-                          "    vec3 vertex2_scalar_preceeding = vec3(scalar_field[vertex2_preceding_step_size.x  / 4][vertex2_preceding_step_size.x  % 4],\n"
-                          "                                          scalar_field[vertex2_preceding_step_size.y  / 4][vertex2_preceding_step_size.y  % 4],\n"
-                          "                                          scalar_field[vertex2_preceding_step_size.z  / 4][vertex2_preceding_step_size.z  % 4]);\n"
-                          "    vec3 vertex2_scalar_proceeding = vec3(scalar_field[vertex2_proceeding_step_size.x / 4][vertex2_proceeding_step_size.x % 4],\n"
-                          "                                          scalar_field[vertex2_proceeding_step_size.y / 4][vertex2_proceeding_step_size.y % 4],\n"
-                          "                                          scalar_field[vertex2_proceeding_step_size.z / 4][vertex2_proceeding_step_size.z % 4]);\n"
-                          "\n"
-                          "    vec3 vertex1_normal = (vertex1_scalar_proceeding - vertex1_scalar_preceeding);\n"
-                          "    vec3 vertex2_normal = (vertex2_scalar_proceeding - vertex2_scalar_preceeding);\n"
-                          "\n"
-                          "    if (abs(isolevel      - vertex1_value) < 1e-5 ||\n"
-                          "        abs(vertex1_value - vertex2_value) < 1e-5)\n"
-                          "    {\n"
-                          "        result_normal = normalize(vertex1_normal);\n"
-                          "        result_vertex = vertex1;\n"
-                          "    }\n"
-                          "    else\n"
-                          "    if (abs(isolevel - vertex2_value) < 1e-5)\n"
-                          "    {\n"
-                          "        result_normal = normalize(vertex2_normal);\n"
-                          "        result_vertex = vertex2;\n"
-                          "    }\n"
-                          "    else\n"
-                          "    {\n"
-                          "        float coeff = (isolevel - vertex1_value) / (vertex2_value - vertex1_value);\n"
-                          "\n"
-                          "        result_normal = vertex1_normal + vec3(coeff) * (vertex2_normal - vertex1_normal);\n"
-                          "        result_vertex = vertex1        + vec3(coeff) * (vertex2        - vertex1);\n"
-                          "    }\n"
-                          "}\n"
-                          "\n"
-                          "void main()\n"
-                          "{\n"
-                          "    const uint global_invocation_id_flat = (gl_GlobalInvocationID.z * (LOCAL_WG_SIZE_X * LOCAL_WG_SIZE_Y) +\n"
-                          "                                            gl_GlobalInvocationID.y * (LOCAL_WG_SIZE_X)                   +\n"
-                          "                                            gl_GlobalInvocationID.x);\n"
-                          "\n"
-                          /* Extract scalar field values */
-                          "    const uvec3 cube_xyz = uvec3( global_invocation_id_flat                                % BLOB_SIZE_X,\n"
-                          "                                 (global_invocation_id_flat /  BLOB_SIZE_X)                % BLOB_SIZE_Y,\n"
-                          "                                  global_invocation_id_flat / (BLOB_SIZE_X * BLOB_SIZE_Y));\n"
-                          "\n"
-                          "    if (cube_xyz.z >= BLOB_SIZE_Z)\n"
-                          "    {\n"
-                          "        return;\n"
-                          "    }\n"
-                          "\n"
-                          "    const vec3 cube_x1y1z1         = vec3(cube_xyz) / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
-                          "    const vec3 cube_size           = vec3(1.0)      / vec3(BLOB_SIZE_X, BLOB_SIZE_Y, BLOB_SIZE_Z);\n"
-                          "    const vec3 cube_aabb_min_model = cube_x1y1z1;\n"
-                          "    const vec3 cube_aabb_max_model = cube_x1y1z1 + cube_size;\n"
-                          "\n"
-                          "    const uvec4 top_plane_ids = uvec4(global_invocation_id_flat,\n"
-                          "                                      global_invocation_id_flat                   + 1,\n"
-                          "                                      global_invocation_id_flat + n_ids_per_slice + 1,\n"
-                          "                                      global_invocation_id_flat + n_ids_per_slice);\n"
-                          "\n"
-                          /* The scalar_values vector array holds scalar field values for vertices in the following order: (XZ plane is assumed)
-                           *
-                           * [0]: BOTTOM PLANE, top-left     vertex
-                           * [1]: BOTTOM PLANE, top-right    vertex
-                           * [2]: BOTTOM PLANE, bottom-right vertex
-                           * [3]: BOTTOM PLANE, bottom-left  vertex
-                           * [4]: TOP    PLANE, top-left     vertex
-                           * [5]: TOP    PLANE, top-right    vertex
-                           * [6]: TOP    PLANE, bottom-right vertex
-                           * [7]: TOP    PLANE, bottom-left  vertex
-                           */
-                          "    vec4 scalar_values[2];\n"
-                          "\n"
-                          "    if (cube_xyz[0] > 0 && cube_xyz[0] < (BLOB_SIZE_X - 1)  &&\n"
-                          "        cube_xyz[1] > 0 && cube_xyz[1] < (BLOB_SIZE_Y - 1)  &&\n"
-                          "        cube_xyz[2] > 0 && cube_xyz[2] < (BLOB_SIZE_Z - 1) )\n"
-                          "    {\n"
-                          "        scalar_values[1].x = scalar_field[ top_plane_ids[0]                  / 4][ top_plane_ids[0]                  % 4];\n"
-                          "        scalar_values[1].y = scalar_field[ top_plane_ids[1]                  / 4][ top_plane_ids[1]                  % 4];\n"
-                          "        scalar_values[1].z = scalar_field[ top_plane_ids[2]                  / 4][ top_plane_ids[2]                  % 4];\n"
-                          "        scalar_values[1].w = scalar_field[ top_plane_ids[3]                  / 4][ top_plane_ids[3]                  % 4];\n"
-                          "        scalar_values[0].x = scalar_field[(top_plane_ids[0] + n_ids_per_row) / 4][(top_plane_ids[0] + n_ids_per_row) % 4];\n"
-                          "        scalar_values[0].y = scalar_field[(top_plane_ids[1] + n_ids_per_row) / 4][(top_plane_ids[1] + n_ids_per_row) % 4];\n"
-                          "        scalar_values[0].z = scalar_field[(top_plane_ids[2] + n_ids_per_row) / 4][(top_plane_ids[2] + n_ids_per_row) % 4];\n"
-                          "        scalar_values[0].w = scalar_field[(top_plane_ids[3] + n_ids_per_row) / 4][(top_plane_ids[3] + n_ids_per_row) % 4];\n"
-                          "    }\n"
-                          "    else\n"
-                          "    {\n"
-                          "        return;\n"
-                          "    }\n"
-                          "\n"
-                          /* Determine edge index */
-                          "    int edge_index = 0;\n"
-                          "\n"
-                          "    if (scalar_values[0].x < isolevel) edge_index |= 1;\n"
-                          "    if (scalar_values[0].y < isolevel) edge_index |= 2;\n"
-                          "    if (scalar_values[0].z < isolevel) edge_index |= 4;\n"
-                          "    if (scalar_values[0].w < isolevel) edge_index |= 8;\n"
-                          "    if (scalar_values[1].x < isolevel) edge_index |= 16;\n"
-                          "    if (scalar_values[1].y < isolevel) edge_index |= 32;\n"
-                          "    if (scalar_values[1].z < isolevel) edge_index |= 64;\n"
-                          "    if (scalar_values[1].w < isolevel) edge_index |= 128;\n"
-                          "\n"
-                          "    if (edge_table[edge_index] == 0)\n"
-                          "    {\n"
-                          "        return;\n"
-                          "    }\n"
-                          "\n"
-                          /* Build an array of interpolated vertices for the edge we're processing
-                           *
-                           * TOP PLANE:    0->1
-                           *                  |
-                           *               3<-2
-                           *
-                           * BOTTOM PLANE: 4->5
-                           *                  |
-                           *               7<-6
-                           */
-                          "          vec3 lerped_normal_list[12];\n"
-                          "          vec3 lerped_vertex_list[12];\n"
-                          "    const vec3 vertex_model      [8] =\n"
-                          "    {\n"
-                          /* 0: */
-                          "        vec3(cube_aabb_min_model.x,  cube_aabb_max_model.y,  cube_aabb_min_model.z),\n"
-                          /* 1: */
-                          "        vec3(cube_aabb_max_model.xy, cube_aabb_min_model.z),\n"
-                          /* 2: */
-                          "             cube_aabb_max_model,\n"
-                          /* 3: */
-                          "        vec3(cube_aabb_min_model.x,  cube_aabb_max_model.yz),\n"
-                          /* 4: */
-                          "             cube_aabb_min_model,\n"
-                          /* 5: */
-                          "        vec3(cube_aabb_max_model.x,  cube_aabb_min_model.yz),\n"
-                          /* 6: */
-                          "        vec3(cube_aabb_max_model.x,  cube_aabb_min_model.y,  cube_aabb_max_model.z),\n"
-                          /* 7: */
-                          "        vec3(cube_aabb_min_model.xy, cube_aabb_max_model.z),\n"
-                          "    };\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 1) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[0],\n"
-                          "                              vertex_model[1],\n"
-                          "                              scalar_values[0].x,\n"
-                          "                              scalar_values[0].y,\n"
-                          "                              top_plane_ids[0] + n_ids_per_row,\n"
-                          "                              top_plane_ids[1] + n_ids_per_row,\n"
-                          "                              lerped_normal_list[0],\n"
-                          "                              lerped_vertex_list[0]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 2) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[1],\n"
-                          "                              vertex_model[2],\n"
-                          "                              scalar_values[0].y,\n"
-                          "                              scalar_values[0].z,\n"
-                          "                              top_plane_ids[1] + n_ids_per_row,\n"
-                          "                              top_plane_ids[2] + n_ids_per_row,\n"
-                          "                              lerped_normal_list[1],\n"
-                          "                              lerped_vertex_list[1]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 4) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[2],\n"
-                          "                              vertex_model[3],\n"
-                          "                              scalar_values[0].z,\n"
-                          "                              scalar_values[0].w,\n"
-                          "                              top_plane_ids[2] + n_ids_per_row,\n"
-                          "                              top_plane_ids[3] + n_ids_per_row,\n"
-                          "                              lerped_normal_list[2],\n"
-                          "                              lerped_vertex_list[2]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 8) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[3],\n"
-                          "                              vertex_model[0],\n"
-                          "                              scalar_values[0].w,\n"
-                          "                              scalar_values[0].x,\n"
-                          "                              top_plane_ids[3] + n_ids_per_row,\n"
-                          "                              top_plane_ids[0] + n_ids_per_row,\n"
-                          "                              lerped_normal_list[3],\n"
-                          "                              lerped_vertex_list[3]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 16) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[4],\n"
-                          "                              vertex_model[5],\n"
-                          "                              scalar_values[1].x,\n"
-                          "                              scalar_values[1].y,\n"
-                          "                              top_plane_ids[0],\n"
-                          "                              top_plane_ids[1],\n"
-                          "                              lerped_normal_list[4],\n"
-                          "                              lerped_vertex_list[4]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 32) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[5],\n"
-                          "                              vertex_model[6],\n"
-                          "                              scalar_values[1].y,\n"
-                          "                              scalar_values[1].z,\n"
-                          "                              top_plane_ids[1],\n"
-                          "                              top_plane_ids[2],\n"
-                          "                              lerped_normal_list[5],\n"
-                          "                              lerped_vertex_list[5]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 64) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[6],\n"
-                          "                              vertex_model[7],\n"
-                          "                              scalar_values[1].z,\n"
-                          "                              scalar_values[1].w,\n"
-                          "                              top_plane_ids[2],\n"
-                          "                              top_plane_ids[3],\n"
-                          "                              lerped_normal_list[6],\n"
-                          "                              lerped_vertex_list[6]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 128) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[7],\n"
-                          "                              vertex_model[4],\n"
-                          "                              scalar_values[1].w,\n"
-                          "                              scalar_values[1].x,\n"
-                          "                              top_plane_ids[3],\n"
-                          "                              top_plane_ids[0],\n"
-                          "                              lerped_normal_list[7],\n"
-                          "                              lerped_vertex_list[7]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 256) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[0],\n"
-                          "                              vertex_model[4],\n"
-                          "                              scalar_values[0].x,\n"
-                          "                              scalar_values[1].x,\n"
-                          "                              top_plane_ids[0] + n_ids_per_row,\n"
-                          "                              top_plane_ids[0],\n"
-                          "                              lerped_normal_list[8],\n"
-                          "                              lerped_vertex_list[8]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 512) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[1],\n"
-                          "                              vertex_model[5],\n"
-                          "                              scalar_values[0].y,\n"
-                          "                              scalar_values[1].y,\n"
-                          "                              top_plane_ids[1] + n_ids_per_row,\n"
-                          "                              top_plane_ids[1],\n"
-                          "                              lerped_normal_list[9],\n"
-                          "                              lerped_vertex_list[9]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 1024) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[2],\n"
-                          "                              vertex_model[6],\n"
-                          "                              scalar_values[0].z,\n"
-                          "                              scalar_values[1].z,\n"
-                          "                              top_plane_ids[2] + n_ids_per_row,\n"
-                          "                              top_plane_ids[2],\n"
-                          "                              lerped_normal_list[10],\n"
-                          "                              lerped_vertex_list[10]);\n"
-                          "    }\n"
-                          "\n"
-                          "    if ((edge_table[edge_index] & 2048) != 0)\n"
-                          "    {\n"
-                          "        get_interpolated_data(vertex_model[3],\n"
-                          "                              vertex_model[7],\n"
-                          "                              scalar_values[0].w,\n"
-                          "                              scalar_values[1].w,\n"
-                          "                              top_plane_ids[3] + n_ids_per_row,\n"
-                          "                              top_plane_ids[3],\n"
-                          "                              lerped_normal_list[11],\n"
-                          "                              lerped_vertex_list[11]);\n"
-                          "    }\n"
-                          "\n"
-                          /* Emit triangles. Note that we need to generate more triangles than we actually need in
-                           * order to make sure the flow remains uniform.
-                           *
-                           * NOTE: This atomic add op is required, since the number of triangles emitted by all
-                           *       workgroups depends on the scalar field configuration, as well as the isolevel,
-                           *       both of which may be changed between consecutive frames. If we replaced it with
-                           *       a constant number of triangles, derived from the blob size dimensions, some of
-                           *       the triangles, generated in previous passes, would pollute the renderbuffer.
-                           */
-                          "    const uint n_result_triangle_base_vertex = atomicAdd(indirect_draw_call_count, 3 * 5);\n"
-                          "\n"
-                          "    for (uint n_triangle = 0;\n"
-                          "              n_triangle < 5;\n"
-                          "              n_triangle++)\n"
-                          "    {\n"
-                          "        const uint n_result_triangle_start_vertex = n_result_triangle_base_vertex + n_triangle * 3;\n"
-                          "        const uint n_triangle_base_vertex         = edge_index * 15               + n_triangle * 3;\n"
-                          "\n"
-                          "        if (triangle_table[n_triangle_base_vertex] == -1)\n"
-                          "        {\n"
-                          "            for (uint n_vertex = 0;\n"
-                          "                      n_vertex < 3;\n"
-                          "                      n_vertex++)\n"
-                          "            {\n"
-                          /* Just discard the vertex..*/
-                          "                result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 0.0;\n"
-                          "            }\n"
-                          "        }\n"
-                          "        else\n"
-                          "        for (uint n_vertex = 0;\n"
-                          "                  n_vertex < 3;\n"
-                          "                  n_vertex++)\n"
-                          "        {\n"
-                          "            const int  list_index     = triangle_table    [ n_triangle_base_vertex + n_vertex ];\n"
-                          "            const vec3 current_normal = lerped_normal_list[ list_index ];\n"
-                          "            const vec3 current_vertex = lerped_vertex_list[ list_index ];\n"
-                          "\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 0] = current_vertex.x;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 1] = current_vertex.y;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 2] = current_vertex.z;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 3] = 1.0;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 4] = current_normal.x;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 5] = current_normal.y;\n"
-                          "            result_data[(n_result_triangle_start_vertex + n_vertex) * 7 + 6] = current_normal.z;\n"
-                          "        }\n"
-                          "    }\n"
-                          "}\n";
-
     /* Set up token key/value arrays */
-    const ogl_context_gl_limits* limits_ptr              = NULL;
-    unsigned int                 n_token_key_value_pairs = 0;
-    system_hashed_ansi_string*   token_key_array_ptr     = NULL;
-    system_hashed_ansi_string*   token_value_array_ptr   = NULL;
-
-    ogl_context_get_property(ral_context_get_gl_context(mesh_ptr->context),
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
+    unsigned int               n_token_key_value_pairs = 0;
+    system_hashed_ansi_string* token_key_array_ptr     = nullptr;
+    system_hashed_ansi_string* token_value_array_ptr   = nullptr;
 
     _mesh_marchingcubes_get_token_key_value_arrays(mesh_ptr,
-                                                   limits_ptr,
                                                   &token_key_array_ptr,
                                                   &token_value_array_ptr,
                                                   &n_token_key_value_pairs,
                                                    mesh_ptr->po_scalar_field_polygonizer_global_wg_size);
 
     /* Initialize the shader */
-    ral_shader                      cs              = NULL;
-    const system_hashed_ansi_string cs_body_final   = system_hashed_ansi_string_create_by_token_replacement(cs_body,
+    ral_shader                      cs              = nullptr;
+    const system_hashed_ansi_string cs_body_final   = system_hashed_ansi_string_create_by_token_replacement(_mesh_marchingcubes_cs_body,
                                                                                                             n_token_key_value_pairs,
                                                                                                             token_key_array_ptr,
                                                                                                             token_value_array_ptr);
@@ -1211,10 +1220,10 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                            &cs_body_final);
 
     delete [] token_key_array_ptr;
-    token_key_array_ptr = NULL;
+    token_key_array_ptr = nullptr;
 
     delete [] token_value_array_ptr;
-    token_value_array_ptr = NULL;
+    token_value_array_ptr = nullptr;
 
     /* Prepare & link the program object */
     const ral_program_create_info po_create_info =
@@ -1258,7 +1267,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 
     indirect_draw_call_args_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
     indirect_draw_call_args_bo_create_info.property_bits    = 0;
-    indirect_draw_call_args_bo_create_info.parent_buffer    = NULL;
+    indirect_draw_call_args_bo_create_info.parent_buffer    = nullptr;
     indirect_draw_call_args_bo_create_info.size             = sizeof(unsigned int) * 4;
     indirect_draw_call_args_bo_create_info.start_offset     = 0;
     indirect_draw_call_args_bo_create_info.usage_bits       = RAL_BUFFER_USAGE_INDIRECT_DRAW_BUFFER_BIT  |
@@ -1291,7 +1300,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ral_buffer_create_info polygonized_data_bo_create_info;
 
     polygonized_data_bo_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-    polygonized_data_bo_create_info.parent_buffer    = NULL;
+    polygonized_data_bo_create_info.parent_buffer    = nullptr;
     polygonized_data_bo_create_info.property_bits    = 0;
     polygonized_data_bo_create_info.size             = mesh_ptr->grid_size[0] * mesh_ptr->grid_size[1] * mesh_ptr->grid_size[2] *
                                                        5 /* triangles */                                                        *
@@ -1309,10 +1318,8 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                               &mesh_ptr->polygonized_data_bo);
 
     /* Retrieve data UB properties */
-    const ral_program_variable* uniform_isolevel_ptr       = NULL;
-    ral_buffer                  polygonizer_data_ub_bo_ral = NULL;
-    const raGL_program          polygonizer_po_raGL        = ral_context_get_program_gl(mesh_ptr->context,
-                                                                                        mesh_ptr->po_scalar_field_polygonizer);
+    const ral_program_variable* uniform_isolevel_ptr       = nullptr;
+    ral_buffer                  polygonizer_data_ub_bo_ral = nullptr;
 
     mesh_ptr->po_scalar_field_polygonizer_data_ub = ral_program_block_buffer_create(mesh_ptr->context,
                                                                                     mesh_ptr->po_scalar_field_polygonizer,
@@ -1324,11 +1331,6 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ral_buffer_get_property                (polygonizer_data_ub_bo_ral,
                                             RAL_BUFFER_PROPERTY_SIZE,
                                            &mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
-    raGL_program_get_block_property_by_name(polygonizer_po_raGL,
-                                            system_hashed_ansi_string_create("dataUB"),
-                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                           &mesh_ptr->po_scalar_field_polygonizer_data_ub_bp);
-
     ral_program_get_block_variable_by_name(mesh_ptr->po_scalar_field_polygonizer,
                                            system_hashed_ansi_string_create("dataUB"),
                                            system_hashed_ansi_string_create("isolevel"),
@@ -1337,9 +1339,9 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset = uniform_isolevel_ptr->block_offset;
 
     /* Set up precomputed tables UB contents */
-    ral_buffer                  precomputed_tables_bo_ral      = NULL;
-    const ral_program_variable* uniform_edge_table_ral_ptr     = NULL;
-    const ral_program_variable* uniform_triangle_table_ral_ptr = NULL;
+    ral_buffer                  precomputed_tables_bo_ral      = nullptr;
+    const ral_program_variable* uniform_edge_table_ral_ptr     = nullptr;
+    const ral_program_variable* uniform_triangle_table_ral_ptr = nullptr;
 
     ral_program_get_block_variable_by_name(mesh_ptr->po_scalar_field_polygonizer,
                                            system_hashed_ansi_string_create("precomputed_tablesUB"),
@@ -1357,46 +1359,43 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
                                                                                                   mesh_ptr->po_scalar_field_polygonizer,
                                                                                                   system_hashed_ansi_string_create("precomputed_tablesUB") );
 
-    ral_program_block_buffer_get_property  (mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                            RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                           &precomputed_tables_bo_ral);
-    ral_buffer_get_property                (precomputed_tables_bo_ral,
-                                            RAL_BUFFER_PROPERTY_SIZE,
-                                           &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
-    raGL_program_get_block_property_by_name(polygonizer_po_raGL,
-                                            system_hashed_ansi_string_create("precomputed_tablesUB"),
-                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                           &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp);
+    ral_program_block_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &precomputed_tables_bo_ral);
+    ral_buffer_get_property              (precomputed_tables_bo_ral,
+                                          RAL_BUFFER_PROPERTY_SIZE,
+                                         &mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
 
     /* Set up indirect draw call <count> arg SSB */
     mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb = ral_program_block_buffer_create(mesh_ptr->context,
                                                                                                          mesh_ptr->po_scalar_field_polygonizer,
                                                                                                          system_hashed_ansi_string_create("indirect_draw_callSSB") );
 
-    raGL_program_get_block_property_by_name(polygonizer_po_raGL,
-                                            system_hashed_ansi_string_create("indirect_draw_callSSB"),
-                                            RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                           &mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp);
-
     /* Set up result data SSB */
     mesh_ptr->po_scalar_field_polygonizer_result_data_ssb = ral_program_block_buffer_create(mesh_ptr->context,
                                                                                             mesh_ptr->po_scalar_field_polygonizer,
                                                                                             system_hashed_ansi_string_create("result_dataSSB") );
-
-    raGL_program_get_block_property_by_name(polygonizer_po_raGL,
-                                        system_hashed_ansi_string_create("result_dataSSB"),
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                       &mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp);
 
     /* Set up scalar field data SSB */
     mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb = ral_program_block_buffer_create(mesh_ptr->context,
                                                                                                   mesh_ptr->po_scalar_field_polygonizer,
                                                                                                   system_hashed_ansi_string_create("scalar_field_dataSSB") );
 
-    raGL_program_get_block_property_by_name(polygonizer_po_raGL,
-                                        system_hashed_ansi_string_create("scalar_field_dataSSB"),
-                                        RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
-                                       &mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp);
+    /* Set up precomputed table contents */
+    ral_program_block_buffer_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
+                                                        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset,
+                                                        _edge_table,
+                                                        sizeof(_edge_table),
+                                                        0, /* dst_array_start_index */
+                                                        sizeof(_edge_table) / sizeof(_edge_table[0]) );
+    ral_program_block_buffer_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
+                                                        mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset,
+                                                        _triangle_table,
+                                                        sizeof(_triangle_table),
+                                                        0, /* dst_array_start_index */
+                                                        sizeof(_triangle_table) / sizeof(_triangle_table[0]) );
+
+    ral_program_block_buffer_sync_immediately(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
 
     /* Release stuff */
     ral_context_delete_objects(mesh_ptr->context,
@@ -1406,41 +1405,211 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
 }
 
 /** TODO */
-PRIVATE void _mesh_marchingcubes_init_rendering_thread_callback(ogl_context context,
-                                                                void*       user_arg)
+PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_ptr)
 {
-    _mesh_marchingcubes*      new_mesh_ptr         = (_mesh_marchingcubes*) user_arg;
-    system_hashed_ansi_string polygonizer_name_has = NULL;
-    ral_program               polygonizer_po       = NULL;
+    ral_buffer po_scalar_field_polygonizer_data_ub_bo_ral               = nullptr;
+    ral_buffer po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral = nullptr;
 
-    /* Initialize the polygonizer, if one has not been already instantiated */
-    polygonizer_name_has = _mesh_marchingcubes_get_polygonizer_name(new_mesh_ptr);
-    polygonizer_po       = ral_context_get_program_by_name         (new_mesh_ptr->context,
-                                                                    polygonizer_name_has);
+    /* Prepare the "full bake" present task first. */
+    {
+        ral_command_buffer             command_buffer;
+        ral_command_buffer_create_info command_buffer_create_info;
 
-    if (polygonizer_po == NULL)
+        command_buffer_create_info.compatible_queues                       = RAL_QUEUE_COMPUTE_BIT;
+        command_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        command_buffer_create_info.is_resettable                           = false;
+        command_buffer_create_info.is_transient                            = false;
+
+        command_buffer = ral_command_buffer_create(mesh_ptr->context,
+                                                  &command_buffer_create_info);
+
+        ral_command_buffer_start_recording(command_buffer);
+        {
+            /* Set up the SSBO & UBO bindings */
+            uint32_t polygonized_data_bo_size = 0;
+            uint32_t scalar_data_bo_size      = 0;
+
+            ral_program_block_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &po_scalar_field_polygonizer_data_ub_bo_ral);
+            ral_program_block_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
+                                                  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                                 &po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral);
+
+            ral_buffer_get_property(mesh_ptr->polygonized_data_bo,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &polygonized_data_bo_size);
+            ral_buffer_get_property(mesh_ptr->scalar_data_bo,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &scalar_data_bo_size);
+
+
+            ral_command_buffer_set_binding_command_info binding_info[5];
+            ral_command_buffer_fill_buffer_command_info fill_op_info;
+
+            binding_info[0].binding_type                  = RAL_BINDING_TYPE_STORAGE_BUFFER;
+            binding_info[0].name                          = system_hashed_ansi_string_create("indirect_draw_callSSB");
+            binding_info[0].storage_buffer_binding.buffer = mesh_ptr->indirect_draw_call_args_bo;
+            binding_info[0].storage_buffer_binding.offset = mesh_ptr->indirect_draw_call_args_bo_count_arg_offset;
+            binding_info[0].storage_buffer_binding.size   = sizeof(int);
+
+            binding_info[1].binding_type                  = RAL_BINDING_TYPE_STORAGE_BUFFER;
+            binding_info[1].name                          = system_hashed_ansi_string_create("scalar_field_dataSSB");
+            binding_info[1].storage_buffer_binding.buffer = mesh_ptr->scalar_data_bo;
+            binding_info[1].storage_buffer_binding.offset = 0;
+            binding_info[1].storage_buffer_binding.size   = scalar_data_bo_size;
+
+            binding_info[2].binding_type                  = RAL_BINDING_TYPE_STORAGE_BUFFER;
+            binding_info[2].name                          = system_hashed_ansi_string_create("result_dataSSB");
+            binding_info[2].storage_buffer_binding.buffer = mesh_ptr->polygonized_data_bo;
+            binding_info[2].storage_buffer_binding.offset = 0;
+            binding_info[2].storage_buffer_binding.size   = polygonized_data_bo_size;
+
+            binding_info[3].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+            binding_info[3].name                          = system_hashed_ansi_string_create("dataUB");
+            binding_info[3].uniform_buffer_binding.buffer = po_scalar_field_polygonizer_data_ub_bo_ral;
+            binding_info[3].uniform_buffer_binding.offset = 0;
+            binding_info[3].uniform_buffer_binding.size   = mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size;
+
+            binding_info[4].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+            binding_info[4].name                          = system_hashed_ansi_string_create("precomputed_tablesUB");
+            binding_info[4].uniform_buffer_binding.buffer = po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral;
+            binding_info[4].uniform_buffer_binding.offset = 0;
+            binding_info[4].uniform_buffer_binding.size   = mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size;
+
+            fill_op_info.buffer       = mesh_ptr->indirect_draw_call_args_bo;
+            fill_op_info.dword_value  = 0;
+            fill_op_info.n_dwords     = 1;
+            fill_op_info.start_offset = mesh_ptr->indirect_draw_call_args_bo_count_arg_offset;
+
+
+            /* Set up the indirect draw call's <count> SSB. Zero out the value before we run the polygonizer */
+            ral_command_buffer_record_fill_buffer(command_buffer,
+                                                  1, /* n_fill_ops */
+                                                 &fill_op_info);
+
+            /* Prepare for & fire the dispatch call */
+            ral_command_buffer_record_set_program (command_buffer,
+                                                   mesh_ptr->po_scalar_field_polygonizer);
+            ral_command_buffer_record_set_bindings(command_buffer,
+                                                   sizeof(binding_info) / sizeof(binding_info[0]),
+                                                   binding_info);
+            ral_command_buffer_record_dispatch    (command_buffer,
+                                                   mesh_ptr->po_scalar_field_polygonizer_global_wg_size);
+        }
+        ral_command_buffer_stop_recording(command_buffer);
+
+        /* Form present tasks */
+        ral_present_task                    task_cpu;
+        ral_present_task_cpu_create_info    task_cpu_create_info;
+        ral_present_task_io                 task_cpu_unique_output;
+        ral_present_task                    task_gpu;
+        ral_present_task_gpu_create_info    task_gpu_create_info;
+        ral_present_task_io                 task_gpu_unique_input;
+        ral_present_task_io                 task_gpu_unique_output;
+        ral_present_task_group_create_info  task_result_create_info;
+        ral_present_task_ingroup_connection task_result_ingroup_connection;
+        ral_present_task_group_mapping      task_result_output_mapping;
+        ral_present_task                    task_result_present_tasks[2];
+
+        task_cpu_unique_output.buffer      = po_scalar_field_polygonizer_data_ub_bo_ral;
+        task_cpu_unique_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+        task_cpu_create_info.cpu_task_callback_user_arg = mesh_ptr;
+        task_cpu_create_info.n_unique_inputs            = 0;
+        task_cpu_create_info.n_unique_outputs           = 1;
+        task_cpu_create_info.pfn_cpu_task_callback_proc = _mesh_marchingcubes_update_ub_data_cpu_task_callback;
+        task_cpu_create_info.unique_outputs             = &task_cpu_unique_output;
+
+        task_cpu = ral_present_task_create_cpu(system_hashed_ansi_string_create("Marching cubes mesh: UB update"),
+                                              &task_cpu_create_info);
+
+
+        task_gpu_unique_input.buffer       = po_scalar_field_polygonizer_data_ub_bo_ral;
+        task_gpu_unique_input.object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+        task_gpu_unique_output.buffer      = mesh_ptr->polygonized_data_bo;
+        task_gpu_unique_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+        task_gpu_create_info.command_buffer   = command_buffer;
+        task_gpu_create_info.n_unique_inputs  = 1;
+        task_gpu_create_info.n_unique_outputs = 1;
+        task_gpu_create_info.unique_inputs    = &task_gpu_unique_input;
+        task_gpu_create_info.unique_outputs   = &task_gpu_unique_output;
+
+        task_gpu = ral_present_task_create_gpu(system_hashed_ansi_string_create("Marching cubes mesh: Polygonization"),
+                                              &task_gpu_create_info);
+
+
+        task_result_present_tasks[0] = task_cpu;
+        task_result_present_tasks[1] = task_gpu;
+
+        task_result_ingroup_connection.input_present_task_index     = 1;
+        task_result_ingroup_connection.input_present_task_io_index  = 0;
+        task_result_ingroup_connection.output_present_task_index    = 0;
+        task_result_ingroup_connection.output_present_task_io_index = 0;
+
+        task_result_output_mapping.io_index       = 0;
+        task_result_output_mapping.n_present_task = 1;
+
+        task_result_create_info.ingroup_connections                   = &task_result_ingroup_connection;
+        task_result_create_info.n_ingroup_connections                 = 1;
+        task_result_create_info.n_present_tasks                       = sizeof(task_result_present_tasks) / sizeof(task_result_present_tasks[0]);
+        task_result_create_info.n_unique_inputs                       = 0;
+        task_result_create_info.n_unique_outputs                      = 1;
+        task_result_create_info.unique_input_to_ingroup_task_mapping  = nullptr;
+        task_result_create_info.unique_output_to_ingroup_task_mapping = &task_result_output_mapping;
+
+        mesh_ptr->present_task_with_compute = ral_present_task_create_group(&task_result_create_info);
+
+        ral_present_task_release(task_cpu);
+        ral_present_task_release(task_gpu);
+    }
+
+    /* Also prepare a "dummy" present task, which only exposes the data which have been precalculated
+     * in previous frames.
+     */
     {
-        _mesh_marchingcubes_init_polygonizer_po(new_mesh_ptr);
-    } /* if (polygonizer_po == NULL) */
-    else
-    {
-        ral_context_retain_object(new_mesh_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                  polygonizer_po);
+        ral_present_task_gpu_create_info task_create_info;
+        ral_present_task_io              task_unique_output;
+
+        task_unique_output.buffer      = mesh_ptr->polygonized_data_bo;
+        task_unique_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+        task_create_info.command_buffer   = nullptr;
+        task_create_info.n_unique_inputs  = 0;
+        task_create_info.n_unique_outputs = 1;
+        task_create_info.unique_inputs    = nullptr;
+        task_create_info.unique_outputs   = &task_unique_output;
+
+        mesh_ptr->present_task_wo_compute = ral_present_task_create_gpu(system_hashed_ansi_string_create("Marching cubes mesh: Dummy"),
+                                                                       &task_create_info);
     }
 }
 
 /** TODO */
 PRIVATE void _mesh_marchingcubes_release(void* arg)
 {
-    _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) arg;
+    _mesh_marchingcubes* mesh_ptr = reinterpret_cast<_mesh_marchingcubes*>(arg);
 
-    if (mesh_ptr->material_gpu != NULL)
+    if (mesh_ptr->material_gpu != nullptr)
     {
         mesh_material_release(mesh_ptr->material_gpu);
 
-        mesh_ptr->material_gpu = NULL;
+        mesh_ptr->material_gpu = nullptr;
     }
+}
+
+/** TODO */
+PRIVATE void _mesh_marchingcubes_update_ub_data_cpu_task_callback(void* mesh_raw_ptr)
+{
+    _mesh_marchingcubes* mesh_ptr = reinterpret_cast<_mesh_marchingcubes*>(mesh_raw_ptr);
+
+    ral_program_block_buffer_set_nonarrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_data_ub,
+                                                           mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset,
+                                                          &mesh_ptr->isolevel,
+                                                           sizeof(float) );
+
+    ral_program_block_buffer_sync_immediately(mesh_ptr->po_scalar_field_polygonizer_data_ub);
 }
 
 
@@ -1453,30 +1622,30 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context     
                                                                 system_hashed_ansi_string name,
                                                                 unsigned int              polygonized_data_size_reduction)
 {
-    system_hashed_ansi_string material_name = NULL;
+    system_hashed_ansi_string material_name = nullptr;
     _mesh_marchingcubes*      new_mesh_ptr  = new (std::nothrow) _mesh_marchingcubes();
 
-    ASSERT_DEBUG_SYNC(new_mesh_ptr != NULL,
+    ASSERT_DEBUG_SYNC(new_mesh_ptr != nullptr,
                       "Out of memory");
 
     scene_material_get_property(material,
                                 SCENE_MATERIAL_PROPERTY_NAME,
                                &material_name);
 
-    if (new_mesh_ptr != NULL)
+    if (new_mesh_ptr != nullptr)
     {
         uint32_t scalar_data_bo_size = 0;
 
-        ASSERT_DEBUG_SYNC(context != NULL,
-                          "Rendering context is NULL");
+        ASSERT_DEBUG_SYNC(context != nullptr,
+                          "Rendering context is nullptr");
         ASSERT_DEBUG_SYNC(grid_size_xyz[0] >= 1 &&
                           grid_size_xyz[1] >= 1 &&
                           grid_size_xyz[2] >= 1,
                           "Invalid grid size requested.");
-        ASSERT_DEBUG_SYNC(material != NULL,
-                          "Input material is NULL");
-        ASSERT_DEBUG_SYNC(scalar_data_bo != NULL,
-                          "Scalar data BO is NULL");
+        ASSERT_DEBUG_SYNC(material != nullptr,
+                          "Input material is nullptr");
+        ASSERT_DEBUG_SYNC(scalar_data_bo != nullptr,
+                          "Scalar data BO is nullptr");
 
         ral_buffer_get_property(scalar_data_bo,
                                 RAL_BUFFER_PROPERTY_SIZE,
@@ -1494,14 +1663,12 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context     
         new_mesh_ptr->material                        = material;
         new_mesh_ptr->material_gpu                    = mesh_material_create(material_name,
                                                                              context,
-                                                                             NULL); /* object_manager_path */
+                                                                             nullptr); /* object_manager_path */
         new_mesh_ptr->name                            = name;
+        new_mesh_ptr->present_task_with_compute       = nullptr;
+        new_mesh_ptr->present_task_wo_compute         = nullptr;
         new_mesh_ptr->polygonized_data_size_reduction = polygonized_data_size_reduction;
         new_mesh_ptr->scalar_data_bo                  = scalar_data_bo;
-
-        ral_context_get_property(new_mesh_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND,
-                                &new_mesh_ptr->backend);
 
         scene_material_retain(material);
 
@@ -1522,10 +1689,7 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context     
                                                     MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
                                                     2.0f);
 
-        /* Request a rendering context call-back to set up more interesting stuff */
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(new_mesh_ptr->context),
-                                                         _mesh_marchingcubes_init_rendering_thread_callback,
-                                                         new_mesh_ptr);
+        _mesh_marchingcubes_init(new_mesh_ptr);
 
         /* Configure the mesh instance */
         _mesh_marchingcubes_init_mesh_instance(new_mesh_ptr);
@@ -1542,31 +1706,31 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context     
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes          in_mesh,
+PUBLIC EMERALD_API void mesh_marchingcubes_get_property(const mesh_marchingcubes   in_mesh,
                                                         mesh_marchingcubes_property property,
-                                                        void*                       out_result)
+                                                        void*                       out_result_ptr)
 {
-    const _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) in_mesh;
+    const _mesh_marchingcubes* mesh_ptr = reinterpret_cast<_mesh_marchingcubes*>(in_mesh);
 
     switch (property)
     {
         case MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL:
         {
-            *(float*) out_result = mesh_ptr->isolevel;
+            *reinterpret_cast<float*>(out_result_ptr) = mesh_ptr->isolevel;
 
             break;
         }
 
         case MESH_MARCHINGCUBES_PROPERTY_MESH:
         {
-            *(mesh*) out_result = mesh_ptr->mesh_instance;
+            *reinterpret_cast<mesh*>(out_result_ptr) = mesh_ptr->mesh_instance;
 
             break;
         }
 
         case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BUFFER_RAL:
         {
-            *(ral_buffer*) out_result = mesh_ptr->scalar_data_bo;
+            *reinterpret_cast<ral_buffer*>(out_result_ptr) = mesh_ptr->scalar_data_bo;
 
             break;
         }
@@ -1576,221 +1740,30 @@ PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes      
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_marchingcubes property requested.");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mesh_marchingcubes in_mesh,
-                                                                             bool               has_scalar_field_changed)
+PUBLIC EMERALD_API ral_present_task mesh_marchingcubes_get_polygonize_present_task(mesh_marchingcubes in_mesh,
+                                                                                   bool               has_scalar_field_changed)
 {
-    GLint                             current_po_id   = 0;
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-    _mesh_marchingcubes*              mesh_ptr        = (_mesh_marchingcubes*) in_mesh;
+    _mesh_marchingcubes* mesh_ptr = reinterpret_cast<_mesh_marchingcubes*>(in_mesh);
+    ral_present_task     result;
 
     if (mesh_ptr->needs_polygonization ||
         has_scalar_field_changed)
     {
-        ogl_context_get_property(ral_context_get_gl_context(mesh_ptr->context),
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                &entrypoints_ptr);
-
-        ral_program_block_buffer_set_nonarrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                                               mesh_ptr->po_scalar_field_polygonizer_data_ub_isolevel_offset,
-                                                              &mesh_ptr->isolevel,
-                                                               sizeof(float) );
-
-        ral_program_block_buffer_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_edge_table_offset,
-                                                            _edge_table,
-                                                            sizeof(_edge_table),
-                                                            0, /* dst_array_start_index */
-                                                            sizeof(_edge_table) / sizeof(_edge_table[0]) );
-        ral_program_block_buffer_set_arrayed_variable_value(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_triangle_table_offset,
-                                                            _triangle_table,
-                                                            sizeof(_triangle_table),
-                                                            0, /* dst_array_start_index */
-                                                            sizeof(_triangle_table) / sizeof(_triangle_table[0]) );
-
-        ral_program_block_buffer_sync(mesh_ptr->po_scalar_field_polygonizer_data_ub);
-        ral_program_block_buffer_sync(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub);
-
-        /* Set up the SSBO & UBO bindings */
-        GLuint      indirect_draw_call_args_bo_id                                          = 0;
-        raGL_buffer indirect_draw_call_args_bo_raGL                                        = NULL;
-        uint32_t    indirect_draw_call_args_bo_raGL_start_offset                           = -1;
-        uint32_t    indirect_draw_call_args_bo_ral_start_offset                            = -1;
-
-        GLuint      po_scalar_field_polygonizer_data_ub_bo_id                              = 0;
-        raGL_buffer po_scalar_field_polygonizer_data_ub_bo_raGL                            = NULL;
-        uint32_t    po_scalar_field_polygonizer_data_ub_bo_raGL_start_offset               = -1;
-        ral_buffer  po_scalar_field_polygonizer_data_ub_bo_ral                             = NULL;
-        uint32_t    po_scalar_field_polygonizer_data_ub_bo_ral_start_offset                = -1;
-        GLuint      po_scalar_field_polygonizer_precomputed_tables_ub_bo_id                = 0;
-        raGL_buffer po_scalar_field_polygonizer_precomputed_tables_ub_bo_raGL              = NULL;
-        uint32_t    po_scalar_field_polygonizer_precomputed_tables_ub_bo_raGL_start_offset = -1;
-        ral_buffer  po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral               = NULL;
-        uint32_t    po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral_start_offset  = -1;
-        GLuint      polygonized_data_bo_id                                                 = 0;
-        raGL_buffer polygonized_data_bo_raGL                                               = NULL;
-        uint32_t    polygonized_data_bo_raGL_start_offset                                  = -1;
-        uint32_t    polygonized_data_bo_ral_start_offset                                   = -1;
-        uint32_t    polygonized_data_bo_size                                               = 0;
-        GLuint      scalar_data_bo_id                                                      = 0;
-        raGL_buffer scalar_data_bo_raGL                                                    = NULL;
-        uint32_t    scalar_data_bo_raGL_start_offset                                       = -1;
-        uint32_t    scalar_data_bo_ral_start_offset                                        = -1;
-        uint32_t    scalar_data_bo_size                                                    = 0;
-
-        ASSERT_DEBUG_SYNC(false,
-                          "indirect draw call args BO start offset?");
-
-        ral_program_block_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_data_ub,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &po_scalar_field_polygonizer_data_ub_bo_ral);
-        ral_program_block_buffer_get_property(mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral);
-
-        raGL_backend_get_buffer(mesh_ptr->backend,
-                                mesh_ptr->indirect_draw_call_args_bo,
-                      (void**) &indirect_draw_call_args_bo_raGL);
-        ral_buffer_get_property(mesh_ptr->indirect_draw_call_args_bo,
-                                RAL_BUFFER_PROPERTY_START_OFFSET,
-                               &polygonized_data_bo_ral_start_offset);
-        raGL_buffer_get_property(indirect_draw_call_args_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &indirect_draw_call_args_bo_id);
-        raGL_buffer_get_property(indirect_draw_call_args_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &indirect_draw_call_args_bo_raGL_start_offset);
-
-        raGL_backend_get_buffer(mesh_ptr->backend,
-                                mesh_ptr->polygonized_data_bo,
-                      (void**) &polygonized_data_bo_raGL);
-        ral_buffer_get_property(mesh_ptr->polygonized_data_bo,
-                                RAL_BUFFER_PROPERTY_SIZE,
-                               &polygonized_data_bo_size);
-        ral_buffer_get_property(mesh_ptr->polygonized_data_bo,
-                                RAL_BUFFER_PROPERTY_START_OFFSET,
-                               &polygonized_data_bo_ral_start_offset);
-        raGL_buffer_get_property(polygonized_data_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &polygonized_data_bo_id);
-        raGL_buffer_get_property(polygonized_data_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &polygonized_data_bo_raGL_start_offset);
-
-        raGL_backend_get_buffer(mesh_ptr->backend,
-                                mesh_ptr->scalar_data_bo,
-                      (void**) &scalar_data_bo_raGL);
-        ral_buffer_get_property(mesh_ptr->scalar_data_bo,
-                                RAL_BUFFER_PROPERTY_SIZE,
-                               &scalar_data_bo_size);
-        ral_buffer_get_property(mesh_ptr->scalar_data_bo,
-                                RAL_BUFFER_PROPERTY_START_OFFSET,
-                               &scalar_data_bo_ral_start_offset);
-        raGL_buffer_get_property(scalar_data_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &scalar_data_bo_id);
-        raGL_buffer_get_property(scalar_data_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &scalar_data_bo_raGL_start_offset);
-
-        raGL_backend_get_buffer(mesh_ptr->backend,
-                                po_scalar_field_polygonizer_data_ub_bo_ral,
-                      (void**) &po_scalar_field_polygonizer_data_ub_bo_raGL);
-        ral_buffer_get_property(po_scalar_field_polygonizer_data_ub_bo_ral,
-                                RAL_BUFFER_PROPERTY_START_OFFSET,
-                               &po_scalar_field_polygonizer_data_ub_bo_ral_start_offset);
-        raGL_buffer_get_property(po_scalar_field_polygonizer_data_ub_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &po_scalar_field_polygonizer_data_ub_bo_id);
-        raGL_buffer_get_property(po_scalar_field_polygonizer_data_ub_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &po_scalar_field_polygonizer_data_ub_bo_raGL_start_offset);
-
-        raGL_backend_get_buffer(mesh_ptr->backend,
-                                po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral,
-                      (void**) &po_scalar_field_polygonizer_precomputed_tables_ub_bo_raGL);
-        ral_buffer_get_property(po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral,
-                                RAL_BUFFER_PROPERTY_START_OFFSET,
-                               &po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral_start_offset);
-        raGL_buffer_get_property(po_scalar_field_polygonizer_precomputed_tables_ub_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_ID,
-                                &po_scalar_field_polygonizer_precomputed_tables_ub_bo_id);
-        raGL_buffer_get_property(po_scalar_field_polygonizer_precomputed_tables_ub_bo_raGL,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &po_scalar_field_polygonizer_precomputed_tables_ub_bo_raGL_start_offset);
-
-        entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                            mesh_ptr->po_scalar_field_polygonizer_indirect_draw_call_count_ssb_bp,
-                                            indirect_draw_call_args_bo_id,
-                                            mesh_ptr->indirect_draw_call_args_bo_count_arg_offset,
-                                            sizeof(int) );
-        entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                            mesh_ptr->po_scalar_field_polygonizer_scalar_field_data_ssb_bp,
-                                            scalar_data_bo_id,
-                                            scalar_data_bo_ral_start_offset + scalar_data_bo_raGL_start_offset,
-                                            scalar_data_bo_size);
-        entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
-                                            mesh_ptr->po_scalar_field_polygonizer_result_data_ssb_bp,
-                                            polygonized_data_bo_id,
-                                            polygonized_data_bo_ral_start_offset + polygonized_data_bo_raGL_start_offset,
-                                            polygonized_data_bo_size);
-
-        entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bp,
-                                            po_scalar_field_polygonizer_data_ub_bo_id,
-                                            po_scalar_field_polygonizer_data_ub_bo_ral_start_offset + po_scalar_field_polygonizer_data_ub_bo_raGL_start_offset,
-                                            mesh_ptr->po_scalar_field_polygonizer_data_ub_bo_size);
-        entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bp,
-                                            po_scalar_field_polygonizer_precomputed_tables_ub_bo_id,
-                                            po_scalar_field_polygonizer_precomputed_tables_ub_bo_ral_start_offset + po_scalar_field_polygonizer_precomputed_tables_ub_bo_raGL_start_offset,
-                                            mesh_ptr->po_scalar_field_polygonizer_precomputed_tables_ub_bo_size);
-
-        /* Sync SSBO-based scalar field data. */
-        if (has_scalar_field_changed)
-        {
-            entrypoints_ptr->pGLMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-        }
-
-        /* Set up the indirect draw call's <count> SSB. Zero out the value before we run the polygonizer */
-        ral_buffer_clear_region_info clear_op;
-
-        entrypoints_ptr->pGLBindBuffer(GL_DRAW_INDIRECT_BUFFER,
-                                       indirect_draw_call_args_bo_id);
-
-        clear_op.clear_value = 0;
-        clear_op.offset      = mesh_ptr->indirect_draw_call_args_bo_count_arg_offset;
-        clear_op.size        = sizeof(int);
-
-        ral_buffer_clear_region(mesh_ptr->indirect_draw_call_args_bo,
-                                1, /* n_clear_ops */
-                               &clear_op,
-                                false /* sync_other_contexts */);
-
-        /* Polygonize the scalar field */
-        const raGL_program polygonizer_po_raGL    = ral_context_get_program_gl(mesh_ptr->context,
-                                                                               mesh_ptr->po_scalar_field_polygonizer);
-        GLuint             polygonizer_po_raGL_id = 0;
-
-        raGL_program_get_property(polygonizer_po_raGL,
-                                  RAGL_PROGRAM_PROPERTY_ID,
-                                 &polygonizer_po_raGL_id);
-
-        entrypoints_ptr->pGLUseProgram     (polygonizer_po_raGL_id);
-        entrypoints_ptr->pGLDispatchCompute(mesh_ptr->po_scalar_field_polygonizer_global_wg_size[0],
-                                            mesh_ptr->po_scalar_field_polygonizer_global_wg_size[1],
-                                            mesh_ptr->po_scalar_field_polygonizer_global_wg_size[2]);
-
-        /* Restore the bound program object */
-        entrypoints_ptr->pGLUseProgram(current_po_id);
-
-        /* All done */
+        result                         = mesh_ptr->present_task_with_compute;
         mesh_ptr->needs_polygonization = false;
-    } /* if (mesh_ptr->needs_polygonization) */
+    }
+    else
+    {
+        result = mesh_ptr->present_task_wo_compute;
+    }
+
+    ral_present_task_retain(result);
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -1798,13 +1771,13 @@ PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes      
                                                         mesh_marchingcubes_property property,
                                                         const void*                 data)
 {
-    _mesh_marchingcubes* mesh_ptr = (_mesh_marchingcubes*) in_mesh;
+    _mesh_marchingcubes* mesh_ptr = reinterpret_cast<_mesh_marchingcubes*>(in_mesh);
 
     switch (property)
     {
         case MESH_MARCHINGCUBES_PROPERTY_ISOLEVEL:
         {
-            float new_isolevel = *(float*) data;
+            float new_isolevel = *reinterpret_cast<const float*>(data);
 
             if (abs(mesh_ptr->isolevel - new_isolevel) > 1e-5f)
             {
@@ -1817,7 +1790,7 @@ PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes      
 
         case MESH_MARCHINGCUBES_PROPERTY_SCALAR_DATA_BUFFER_RAL:
         {
-            ral_buffer new_bo = *(ral_buffer*) data;
+            ral_buffer new_bo = *reinterpret_cast<const ral_buffer*>(data);
 
             if (mesh_ptr->scalar_data_bo != new_bo)
             {
@@ -1833,5 +1806,5 @@ PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes      
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_marchingcubes_property value requested.");
         }
-    } /* switch (property) */
+    }
 }

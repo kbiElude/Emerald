@@ -178,9 +178,9 @@ PUBLIC EMERALD_API audio_stream audio_stream_create(audio_device           devic
      * demo applications can quit when the sound-track finishes. */
     if ( (new_audio_stream_ptr->finished_playing_sync_event = BASS_ChannelSetSync(new_audio_stream_ptr->stream,
                                                                                   BASS_SYNC_END | BASS_SYNC_MIXTIME,
-                                                                                  nullptr, /* param - not used */
+                                                                                  0, /* param - not used */
                                                                                   _audio_stream_on_stream_finished_playing,
-                                                                                  new_audio_stream_ptr)) == nullptr)
+                                                                                  new_audio_stream_ptr)) == 0)
     {
         ASSERT_ALWAYS_SYNC(false,
                           "Failed to set up a BASS_SYNC_MIXTIME synchronizer");

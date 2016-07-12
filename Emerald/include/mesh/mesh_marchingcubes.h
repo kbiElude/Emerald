@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #ifndef MESH_MARCHINGCUBES_H
@@ -71,26 +71,26 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context     
                                                                 unsigned int              polygonized_data_size_reduction = 10);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_marchingcubes_get_property(mesh_marchingcubes          in_mesh,
+PUBLIC EMERALD_API void mesh_marchingcubes_get_property(const mesh_marchingcubes    in_mesh,
                                                         mesh_marchingcubes_property property,
-                                                        void*                       out_result);
+                                                        void*                       out_result_ptr);
 
-/** Polygonizes the scalar field and stores the result normal & vertex data in an internal buffer object.
- *  The buffers are attached to a mesh instance, which can be extracted by querying the
+/** Returns a present task which polygonizes the scalar field and stores the result normal & vertex data
+ *  in a buffer object. The buffers are attached to a mesh instance, which can be extracted by querying the
  *  MESH_MARCHINGCUBES_PROPERTY_MESH property.
+ *
+ *  The present task exposes a single unique output which holds the polygonized data.
  *
  *  NOTE: This function performs an indirect draw call.
  *  NOTE: If mesh_marchingcubes detects the scalar field needs to be refreshed (eg. after the isovalue property
  *        value is changed), it will perform polygonization if necessary before issuing the draw call.
- *        However, polygonization is best scheduled at early frame time so it is recommended to call this function
- *        manually.
  *
  *  @param in_mesh                  mesh_marchingcubes instance to use. Must not be NULL.
  *  @param has_scalar_field_changed true to force the polygonization, false otherwise.
  *
  **/
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void mesh_marchingcubes_polygonize(mesh_marchingcubes in_mesh,
-                                                                             bool               has_scalar_field_changed);
+PUBLIC EMERALD_API ral_present_task mesh_marchingcubes_get_polygonize_present_task(mesh_marchingcubes in_mesh,
+                                                                                   bool               has_scalar_field_changed);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_marchingcubes_set_property(mesh_marchingcubes          in_mesh,

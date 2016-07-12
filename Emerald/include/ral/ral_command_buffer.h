@@ -298,6 +298,15 @@ typedef struct ral_command_buffer_execute_command_buffer_command_info
 
 } ral_command_buffer_execute_command_buffer_command_info;
 
+typedef struct ral_command_buffer_fill_buffer_command_info
+{
+    ral_buffer buffer;
+    uint32_t   dword_value;
+    uint32_t   n_dwords;
+    uint32_t   start_offset;
+
+} ral_command_buffer_fill_buffer_command_info;
+
 typedef struct ral_command_buffer_invalidate_texture_command_info
 {
     uint32_t    n_mips;
@@ -534,6 +543,11 @@ PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer      
 PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer                                            recording_command_buffer,
                                                              uint32_t                                                      n_commands,
                                                              const ral_command_buffer_execute_command_buffer_command_info* command_ptrs);
+
+/** TODO */
+PUBLIC void ral_command_buffer_record_fill_buffer(ral_command_buffer                                 recording_command_buffer,
+                                                  uint32_t                                           n_fill_ops,
+                                                  const ral_command_buffer_fill_buffer_command_info* fill_ops_ptr);
 
 /** TODO */
 PUBLIC void ral_command_buffer_record_invalidate_texture(ral_command_buffer recording_command_buffer,
