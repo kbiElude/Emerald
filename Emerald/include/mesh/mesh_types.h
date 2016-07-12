@@ -54,7 +54,28 @@ typedef enum
 
 typedef enum
 {
-    /* settable, float[4] */
+    /* not settable, _mesh_index_type */
+    MESH_PROPERTY_BO_INDEX_TYPE,
+
+    /* not settable, void* */
+    MESH_PROPERTY_BO_PROCESSED_DATA,
+
+    /* not settable, uint32_t */
+    MESH_PROPERTY_BO_PROCESSED_DATA_SIZE,
+
+    /* not settable, ral_buffer
+     *
+     * Only used for regular meshes
+     */
+    MESH_PROPERTY_BO_RAL,
+
+    /* settable, uint32_t */
+    MESH_PROPERTY_BO_STRIDE,
+
+    /* settable, uint32_t */
+    MESH_PROPERTY_BO_TOTAL_ELEMENTS,
+
+/* settable, float[4] */
     MESH_PROPERTY_MODEL_AABB_MAX,
 
     /* settable, float[4] */
@@ -63,27 +84,6 @@ typedef enum
     /* not settable, mesh_creation_flags */
     MESH_PROPERTY_CREATION_FLAGS,
 
-    /* not settable, ral_buffer
-     *
-     * Only used for regular meshes
-     */
-    MESH_PROPERTY_GL_BO_RAL,
-
-    /* not settable, _mesh_index_type */
-    MESH_PROPERTY_GL_INDEX_TYPE,
-
-    /* not settable, void* */
-    MESH_PROPERTY_GL_PROCESSED_DATA,
-
-    /* not settable, uint32_t */
-    MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
-
-    /* settable, uint32_t */
-    MESH_PROPERTY_GL_STRIDE,
-
-    /* settable, uint32_t */
-    MESH_PROPERTY_GL_TOTAL_ELEMENTS,
-
     /* not settable, system_resizable_vector - DO NOT MODIFY OR RELEASE */
     MESH_PROPERTY_MATERIALS,
 
@@ -91,7 +91,7 @@ typedef enum
     MESH_PROPERTY_NAME,
 
     /* not settable, uint32_t */
-    MESH_PROPERTY_N_GL_UNIQUE_VERTICES,
+    MESH_PROPERTY_N_BO_UNIQUE_VERTICES,
 
     /* not settable, uint32_t */
     MESH_PROPERTY_N_LAYERS,
@@ -121,14 +121,6 @@ typedef enum
      *
      * Default value: MESH_VERTEX_ORDERING_CCW */
     MESH_PROPERTY_VERTEX_ORDERING,
-
-    /* not settable, bool.
-     *
-     * This property tells that a rendering thread should call mesh_fill_gl_buffers() ASAP
-     * from the rendering thread. Raised, if CPU-side GL blob was updated and the rendering
-     * thread was unavailable at the modification time.
-     */
-     MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
 
     /* not settable, mesh.
      *
@@ -201,6 +193,21 @@ typedef enum
 
 typedef enum
 {
+    /* settable, uint32_t */
+    MESH_LAYER_PROPERTY_BO_ELEMENTS_OFFSET,
+
+    /* settable, uint32_t */
+    MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MAX_INDEX,
+
+    /* settable, uint32_t */
+    MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MIN_INDEX,
+
+    /* not settable, uint32_t* */
+    MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA,
+
+    /* settable, uint32_t (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_BO_N_UNIQUE_ELEMENTS,
+
     /* settable, mesh_draw_call_arguments
      *
      * Only meaningful for GPU stream meshes.
@@ -212,21 +219,6 @@ typedef enum
      * Only meaningful for GPU stream meshes.
      */
     MESH_LAYER_PROPERTY_DRAW_CALL_TYPE,
-
-    /* settable, uint32_t */
-    MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,
-
-    /* settable, uint32_t */
-    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX,
-
-    /* settable, uint32_t */
-    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX,
-
-    /* not settable, uint32_t* */
-    MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA,
-
-    /* settable, uint32_t (this property has the same value for all passes) */
-    MESH_LAYER_PROPERTY_GL_N_UNIQUE_ELEMENTS,
 
     /* not settable, mesh_material */
     MESH_LAYER_PROPERTY_MATERIAL,

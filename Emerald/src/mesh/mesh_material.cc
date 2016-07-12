@@ -1,13 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "demo/demo_app.h"
 #include "mesh/mesh_material.h"
-#include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
@@ -39,8 +38,8 @@ typedef struct _mesh_material_property_texture
         mag_filter   = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
         min_filter   = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
         mipmap_level = -1;
-        sampler      = NULL;
-        texture      = NULL;
+        sampler      = nullptr;
+        texture      = nullptr;
     }
 
     ~_mesh_material_property_texture();
@@ -63,7 +62,7 @@ typedef struct _mesh_material_property
         :texture_data(this)
     {
         attachment                    = MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE;
-        context                       = NULL; /* configured by _mesh_material */
+        context                       = nullptr; /* configured by _mesh_material */
         data_vector_data              = MESH_MATERIAL_DATA_VECTOR_UNKNOWN;
         float_data                    = -1.0f;
         input_fragment_attribute_data = MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
@@ -107,7 +106,7 @@ typedef struct _mesh_material
     system_variant            temp_variant_float;
     scene_renderer_uber       uber_non_sm;            /*         uses shadow maps for per-light visibility calculation */
     scene_renderer_uber       uber_sm;                /* does not use shadow maps for per-light visibility calculation */
-    system_hashed_ansi_string uv_map_name;            /* NULL by default, needs to be manually set */
+    system_hashed_ansi_string uv_map_name;            /* nullptr by default, needs to be manually set */
     float                     vertex_smoothing_angle;
 
     /* MESH_MATERIAL_TYPE_SHADER_BODIES-specific properties */
@@ -116,23 +115,23 @@ typedef struct _mesh_material
 
     _mesh_material(ral_context in_context)
     {
-        ASSERT_DEBUG_SYNC(in_context != NULL,
-                          "Input RAL context is NULL");
+        ASSERT_DEBUG_SYNC(in_context != nullptr,
+                          "Input RAL context is nullptr");
 
-        callback_manager       = NULL;
+        callback_manager       = nullptr;
         context                = in_context;
         dirty                  = true;
-        name                   = NULL;
-        object_manager_path    = NULL;
-        owner_scene            = NULL;
-        program                = NULL;
+        name                   = nullptr;
+        object_manager_path    = nullptr;
+        owner_scene            = nullptr;
+        program                = nullptr;
         shading                = MESH_MATERIAL_SHADING_PHONG;
-        source_scene_material  = NULL;
+        source_scene_material  = nullptr;
         temp_variant_float     = system_variant_create(SYSTEM_VARIANT_FLOAT);
         type                   = MESH_MATERIAL_TYPE_UNDEFINED;
-        uber_non_sm            = NULL;
-        uber_sm                = NULL;
-        uv_map_name            = NULL;
+        uber_non_sm            = nullptr;
+        uber_sm                = nullptr;
+        uv_map_name            = nullptr;
         vertex_smoothing_angle = 0.0f;
 
         memset(shaders,
@@ -165,14 +164,14 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
 /** TODO */
 _mesh_material_property_texture::~_mesh_material_property_texture()
 {
-    if (sampler != NULL)
+    if (sampler != nullptr)
     {
         ral_context_delete_objects(parent_property_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_objects */
                                    (const void**) &sampler);
 
-        sampler = NULL;
+        sampler = nullptr;
     }
 }
 
@@ -186,14 +185,14 @@ PRIVATE void _mesh_material_deinit_shading_property_attachment(_mesh_material_pr
                           n_component < sizeof(material_property.curve_container_data) / sizeof(material_property.curve_container_data[0]);
                         ++n_component)
         {
-            if (material_property.curve_container_data[n_component] != NULL)
+            if (material_property.curve_container_data[n_component] != nullptr)
             {
                 curve_container_release(material_property.curve_container_data[n_component]);
 
-                material_property.curve_container_data[n_component] = NULL;
+                material_property.curve_container_data[n_component] = nullptr;
             }
-        } /* for (all components) */
-    } /* for (curve container based attachments) */
+        }
+    }
 }
 
 
@@ -201,17 +200,17 @@ PRIVATE void _mesh_material_deinit_shading_property_attachment(_mesh_material_pr
 PRIVATE void _mesh_material_on_material_invalidation_needed(const void* not_used,
                                                             void*       material)
 {
-    ASSERT_DEBUG_SYNC( ((_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC( reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                        "Redundant callback detected.");
 
     /* We will need a new ogl_uber instance for the re-configured scene. */
-    ((_mesh_material*) material)->dirty = true;
+    reinterpret_cast<_mesh_material*>(material)->dirty = true;
 }
 
 /** TODO */
 PRIVATE void _mesh_material_release(void* data_ptr)
 {
-    _mesh_material* material_ptr = (_mesh_material*) data_ptr;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(data_ptr);
 
     /* Release any textures that may have been attached to the material */
     LOG_INFO("Releasing material [%s]",
@@ -236,7 +235,7 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                     {
                         curve_container_release(material_ptr->shading_properties[current_property].curve_container_data[n_component]);
 
-                        material_ptr->shading_properties[current_property].curve_container_data[n_component] = NULL;
+                        material_ptr->shading_properties[current_property].curve_container_data[n_component] = nullptr;
                     }
 
                     break;
@@ -244,7 +243,7 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    if (material_ptr->shading_properties[current_property].texture_data.sampler != NULL)
+                    if (material_ptr->shading_properties[current_property].texture_data.sampler != nullptr)
                     {
                         ral_context_delete_objects(material_ptr->context,
                                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
@@ -252,21 +251,21 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                                                    (const void**) &material_ptr->shading_properties[current_property].texture_data.sampler);
                     }
 
-                    material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
-                    material_ptr->shading_properties[current_property].texture_data.texture = NULL;
+                    material_ptr->shading_properties[current_property].texture_data.sampler = nullptr;
+                    material_ptr->shading_properties[current_property].texture_data.texture = nullptr;
 
                     break;
-                } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
+                }
             }
         }
 
-        if (material_ptr->temp_variant_float != NULL)
+        if (material_ptr->temp_variant_float != nullptr)
         {
             system_variant_release(material_ptr->temp_variant_float);
 
-            material_ptr->temp_variant_float = NULL;
+            material_ptr->temp_variant_float = nullptr;
         }
-    } /* if (material_ptr->type == MESH_MATERIAL_TYPE_GENERAL) */
+    }
 
     if (material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM)
     {
@@ -274,38 +273,38 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                           n_shader_stage < (unsigned int) MESH_MATERIAL_SHADER_STAGE_COUNT;
                         ++n_shader_stage)
         {
-            if (material_ptr->shaders[n_shader_stage] != NULL)
+            if (material_ptr->shaders[n_shader_stage] != nullptr)
             {
                 ral_context_delete_objects(material_ptr->context,
                                            RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                            1, /* n_objects */
                                            (const void**) &material_ptr->shaders[n_shader_stage]);
 
-                material_ptr->shaders[n_shader_stage] = NULL;
+                material_ptr->shaders[n_shader_stage] = nullptr;
             }
-        } /* for (all shader stages) */
+        }
 
-        if (material_ptr->program != NULL)
+        if (material_ptr->program != nullptr)
         {
             ral_context_delete_objects(material_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
                                        (const void**) &material_ptr->program);
 
-            material_ptr->program = NULL;
+            material_ptr->program = nullptr;
         }
-    } /* if (material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM) */
+    }
 
     /* Unsubscribe from notifications */
     _mesh_material_subscribe_for_notifications(material_ptr,
                                                false /* should_subscribe */);
 
     /* Release callback manager */
-    if (material_ptr->callback_manager != NULL)
+    if (material_ptr->callback_manager != nullptr)
     {
         system_callback_manager_release(material_ptr->callback_manager);
 
-        material_ptr->callback_manager = NULL;
+        material_ptr->callback_manager = nullptr;
     }
 }
 
@@ -314,9 +313,9 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
                                                         bool            should_subscribe)
 {
     unsigned int            n_scene_lights         = 0;
-    system_callback_manager scene_callback_manager = NULL;
+    system_callback_manager scene_callback_manager = nullptr;
 
-    if (material_ptr->owner_scene == NULL)
+    if (material_ptr->owner_scene == nullptr)
     {
         goto end;
     }
@@ -342,7 +341,7 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
         {
             scene_light             current_light                  = scene_get_light_by_index(material_ptr->owner_scene,
                                                                                               n_scene_light);
-            system_callback_manager current_light_callback_manager = NULL;
+            system_callback_manager current_light_callback_manager = nullptr;
 
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER,
@@ -368,8 +367,8 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
                                                             CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                             _mesh_material_on_material_invalidation_needed,
                                                             material_ptr);
-        } /* for (all lights) */
-    } /* if (should_subscribe) */
+        }
+    }
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(scene_callback_manager,
@@ -383,7 +382,7 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
         {
             scene_light             current_light                  = scene_get_light_by_index(material_ptr->owner_scene,
                                                                                               n_scene_light);
-            system_callback_manager current_light_callback_manager = NULL;
+            system_callback_manager current_light_callback_manager = nullptr;
 
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER,
@@ -405,7 +404,7 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
                                                                _mesh_material_on_material_invalidation_needed,
                                                                material_ptr);
-        } /* for (all lights) */
+        }
     }
 
 end:
@@ -459,7 +458,7 @@ PRIVATE void _mesh_material_get_ral_enums_for_mesh_material_texture_filtering(me
                               "Unrecognized material texture filtering requested [%d]",
                               filtering);
         }
-    } /* switch (filtering) */
+    }
 }
 
 
@@ -473,20 +472,20 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(system_hashed_ansi_string 
     LOG_INFO("Creating material [%s]",
              system_hashed_ansi_string_get_buffer(name) );
 
-    ASSERT_ALWAYS_SYNC(new_material_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_material_ptr != nullptr,
                        "Out of memory");
 
-    if (new_material_ptr != NULL)
+    if (new_material_ptr != nullptr)
     {
-        ASSERT_DEBUG_SYNC(name != NULL,
-                          "Name is NULL");
+        ASSERT_DEBUG_SYNC(name != nullptr,
+                          "Name is nullptr");
 
         new_material_ptr->callback_manager    = system_callback_manager_create( (_callback_id) MESH_MATERIAL_CALLBACK_ID_COUNT);
         new_material_ptr->context             = context;
         new_material_ptr->name                = name;
         new_material_ptr->object_manager_path = object_manager_path;
         new_material_ptr->type                = MESH_MATERIAL_TYPE_GENERAL;
-        new_material_ptr->uv_map_name         = NULL;
+        new_material_ptr->uv_map_name         = nullptr;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material_ptr,
                                                        _mesh_material_release,
@@ -503,16 +502,16 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(system_hashed_ansi_string 
 PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_string name,
                                                            mesh_material             src_material)
 {
-    _mesh_material* src_material_ptr = (_mesh_material*) src_material;
+    _mesh_material* src_material_ptr = reinterpret_cast<_mesh_material*>(src_material);
     _mesh_material* new_material_ptr = new (std::nothrow) _mesh_material(src_material_ptr->context);
 
     LOG_INFO("Creating material copy [%s]",
              system_hashed_ansi_string_get_buffer(name) );
 
-    ASSERT_ALWAYS_SYNC(new_material_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_material_ptr != nullptr,
                        "Out of memory");
 
-    if (new_material_ptr != NULL)
+    if (new_material_ptr != nullptr)
     {
         /* Copy relevant fields */
         new_material_ptr->dirty               = src_material_ptr->dirty;
@@ -552,11 +551,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                 else
                 if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
                 {
-                    shading_property.texture_data.sampler = NULL;
-                    shading_property.texture_data.texture = NULL;
+                    shading_property.texture_data.sampler = nullptr;
+                    shading_property.texture_data.texture = nullptr;
                 }
             }
-        } /* if (new_material_ptr->type == MESH_MATERIAL_TYPE_GENERAL) */
+        }
         else
         if (new_material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM)
         {
@@ -566,25 +565,25 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                               n_shader_stage < MESH_MATERIAL_SHADER_STAGE_COUNT;
                             ++n_shader_stage)
             {
-                if (src_material_ptr->shaders[n_shader_stage] != NULL)
+                if (src_material_ptr->shaders[n_shader_stage] != nullptr)
                 {
                     new_material_ptr->shaders[n_shader_stage] = src_material_ptr->shaders[n_shader_stage];
 
                     ral_context_retain_object(new_material_ptr->context,
                                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                               new_material_ptr->shaders[n_shader_stage]);
-                } /* if (src_material_ptr->shaders[n_shader_stage] != NULL) */
-            } /* for (all shader stages) */
+                }
+            }
 
-            if (src_material_ptr->program != NULL)
+            if (src_material_ptr->program != nullptr)
             {
                 new_material_ptr->program = src_material_ptr->program;
 
                 ral_context_retain_object(new_material_ptr->context,
                                           RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                           new_material_ptr->program);
-            } /* if (src_material_ptr->program != NULL) */
-        } /* if (new_material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM) */
+            }
+        }
         else
         {
             ASSERT_DEBUG_SYNC(false,
@@ -608,22 +607,22 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                                                           ral_context    context_ral)
 {
     /* Create a new mesh_material instance */
-    curve_container*                color_curves_ptr                 = NULL;
-    system_hashed_ansi_string       color_texture_file_name          = NULL;
+    curve_container*                color_curves_ptr                 = nullptr;
+    system_hashed_ansi_string       color_texture_file_name          = nullptr;
     mesh_material_texture_filtering color_texture_mag_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
     mesh_material_texture_filtering color_texture_min_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
-    curve_container                 glosiness                        = NULL;
-    curve_container                 luminance                        = NULL;
-    system_hashed_ansi_string       luminance_texture_file_name      = NULL;
-    system_hashed_ansi_string       normal_texture_file_name         = NULL;
-    system_hashed_ansi_string       reflection_texture_file_name     = NULL;
-    mesh_material                   result_material                  = NULL;
+    curve_container                 glosiness                        = nullptr;
+    curve_container                 luminance                        = nullptr;
+    system_hashed_ansi_string       luminance_texture_file_name      = nullptr;
+    system_hashed_ansi_string       normal_texture_file_name         = nullptr;
+    system_hashed_ansi_string       reflection_texture_file_name     = nullptr;
+    mesh_material                   result_material                  = nullptr;
     const mesh_material_shading     shading_type                     = MESH_MATERIAL_SHADING_PHONG;
     float                           smoothing_angle                  = 0.0f;
-    curve_container                 specular_ratio                   = NULL;
-    system_hashed_ansi_string       specular_texture_file_name       = NULL;
-    system_hashed_ansi_string       src_material_object_manager_path = NULL;
-    system_hashed_ansi_string       src_material_name                = NULL;
+    curve_container                 specular_ratio                   = nullptr;
+    system_hashed_ansi_string       specular_texture_file_name       = nullptr;
+    system_hashed_ansi_string       src_material_object_manager_path = nullptr;
+    system_hashed_ansi_string       src_material_name                = nullptr;
 
     typedef struct _attachment_configuration
     {
@@ -687,16 +686,16 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                            context_ral,
                                            src_material_object_manager_path);
 
-    ASSERT_DEBUG_SYNC(result_material != NULL,
+    ASSERT_DEBUG_SYNC(result_material != nullptr,
                       "mesh_material_create() failed.");
 
-    if (result_material == NULL)
+    if (result_material == nullptr)
     {
         goto end;
     }
 
     /* Update source material */
-    ((_mesh_material*) result_material)->source_scene_material = src_material;
+    reinterpret_cast<_mesh_material*>(result_material)->source_scene_material = src_material;
 
     /* Force Phong reflection model */
     mesh_material_set_property(result_material,
@@ -743,49 +742,49 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                 SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
                                &specular_ratio);
 
-    if (color_texture_file_name                                       != NULL &&
+    if (color_texture_file_name                                       != nullptr &&
         system_hashed_ansi_string_get_length(color_texture_file_name) == 0)
     {
-        color_texture_file_name = NULL;
+        color_texture_file_name = nullptr;
     }
 
-    if (luminance_texture_file_name                                       != NULL &&
+    if (luminance_texture_file_name                                       != nullptr &&
         system_hashed_ansi_string_get_length(luminance_texture_file_name) == 0)
     {
-        luminance_texture_file_name = NULL;
+        luminance_texture_file_name = nullptr;
     }
 
-    if (normal_texture_file_name                                       != NULL &&
+    if (normal_texture_file_name                                       != nullptr &&
         system_hashed_ansi_string_get_length(normal_texture_file_name) == 0)
     {
-        normal_texture_file_name = NULL;
+        normal_texture_file_name = nullptr;
     }
 
-    if (reflection_texture_file_name                                       != NULL &&
+    if (reflection_texture_file_name                                       != nullptr &&
         system_hashed_ansi_string_get_length(reflection_texture_file_name) == 0)
     {
-        reflection_texture_file_name = NULL;
+        reflection_texture_file_name = nullptr;
     }
 
-    if (specular_texture_file_name                                       != NULL &&
+    if (specular_texture_file_name                                       != nullptr &&
         system_hashed_ansi_string_get_length(specular_texture_file_name) == 0)
     {
-        specular_texture_file_name = NULL;
+        specular_texture_file_name = nullptr;
     }
 
     /* Throw an assertion failures for textures that are not yet supported on mesh_material
      * back-end.
      */
-    ASSERT_DEBUG_SYNC(luminance_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(luminance_texture_file_name == nullptr,
                       "mesh_material does not support luminance textures");
 
-    ASSERT_DEBUG_SYNC(normal_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(normal_texture_file_name == nullptr,
                       "mesh_material does not support normal textures");
 
-    ASSERT_DEBUG_SYNC(reflection_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(reflection_texture_file_name == nullptr,
                       "mesh_material does not support reflection textures");
 
-    ASSERT_DEBUG_SYNC(specular_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(specular_texture_file_name == nullptr,
                       "mesh_material does not support specular textures");
 
     /* Configure texture/float/vec3 attachments (as described by scene_material) */
@@ -793,10 +792,10 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
     /* 1. Diffuse attachment */
     attachment_configs[0] = _attachment_configuration(
         MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-        (color_texture_file_name != NULL) ? MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE
+        (color_texture_file_name != nullptr) ? MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE
                                           : MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
 
-        (color_texture_file_name != NULL) ? NULL : color_curves_ptr,
+        (color_texture_file_name != nullptr) ? nullptr : color_curves_ptr,
 
         color_texture_file_name,
         color_texture_mag_filter,
@@ -834,8 +833,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
         {
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
             {
-                ASSERT_DEBUG_SYNC(config.curve_data[0] != NULL,
-                                  "NULL curve container");
+                ASSERT_DEBUG_SYNC(config.curve_data[0] != nullptr,
+                                  "nullptr curve container");
 
                 mesh_material_set_shading_property_to_curve_container_float(result_material,
                                                                             config.shading_property,
@@ -863,14 +862,14 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
 
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
-                ral_texture texture = NULL;
+                ral_texture texture = nullptr;
 
-                /* Do not attach anything if context_ral is NULL.
+                /* Do not attach anything if context_ral is nullptr.
                  *
                  * This won't backfire if the mesh_material is an intermediate object used
-                 * for mesh baking. Otherwise context_ral should never be NULL.
+                 * for mesh baking. Otherwise context_ral should never be nullptr.
                  */
-                if (context_ral == NULL)
+                if (context_ral == nullptr)
                 {
                     break;
                 }
@@ -878,7 +877,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                 texture = ral_context_get_texture_by_file_name(context_ral,
                                                                config.texture_filename);
 
-                if (texture == NULL)
+                if (texture == nullptr)
                 {
                     ral_context_create_textures_from_file_names(context_ral,
                                                                 1, /* n_file_names */
@@ -886,11 +885,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                                                                &texture);
                 }
 
-                ASSERT_ALWAYS_SYNC(texture != NULL,
+                ASSERT_ALWAYS_SYNC(texture != nullptr,
                                    "Texture [%s] unavailable in the rendering context",
                                    system_hashed_ansi_string_get_buffer(config.texture_filename) );
 
-                if (texture != NULL)
+                if (texture != nullptr)
                 {
                     mesh_material_set_shading_property_to_texture(result_material,
                                                                   config.shading_property,
@@ -905,15 +904,15 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                 }
 
                 break;
-            } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
+            }
 
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized property attachment type");
             }
-        } /* switch (config.property_attachment) */
-    } /* for (all attachment configs) */
+        }
+    }
 
     /* Configure vertex smoothing angle */
     mesh_material_set_property(result_material,
@@ -934,12 +933,10 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
                                                                          system_hashed_ansi_string te_body,
                                                                          system_hashed_ansi_string vs_body)
 {
-    ogl_context      backend_context     = NULL;
-    ral_backend_type backend_type        = RAL_BACKEND_TYPE_UNKNOWN;
-    mesh_material    result_material     = NULL;
-    _mesh_material*  result_material_ptr = NULL;
-    ral_program      result_program      = NULL;
-    ral_shader       temp_shader         = NULL;
+    mesh_material   result_material     = nullptr;
+    _mesh_material* result_material_ptr = nullptr;
+    ral_program     result_program      = nullptr;
+    ral_shader      temp_shader         = nullptr;
 
     struct _body
     {
@@ -958,11 +955,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
 
     const ral_program_create_info result_po_create_info =
     {
-        ((fs_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT        : 0) |
-        ((gs_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY        : 0) |
-        ((tc_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL    : 0) |
-        ((te_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION : 0) |
-        ((vs_body != NULL) ? RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX          : 0),
+        ((fs_body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT        : 0) |
+        ((gs_body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_GEOMETRY        : 0) |
+        ((tc_body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_CONTROL    : 0) |
+        ((te_body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_TESS_EVALUATION : 0) |
+        ((vs_body != nullptr) ? RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX          : 0),
         name
     };
 
@@ -971,28 +968,16 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
                                            context,
                                            object_manager_path);
 
-    ASSERT_DEBUG_SYNC(result_material != NULL,
+    ASSERT_DEBUG_SYNC(result_material != nullptr,
                       "mesh_material_create() failed.");
 
-    if (result_material == NULL)
+    if (result_material == nullptr)
     {
         goto end;
     }
 
     /* Update the mesh_material instance by changing its type and setting up the program object */
-    ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                            &backend_type);
-
-    ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES ||
-                      backend_type == RAL_BACKEND_TYPE_GL,
-                      "Unsupported backend type");
-
-    ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                            &backend_context);
-
-    result_material_ptr = (_mesh_material*) result_material;
+    result_material_ptr = reinterpret_cast<_mesh_material*>(result_material);
 
     result_material_ptr->type = MESH_MATERIAL_TYPE_PROGRAM;
 
@@ -1011,7 +996,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
                       n_body < n_bodies;
                     ++n_body)
     {
-        if (bodies[n_body].body != NULL)
+        if (bodies[n_body].body != nullptr)
         {
             const ral_shader_create_info shader_create_info =
             {
@@ -1047,8 +1032,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(system_
             }
 
             result_material_ptr->shaders[n_body] = temp_shader;
-        } /* if (bodies[n_body].body != NULL) */
-    } /* for (all input bodies) */
+        }
+    }
 
     result_material_ptr->program = result_program;
 
@@ -1061,36 +1046,36 @@ end_error:
                       n_shader < MESH_MATERIAL_SHADER_STAGE_COUNT;
                     ++n_shader)
     {
-        if (result_material_ptr->shaders[n_shader] != NULL)
+        if (result_material_ptr->shaders[n_shader] != nullptr)
         {
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                        1, /* n_objects */
                                        (const void**) &result_material_ptr->shaders[n_shader]);
 
-            result_material_ptr->shaders[n_shader] = NULL;
-        } /* if (result_material_ptr->shaders[n_shader] != NULL) */
-    } /* for (all shader stages) */
+            result_material_ptr->shaders[n_shader] = nullptr;
+        }
+    }
 
-    if (temp_shader != NULL)
+    if (temp_shader != nullptr)
     {
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
                                    (const void**) &temp_shader);
 
-        temp_shader = NULL;
+        temp_shader = nullptr;
     }
 
     /* Do the same for the result program object */
-    if (result_material_ptr->program != NULL)
+    if (result_material_ptr->program != nullptr)
     {
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
                                    (const void**) &result_material_ptr->program);
 
-        result_material_ptr->program = NULL;
+        result_material_ptr->program = nullptr;
     }
 
 end:
@@ -1166,7 +1151,7 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attach
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_material_property_attachment value.");
         }
-    } /* switch (attachment) */
+    }
 
     return result;
 }
@@ -1216,7 +1201,7 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_has(mes
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_material_shading value.");
         }
-    } /* switch (shading) */
+    }
 
     return result;
 }
@@ -1250,7 +1235,7 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(mesh_m
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_material_type value.");
         }
-    } /* switch (type) */
+    }
 
     return result;
 }
@@ -1316,7 +1301,7 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_propert
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_material_shading_property value.");
         }
-    } /* switch (property) */
+    }
 
     return result;
 }
@@ -1326,19 +1311,18 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
                                                               scene         scene,
                                                               bool          use_shadow_maps)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
     if (material_ptr->dirty)
     {
-        ogl_context              backend_context = NULL;
-        scene_renderer_materials materials       = NULL;
+        scene_renderer_materials materials = nullptr;
 
         demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
                              &materials);
 
         LOG_INFO("Material is dirty - baking..");
 
-        if (material_ptr->owner_scene == NULL &&
+        if (material_ptr->owner_scene == nullptr &&
             material_ptr->type        == MESH_MATERIAL_TYPE_GENERAL)
         {
             /* The material needs to be marked as dirty every time a light is added, or
@@ -1347,7 +1331,7 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
 
             _mesh_material_subscribe_for_notifications(material_ptr,
                                                        true /* should_subscribe */);
-        } /* if (uber requested for the first time for this material) */
+        }
 
         material_ptr->dirty = false;
 
@@ -1385,38 +1369,38 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          material,
+PUBLIC EMERALD_API void mesh_material_get_property(const mesh_material    material,
                                                    mesh_material_property property,
-                                                   void*                  out_result)
+                                                   void*                  out_result_ptr)
 {
-    const _mesh_material* material_ptr = (_mesh_material*) material;
+    const _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
     switch (property)
     {
         case MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result = material_ptr->callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = material_ptr->callback_manager;
 
             break;
         }
 
         case MESH_MATERIAL_PROPERTY_CONTEXT:
         {
-            *(ral_context*) out_result = material_ptr->context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = material_ptr->context;
 
             break;
         }
 
         case MESH_MATERIAL_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result = material_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->name;
 
             break;
         }
 
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
-            *(mesh_material_shading*) out_result = material_ptr->shading;
+            *reinterpret_cast<mesh_material_shading*>(out_result_ptr) = material_ptr->shading;
 
             break;
         }
@@ -1425,10 +1409,10 @@ PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          materi
         {
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM,
                               "MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM query is invalid for non-program mesh_material instances.");
-            ASSERT_DEBUG_SYNC(material_ptr->program != NULL,
-                              "mesh_material instance's RAL program is NULL.");
+            ASSERT_DEBUG_SYNC(material_ptr->program != nullptr,
+                              "mesh_material instance's RAL program is nullptr.");
 
-            *(ral_program*) out_result = material_ptr->program;
+            *reinterpret_cast<ral_program*>(out_result_ptr) = material_ptr->program;
 
             break;
         }
@@ -1437,17 +1421,17 @@ PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          materi
         {
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
                               "MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL query is invalid for customized mesh_material instances.");
-            ASSERT_DEBUG_SYNC(material_ptr->source_scene_material != NULL,
+            ASSERT_DEBUG_SYNC(material_ptr->source_scene_material != nullptr,
                               "Source scene_material is being queried for but none is set for the queried mesh_material instance");
 
-            *(scene_material*) out_result = material_ptr->source_scene_material;
+            *reinterpret_cast<scene_material*>(out_result_ptr) = material_ptr->source_scene_material;
 
             break;
         }
 
         case MESH_MATERIAL_PROPERTY_TYPE:
         {
-            *(mesh_material_type*) out_result = material_ptr->type;
+            *reinterpret_cast<mesh_material_type*>(out_result_ptr) = material_ptr->type;
 
             break;
         }
@@ -1457,7 +1441,7 @@ PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          materi
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
                               "MESH_MATERIAL_PROPERTY_UV_MAP_NAME query is invalid for customized mesh_material instances.");
 
-            *(system_hashed_ansi_string*) out_result = material_ptr->uv_map_name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = material_ptr->uv_map_name;
 
             break;
         }
@@ -1467,7 +1451,7 @@ PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          materi
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
                               "MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE query is invalid for customized mesh_material instances.");
 
-            *(float*) out_result = material_ptr->vertex_smoothing_angle;
+            *reinterpret_cast<float*>(out_result_ptr) = material_ptr->vertex_smoothing_angle;
 
             break;
         }
@@ -1477,26 +1461,26 @@ PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          materi
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_material_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_property_attachment_type(mesh_material                  material,
                                                                                                         mesh_material_shading_property property)
 {
-    ASSERT_DEBUG_SYNC(((_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_get_shading_property_attachment_type() call is invalid for customized mesh_material instances.");
 
-    return ((_mesh_material*) material)->shading_properties[property].attachment;
+    return reinterpret_cast<_mesh_material*>(material)->shading_properties[property].attachment;
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_float(mesh_material                  material,
                                                                                        mesh_material_shading_property property,
                                                                                        system_time                    time,
-                                                                                       float*                         out_float_value)
+                                                                                       float*                         out_float_value_ptr)
 {
-    _mesh_material*          material_ptr = ((_mesh_material*) material);
+    _mesh_material*          material_ptr = reinterpret_cast<_mesh_material*>(material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
 
     ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
@@ -1509,16 +1493,16 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container
                               false, /* should_force */
                               material_ptr->temp_variant_float);
     system_variant_get_float (material_ptr->temp_variant_float,
-                              out_float_value);
+                              out_float_value_ptr);
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(mesh_material                  material,
                                                                                       mesh_material_shading_property property,
                                                                                       system_time                    time,
-                                                                                      float*                         out_vec3_value)
+                                                                                      float*                         out_vec3_value_ptr)
 {
-    _mesh_material*          material_ptr = ((_mesh_material*) material);
+    _mesh_material*          material_ptr = reinterpret_cast<_mesh_material*>(material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
 
     ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
@@ -1535,31 +1519,31 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container
                                   false, /* should_force */
                                   material_ptr->temp_variant_float);
         system_variant_get_float (material_ptr->temp_variant_float,
-                                  out_vec3_value + n_component);
+                                  out_vec3_value_ptr + n_component);
     }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(mesh_material                  material,
                                                                        mesh_material_shading_property property,
-                                                                       float*                         out_float_value)
+                                                                       float*                         out_float_value_ptr)
 {
-    _mesh_material_property* property_ptr = ((_mesh_material*) material)->shading_properties + property;
+    _mesh_material_property* property_ptr = reinterpret_cast<_mesh_material*>(material)->shading_properties + property;
 
-    ASSERT_DEBUG_SYNC(((_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_get_shading_property_value_float() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT,
                       "Requested shading property is not using a float attachment");
 
-    *out_float_value = property_ptr->float_data;
+    *out_float_value_ptr = property_ptr->float_data;
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_attribute(mesh_material                           material,
                                                                                           mesh_material_shading_property          property,
-                                                                                          mesh_material_input_fragment_attribute* out_attribute)
+                                                                                          mesh_material_input_fragment_attribute* out_attribute_ptr)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
@@ -1570,56 +1554,56 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_
                       "Requested shading property does not have an attribute attachment");
 
     /* Return the requested value */
-    if (out_attribute != NULL)
+    if (out_attribute_ptr != nullptr)
     {
-        *out_attribute = material_ptr->shading_properties[property].input_fragment_attribute_data;
+        *out_attribute_ptr = material_ptr->shading_properties[property].input_fragment_attribute_data;
     }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                    material,
                                                                          mesh_material_shading_property   property,
-                                                                         ral_texture*                     out_texture,
-                                                                         unsigned int*                    out_mipmap_level,
-                                                                         ral_sampler*                     out_sampler)
+                                                                         ral_texture*                     out_texture_ptr,
+                                                                         unsigned int*                    out_mipmap_level_ptr,
+                                                                         ral_sampler*                     out_sampler_ptr)
 {
-    _mesh_material_property*         property_ptr     = ( (_mesh_material*) material)->shading_properties + property;
+    _mesh_material_property*         property_ptr     = reinterpret_cast<_mesh_material*>(material)->shading_properties + property;
     _mesh_material_property_texture* texture_data_ptr = &property_ptr->texture_data;
 
-    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_get_shading_property_value_texture() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE,
                       "Requested shading property is not using a texture attachment");
 
-    if (out_texture != NULL)
+    if (out_texture_ptr != nullptr)
     {
-        *out_texture = texture_data_ptr->texture;
+        *out_texture_ptr = texture_data_ptr->texture;
     }
 
-    if (out_mipmap_level != NULL)
+    if (out_mipmap_level_ptr != nullptr)
     {
-        *out_mipmap_level = texture_data_ptr->mipmap_level;
+        *out_mipmap_level_ptr = texture_data_ptr->mipmap_level;
     }
 
-    if (out_sampler != NULL)
+    if (out_sampler_ptr != nullptr)
     {
-        *out_sampler = texture_data_ptr->sampler;
+        *out_sampler_ptr = texture_data_ptr->sampler;
     }
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(mesh_material                  material,
                                                                       mesh_material_shading_property property,
-                                                                      float*                         out_vec4_data)
+                                                                      float*                         out_vec4_data_ptr)
 {
-    _mesh_material_property* property_ptr = ((_mesh_material*) material)->shading_properties + property;
+    _mesh_material_property* property_ptr = reinterpret_cast<_mesh_material*>(material)->shading_properties + property;
 
-    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_get_shading_property_value_vec4() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4,
                       "Requested shading property is not using a vec4 attachment");
 
-    memcpy(out_vec4_data,
+    memcpy(out_vec4_data_ptr,
            property_ptr->vec4_data,
            sizeof(float) * 4);
 }
@@ -1629,14 +1613,14 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
                                                       mesh_material material_b)
 {
     mesh_material_shading material_a_shading = MESH_MATERIAL_SHADING_UNKNOWN;
-    mesh_material_type    material_a_type    = ( (_mesh_material*) material_a)->type;
+    mesh_material_type    material_a_type    = reinterpret_cast<_mesh_material*>(material_a)->type;
     mesh_material_shading material_b_shading = MESH_MATERIAL_SHADING_UNKNOWN;
-    mesh_material_type    material_b_type    = ( (_mesh_material*) material_b)->type;
+    mesh_material_type    material_b_type    = reinterpret_cast<_mesh_material*>(material_b)->type;
     bool                  result             = false;
 
-    ASSERT_DEBUG_SYNC(material_a != NULL &&
-                      material_b != NULL,
-                      "One or both input material arguments are NULL.");
+    ASSERT_DEBUG_SYNC(material_a != nullptr &&
+                      material_b != nullptr,
+                      "One or both input material arguments are nullptr.");
 
     /* 1. Type */
     if (material_a_type != material_b_type)
@@ -1721,31 +1705,31 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
 
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
-                ral_texture      material_a_texture = NULL;
+                ral_texture      material_a_texture = nullptr;
                 ral_texture_type material_a_texture_type;
-                ral_texture      material_b_texture = NULL;
+                ral_texture      material_b_texture = nullptr;
                 ral_texture_type material_b_texture_type;
 
                 mesh_material_get_shading_property_value_texture(material_a,
                                                                  property,
                                                                 &material_a_texture,
-                                                                 NULL, /* out_mipmap_level - irrelevant */
-                                                                 NULL);/* out_sampler - irrelevant */
+                                                                 nullptr, /* out_mipmap_level - irrelevant */
+                                                                 nullptr);/* out_sampler - irrelevant */
 
                 mesh_material_get_shading_property_value_texture(material_b,
                                                                  property,
                                                                 &material_b_texture,
-                                                                 NULL, /* out_mipmap_level - irrelevant */
-                                                                 NULL);/* out_sampler - irrelevant */
+                                                                 nullptr, /* out_mipmap_level - irrelevant */
+                                                                 nullptr);/* out_sampler - irrelevant */
 
-                if (material_a_texture == NULL && material_b_texture != NULL ||
-                    material_a_texture != NULL && material_b_texture == NULL)
+                if (material_a_texture == nullptr && material_b_texture != nullptr ||
+                    material_a_texture != nullptr && material_b_texture == nullptr)
                 {
                     goto end;
                 }
 
-                if (material_a_texture != NULL &&
-                    material_b_texture != NULL)
+                if (material_a_texture != nullptr &&
+                    material_b_texture != nullptr)
                 {
                     ral_texture_get_property(material_a_texture,
                                              RAL_TEXTURE_PROPERTY_TYPE,
@@ -1775,8 +1759,8 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
                                    "Unrecognized material property attachment [%d]",
                                    material_a_attachment);
             }
-        } /* switch (material_a_attachment) */
-    } /* for (all material properties) */
+        }
+    }
 
     /* Done */
     result = true;
@@ -1789,7 +1773,7 @@ PUBLIC EMERALD_API void mesh_material_set_property(mesh_material          materi
                                                    mesh_material_property property,
                                                    const void*            data)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
     switch (property)
     {
@@ -1798,7 +1782,7 @@ PUBLIC EMERALD_API void mesh_material_set_property(mesh_material          materi
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
                               "MESH_MATERIAL_PROPERTY_SHADING property can only be set for general mesh_material instances.");
 
-            material_ptr->shading = *(mesh_material_shading*) data;
+            material_ptr->shading = *reinterpret_cast<const mesh_material_shading*>(data);
             material_ptr->dirty   = true;
 
             break;
@@ -1809,7 +1793,7 @@ PUBLIC EMERALD_API void mesh_material_set_property(mesh_material          materi
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
                               "MESH_MATERIAL_PROPERTY_UV_MAP_NAME property can only be set for general mesh_material instances.");
 
-            material_ptr->uv_map_name = *(system_hashed_ansi_string*) data;
+            material_ptr->uv_map_name = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }
@@ -1819,7 +1803,7 @@ PUBLIC EMERALD_API void mesh_material_set_property(mesh_material          materi
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
                               "MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE property can only be set for general mesh_material instances.");
 
-            material_ptr->vertex_smoothing_angle = *(float*) data;
+            material_ptr->vertex_smoothing_angle = *reinterpret_cast<const float*>(data);
 
             /* Call back registered parties. */
             system_callback_manager_call_back(material_ptr->callback_manager,
@@ -1834,7 +1818,7 @@ PUBLIC EMERALD_API void mesh_material_set_property(mesh_material          materi
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_material_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
@@ -1842,9 +1826,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_fl
                                                                                     mesh_material_shading_property property,
                                                                                     curve_container                data)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
-    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_set_shading_property_to_curve_container_float() call is invalid for customized mesh_material instances.");
 
     _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
@@ -1853,7 +1837,7 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_fl
     material_ptr->shading_properties[property].attachment              = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT;
     material_ptr->shading_properties[property].curve_container_data[0] = data;
 
-    if (data != NULL)
+    if (data != nullptr)
     {
         curve_container_retain(data);
     }
@@ -1864,9 +1848,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_ve
                                                                                    mesh_material_shading_property property,
                                                                                    curve_container*               data)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
-    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_set_shading_property_to_curve_container_vec3() call is invalid for customized mesh_material instances.");
 
     _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
@@ -1887,9 +1871,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(mesh_materia
                                                                     mesh_material_shading_property property,
                                                                     float                          data)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
-    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_set_shading_property_to_float() call is invalid for customized mesh_material instances.");
 
     _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
@@ -1914,10 +1898,10 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
                                                                                        mesh_material_shading_property         property,
                                                                                        mesh_material_input_fragment_attribute attribute)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_set_shading_property_to_input_fragment_attribute() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(material_ptr->shading == MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE,
                       "Invalid mesh material shading");
@@ -1942,25 +1926,25 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
                                                                       mesh_material_texture_filtering mag_filter,
                                                                       mesh_material_texture_filtering min_filter)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
-    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+    ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_set_shading_property_to_texture() call is invalid for customized mesh_material instances.");
-    ASSERT_DEBUG_SYNC(texture != NULL,
-                      "Bound texture is NULL");
+    ASSERT_DEBUG_SYNC(texture != nullptr,
+                      "Bound texture is nullptr");
 
     if (material_ptr->shading_properties[property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
     {
-        ral_sampler&  bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
-        ral_texture&  bound_texture = material_ptr->shading_properties[property].texture_data.texture;
+        ral_sampler& bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
+        ral_texture& bound_texture = material_ptr->shading_properties[property].texture_data.texture;
 
         ral_context_delete_objects(material_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_samplers */
                                    (const void**) &bound_sampler);
 
-        bound_sampler = NULL;
-        bound_texture = NULL;
+        bound_sampler = nullptr;
+        bound_texture = nullptr;
     }
 
     material_ptr->dirty                                                  = true;
@@ -1971,7 +1955,7 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_mater
     material_ptr->shading_properties[property].texture_data.texture      = texture;
 
     /* Cache the sampler object we will need to use for the sampling process.
-     * Pass NULL to all irrelevant arguments - we will use default GL state values
+     * Pass nullptr to all irrelevant arguments - we will use default GL state values
      * for these attributes.
      **/
     ral_texture_filter      mag_filter_ral;
@@ -2002,7 +1986,7 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_vec4(mesh_material
                                                                    mesh_material_shading_property property,
                                                                    const float*                   data)
 {
-    _mesh_material* material_ptr = (_mesh_material*) material;
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
     ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_set_shading_property_to_vec4() call is invalid for customized mesh_material instances.");

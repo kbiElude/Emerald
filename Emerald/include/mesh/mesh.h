@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  * [Regular meshes]
  * Mesh is defined by layers. Layers are Emerald's way of saying that mesh can consist of different sets of unique
@@ -196,9 +196,9 @@ PUBLIC EMERALD_API bool mesh_delete_layer_pass_index_data(mesh                  
  *
  *  NOTE: Can only be called against regular meshes.
  */
-PUBLIC EMERALD_API bool mesh_fill_gl_buffers(mesh        instance,
-                                             ral_context context_ral,
-                                             bool        async);
+PUBLIC EMERALD_API bool mesh_fill_ral_buffers(mesh        instance,
+                                              ral_context context_ral,
+                                              bool        async);
 
 /** TODO.
  *

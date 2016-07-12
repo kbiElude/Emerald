@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2016)
  *
  */
 #ifndef MESH_MATERIAL_H
@@ -217,9 +217,9 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
                                                               bool          use_shadow_maps);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_get_property(mesh_material          material,
+PUBLIC EMERALD_API void mesh_material_get_property(const mesh_material    material,
                                                    mesh_material_property property,
-                                                   void*                  out_result);
+                                                   void*                  out_result_ptr);
 
 
 /** TODO */
@@ -230,35 +230,35 @@ PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_p
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_float(mesh_material                  material,
                                                                                        mesh_material_shading_property property,
                                                                                        system_time                    time,
-                                                                                       float*                         out_float_value);
+                                                                                       float*                         out_float_value_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(mesh_material                  material,
                                                                                       mesh_material_shading_property property,
                                                                                       system_time                    time,
-                                                                                      float*                         out_vec3_value);
+                                                                                      float*                         out_vec3_value_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(mesh_material                  material,
                                                                        mesh_material_shading_property property,
-                                                                       float*                         out_float_value);
+                                                                       float*                         out_float_value_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_attribute(mesh_material                           material,
                                                                                           mesh_material_shading_property          property,
-                                                                                          mesh_material_input_fragment_attribute* out_attribute);
+                                                                                          mesh_material_input_fragment_attribute* out_attribute_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                   material,
                                                                          mesh_material_shading_property  property,
-                                                                         ral_texture*                    out_texture,
-                                                                         unsigned int*                   out_mipmap_level,
-                                                                         ral_sampler*                    out_sampler);
+                                                                         ral_texture*                    out_texture_ptr,
+                                                                         unsigned int*                   out_mipmap_level_ptr,
+                                                                         ral_sampler*                    out_sampler_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(mesh_material                  material,
                                                                       mesh_material_shading_property property,
-                                                                      float*                         out_vec4_data);
+                                                                      float*                         out_vec4_data_ptr);
 
 /** TODO */
 PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
