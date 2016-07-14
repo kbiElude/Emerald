@@ -221,21 +221,21 @@ PUBLIC EMERALD_API void demo_app_get_property(demo_app_property property,
     {
         case DEMO_APP_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result_ptr = app.callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = app.callback_manager;
 
             break;
         }
 
         case DEMO_APP_PROPERTY_GPU_SCHEDULER:
         {
-            *(ral_scheduler*) out_result_ptr = app.scheduler;
+            *reinterpret_cast<ral_scheduler*>(out_result_ptr) = app.scheduler;
 
             break;
         }
 
         case DEMO_APP_PROPERTY_MATERIAL_MANAGER:
         {
-            *(scene_renderer_materials*) out_result_ptr = app.materials;
+            *reinterpret_cast<scene_renderer_materials*>(out_result_ptr) = app.materials;
 
             break;
         }

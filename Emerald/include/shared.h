@@ -72,16 +72,12 @@
 #include <sstream>
 #include <string>
 
-#include "ogl/gl3.h"
-#include "ogl/glext.h"
 #include "system/system_types.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_atomics.h"
 
 #ifdef _WIN32
-    #include "ogl/wglext.h"
-
     #define snprintf _snprintf
 #endif /* _WIN32 */
 

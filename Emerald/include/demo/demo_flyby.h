@@ -64,9 +64,9 @@ REFCOUNT_INSERT_DECLARATIONS(demo_flyby,
 PUBLIC demo_flyby demo_flyby_create(ral_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
+PUBLIC EMERALD_API void demo_flyby_get_property(const demo_flyby    flyby,
                                                 demo_flyby_property property,
-                                                void*              out_result);
+                                                void*               out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void demo_flyby_lock(demo_flyby flyby);
@@ -74,7 +74,7 @@ PUBLIC EMERALD_API void demo_flyby_lock(demo_flyby flyby);
 /** TODO */
 PUBLIC EMERALD_API void demo_flyby_set_property(demo_flyby          flyby,
                                                 demo_flyby_property property,
-                                                const void*        data);
+                                                const void*         data);
 
 /** TODO */
 PUBLIC EMERALD_API void demo_flyby_unlock(demo_flyby flyby);

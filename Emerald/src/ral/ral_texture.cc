@@ -918,12 +918,12 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
+PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
                                                  ral_texture_property property,
                                                  void*                out_result_ptr)
 {
     bool          result      = false;
-    _ral_texture* texture_ptr = (_ral_texture*) texture;
+    _ral_texture* texture_ptr = reinterpret_cast<_ral_texture*>(texture);
 
     /* Sanity checks */
     if (texture == nullptr)

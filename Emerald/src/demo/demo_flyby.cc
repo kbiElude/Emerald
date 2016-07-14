@@ -100,7 +100,7 @@ PRIVATE bool _demo_flyby_key_down_callback(system_window window,
                                            unsigned int  key_char,
                                            void*         arg)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(arg);
 
     system_critical_section_enter(flyby_ptr->cs);
     {
@@ -154,7 +154,7 @@ PRIVATE bool _demo_flyby_key_up_callback(system_window window,
                                          unsigned int  key_char,
                                          void*         arg)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(arg);
 
     system_critical_section_enter(flyby_ptr->cs);
     {
@@ -226,7 +226,7 @@ PRIVATE bool _demo_flyby_lbd(system_window           window,
                              system_window_vk_status new_status,
                              void*                   arg)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(arg);
 
     system_critical_section_enter(flyby_ptr->cs);
     {
@@ -250,7 +250,7 @@ PRIVATE bool _demo_flyby_lbu(system_window           window,
                              system_window_vk_status new_status,
                              void*                   arg)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(arg);
 
     system_critical_section_enter(flyby_ptr->cs);
     {
@@ -268,7 +268,7 @@ PRIVATE bool _demo_flyby_mouse_move(system_window           window,
                                     system_window_vk_status new_status,
                                     void*                   arg)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(arg);
 
     system_critical_section_enter(flyby_ptr->cs);
     {
@@ -296,7 +296,7 @@ PRIVATE bool _demo_flyby_mouse_move(system_window           window,
 /** TODO */
 PRIVATE void _demo_flyby_release(void* arg)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) arg;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(arg);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(arg != nullptr,
@@ -409,31 +409,31 @@ PUBLIC demo_flyby demo_flyby_create(ral_context context)
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                        (void*) _demo_flyby_key_down_callback,
+                                        reinterpret_cast<void*>(_demo_flyby_key_down_callback),
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                        (void*) _demo_flyby_key_up_callback,
+                                        reinterpret_cast<void*>(_demo_flyby_key_up_callback),
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        (void*) _demo_flyby_lbd,
+                                        reinterpret_cast<void*>(_demo_flyby_lbd),
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                        (void*) _demo_flyby_lbu,
+                                        reinterpret_cast<void*>(_demo_flyby_lbu),
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                        (void*) _demo_flyby_mouse_move,
+                                        reinterpret_cast<void*>(_demo_flyby_mouse_move),
                                         new_flyby_ptr);
 
         /* Issue a manual update - useful for pipeline object */
-        demo_flyby_update( (demo_flyby) new_flyby_ptr);
+        demo_flyby_update(reinterpret_cast<demo_flyby>(new_flyby_ptr) );
     }
 
     return (demo_flyby) new_flyby_ptr;
@@ -441,11 +441,11 @@ PUBLIC demo_flyby demo_flyby_create(ral_context context)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
+PUBLIC EMERALD_API void demo_flyby_get_property(const demo_flyby    flyby,
                                                 demo_flyby_property property,
-                                                void*               out_result)
+                                                void*               out_result_ptr)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
+    const _demo_flyby* flyby_ptr = reinterpret_cast<const _demo_flyby*>(flyby);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(flyby != nullptr,
@@ -458,7 +458,7 @@ PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
         {
             case DEMO_FLYBY_PROPERTY_CAMERA_LOCATION:
             {
-                memcpy(out_result,
+                memcpy(out_result_ptr,
                        flyby_ptr->position,
                        sizeof(float) * 3);
 
@@ -467,49 +467,49 @@ PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
 
             case DEMO_FLYBY_PROPERTY_FAKE_SCENE_CAMERA:
             {
-                *(scene_camera*) out_result = flyby_ptr->fake_scene_camera;
+                *reinterpret_cast<scene_camera*>(out_result_ptr) = flyby_ptr->fake_scene_camera;
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_IS_ACTIVE:
             {
-                *(bool*) out_result = flyby_ptr->is_active;
+                *reinterpret_cast<bool*>(out_result_ptr) = flyby_ptr->is_active;
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_MOVEMENT_DELTA:
             {
-                *(float*) out_result = flyby_ptr->movement_delta;
+                *reinterpret_cast<float*>(out_result_ptr) = flyby_ptr->movement_delta;
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_PITCH:
             {
-                *(float*) out_result = flyby_ptr->pitch;
+                *reinterpret_cast<float*>(out_result_ptr) = flyby_ptr->pitch;
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_ROTATION_DELTA:
             {
-                *(float*) out_result = flyby_ptr->rotation_delta;
+                *reinterpret_cast<float*>(out_result_ptr) = flyby_ptr->rotation_delta;
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_YAW:
             {
-                *(float*) out_result = flyby_ptr->yaw;
+                *reinterpret_cast<float*>(out_result_ptr) = flyby_ptr->yaw;
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_VIEW_MATRIX:
             {
-                system_matrix4x4_set_from_matrix4x4(*(system_matrix4x4*) out_result,
+                system_matrix4x4_set_from_matrix4x4(*reinterpret_cast<system_matrix4x4*>(out_result_ptr),
                                                     flyby_ptr->view_matrix);
 
                 break;
@@ -528,7 +528,7 @@ PUBLIC EMERALD_API void demo_flyby_get_property(demo_flyby          flyby,
 /* Please see header for specification */
 PUBLIC EMERALD_API void demo_flyby_lock(demo_flyby flyby)
 {
-    system_critical_section_enter( ((_demo_flyby*) flyby)->cs);
+    system_critical_section_enter(reinterpret_cast<_demo_flyby*>(flyby)->cs);
 }
 
 /* Please see header for specification */
@@ -536,7 +536,7 @@ PUBLIC EMERALD_API void demo_flyby_set_property(demo_flyby          flyby,
                                                 demo_flyby_property property,
                                                 const void*         data)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(flyby);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(flyby != nullptr,
@@ -576,35 +576,35 @@ PUBLIC EMERALD_API void demo_flyby_set_property(demo_flyby          flyby,
 
             case DEMO_FLYBY_PROPERTY_IS_ACTIVE:
             {
-                flyby_ptr->is_active = *(bool*) data;
+                flyby_ptr->is_active = *reinterpret_cast<const bool*>(data);
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_MOVEMENT_DELTA:
             {
-                flyby_ptr->movement_delta = *(float*) data;
+                flyby_ptr->movement_delta = *reinterpret_cast<const float*>(data);
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_PITCH:
             {
-                flyby_ptr->pitch = *(float*) data;
+                flyby_ptr->pitch = *reinterpret_cast<const float*>(data);
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_ROTATION_DELTA:
             {
-                flyby_ptr->rotation_delta = *(float *) data;
+                flyby_ptr->rotation_delta = *reinterpret_cast<const float *>(data);
 
                 break;
             }
 
             case DEMO_FLYBY_PROPERTY_YAW:
             {
-                flyby_ptr->yaw = *(float *) data;
+                flyby_ptr->yaw = *reinterpret_cast<const float *>(data);
 
                 break;
             }
@@ -622,13 +622,13 @@ PUBLIC EMERALD_API void demo_flyby_set_property(demo_flyby          flyby,
 /* Please see header for specification */
 PUBLIC EMERALD_API void demo_flyby_unlock(demo_flyby flyby)
 {
-    system_critical_section_leave( ((_demo_flyby*) flyby)->cs);
+    system_critical_section_leave( reinterpret_cast<_demo_flyby*>(flyby)->cs);
 }
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void demo_flyby_update(demo_flyby flyby)
 {
-    _demo_flyby* flyby_ptr = (_demo_flyby*) flyby;
+    _demo_flyby* flyby_ptr = reinterpret_cast<_demo_flyby*>(flyby);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(flyby != nullptr,

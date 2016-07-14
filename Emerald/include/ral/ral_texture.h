@@ -141,7 +141,7 @@ PUBLIC EMERALD_API bool ral_texture_get_mipmap_property(ral_texture             
                                                         void*                       out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool ral_texture_get_property(ral_texture          texture,
+PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
                                                  ral_texture_property property,
                                                  void*                out_result_ptr);
 

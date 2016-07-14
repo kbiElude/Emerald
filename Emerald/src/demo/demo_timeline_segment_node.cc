@@ -195,7 +195,7 @@ PRIVATE void _demo_timeline_segment_node_get_input_output_ids(demo_timeline_segm
                                                               uint32_t*                            out_opt_n_ids_ptr,
                                                               demo_timeline_segment_node_input_id* out_opt_ids_ptr)
 {
-    _demo_timeline_segment_node* node_ptr          = (_demo_timeline_segment_node*) node;
+    _demo_timeline_segment_node* node_ptr          = reinterpret_cast<_demo_timeline_segment_node*>(node);
     uint32_t                     n_vector_elements = 0;
     system_resizable_vector      data_vector       = (should_return_input_data) ? node_ptr->texture_inputs
                                                                                 : node_ptr->texture_outputs;
@@ -240,7 +240,7 @@ PRIVATE void _demo_timeline_segment_node_get_input_output_ids(demo_timeline_segm
                 continue;
             }
 
-            out_opt_ids_ptr[n_id] = ((_demo_timeline_segment_node_texture_io*) io)->id;
+            out_opt_ids_ptr[n_id] = (reinterpret_cast<_demo_timeline_segment_node_texture_io*>(io) )->id;
         }
     }
 }
@@ -249,8 +249,8 @@ PRIVATE void _demo_timeline_segment_node_get_input_output_ids(demo_timeline_segm
 PRIVATE void _demo_timeline_segment_on_textures_deleted(const void* callback_arg,
                                                               void* node)
 {
-    ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = (ral_context_callback_objects_deleted_callback_arg*) callback_arg;
-    _demo_timeline_segment_node*                       node_ptr         = (_demo_timeline_segment_node*)                       node;
+    const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = reinterpret_cast<const ral_context_callback_objects_deleted_callback_arg*>(callback_arg);
+    _demo_timeline_segment_node*                             node_ptr         = reinterpret_cast<_demo_timeline_segment_node*>                            (node);
 
     ASSERT_DEBUG_SYNC(callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                       "Invalid callback object type");

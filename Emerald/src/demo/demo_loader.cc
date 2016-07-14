@@ -256,7 +256,7 @@ PUBLIC EMERALD_API void demo_loader_enqueue_operation(demo_loader    loader,
                                                       demo_loader_op operation,
                                                       void*          operation_arg)
 {
-    _demo_loader*    loader_ptr = (_demo_loader*) loader;
+    _demo_loader*    loader_ptr = reinterpret_cast<_demo_loader*>(loader);
     _demo_loader_op* new_op_ptr = nullptr;
 
     ASSERT_DEBUG_SYNC(!loader_ptr->has_been_launched,
@@ -266,49 +266,49 @@ PUBLIC EMERALD_API void demo_loader_enqueue_operation(demo_loader    loader,
     {
         case DEMO_LOADER_OP_BUILD_PROGRAM:
         {
-            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_build_program*) operation_arg);
+            new_op_ptr = new (std::nothrow) _demo_loader_op(reinterpret_cast<demo_loader_op_build_program*>(operation_arg) );
 
             break;
         }
 
         case DEMO_LOADER_OP_CONFIGURE_TIMELINE:
         {
-            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_configure_timeline*) operation_arg);
+            new_op_ptr = new (std::nothrow) _demo_loader_op(reinterpret_cast<demo_loader_op_configure_timeline*>(operation_arg) );
 
             break;
         }
 
         case DEMO_LOADER_OP_LOAD_AUDIO_STREAM:
         {
-            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_load_audio_stream*) operation_arg);
+            new_op_ptr = new (std::nothrow) _demo_loader_op(reinterpret_cast<demo_loader_op_load_audio_stream*>(operation_arg) );
 
             break;
         }
 
         case DEMO_LOADER_OP_LOAD_SCENES:
         {
-            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_load_scenes*) operation_arg);
+            new_op_ptr = new (std::nothrow) _demo_loader_op(reinterpret_cast<demo_loader_op_load_scenes*>(operation_arg) );
 
             break;
         }
 
         case DEMO_LOADER_OP_RENDER_ANIMATION:
         {
-            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_render_animation*) operation_arg);
+            new_op_ptr = new (std::nothrow) _demo_loader_op(reinterpret_cast<demo_loader_op_render_animation*>(operation_arg) );
 
             break;
         }
 
         case DEMO_LOADER_OP_RENDER_FRAME:
         {
-            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_render_frame*) operation_arg);
+            new_op_ptr = new (std::nothrow) _demo_loader_op(reinterpret_cast<demo_loader_op_render_frame*>(operation_arg) );
 
             break;
         }
 
         case DEMO_LOADER_OP_REQUEST_RENDERING_THREAD_CALLBACK:
         {
-            new_op_ptr = new (std::nothrow) _demo_loader_op( (demo_loader_op_request_rendering_thread_callback*) operation_arg);
+            new_op_ptr = new (std::nothrow) _demo_loader_op(reinterpret_cast<demo_loader_op_request_rendering_thread_callback*>(operation_arg) );
 
             break;
         }
@@ -335,7 +335,7 @@ PUBLIC EMERALD_API bool demo_loader_get_object_by_index(demo_loader             
                                                         uint32_t                index,
                                                         void*                   out_result_ptr)
 {
-    _demo_loader* loader_ptr = (_demo_loader*) loader;
+    _demo_loader* loader_ptr = reinterpret_cast<_demo_loader*>(loader);
     bool          result;
 
     result = system_resizable_vector_get_element_at(loader_ptr->loaded_objects[object_type],
@@ -350,7 +350,7 @@ PUBLIC EMERALD_API void demo_loader_get_property(demo_loader          loader,
                                                  demo_loader_property property,
                                                  void*                out_data_ptr)
 {
-    _demo_loader* loader_ptr = (_demo_loader*) loader;
+    _demo_loader* loader_ptr = reinterpret_cast<_demo_loader*>(loader);
 
     switch (property)
     {
@@ -374,7 +374,7 @@ PUBLIC EMERALD_API void demo_loader_get_property(demo_loader          loader,
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void demo_loader_release(demo_loader loader)
 {
-    delete (_demo_loader*) loader;
+    delete reinterpret_cast<_demo_loader*>(loader);
 }
 
 /** Please see header for specification */
@@ -382,7 +382,7 @@ PUBLIC void demo_loader_release_object_by_index(demo_loader             loader,
                                                 demo_loader_object_type object_type,
                                                 uint32_t                object_index)
 {
-    _demo_loader* loader_ptr  = (_demo_loader*) loader;
+    _demo_loader* loader_ptr  = reinterpret_cast<_demo_loader*>(loader);
     void*         object      = nullptr;
     const void*   object_null = nullptr;
 
@@ -439,7 +439,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                             demo_timeline timeline,
                             demo_window   window)
 {
-    _demo_loader* loader_ptr     = (_demo_loader*) loader;
+    _demo_loader* loader_ptr     = reinterpret_cast<_demo_loader*>(loader);
     uint32_t      n_enqueued_ops = 0;
     system_window window_private = nullptr;
 

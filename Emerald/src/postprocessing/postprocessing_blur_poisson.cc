@@ -163,7 +163,7 @@ void _postprocessing_blur_poisson_update_ub_cpu_task_callback(void* poisson_raw_
                                                            0, /* block_variable_offset */
                                                           &poisson_ptr->cached_blur_strength,
                                                            sizeof(float) );
-    ral_program_block_buffer_sync                         (poisson_ptr->program_ub);
+    ral_program_block_buffer_sync_immediately             (poisson_ptr->program_ub);
 }
 
 /** Please see header for specification */

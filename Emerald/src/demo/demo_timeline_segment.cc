@@ -10,7 +10,6 @@
 #include "demo/demo_timeline.h"
 #include "demo/demo_timeline_segment.h"
 #include "demo/demo_timeline_segment_node.h"
-#include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_types.h"
@@ -180,7 +179,7 @@ typedef struct _demo_timeline_segment
                                     demo_timeline_segment_id   in_id)
     {
         aspect_ratio           = 1.0f;
-        callback_manager       = system_callback_manager_create( (_callback_id) DEMO_TIMELINE_SEGMENT_CALLBACK_ID_COUNT);
+        callback_manager       = system_callback_manager_create( static_cast<_callback_id>(DEMO_TIMELINE_SEGMENT_CALLBACK_ID_COUNT) );
         context                = in_context;
         dag                    = system_dag_create();
         dag_sorted_nodes       = system_resizable_vector_create(16 /* capacity */);
@@ -243,7 +242,7 @@ typedef struct _demo_timeline_segment
                                                                 node_ids_cached_ptr + n_node_item);
                     }
 
-                    demo_timeline_segment_delete_nodes( (demo_timeline_segment) this,
+                    demo_timeline_segment_delete_nodes(reinterpret_cast<demo_timeline_segment>(this),
                                                         n_node_items,
                                                         node_ids_cached_ptr);
 
@@ -381,46 +380,44 @@ static const _node_data node_data[] =
 };
 
 /** Forward declarations */
-PRIVATE bool                      _demo_timeline_segment_add_postprocessing_segment_video_segment_node(_demo_timeline_segment*           postprocessing_segment_ptr,
-                                                                                                       _demo_timeline_segment*           video_segment_ptr);
-PRIVATE void                      _demo_timeline_segment_deinit_node_rendering_callback               (ogl_context                       context,
-                                                                                                       void*                             node);
-PRIVATE bool                      _demo_timeline_segment_enumerate_io                                 (_demo_timeline_segment*           segment_ptr,
-                                                                                                       bool                              should_enumerate_inputs,
-                                                                                                       uint32_t*                         out_n_ios_ptr,
-                                                                                                       demo_timeline_segment_node_io**   out_segment_node_ios_ptr);
-PRIVATE system_hashed_ansi_string _demo_timeline_segment_get_video_segment_name                       (_demo_timeline_segment*           postprocessing_segment_ptr,
-                                                                                                       _demo_timeline_segment*           video_segment_ptr);
-PRIVATE void                      _demo_timeline_segment_init_node_rendering_callback                 (ogl_context                       context,
-                                                                                                       void*                             node);
-PRIVATE void                      _demo_timeline_segment_on_postprocessing_segment_added              (const void*                       postprocessing_segment_id_void_ptr,
-                                                                                                             void*                       timeline_void_ptr);
-PRIVATE void                      _demo_timeline_segment_on_postprocessing_segment_deleted            (const void*                       postprocessing_segment,
-                                                                                                             void*                       timeline);
-PRIVATE void                      _demo_timeline_segment_on_texture_attached_to_node                  (const void*                       callback_arg_ptr,
-                                                                                                             void*                       segment);
-PRIVATE void                      _demo_timeline_segment_on_texture_deleted                           (const void*                       callback_arg_ptr,
-                                                                                                             void*                       segment);
-PRIVATE void                      _demo_timeline_segment_on_texture_detached_from_node                (const void*                       callback_arg_ptr,
-                                                                                                             void*                       segment);
-PRIVATE void                      _demo_timeline_segment_on_texture_output_added_to_node              (const void*                       segment_void_ptr,
-                                                                                                             void*                       new_output_id);
-PRIVATE void                      _demo_timeline_segment_on_texture_output_deleted_from_node          (const void*                       segment_void_ptr,
-                                                                                                             void*                       former_output_id);
-PRIVATE void                      _demo_timeline_segment_on_video_segment_added                       (const void*                       video_segment_id_void_ptr,
-                                                                                                             void*                       timeline_void_ptr);
-PRIVATE void                      _demo_timeline_segment_on_video_segment_deleted                     (const void*                       video_segment,
-                                                                                                             void*                       timeline);
-PRIVATE void                      _demo_timeline_segment_on_video_segment_moved                       (const void*                       video_segment,
-                                                                                                             void*                       timeline);
-PRIVATE void                      _demo_timeline_segment_on_video_segment_resized                     (const void*                       video_segment,
-                                                                                                             void*                       timeline);
-PRIVATE void                      _demo_timeline_segment_release                                      (void*                             segment);
-PRIVATE void                      _demo_timeline_segment_update_global_subscriptions                  (_demo_timeline_segment*           segment_ptr,
-                                                                                                       bool                              should_subscribe);
-PRIVATE void                      _demo_timeline_segment_update_node_subscriptions                    (_demo_timeline_segment*           segment_ptr,
-                                                                                                       demo_timeline_segment_node        node,
-                                                                                                       bool                              should_subscribe);
+PRIVATE system_hashed_ansi_string _demo_timeline_segment_get_video_segment_name(_demo_timeline_segment* postprocessing_segment_ptr,
+                                                                                _demo_timeline_segment* video_segment_ptr);
+
+
+PRIVATE bool _demo_timeline_segment_add_postprocessing_segment_video_segment_node(_demo_timeline_segment*         postprocessing_segment_ptr,
+                                                                                  _demo_timeline_segment*         video_segment_ptr);
+PRIVATE bool _demo_timeline_segment_enumerate_io                                 (_demo_timeline_segment*         segment_ptr,
+                                                                                  bool                            should_enumerate_inputs,
+                                                                                  uint32_t*                       out_n_ios_ptr,
+                                                                                  demo_timeline_segment_node_io** out_segment_node_ios_ptr);
+PRIVATE void _demo_timeline_segment_on_postprocessing_segment_added              (const void*                     postprocessing_segment_id_void_ptr,
+                                                                                        void*                     timeline_void_ptr);
+PRIVATE void _demo_timeline_segment_on_postprocessing_segment_deleted            (const void*                     postprocessing_segment,
+                                                                                        void*                     timeline);
+PRIVATE void _demo_timeline_segment_on_texture_attached_to_node                  (const void*                     callback_arg_ptr,
+                                                                                        void*                     segment);
+PRIVATE void _demo_timeline_segment_on_texture_deleted                           (const void*                     callback_arg_ptr,
+                                                                                        void*                     segment);
+PRIVATE void _demo_timeline_segment_on_texture_detached_from_node                (const void*                     callback_arg_ptr,
+                                                                                        void*                     segment);
+PRIVATE void _demo_timeline_segment_on_texture_output_added_to_node              (const void*                     segment_void_ptr,
+                                                                                        void*                     new_output_id);
+PRIVATE void _demo_timeline_segment_on_texture_output_deleted_from_node          (const void*                     segment_void_ptr,
+                                                                                        void*                     former_output_id);
+PRIVATE void _demo_timeline_segment_on_video_segment_added                       (const void*                     video_segment_id_void_ptr,
+                                                                                        void*                     timeline_void_ptr);
+PRIVATE void _demo_timeline_segment_on_video_segment_deleted                     (const void*                     video_segment,
+                                                                                        void*                     timeline);
+PRIVATE void _demo_timeline_segment_on_video_segment_moved                       (const void*                     video_segment,
+                                                                                        void*                     timeline);
+PRIVATE void _demo_timeline_segment_on_video_segment_resized                     (const void*                     video_segment,
+                                                                                        void*                     timeline);
+PRIVATE void _demo_timeline_segment_release                                      (void*                           segment);
+PRIVATE void _demo_timeline_segment_update_global_subscriptions                  (_demo_timeline_segment*         segment_ptr,
+                                                                                  bool                            should_subscribe);
+PRIVATE void _demo_timeline_segment_update_node_subscriptions                    (_demo_timeline_segment*         segment_ptr,
+                                                                                  demo_timeline_segment_node      node,
+                                                                                  bool                            should_subscribe);
 
 
 /** Reference counter impl */
@@ -437,7 +434,7 @@ PRIVATE bool _demo_timeline_segment_add_postprocessing_segment_video_segment_nod
     demo_timeline_segment_node_id  new_video_segment_node_id = -1;
     bool                           result                    = false;
 
-    if (!demo_timeline_segment_add_node( (demo_timeline_segment) postprocessing_segment_ptr,
+    if (!demo_timeline_segment_add_node(reinterpret_cast<demo_timeline_segment>(postprocessing_segment_ptr),
                                         DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_VIDEO_SEGMENT,
                                         _demo_timeline_segment_get_video_segment_name(postprocessing_segment_ptr,
                                                                                       video_segment_ptr),
@@ -454,7 +451,7 @@ PRIVATE bool _demo_timeline_segment_add_postprocessing_segment_video_segment_nod
                                             DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_ID,
                                            &new_video_segment_node_id);
 
-    demo_timeline_segment_set_node_property( (demo_timeline_segment) postprocessing_segment_ptr,
+    demo_timeline_segment_set_node_property(reinterpret_cast<demo_timeline_segment>(postprocessing_segment_ptr),
                                             new_video_segment_node_id,
                                             NODES_POSTPROCESSING_VIDEO_SEGMENT_PROPERTY_VIDEO_SEGMENT,
                                            &video_segment_ptr);
@@ -464,20 +461,6 @@ PRIVATE bool _demo_timeline_segment_add_postprocessing_segment_video_segment_nod
 
 end:
     return result;
-}
-
-/** TODO */
-PRIVATE void _demo_timeline_segment_deinit_node_rendering_callback(ogl_context context,
-                                                                   void*       node)
-{
-    PFNSEGMENTNODEDEINITCALLBACKPROC  pfn_segment_deinit_proc = nullptr;
-    _demo_timeline_segment_node_item* segment_node_ptr        = (_demo_timeline_segment_node_item*) node;
-
-    demo_timeline_segment_node_get_property(segment_node_ptr->node,
-                                            DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_DEINIT_FUNC_PTR,
-                                           &pfn_segment_deinit_proc);
-
-    pfn_segment_deinit_proc(segment_node_ptr->node_internal);
 }
 
 /** TODO */
@@ -585,31 +568,13 @@ PRIVATE system_hashed_ansi_string _demo_timeline_segment_get_video_segment_name(
 }
 
 /** TODO */
-PRIVATE void _demo_timeline_segment_init_node_rendering_callback(ogl_context context,
-                                                                 void*       node)
-{
-    PFNSEGMENTNODEINITCALLBACKPROC    pfn_segment_init_proc = nullptr;
-    _demo_timeline_segment_node_item* segment_node_ptr      = (_demo_timeline_segment_node_item*) node;
-    void*                             user_args[3]          = {0};
-
-    /* Call back the init handler */
-    demo_timeline_segment_node_get_property(segment_node_ptr->node,
-                                            DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_INIT_FUNC_PTR,
-                                           &pfn_segment_init_proc);
-
-    segment_node_ptr->node_internal = pfn_segment_init_proc( (demo_timeline_segment) segment_node_ptr->parent_segment_ptr,
-                                                             segment_node_ptr->node,
-                                                             segment_node_ptr->parent_segment_ptr->context);
-}
-
-/** TODO */
 PRIVATE void _demo_timeline_segment_on_postprocessing_segment_added(const void* postprocessing_segment_id_void_ptr,
                                                                           void* timeline_void_ptr)
 {
     uint32_t                  n_video_segments           = 0;
-    demo_timeline_segment_id  postprocessing_segment_id  = (demo_timeline_segment_id) postprocessing_segment_id_void_ptr;
+    demo_timeline_segment_id  postprocessing_segment_id  = reinterpret_cast<demo_timeline_segment_id>(postprocessing_segment_id_void_ptr);
     _demo_timeline_segment*   postprocessing_segment_ptr = nullptr;
-    demo_timeline             timeline                   = (demo_timeline)            timeline_void_ptr;
+    demo_timeline             timeline                   = reinterpret_cast<demo_timeline>(timeline_void_ptr);
     demo_timeline_segment_id* video_segment_ids          = nullptr;
 
     /* Sanity checks */
@@ -620,7 +585,7 @@ PRIVATE void _demo_timeline_segment_on_postprocessing_segment_added(const void* 
     if (!demo_timeline_get_segment_by_id(timeline,
                                          DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,
                                          postprocessing_segment_id,
-                                         (demo_timeline_segment*) &postprocessing_segment_ptr) )
+                                         reinterpret_cast<demo_timeline_segment*>(&postprocessing_segment_ptr)) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not retrieve handle of a postprocessing segment with ID [%d]",
@@ -661,7 +626,7 @@ PRIVATE void _demo_timeline_segment_on_postprocessing_segment_added(const void* 
         }
 
         if (!_demo_timeline_segment_add_postprocessing_segment_video_segment_node(postprocessing_segment_ptr,
-                                                                                  (_demo_timeline_segment*) current_video_segment) )
+                                                                                  reinterpret_cast<_demo_timeline_segment*>(current_video_segment) ))
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not create a new video segment node.");
@@ -690,8 +655,8 @@ PRIVATE void _demo_timeline_segment_on_postprocessing_segment_deleted(const void
 PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* callback_arg,
                                                                       void* segment)
 {
-    demo_timeline_segment_node_callback_texture_attached_callback_argument* callback_arg_ptr = (demo_timeline_segment_node_callback_texture_attached_callback_argument*) callback_arg;
-    _demo_timeline_segment*                                                 segment_ptr      = (_demo_timeline_segment*)                                                 segment;
+    const demo_timeline_segment_node_callback_texture_attached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_attached_callback_argument*>(callback_arg);
+    _demo_timeline_segment*                                                       segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                      (segment);
 
     /* TODO: We now have all info in the callback arg to perform this action much more efficiently */
 
@@ -856,9 +821,9 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* call
 PRIVATE void _demo_timeline_segment_on_texture_deleted(const void* callback_arg,
                                                              void* segment)
 {
-    ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = (ral_context_callback_objects_deleted_callback_arg*) callback_arg;
-    uint32_t                                           n_node_items     = 0;
-    _demo_timeline_segment*                            segment_ptr      = (_demo_timeline_segment*)                            segment;
+    const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = reinterpret_cast<const ral_context_callback_objects_deleted_callback_arg*>(callback_arg);
+    uint32_t                                                 n_node_items     = 0;
+    _demo_timeline_segment*                                  segment_ptr      = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     ASSERT_DEBUG_SYNC(callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                       "Invalid callback object type");
@@ -919,10 +884,10 @@ PRIVATE void _demo_timeline_segment_on_texture_deleted(const void* callback_arg,
 PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* callback_arg,
                                                                         void* segment)
 {
-    demo_timeline_segment_node_callback_texture_detached_callback_argument* callback_arg_ptr = (demo_timeline_segment_node_callback_texture_detached_callback_argument*) callback_arg;
-    uint32_t                                                                n_nodes          = 0;
-    _demo_timeline_segment_node_item*                                       node_item_ptr    = nullptr;
-    _demo_timeline_segment*                                                 segment_ptr      = (_demo_timeline_segment*) segment;
+    const demo_timeline_segment_node_callback_texture_detached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_detached_callback_argument*>(callback_arg);
+    uint32_t                                                                      n_nodes          = 0;
+    _demo_timeline_segment_node_item*                                             node_item_ptr    = nullptr;
+    _demo_timeline_segment*                                                       segment_ptr      = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* TODO: We now have all info in the callback arg to perform this action much more efficiently */
 
@@ -1101,8 +1066,8 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
 PRIVATE void _demo_timeline_segment_on_texture_output_added_to_node(const void* callback_data_ptr,
                                                                           void* segment_void_ptr)
 {
-    demo_timeline_segment_node_callback_texture_output_added_callback_argument* callback_arg_ptr = (demo_timeline_segment_node_callback_texture_output_added_callback_argument*) callback_data_ptr;
-    _demo_timeline_segment*                                                     segment_ptr      = (_demo_timeline_segment*)                                                     segment_void_ptr;
+    const demo_timeline_segment_node_callback_texture_output_added_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_output_added_callback_argument*>(callback_data_ptr);
+    _demo_timeline_segment*                                                           segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                          (segment_void_ptr);
 
     /* Forward the request to other nodes which signed up for the notification */
     system_callback_manager_call_back(segment_ptr->callback_manager,
@@ -1114,8 +1079,8 @@ PRIVATE void _demo_timeline_segment_on_texture_output_added_to_node(const void* 
 PRIVATE void _demo_timeline_segment_on_texture_output_deleted_from_node(const void* callback_data_ptr,
                                                                               void* segment_void_ptr)
 {
-    demo_timeline_segment_node_callback_texture_output_deleted_callback_argument* callback_arg_ptr = (demo_timeline_segment_node_callback_texture_output_deleted_callback_argument*) callback_data_ptr;
-    _demo_timeline_segment*                                                       segment_ptr      = (_demo_timeline_segment*)                                                       segment_void_ptr;
+    const demo_timeline_segment_node_callback_texture_output_deleted_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_output_deleted_callback_argument*>(callback_data_ptr);
+    _demo_timeline_segment*                                                             segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                            (segment_void_ptr);
 
     /* Forward the request to other nodes which signed up for the notification */
     system_callback_manager_call_back(segment_ptr->callback_manager,
@@ -1135,8 +1100,8 @@ PRIVATE void _demo_timeline_segment_on_video_segment_added(const void* video_seg
 {
     uint32_t                  n_postprocessing_segment_ids = 0;
     demo_timeline_segment_id* postprocessing_segment_ids   = nullptr;
-    demo_timeline             timeline                     = (demo_timeline)            timeline_void_ptr;
-    demo_timeline_segment_id  video_segment_id             = (demo_timeline_segment_id) video_segment_id_void_ptr;
+    demo_timeline             timeline                     = reinterpret_cast<demo_timeline>           (timeline_void_ptr);
+    demo_timeline_segment_id  video_segment_id             = reinterpret_cast<demo_timeline_segment_id>(video_segment_id_void_ptr);
     _demo_timeline_segment*   video_segment_ptr            = nullptr;
 
     /* Sanity checks */
@@ -1147,7 +1112,7 @@ PRIVATE void _demo_timeline_segment_on_video_segment_added(const void* video_seg
     if (!demo_timeline_get_segment_by_id(timeline,
                                          DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
                                          video_segment_id,
-                                         (demo_timeline_segment*) &video_segment_ptr) )
+                                         reinterpret_cast<demo_timeline_segment*>(&video_segment_ptr) ))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not retrieve handle of a video segment with ID [%d]",
@@ -1188,7 +1153,7 @@ PRIVATE void _demo_timeline_segment_on_video_segment_added(const void* video_seg
         }
 
         /* Create a new video segment node for the post-processing segment */
-        if (!_demo_timeline_segment_add_postprocessing_segment_video_segment_node( (_demo_timeline_segment*) current_postprocessing_segment,
+        if (!_demo_timeline_segment_add_postprocessing_segment_video_segment_node( reinterpret_cast<_demo_timeline_segment*>(current_postprocessing_segment),
                                                                                    video_segment_ptr) )
         {
             ASSERT_DEBUG_SYNC(false,
@@ -1250,7 +1215,7 @@ PRIVATE void _demo_timeline_segment_on_video_segment_resized(const void* video_s
 /* TODO */
 PRIVATE void _demo_timeline_segment_release(void* segment)
 {
-    _demo_timeline_segment* segment_ptr = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment* segment_ptr = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     _demo_timeline_segment_update_global_subscriptions(segment_ptr,
                                                        false /* should_subscribe */);
@@ -1258,7 +1223,7 @@ PRIVATE void _demo_timeline_segment_release(void* segment)
     /* Ping any interested parties about the fact we're winding up */
     system_callback_manager_call_back(segment_ptr->callback_manager,
                                       DEMO_TIMELINE_SEGMENT_CALLBACK_ID_ABOUT_TO_RELEASE,
-                                      (void*) segment_ptr);
+                                      reinterpret_cast<void*>(segment_ptr) );
 
     /* Actual tear-down will be handled by the destructor. */
 }
@@ -1613,7 +1578,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
     _demo_timeline_segment_node_item* new_node_ptr     = nullptr;
     demo_timeline_segment_node        new_segment_node = nullptr;
     bool                              result           = false;
-    _demo_timeline_segment*           segment_ptr      = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment*           segment_ptr      = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity checks */
     if (segment == nullptr)
@@ -1717,7 +1682,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
 
     /* Create a DAG node for the new video segment node and store it */
     new_node_ptr->dag_node = system_dag_add_node(segment_ptr->dag,
-                                                 (system_dag_node_value) new_node_ptr);
+                                                 static_cast<system_dag_node_value>(new_node_ptr) );
 
     if (new_node_ptr->dag_node == nullptr)
     {
@@ -1728,11 +1693,11 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
     }
 
     ASSERT_DEBUG_SYNC(!system_hash64map_contains(segment_ptr->dag_node_to_node_descriptor_map,
-                                                 (system_hash64) new_node_ptr->dag_node),
+                                                 reinterpret_cast<system_hash64>(new_node_ptr->dag_node) ),
                       "DAG node is already recognized by the DAG node->node descriptor map.");
 
     system_hash64map_insert(segment_ptr->dag_node_to_node_descriptor_map,
-                            (system_hash64) new_node_ptr->dag_node,
+                            reinterpret_cast<system_hash64>(new_node_ptr->dag_node),
                             new_node_ptr,
                             nullptr,  /* on_removal_callback */
                             nullptr); /* callback_argument */
@@ -1750,12 +1715,12 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
     system_resizable_vector_push(segment_ptr->nodes,
                                  new_node_ptr);
 
-    /* If the node needs to be initialized, request a rendering callback and call back node impl */
+    /* If the node needs to be initialized, do it now */
     if (node_data[node_type].pfn_init_proc != nullptr)
     {
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(segment_ptr->context),
-                                                         _demo_timeline_segment_init_node_rendering_callback,
-                                                         new_node_ptr);
+        new_node_ptr->node_internal = node_data[node_type].pfn_init_proc(reinterpret_cast<demo_timeline_segment>(new_node_ptr->parent_segment_ptr),
+                                                                         new_node_ptr->node,
+                                                                         new_node_ptr->parent_segment_ptr->context);
     }
 
     /* Add the only input to the output node.
@@ -1815,7 +1780,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
     /* Inform subscribers about the event */
     system_callback_manager_call_back(segment_ptr->callback_manager,
                                       DEMO_TIMELINE_SEGMENT_CALLBACK_ID_NEW_NODE_CREATED,
-                                      (void*) new_node_id);
+                                      reinterpret_cast<void*>(new_node_id) );
 
     /* All done */
     if (out_opt_node_id_ptr != nullptr)
@@ -1863,7 +1828,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
     _demo_timeline_segment_io_connection* new_connection_ptr = nullptr;
     system_dag_connection                 new_dag_connection = nullptr;
     bool                                  result             = false;
-    _demo_timeline_segment*               segment_ptr        = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment*               segment_ptr        = reinterpret_cast<_demo_timeline_segment*>(segment);
     _demo_timeline_segment_node_item*     src_node_ptr       = nullptr;
 
     /* Sanity checks */
@@ -1885,10 +1850,10 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
 
     /* Retrieve node descriptors */
     if (!system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
-                              (system_hash64) src_node_id,
+                              static_cast<system_hash64>(src_node_id),
                               &src_node_ptr) ||
         !system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
-                              (system_hash64) dst_node_id,
+                              static_cast<system_hash64>(dst_node_id),
                               &dst_node_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
@@ -2130,7 +2095,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
     if (new_segment_ptr != nullptr)
     {
         /* Add the output node */
-        bool result = demo_timeline_segment_add_node( (demo_timeline_segment) new_segment_ptr,
+        bool result = demo_timeline_segment_add_node(reinterpret_cast<demo_timeline_segment>(new_segment_ptr),
                                                      DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT,
                                                      system_hashed_ansi_string_create("Output node"),
                                                      nullptr,  /* out_opt_node_id_ptr */
@@ -2151,7 +2116,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_postprocessing(ral_con
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (demo_timeline_segment) new_segment_ptr;
+    return reinterpret_cast<demo_timeline_segment>(new_segment_ptr);
 }
 
 /** Please see header for specification */
@@ -2202,7 +2167,7 @@ PUBLIC demo_timeline_segment demo_timeline_segment_create_video(ral_context     
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (demo_timeline_segment) new_segment_ptr;
+    return reinterpret_cast<demo_timeline_segment>(new_segment_ptr);
 }
 
 /** Please see header for specification */
@@ -2211,7 +2176,7 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
                                                const demo_timeline_segment_node_id* node_ids)
 {
     bool                    result      = false;
-    _demo_timeline_segment* segment_ptr = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment* segment_ptr = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity checks */
     if (segment == nullptr)
@@ -2248,7 +2213,7 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
         _demo_timeline_segment_node_item* node_ptr                     = nullptr;
 
         if (!system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
-                                  (system_hash64) node_ids[n_node],
+                                  static_cast<system_hash64>(node_ids[n_node]),
                                   &node_ptr) )
         {
             ASSERT_DEBUG_SYNC(false,
@@ -2368,7 +2333,7 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
         _demo_timeline_segment_node_item* node_ptr              = nullptr;
 
         if (!system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
-                                  (system_hash64) node_ids[n_node],
+                                  static_cast<system_hash64>(node_ids[n_node]),
                                   &node_ptr) )
         {
             ASSERT_DEBUG_SYNC(false,
@@ -2388,9 +2353,7 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
 
         if (node_pfn_deinit_proc != nullptr)
         {
-            ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(segment_ptr->context),
-                                                             _demo_timeline_segment_deinit_node_rendering_callback,
-                                                             node_ptr);
+            node_pfn_deinit_proc(node_ptr->node_internal);
         }
 
         /* Sign out of notifications we signed up for at creation time */
@@ -2400,14 +2363,14 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
 
         /* Release the node */
         if (!system_hash64map_remove(segment_ptr->node_id_to_node_descriptor_map,
-                                     (system_hash64) node_ids[n_node]) )
+                                     static_cast<system_hash64>(node_ids[n_node])) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not remove video segment node decriptor from the node ID->node descriptor map.");
         }
 
         if ( (node_find_index = system_resizable_vector_find(segment_ptr->nodes,
-                                                             (void*) node_ptr) ) != ITEM_NOT_FOUND)
+                                                             reinterpret_cast<void*>(node_ptr) )) != ITEM_NOT_FOUND)
         {
             system_resizable_vector_delete_element_at(segment_ptr->nodes,
                                                       node_find_index);
@@ -2442,7 +2405,7 @@ PUBLIC bool demo_timeline_segment_disconnect_nodes(demo_timeline_segment        
     uint32_t                              n_src_dst_connections           = 0;
     uint32_t                              n_src_node_outgoing_connections = 0;
     bool                                  result                          = false;
-    _demo_timeline_segment*               segment_ptr                     = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment*               segment_ptr                     = reinterpret_cast<_demo_timeline_segment*>(segment);
     _demo_timeline_segment_node_item*     src_node_ptr                    = nullptr;
 
     /* Sanity checks */
@@ -2456,10 +2419,10 @@ PUBLIC bool demo_timeline_segment_disconnect_nodes(demo_timeline_segment        
 
     /* Retrieve node descriptors */
     if (!system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
-                              (system_hash64) src_node_id,
+                              static_cast<system_hash64>(src_node_id),
                               &src_node_ptr) ||
         !system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
-                              (system_hash64) dst_node_id,
+                              static_cast<system_hash64>(dst_node_id),
                               &dst_node_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
@@ -2566,7 +2529,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_expose_node_io(demo_timeline_segme
     uint32_t                          n_ios_exposed     = 0;
     _demo_timeline_segment_node_item* node_item_ptr     = nullptr;
     bool                              result            = false;
-    _demo_timeline_segment*           segment_ptr       = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment*           segment_ptr       = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity checks */
     if (segment == nullptr)
@@ -2638,7 +2601,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_expose_node_io(demo_timeline_segme
 
     /* Retrieve the IO descriptor */
     if (!system_hash64map_get(segment_ptr->node_id_to_node_descriptor_map,
-                              (system_hash64) node_id,
+                              static_cast<system_hash64>(node_id),
                               &node_item_ptr) )
     {
         ASSERT_DEBUG_SYNC(false,
@@ -2686,7 +2649,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_expose_node_io(demo_timeline_segme
                                     : ( should_expose && !should_expose_as_vs_input) ? DEMO_TIMELINE_SEGMENT_CALLBACK_ID_NEW_OUTPUT_EXPOSED
                                     : (!should_expose &&  should_expose_as_vs_input) ? DEMO_TIMELINE_SEGMENT_CALLBACK_ID_INPUT_NO_LONGER_EXPOSED
                                                                                      : DEMO_TIMELINE_SEGMENT_CALLBACK_ID_OUTPUT_NO_LONGER_EXPOSED,
-                                      (void*) segment_ptr->id);
+                                      reinterpret_cast<void*>(segment_ptr->id) );
 
     /* All done */
     result = true;
@@ -2705,7 +2668,7 @@ PUBLIC bool demo_timeline_segment_get_exposed_inputs(demo_timeline_segment      
                                                      uint32_t*                       out_n_inputs_ptr,
                                                      demo_timeline_segment_node_io** out_segment_node_ios_ptr)
 {
-    return _demo_timeline_segment_enumerate_io((_demo_timeline_segment*) segment,
+    return _demo_timeline_segment_enumerate_io(reinterpret_cast<_demo_timeline_segment*>(segment),
                                                true, /* should_enumerate_inputs */
                                                out_n_inputs_ptr,
                                                out_segment_node_ios_ptr);
@@ -2716,7 +2679,7 @@ PUBLIC bool demo_timeline_segment_get_exposed_outputs(demo_timeline_segment     
                                                       uint32_t*                       out_n_outputs_ptr,
                                                       demo_timeline_segment_node_io** out_segment_node_ios_ptr)
 {
-    return _demo_timeline_segment_enumerate_io((_demo_timeline_segment*) segment,
+    return _demo_timeline_segment_enumerate_io(reinterpret_cast<_demo_timeline_segment*>(segment),
                                                false, /* should_enumerate_inputs */
                                                out_n_outputs_ptr,
                                                out_segment_node_ios_ptr);
@@ -2732,7 +2695,7 @@ PUBLIC bool demo_timeline_segment_get_node_io_property_by_node_id(demo_timeline_
 {
     _demo_timeline_segment_node_item* node_ptr    = nullptr;
     bool                              result      = false;
-    _demo_timeline_segment*           segment_ptr = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment*           segment_ptr = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity check */
     if (segment == nullptr)
@@ -2777,7 +2740,7 @@ PUBLIC bool demo_timeline_segment_get_node_property(demo_timeline_segment       
     _demo_timeline_segment_node_item*     node_ptr                       = nullptr;
     PFNSEGMENTNODEGETPROPERTYCALLBACKPROC pfn_get_node_property_func_ptr = nullptr;
     bool                                  result                         = false;
-    _demo_timeline_segment*               segment_ptr                    = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment*               segment_ptr                    = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity check */
     if (segment == nullptr)
@@ -2825,7 +2788,7 @@ PUBLIC EMERALD_API void demo_timeline_segment_get_property(demo_timeline_segment
                                                            demo_timeline_segment_property property,
                                                            void*                          out_result_ptr)
 {
-    _demo_timeline_segment* segment_ptr = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment* segment_ptr = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(segment != nullptr,
@@ -2835,42 +2798,42 @@ PUBLIC EMERALD_API void demo_timeline_segment_get_property(demo_timeline_segment
     {
         case DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO:
         {
-            *(float*) out_result_ptr = segment_ptr->aspect_ratio;
+            *reinterpret_cast<float*>(out_result_ptr) = segment_ptr->aspect_ratio;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result_ptr = segment_ptr->callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = segment_ptr->callback_manager;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME:
         {
-            *(system_time*) out_result_ptr = segment_ptr->end_time;
+            *reinterpret_cast<system_time*>(out_result_ptr) = segment_ptr->end_time;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_ID:
         {
-            *(demo_timeline_segment_id*) out_result_ptr = segment_ptr->id;
+            *reinterpret_cast<demo_timeline_segment_id*>(out_result_ptr) = segment_ptr->id;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = segment_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = segment_ptr->name;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE:
         {
-            *(demo_timeline_segment_node*) out_result_ptr = segment_ptr->output_node_ptr->node;
+            *reinterpret_cast<demo_timeline_segment_node*>(out_result_ptr) = segment_ptr->output_node_ptr->node;
 
             break;
         }
@@ -2880,35 +2843,35 @@ PUBLIC EMERALD_API void demo_timeline_segment_get_property(demo_timeline_segment
             ASSERT_DEBUG_SYNC(segment_ptr->output_node_ptr != nullptr,
                               "DEMO_TIMELINE_SEGMENT_PROPERTY_OUTPUT_NODE_ID query issued against non-postprocessing segment.");
 
-            *(demo_timeline_segment_node_id*) out_result_ptr = segment_ptr->output_node_ptr->id;
+            *reinterpret_cast<demo_timeline_segment_node_id*>(out_result_ptr) = segment_ptr->output_node_ptr->id;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME:
         {
-            *(system_time*) out_result_ptr= segment_ptr->start_time;
+            *reinterpret_cast<system_time*>(out_result_ptr) = segment_ptr->start_time;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_TIME_MODE:
         {
-            *(demo_timeline_segment_time_mode*) out_result_ptr = segment_ptr->time_mode;
+            *reinterpret_cast<demo_timeline_segment_time_mode*>(out_result_ptr) = segment_ptr->time_mode;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_TIMELINE:
         {
-            *(demo_timeline*) out_result_ptr = segment_ptr->timeline;
+            *reinterpret_cast<demo_timeline*>(out_result_ptr) = segment_ptr->timeline;
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_TYPE:
         {
-            *(demo_timeline_segment_type*) out_result_ptr = segment_ptr->type;
+            *reinterpret_cast<demo_timeline_segment_type*>(out_result_ptr) = segment_ptr->type;
 
             break;
         }
@@ -2928,9 +2891,9 @@ PUBLIC EMERALD_API bool demo_timeline_segment_get_video_segment_node_id_for_ps_a
 {
     /* TODO: Optimize me! */
     uint32_t                n_ps_nodes = 0;
-    _demo_timeline_segment* ps_ptr     = (_demo_timeline_segment*) postprocessing_segment;
+    _demo_timeline_segment* ps_ptr     = reinterpret_cast<_demo_timeline_segment*>(postprocessing_segment);
     bool                    result     = false;
-    _demo_timeline_segment* vs_ptr     = (_demo_timeline_segment*) video_segment;
+    _demo_timeline_segment* vs_ptr     = reinterpret_cast<_demo_timeline_segment*>(video_segment);
 
     /* Sanity checks */
     if (out_node_id_ptr == nullptr)
@@ -3046,11 +3009,9 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
 {
     uint32_t                n_sorted_nodes = 0;
     bool                    result         = false;
-    _demo_timeline_segment* segment_ptr    = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment* segment_ptr    = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(ogl_context_get_current_context() == ral_context_get_gl_context(segment_ptr->context),
-                      "Invalid rendering context thread");
     ASSERT_DEBUG_SYNC(segment != nullptr,
                       "Input video segment is NULL");
 
@@ -3142,7 +3103,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo
                 /* Sound the bugle! */
                 system_callback_manager_call_back(node_ptr->parent_segment_ptr->callback_manager,
                                                   DEMO_TIMELINE_SEGMENT_CALLBACK_ID_INPUT_LACKS_ATTACHMENT,
-                                                  (void*) node_input_ids[n_node_input_id]);
+                                                  reinterpret_cast<void*>(node_input_ids[n_node_input_id]));
 
                 /* This node cannot be rendered. */
                 can_render = false;
@@ -3216,7 +3177,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_set_node_io_property(demo_timeline
                                                                    demo_timeline_segment_node_io_property property,
                                                                    const void*                            data)
 {
-    _demo_timeline_segment_node_item* node_ptr = (_demo_timeline_segment_node_item*) node;
+    _demo_timeline_segment_node_item* node_ptr = reinterpret_cast<_demo_timeline_segment_node_item*>(node);
     bool                              result   = false;
 
     /* Sanity checks */
@@ -3236,7 +3197,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_set_node_io_property(demo_timeline
             demo_timeline_segment_node_attach_texture_to_texture_io(node_ptr->node,
                                                                     is_input_io,
                                                                     io_id,
-                                                                   *(demo_texture_attachment_declaration**) data);
+                                                                   *reinterpret_cast<const demo_texture_attachment_declaration* const*>(data) );
 
             break;
         }
@@ -3264,7 +3225,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_set_node_property(demo_timeline_se
     _demo_timeline_segment_node_item*     node_ptr                       = nullptr;
     PFNSEGMENTNODESETPROPERTYCALLBACKPROC pfn_set_node_property_func_ptr = nullptr;
     bool                                  result                         = false;
-    _demo_timeline_segment*               segment_ptr                    = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment*               segment_ptr                    = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity check */
     if (segment == nullptr)
@@ -3312,7 +3273,7 @@ PUBLIC void demo_timeline_segment_set_property(demo_timeline_segment          se
                                                demo_timeline_segment_property property,
                                                const void*                    data)
 {
-    _demo_timeline_segment* segment_ptr = (_demo_timeline_segment*) segment;
+    _demo_timeline_segment* segment_ptr = reinterpret_cast<_demo_timeline_segment*>(segment);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(segment != nullptr,
@@ -3322,7 +3283,7 @@ PUBLIC void demo_timeline_segment_set_property(demo_timeline_segment          se
     {
         case DEMO_TIMELINE_SEGMENT_PROPERTY_ASPECT_RATIO:
         {
-            segment_ptr->aspect_ratio = *(float*) data;
+            segment_ptr->aspect_ratio = *reinterpret_cast<const float*>(data);
 
             ASSERT_DEBUG_SYNC(segment_ptr->aspect_ratio > 0.0f,
                               "A segment AR of <= 0.0 value was requested!");
@@ -3332,21 +3293,21 @@ PUBLIC void demo_timeline_segment_set_property(demo_timeline_segment          se
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_END_TIME:
         {
-            segment_ptr->end_time = *(system_time*) data;
+            segment_ptr->end_time = *reinterpret_cast<const system_time*>(data);
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_START_TIME:
         {
-            segment_ptr->start_time = *(system_time*) data;
+            segment_ptr->start_time = *reinterpret_cast<const system_time*>(data);
 
             break;
         }
 
         case DEMO_TIMELINE_SEGMENT_PROPERTY_TIME_MODE:
         {
-            segment_ptr->time_mode = *(demo_timeline_segment_time_mode*) data;
+            segment_ptr->time_mode = *reinterpret_cast<const demo_timeline_segment_time_mode*>(data);
 
             break;
         }

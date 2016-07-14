@@ -555,7 +555,7 @@ PRIVATE void _postprocessing_motion_blur_update_props_ub(void* blur_raw_ptr)
                                                                sizeof(unsigned int) );
     }
 
-    ral_program_block_buffer_sync(blur_ptr->po_props_ub);
+    ral_program_block_buffer_sync_immediately(blur_ptr->po_props_ub);
 }
 
 

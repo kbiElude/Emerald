@@ -182,7 +182,7 @@ PUBLIC EMERALD_API float demo_timeline_get_aspect_ratio(demo_timeline timeline,
                                                         system_time   frame_time);
 
 /** TODO */
-PUBLIC EMERALD_API bool demo_timeline_get_property(demo_timeline          timeline,
+PUBLIC EMERALD_API bool demo_timeline_get_property(const demo_timeline    timeline,
                                                    demo_timeline_property property,
                                                    void*                  out_result_ptr);
 

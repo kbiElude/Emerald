@@ -184,7 +184,7 @@ PRIVATE bool _demo_window_init(_demo_window* window_ptr)
         int window_x1y1x2y2[4] = {0};
 
         /* Determine centered position for a renderer window of the specified size. */
-        system_window_get_centered_window_position_for_primary_monitor( (const int*) window_ptr->resolution,
+        system_window_get_centered_window_position_for_primary_monitor(reinterpret_cast<const int*>(window_ptr->resolution),
                                                                         window_x1y1x2y2);
 
         /* Spawn the window. */
@@ -307,7 +307,7 @@ end:
 PRIVATE void _demo_window_on_audio_stream_finished_playing(const void* callback_data,
                                                                  void* user_arg)
 {
-    _demo_window* window_ptr = (_demo_window*) user_arg;
+    _demo_window* window_ptr = reinterpret_cast<_demo_window*>(user_arg);
 
     system_event_set(window_ptr->shut_down_event);
 }
@@ -319,7 +319,7 @@ PRIVATE void _demo_window_on_audio_stream_finished_playing(const void* callback_
 PRIVATE void _demo_window_window_closed_callback_handler(void* unused,
                                                          void* window)
 {
-    _demo_window* app_ptr = (_demo_window*) window;
+    _demo_window* app_ptr = reinterpret_cast<_demo_window*>(window);
 
     system_event_set(app_ptr->shut_down_event);
 }
@@ -334,7 +334,7 @@ PRIVATE void _demo_window_window_closed_callback_handler(void* unused,
 PRIVATE void _demo_window_window_closing_callback_handler(void* unused,
                                                           void* window)
 {
-    _demo_window* window_ptr = (_demo_window*) window;
+    _demo_window* window_ptr = reinterpret_cast<_demo_window*>(window);
 
     if (window_ptr->loader != nullptr)
     {
@@ -356,23 +356,23 @@ PRIVATE void _demo_window_subscribe_for_window_notifications(_demo_window* windo
         system_window_add_callback_func(window_ptr->window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        (void*) _demo_window_window_closed_callback_handler,
+                                        reinterpret_cast<void*>(_demo_window_window_closed_callback_handler),
                                         window_ptr);
         system_window_add_callback_func(window_ptr->window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        (void*) _demo_window_window_closing_callback_handler,
+                                        reinterpret_cast<void*>(_demo_window_window_closing_callback_handler),
                                         window_ptr);
     }
     else
     {
         system_window_delete_callback_func(window_ptr->window,
                                            SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                           (void*) _demo_window_window_closed_callback_handler,
+                                           reinterpret_cast<void*>(_demo_window_window_closed_callback_handler),
                                            window_ptr);
         system_window_delete_callback_func(window_ptr->window,
                                            SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                           (void*) _demo_window_window_closing_callback_handler,
+                                           reinterpret_cast<void*>(_demo_window_window_closing_callback_handler),
                                            window_ptr);
     }
 }
@@ -386,7 +386,7 @@ PUBLIC EMERALD_API bool demo_window_add_callback_func(demo_window               
                                                       void*                                callback_func_user_arg)
 {
     bool          result     = false;
-    _demo_window* window_ptr = (_demo_window*) window;
+    _demo_window* window_ptr = reinterpret_cast<_demo_window*>(window);
 
     /* Sanity checks */
     if (window_ptr == nullptr)
@@ -433,7 +433,7 @@ end:
 PUBLIC bool demo_window_close(demo_window window)
 {
     bool          result     = false;
-    _demo_window* window_ptr = (_demo_window*) window;
+    _demo_window* window_ptr = reinterpret_cast<_demo_window*>(window);
 
     if (window == nullptr)
     {
@@ -508,13 +508,13 @@ PUBLIC void demo_window_get_private_property(const demo_window            window
                                              demo_window_private_property property,
                                              void*                        out_result_ptr)
 {
-    const _demo_window* window_ptr = (const _demo_window*) window;
+    const _demo_window* window_ptr = reinterpret_cast<const _demo_window*>(window);
 
     switch (property)
     {
         case DEMO_WINDOW_PRIVATE_PROPERTY_WINDOW:
         {
-            *(system_window*) out_result_ptr = window_ptr->window;
+            *reinterpret_cast<system_window*>(out_result_ptr) = window_ptr->window;
 
             break;
         }
@@ -532,61 +532,61 @@ PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
                                                  demo_window_property property,
                                                  void*                out_result_ptr)
 {
-    const _demo_window* window_ptr = (const _demo_window*) window;
+    const _demo_window* window_ptr = reinterpret_cast<const _demo_window*>(window);
 
     switch (property)
     {
         case DEMO_WINDOW_PROPERTY_BACKEND_TYPE:
         {
-            *(ral_backend_type*) out_result_ptr = window_ptr->backend_type;
+            *reinterpret_cast<ral_backend_type*>(out_result_ptr) = window_ptr->backend_type;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_FLYBY:
         {
-            *(demo_flyby*) out_result_ptr = window_ptr->flyby;
+            *reinterpret_cast<demo_flyby*>(out_result_ptr) = window_ptr->flyby;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_FULLSCREEN:
         {
-            *(bool*) out_result_ptr = window_ptr->should_run_fullscreen;
+            *reinterpret_cast<bool*>(out_result_ptr) = window_ptr->should_run_fullscreen;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_LOADER_CALLBACK_FUNC_PTR:
         {
-            *(PFNDEMOWINDOWLOADERSETUPCALLBACKPROC*) out_result_ptr = window_ptr->pfn_loader_setup_callback_proc;
+            *reinterpret_cast<PFNDEMOWINDOWLOADERSETUPCALLBACKPROC*>(out_result_ptr) = window_ptr->pfn_loader_setup_callback_proc;
 
             break;
         }
         case DEMO_WINDOW_PROPERTY_LOADER_CALLBACK_USER_ARG:
         {
-            *(void**) out_result_ptr = window_ptr->loader_setup_callback_proc_user_arg;
+            *reinterpret_cast<void**>(out_result_ptr) = window_ptr->loader_setup_callback_proc_user_arg;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = window_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = window_ptr->name;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT:
         {
-            *(ral_context*) out_result_ptr = window_ptr->context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = window_ptr->context;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_RENDERING_HANDLER:
         {
-            *(ral_rendering_handler*) out_result_ptr = window_ptr->rendering_handler;
+            *reinterpret_cast<ral_rendering_handler*>(out_result_ptr) = window_ptr->rendering_handler;
 
             break;
         }
@@ -602,28 +602,28 @@ PUBLIC EMERALD_API void demo_window_get_property(const demo_window    window,
 
         case DEMO_WINDOW_PROPERTY_REFRESH_RATE:
         {
-            *(uint32_t*) out_result_ptr = window_ptr->refresh_rate;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = window_ptr->refresh_rate;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_TARGET_FRAME_RATE:
         {
-            *(uint32_t*) out_result_ptr = window_ptr->target_frame_rate;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = window_ptr->target_frame_rate;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_TIMELINE:
         {
-            *(demo_timeline*) out_result_ptr = window_ptr->timeline;
+            *reinterpret_cast<demo_timeline*>(out_result_ptr) = window_ptr->timeline;
 
             break;
         }
 
         case DEMO_WINDOW_PROPERTY_VISIBLE:
         {
-            *(bool*) out_result_ptr = window_ptr->visible;
+            *reinterpret_cast<bool*>(out_result_ptr) = window_ptr->visible;
 
             break;
         }
@@ -641,7 +641,7 @@ PUBLIC EMERALD_API bool demo_window_stop_rendering(demo_window window)
 {
     ral_rendering_handler_playback_status playback_status = RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
     bool                                  result          = false;
-    _demo_window*                         window_ptr      = (_demo_window*) window;
+    _demo_window*                         window_ptr      = reinterpret_cast<_demo_window*>(window);
 
     /* Sanity checks */
     if (window == nullptr)
@@ -681,7 +681,7 @@ end:
 /** Please see header for specification */
 PUBLIC void demo_window_release(demo_window window)
 {
-    _demo_window* window_ptr = (_demo_window*) window;
+    _demo_window* window_ptr = reinterpret_cast<_demo_window*>(window);
 
     ASSERT_DEBUG_SYNC(window != nullptr,
                       "Input demo_window instance is NULL");
@@ -715,7 +715,7 @@ PUBLIC void demo_window_release(demo_window window)
     system_event_wait_single(window_ptr->window_closed_event);
 
     /* Should be safe to delete the object at this point */
-    delete (_demo_window*) window;
+    delete reinterpret_cast<_demo_window*>(window);
 }
 
 /** Please see header for specification */
@@ -723,7 +723,7 @@ PUBLIC EMERALD_API bool demo_window_start_rendering(demo_window window,
                                                     system_time rendering_start_time)
 {
     bool          result     = false;
-    _demo_window* window_ptr = (_demo_window*) window;
+    _demo_window* window_ptr = reinterpret_cast<_demo_window*>(window);
 
     /* Sanity cvhecks */
     if (window == nullptr)
@@ -835,7 +835,7 @@ end:
 PUBLIC EMERALD_API bool demo_window_wait_until_closed(demo_window window)
 {
     bool          result     = false;
-    _demo_window* window_ptr = (_demo_window*) window;
+    _demo_window* window_ptr = reinterpret_cast<_demo_window*>(window);
 
     /* Sanity checks */
     if (window == nullptr)
