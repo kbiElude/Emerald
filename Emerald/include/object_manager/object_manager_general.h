@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  * Object manager has been implemented for two reasons:
  *
@@ -20,7 +20,7 @@
  *  @return Corresponding hashed ansi string with name of the object type or a hashed ansi string
  *          saying "Unknown" (without the quotations marks)
  **/
-PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_type_to_hashed_ansi_string(object_manager_object_type);
+PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_type_to_hashed_ansi_string(object_manager_object_type object_type);
 
 /** Deinitializes object manager. Only called from DllMain() - hence not exported.
  *
@@ -38,7 +38,7 @@ PUBLIC void _object_manager_init();
  *
  *  @return object_manager_directory instance or NULL if not found.
  **/
-PUBLIC EMERALD_API object_manager_directory object_manager_get_directory(system_hashed_ansi_string);
+PUBLIC object_manager_directory object_manager_get_directory(system_hashed_ansi_string path);
 
 /** TODO */
 PUBLIC system_hashed_ansi_string object_manager_get_object_path(system_hashed_ansi_string  object_name,
@@ -46,7 +46,7 @@ PUBLIC system_hashed_ansi_string object_manager_get_object_path(system_hashed_an
                                                                 system_hashed_ansi_string  scene_name);
 
 /** TODO */
-PUBLIC EMERALD_API object_manager_directory object_manager_get_root_directory();
+PUBLIC object_manager_directory object_manager_get_root_directory();
 
 /** Registers a reference-counted object in the registry. This function can ONLY be called from within the engine,
  *  hence not exported.

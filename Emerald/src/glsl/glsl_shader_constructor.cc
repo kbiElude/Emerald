@@ -31,18 +31,18 @@ typedef struct _glsl_shader_constructor_function
     _glsl_shader_constructor_function()
     {
         arguments           = system_resizable_vector_create(4 /* capacity */);
-        body                = NULL;
+        body                = nullptr;
         returned_value_type = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;
-        name                = NULL;
+        name                = nullptr;
     }
 
     ~_glsl_shader_constructor_function()
     {
-        if (arguments != NULL)
+        if (arguments != nullptr)
         {
             system_resizable_vector_release(arguments);
 
-            arguments = NULL;
+            arguments = nullptr;
         }
     }
 } _glsl_shader_constructor_function;
@@ -52,7 +52,7 @@ typedef struct _glsl_shader_constructor_variable
 {
     system_hashed_ansi_string name;
 
-    /* If this is not NULL, this variable is actually a structure */
+    /* If this is not nullptr, this variable is actually a structure */
     _glsl_shader_constructor_structure* structure_ptr;
 
     /* Otherwise, this is a normal variable */
@@ -65,21 +65,21 @@ typedef struct _glsl_shader_constructor_variable
     _glsl_shader_constructor_variable()
     {
         array_size        = 0;
-        default_data      = NULL;
+        default_data      = nullptr;
         layout_qualifiers = LAYOUT_QUALIFIER_NONE;
-        name              = NULL;
-        structure_ptr     = NULL;
+        name              = nullptr;
+        structure_ptr     = nullptr;
         type              = RAL_PROGRAM_VARIABLE_TYPE_UNDEFINED;
         variable_type     = VARIABLE_TYPE_UNKNOWN;
     }
 
     ~_glsl_shader_constructor_variable()
     {
-        if (default_data != NULL)
+        if (default_data != nullptr)
         {
             delete [] default_data;
 
-            default_data = NULL;
+            default_data = nullptr;
         }
     }
 } _glsl_shader_constructor_variable;
@@ -98,11 +98,11 @@ typedef struct _glsl_shader_constructor_function_argument
 
     ~_glsl_shader_constructor_function_argument()
     {
-        if (properties != NULL)
+        if (properties != nullptr)
         {
             delete properties;
 
-            properties = NULL;
+            properties = nullptr;
         }
     }
 } _glsl_shader_constructor_function_argument;
@@ -117,16 +117,16 @@ typedef struct _glsl_shader_constructor_structure
     _glsl_shader_constructor_structure()
     {
         members = system_resizable_vector_create(4 /* capacity */);
-        name    = NULL;
+        name    = nullptr;
     }
 
     ~_glsl_shader_constructor_structure()
     {
-        if (members != NULL)
+        if (members != nullptr)
         {
             system_resizable_vector_release(members);
 
-            members = NULL;
+            members = nullptr;
         }
     }
 } _glsl_shader_constructor_structure;
@@ -142,17 +142,17 @@ typedef struct _glsl_shader_constructor_uniform_block
     _glsl_shader_constructor_uniform_block()
     {
         is_default_ub = false;
-        name          = NULL;
+        name          = nullptr;
         variables     = system_resizable_vector_create(4 /* capacity */);
     }
 
     ~_glsl_shader_constructor_uniform_block()
     {
-        if (variables != NULL)
+        if (variables != nullptr)
         {
             system_resizable_vector_release(variables);
 
-            variables = NULL;
+            variables = nullptr;
         }
     }
 } _glsl_shader_constructor_uniform_block;
@@ -180,7 +180,7 @@ typedef struct _glsl_shader_constructor
         body           = system_hashed_ansi_string_get_default_empty_string();
         dirty          = true;
         functions      = system_resizable_vector_create(4 /* capacity */);
-        name           = NULL;
+        name           = nullptr;
         shader_type    = RAL_SHADER_TYPE_UNKNOWN;
         structures     = system_resizable_vector_create(4 /* capacity */);
         uniform_blocks = system_resizable_vector_create(4 /* capacity */);
@@ -188,25 +188,25 @@ typedef struct _glsl_shader_constructor
 
     ~_glsl_shader_constructor()
     {
-        if (functions != NULL)
+        if (functions != nullptr)
         {
             system_resizable_vector_release(functions);
 
-            functions = NULL;
+            functions = nullptr;
         }
 
-        if (structures != NULL)
+        if (structures != nullptr)
         {
             system_resizable_vector_release(structures);
 
-            structures = NULL;
+            structures = nullptr;
         }
 
-        if (uniform_blocks != NULL)
+        if (uniform_blocks != nullptr)
         {
             system_resizable_vector_release(uniform_blocks);
 
-            uniform_blocks = NULL;
+            uniform_blocks = nullptr;
         }
     }
     REFCOUNT_INSERT_VARIABLES
@@ -256,7 +256,7 @@ PRIVATE void _glsl_shader_constructor_bake_body(_glsl_shader_constructor* constr
                       n_structure < n_structures;
                     ++n_structure)
     {
-        _glsl_shader_constructor_structure* structure_ptr = NULL;
+        _glsl_shader_constructor_structure* structure_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                    n_structure,
@@ -270,7 +270,7 @@ PRIVATE void _glsl_shader_constructor_bake_body(_glsl_shader_constructor* constr
             LOG_ERROR("Could not retrieve structure descriptor at index [%u]",
                       n_structure);
         }
-    } /* for (all structures) */
+    }
 
     /* Add uniform block declarations */
     unsigned int n_uniform_blocks = 0;
@@ -283,7 +283,7 @@ PRIVATE void _glsl_shader_constructor_bake_body(_glsl_shader_constructor* constr
                       n_ub < n_uniform_blocks;
                     ++n_ub)
     {
-        _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
+        _glsl_shader_constructor_uniform_block* ub_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                    n_ub,
@@ -297,7 +297,7 @@ PRIVATE void _glsl_shader_constructor_bake_body(_glsl_shader_constructor* constr
             LOG_ERROR("Could not retrieve uniform block descriptor at index [%u]",
                       n_ub);
         }
-    } /* for (all uniform blocks) */
+    }
 
     /* Add function bodies */
     unsigned int n_functions = 0;
@@ -313,7 +313,7 @@ PRIVATE void _glsl_shader_constructor_bake_body(_glsl_shader_constructor* constr
         /* main() is assigned an id of 0. We want it declared as the very last function. */
 
         unsigned int                       current_function_id = (n_function + 1) % n_functions;
-        _glsl_shader_constructor_function* function_ptr        = NULL;
+        _glsl_shader_constructor_function* function_ptr        = nullptr;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                    current_function_id,
@@ -327,7 +327,7 @@ PRIVATE void _glsl_shader_constructor_bake_body(_glsl_shader_constructor* constr
             LOG_ERROR("Could not retrieve function descriptor at index [%u]",
                      n_function);
         }
-    } /* for (all functions) */
+    }
 
     /* We're done. Store the body and lower the dirty flag */
     constructor_ptr->body  = system_hashed_ansi_string_create(body_sstream.str().c_str() );
@@ -348,7 +348,7 @@ PRIVATE std::string _glsl_shader_constructor_get_argument_list_string(system_res
                       n_argument < n_arguments;
                     ++n_argument)
     {
-        _glsl_shader_constructor_function_argument* argument_ptr = NULL;
+        _glsl_shader_constructor_function_argument* argument_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(arguments,
                                                    n_argument,
@@ -365,14 +365,14 @@ PRIVATE std::string _glsl_shader_constructor_get_argument_list_string(system_res
             {
                 result << ", ";
             }
-        } /* if (system_resizable_vector_get_element_at(arguments, n_argument, &argument_ptr) ) */
+        }
         else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve function argument at index [%d]",
                               n_argument);
         }
-    } /* for (all arguments) */
+    }
 
     return result.str();
 }
@@ -470,7 +470,7 @@ PRIVATE std::string _glsl_shader_constructor_get_layout_qualifier_string(glsl_sh
         }
 
         result_sstream << ") ";
-    } /* if (qualifier != LAYOUT_QUALIFIER_NONE) */
+    }
 
     return result_sstream.str();
 }
@@ -492,7 +492,7 @@ PRIVATE std::string _glsl_shader_constructor_get_shader_argument_qualifier_strin
                               "Unrecognized shader argument qualifier [%d]",
                               qualifier);
         }
-    } /* switch (qualifier) */
+    }
 
     return result;
 }
@@ -517,7 +517,7 @@ PRIVATE std::string _glsl_shader_constructor_get_structure_declaration_string(_g
                       n_member < n_members;
                     ++n_member)
     {
-        _glsl_shader_constructor_variable* variable_ptr = NULL;
+        _glsl_shader_constructor_variable* variable_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(structure_ptr->members,
                                                    n_member,
@@ -531,7 +531,7 @@ PRIVATE std::string _glsl_shader_constructor_get_structure_declaration_string(_g
             LOG_ERROR("Could not retrieve structure member descriptor at index [%u]",
                       n_member);
         }
-    } /* for (all members) */
+    }
 
     /* Structure closure */
     result_sstream << "};\n";
@@ -617,7 +617,7 @@ PRIVATE const char* _glsl_shader_constructor_get_type_string(ral_program_variabl
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized type");
         }
-    } /* switch (type) */
+    }
 
     return result;
 }
@@ -647,7 +647,7 @@ PRIVATE std::string _glsl_shader_constructor_get_uniform_block_declaration_strin
                           n_variable < n_variables;
                         ++n_variable)
         {
-            _glsl_shader_constructor_variable* variable_ptr = NULL;
+            _glsl_shader_constructor_variable* variable_ptr = nullptr;
 
             if (system_resizable_vector_get_element_at(ub_ptr->variables,
                                                        n_variable,
@@ -660,7 +660,7 @@ PRIVATE std::string _glsl_shader_constructor_get_uniform_block_declaration_strin
                 LOG_ERROR("Could not release variable descriptor at index [%u]",
                           n_variable);
             }
-        } /* for (all variables) */
+        }
 
         /* Close the UB declaration */
         if (!ub_ptr->is_default_ub)
@@ -690,7 +690,7 @@ PRIVATE std::string _glsl_shader_constructor_get_variable_declaration_string(_gl
 
     result_sstream << variable_type_string << " ";
 
-    if (variable_ptr->structure_ptr != NULL)
+    if (variable_ptr->structure_ptr != nullptr)
     {
         /* type */
         const char* type_string = system_hashed_ansi_string_get_buffer(variable_ptr->structure_ptr->name);
@@ -715,7 +715,7 @@ PRIVATE std::string _glsl_shader_constructor_get_variable_declaration_string(_gl
     }
 
     /* default data? */
-    if (variable_ptr->default_data != NULL)
+    if (variable_ptr->default_data != nullptr)
     {
         /* TODO: Yeah, current impl is over-simplified. Implement when needed */
         ASSERT_DEBUG_SYNC(variable_ptr->array_size == 0         &&
@@ -728,13 +728,13 @@ PRIVATE std::string _glsl_shader_constructor_get_variable_declaration_string(_gl
                       n_element < 16;
                     ++n_element)
         {
-            result_sstream << ((float*) variable_ptr->default_data)[n_element];
+            result_sstream << reinterpret_cast<float*>(variable_ptr->default_data)[n_element];
 
             if (n_element != 15)
             {
                 result_sstream << ", ";
             }
-        } /* for (all mat4 elements) */
+        }
 
         result_sstream << ")";
     }
@@ -759,7 +759,7 @@ PRIVATE const char* _glsl_shader_constructor_get_variable_type_string(glsl_shade
         {
             ASSERT_DEBUG_SYNC(false, "Unrecognized variable type");
         }
-    } /* switch (variable_type) */
+    }
 
     return result;
 }
@@ -767,9 +767,7 @@ PRIVATE const char* _glsl_shader_constructor_get_variable_type_string(glsl_shade
 /** TODO */
 PRIVATE void _glsl_shader_constructor_release(void* constructor)
 {
-    _glsl_shader_constructor* constructor_ptr = (_glsl_shader_constructor*) constructor;
-
-    /* Nothing to be done */
+    /* Stub */
 }
 
 
@@ -779,8 +777,8 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_function(glsl_shader_constru
                                                              ral_program_variable_type            returned_value_type,
                                                              glsl_shader_constructor_function_id* out_new_function_id_ptr)
 {
-    _glsl_shader_constructor*           constructor_ptr  = (_glsl_shader_constructor*) constructor;
-    _glsl_shader_constructor_function*  new_function_ptr = NULL;
+    _glsl_shader_constructor*           constructor_ptr  = reinterpret_cast<_glsl_shader_constructor*>(constructor);
+    _glsl_shader_constructor_function*  new_function_ptr = nullptr;
     bool                                result           = false;
     glsl_shader_constructor_function_id result_id        = 0;
 
@@ -793,7 +791,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_function(glsl_shader_constru
                       n_function < result_id /* total count */;
                     ++n_function)
     {
-        _glsl_shader_constructor_function* function_ptr = NULL;
+        _glsl_shader_constructor_function* function_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                    n_function,
@@ -814,15 +812,15 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_function(glsl_shader_constru
                               "Could not retrieve %dth function descriptor",
                               n_function);
         }
-    } /* for (all function descriptors) */
+    }
 
     /* Form the new descriptor */
     new_function_ptr = new (std::nothrow) _glsl_shader_constructor_function;
 
-    ASSERT_ALWAYS_SYNC(new_function_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_function_ptr != nullptr,
                        "Out of memory");
 
-    if (new_function_ptr != NULL)
+    if (new_function_ptr != nullptr)
     {
         new_function_ptr->name                = name;
         new_function_ptr->returned_value_type = returned_value_type;
@@ -850,12 +848,12 @@ PUBLIC EMERALD_API void glsl_shader_constructor_add_function_argument(glsl_shade
                                                                       ral_program_variable_type                         argument_type,
                                                                       system_hashed_ansi_string                         argument_name)
 {
-    _glsl_shader_constructor*                   constructor_ptr  = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor*                   constructor_ptr  = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     unsigned int                                n_arguments      = 0;
-    _glsl_shader_constructor_function_argument* new_func_arg_ptr = NULL;
+    _glsl_shader_constructor_function_argument* new_func_arg_ptr = nullptr;
 
     /* Identify the function descriptor */
-    _glsl_shader_constructor_function* function_ptr = NULL;
+    _glsl_shader_constructor_function* function_ptr = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                 function_id,
@@ -876,7 +874,7 @@ PUBLIC EMERALD_API void glsl_shader_constructor_add_function_argument(glsl_shade
                       n_argument < n_arguments;
                     ++n_argument)
     {
-        _glsl_shader_constructor_function_argument* argument_ptr = NULL;
+        _glsl_shader_constructor_function_argument* argument_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(function_ptr->arguments,
                                                     n_argument,
@@ -897,15 +895,15 @@ PUBLIC EMERALD_API void glsl_shader_constructor_add_function_argument(glsl_shade
                 goto end;
             }
         }
-    } /* for (all arguments) */
+    }
 
     /* Form the new descriptor */
     new_func_arg_ptr = new (std::nothrow) _glsl_shader_constructor_function_argument;
 
-    ASSERT_ALWAYS_SYNC(new_func_arg_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_func_arg_ptr != nullptr,
                        "Out of memory");
 
-    if (new_func_arg_ptr != NULL)
+    if (new_func_arg_ptr != nullptr)
     {
         new_func_arg_ptr->qualifier                 = qualifier;
         new_func_arg_ptr->properties->array_size    = 0;
@@ -931,12 +929,12 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_structur
                                                                                   glsl_shader_constructor_structure_id structure,
                                                                                   system_hashed_ansi_string            name)
 {
-    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor*          constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     bool                               result          = false;
-    _glsl_shader_constructor_variable* variable_ptr    = NULL;
+    _glsl_shader_constructor_variable* variable_ptr    = nullptr;
 
     /* Retrieve structure descriptor */
-    _glsl_shader_constructor_structure* structure_ptr = NULL;
+    _glsl_shader_constructor_structure* structure_ptr = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                 structure,
@@ -951,10 +949,10 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_structur
     /* Form new variable descriptor */
     variable_ptr = new (std::nothrow) _glsl_shader_constructor_variable;
 
-    ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(variable_ptr != nullptr,
                        "Out of memory");
 
-    if (variable_ptr == NULL)
+    if (variable_ptr == nullptr)
     {
         goto end;
     }
@@ -987,11 +985,11 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_ub(glsl_
                                                                            system_hashed_ansi_string                name,
                                                                            glsl_shader_constructor_variable_id*     out_variable_id)
 {
-    _glsl_shader_constructor*               constructor_ptr      = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor*               constructor_ptr      = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     unsigned int                            n_existing_variables = 0;
     bool                                    result               = false;
-    _glsl_shader_constructor_uniform_block* ub_ptr               = NULL;
-    _glsl_shader_constructor_variable*      variable_ptr         = NULL;
+    _glsl_shader_constructor_uniform_block* ub_ptr               = nullptr;
+    _glsl_shader_constructor_variable*      variable_ptr         = nullptr;
 
     /* Sanity checks */
     if (variable_type == VARIABLE_TYPE_INPUT_ATTRIBUTE &&
@@ -1031,7 +1029,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_ub(glsl_
                       n_variable < n_existing_variables;
                     ++n_variable)
     {
-        _glsl_shader_constructor_variable* variable_ptr = NULL;
+        _glsl_shader_constructor_variable* variable_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(ub_ptr->variables,
                                                    n_variable,
@@ -1062,15 +1060,15 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_ub(glsl_
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve variable descriptor");
         }
-    } /* for (all known variables) */
+    }
 
     /* Form new variable descriptor */
     variable_ptr = new (std::nothrow) _glsl_shader_constructor_variable;
 
-    ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(variable_ptr != nullptr,
                        "Out of memory");
 
-    if (variable_ptr == NULL)
+    if (variable_ptr == nullptr)
     {
         goto end;
     }
@@ -1082,7 +1080,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_general_variable_to_ub(glsl_
     variable_ptr->variable_type     = variable_type;
 
     /* Store the descriptor */
-    if (out_variable_id != NULL)
+    if (out_variable_id != nullptr)
     {
         system_resizable_vector_get_property(ub_ptr->variables,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1107,8 +1105,8 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure(glsl_shader_constr
                                                               system_hashed_ansi_string             name,
                                                               glsl_shader_constructor_structure_id* out_result_id_ptr)
 {
-    _glsl_shader_constructor*            constructor_ptr   = (_glsl_shader_constructor*) constructor;
-    _glsl_shader_constructor_structure*  new_structure_ptr = NULL;
+    _glsl_shader_constructor*            constructor_ptr   = reinterpret_cast<_glsl_shader_constructor*>(constructor);
+    _glsl_shader_constructor_structure*  new_structure_ptr = nullptr;
     bool                                 result            = false;
     glsl_shader_constructor_structure_id result_id         = 0;
 
@@ -1123,7 +1121,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure(glsl_shader_constr
                       n_structure < n_structures;
                     ++n_structure)
     {
-        _glsl_shader_constructor_structure* structure_ptr = NULL;
+        _glsl_shader_constructor_structure* structure_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                     n_structure,
@@ -1143,15 +1141,15 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure(glsl_shader_constr
                 goto end;
             }
         }
-    } /* for (all added structures) */
+    }
 
     /* Form a new descriptor */
      new_structure_ptr = new (std::nothrow) _glsl_shader_constructor_structure;
 
-    ASSERT_ALWAYS_SYNC(new_structure_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_structure_ptr != nullptr,
                        "Out of memory");
 
-    if (new_structure_ptr == NULL)
+    if (new_structure_ptr == nullptr)
     {
         goto end;
     }
@@ -1170,7 +1168,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure(glsl_shader_constr
     /* All done! */
     result = true;
 
-    if (out_result_id_ptr != NULL)
+    if (out_result_id_ptr != nullptr)
     {
         *out_result_id_ptr = result_id;
     }
@@ -1185,13 +1183,13 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure_variable_to_ub(gls
                                                                              glsl_shader_constructor_uniform_block_id uniform_block,
                                                                              system_hashed_ansi_string                name)
 {
-    _glsl_shader_constructor*               constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor*               constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     bool                                    result          = false;
-    _glsl_shader_constructor_uniform_block* ub_ptr          = NULL;
-    _glsl_shader_constructor_variable*      variable_ptr    = NULL;
+    _glsl_shader_constructor_uniform_block* ub_ptr          = nullptr;
+    _glsl_shader_constructor_variable*      variable_ptr    = nullptr;
 
     /* Retrieve structure descriptor */
-    _glsl_shader_constructor_structure* structure_ptr = NULL;
+    _glsl_shader_constructor_structure* structure_ptr = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->structures,
                                                 structure,
@@ -1217,10 +1215,10 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_add_structure_variable_to_ub(gls
     /* Form new variable descriptor */
     variable_ptr = new (std::nothrow) _glsl_shader_constructor_variable;
 
-    ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(variable_ptr != nullptr,
                        "Out of memory");
 
-    if (variable_ptr == NULL)
+    if (variable_ptr == nullptr)
     {
         goto end;
     }
@@ -1248,8 +1246,8 @@ PUBLIC EMERALD_API void glsl_shader_constructor_append_to_function_body(glsl_sha
                                                                         system_hashed_ansi_string           body_to_append)
 {
     std::stringstream                  body_sstream;
-    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
-    _glsl_shader_constructor_function* function_ptr    = NULL;
+    _glsl_shader_constructor*          constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
+    _glsl_shader_constructor_function* function_ptr    = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                 function_id,
@@ -1279,10 +1277,10 @@ PUBLIC EMERALD_API glsl_shader_constructor_uniform_block_id glsl_shader_construc
                                                                                                       glsl_shader_constructor_layout_qualifier layout_qualifiers,
                                                                                                       system_hashed_ansi_string                name)
 {
-    _glsl_shader_constructor*                constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor*                constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     bool                                     is_default_ub   = false;
     glsl_shader_constructor_uniform_block_id result_id       = 0;
-    _glsl_shader_constructor_uniform_block*  ub_ptr          = NULL;
+    _glsl_shader_constructor_uniform_block*  ub_ptr          = nullptr;
 
     /* Make sure the uniform block has not already been added */
     unsigned int n_uniform_blocks = 0;
@@ -1295,7 +1293,7 @@ PUBLIC EMERALD_API glsl_shader_constructor_uniform_block_id glsl_shader_construc
                       n_uniform_block < n_uniform_blocks;
                     ++n_uniform_block)
     {
-        _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
+        _glsl_shader_constructor_uniform_block* ub_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                     n_uniform_block,
@@ -1315,13 +1313,13 @@ PUBLIC EMERALD_API glsl_shader_constructor_uniform_block_id glsl_shader_construc
                 goto end;
             }
         }
-    } /* for (all added uniform blocks) */
+    }
 
     /* Do not allow unnamed uniform blocks *unless* this is the first call for this constructor,
      * in which case the call is made to initialize default uniform block.
      **/
     if ( (system_hashed_ansi_string_get_length(name) == 0 ||
-         name                                        == NULL) )
+         name                                        == nullptr) )
     {
         uint32_t n_ubs = 0;
 
@@ -1344,7 +1342,7 @@ PUBLIC EMERALD_API glsl_shader_constructor_uniform_block_id glsl_shader_construc
     /* Form a new descriptor */
     ub_ptr = new (std::nothrow) _glsl_shader_constructor_uniform_block;
 
-    if (ub_ptr == NULL)
+    if (ub_ptr == nullptr)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Out of memory");
@@ -1377,7 +1375,7 @@ PUBLIC EMERALD_API glsl_shader_constructor glsl_shader_constructor_create(ral_sh
 {
     _glsl_shader_constructor* constructor_ptr = new (std::nothrow) _glsl_shader_constructor;
 
-    if (constructor_ptr != NULL)
+    if (constructor_ptr != nullptr)
     {
         /* Store the properties */
         constructor_ptr->shader_type = shader_type;
@@ -1413,11 +1411,11 @@ PUBLIC EMERALD_API glsl_shader_constructor glsl_shader_constructor_create(ral_sh
 PUBLIC EMERALD_API unsigned int glsl_shader_constructor_get_amount_of_variables_in_ub(glsl_shader_constructor                  constructor,
                                                                                       glsl_shader_constructor_uniform_block_id ub_id)
 {
-    _glsl_shader_constructor* constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor* constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     unsigned int              result          = 0;
 
     /* Identify the uniform block descriptor */
-    _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
+    _glsl_shader_constructor_uniform_block* ub_ptr = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 ub_id,
@@ -1441,7 +1439,7 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API system_hashed_ansi_string glsl_shader_constructor_get_shader_body(glsl_shader_constructor constructor)
 {
-    _glsl_shader_constructor* constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor* constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
 
     if (constructor_ptr->dirty)
     {
@@ -1456,10 +1454,10 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_is_general_variable_in_ub(glsl_s
                                                                           glsl_shader_constructor_uniform_block_id uniform_block,
                                                                           system_hashed_ansi_string                var_name)
 {
-    _glsl_shader_constructor*               constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor*               constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     uint32_t                                n_variables     = 0;
     bool                                    result          = false;
-    _glsl_shader_constructor_uniform_block* ub_ptr          = NULL;
+    _glsl_shader_constructor_uniform_block* ub_ptr          = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 uniform_block,
@@ -1482,7 +1480,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_is_general_variable_in_ub(glsl_s
                   n_variable < n_variables;
                 ++n_variable)
     {
-        _glsl_shader_constructor_variable* variable_ptr = NULL;
+        _glsl_shader_constructor_variable* variable_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(ub_ptr->variables,
                                                     n_variable,
@@ -1503,7 +1501,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_is_general_variable_in_ub(glsl_s
 
             goto end;
         }
-    } /* for (all UB variables) */
+    }
 
     /* All done */
 end:
@@ -1515,8 +1513,8 @@ PUBLIC EMERALD_API void glsl_shader_constructor_set_function_body(glsl_shader_co
                                                                   glsl_shader_constructor_function_id function_id,
                                                                   system_hashed_ansi_string           body)
 {
-    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
-    _glsl_shader_constructor_function* function_ptr    = NULL;
+    _glsl_shader_constructor*          constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
+    _glsl_shader_constructor_function* function_ptr    = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->functions,
                                                 function_id,
@@ -1546,12 +1544,12 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_set_general_variable_default_val
                                                                                    const void*                              data,
                                                                                    uint32_t*                                out_n_bytes_to_read)
 {
-    _glsl_shader_constructor*          constructor_ptr = (_glsl_shader_constructor*) constructor;
+    _glsl_shader_constructor*          constructor_ptr = reinterpret_cast<_glsl_shader_constructor*>(constructor);
     bool                               result          = false;
-    _glsl_shader_constructor_variable* variable_ptr    = NULL;
+    _glsl_shader_constructor_variable* variable_ptr    = nullptr;
 
     /* Retrieve UB descriptor */
-    _glsl_shader_constructor_uniform_block* ub_ptr = NULL;
+    _glsl_shader_constructor_uniform_block* ub_ptr = nullptr;
 
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 uniform_block,
@@ -1595,7 +1593,7 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_set_general_variable_default_val
         goto end;
     }
 
-    if (variable_ptr->structure_ptr != NULL)
+    if (variable_ptr->structure_ptr != nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Requested variable is a structure.");
@@ -1612,23 +1610,23 @@ PUBLIC EMERALD_API bool glsl_shader_constructor_set_general_variable_default_val
     }
 
     /* Carry on.. */
-    if (out_n_bytes_to_read != NULL)
+    if (out_n_bytes_to_read != nullptr)
     {
         *out_n_bytes_to_read = sizeof(float) * 4 * 4;
     }
 
-    if (data != NULL)
+    if (data != nullptr)
     {
-        if (variable_ptr->default_data != NULL)
+        if (variable_ptr->default_data != nullptr)
         {
             delete [] variable_ptr->default_data;
 
-            variable_ptr->default_data = NULL;
+            variable_ptr->default_data = nullptr;
         }
 
         variable_ptr->default_data = new (std::nothrow) char[16 * sizeof(float)];
 
-        ASSERT_DEBUG_SYNC(variable_ptr->default_data != NULL,
+        ASSERT_DEBUG_SYNC(variable_ptr->default_data != nullptr,
                           "Out of memory");
 
         memcpy(variable_ptr->default_data,

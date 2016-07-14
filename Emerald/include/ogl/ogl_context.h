@@ -240,9 +240,9 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
 PUBLIC EMERALD_API ogl_context ogl_context_get_current_context();
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
+PUBLIC EMERALD_API void ogl_context_get_property(const ogl_context    context,
                                                  ogl_context_property property,
-                                                 void*                out_result);
+                                                 void*                out_result_ptr);
 
 /** TODO
  *

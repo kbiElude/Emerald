@@ -140,31 +140,31 @@ typedef struct _ogl_context_state_cache
 /** Please see header for spec */
 PUBLIC ogl_context_state_cache ogl_context_state_cache_create(ogl_context context)
 {
-    _ogl_context_state_cache* new_cache = new (std::nothrow) _ogl_context_state_cache;
+    _ogl_context_state_cache* new_cache_ptr = new (std::nothrow) _ogl_context_state_cache;
 
-    ASSERT_ALWAYS_SYNC(new_cache != nullptr,
+    ASSERT_ALWAYS_SYNC(new_cache_ptr != nullptr,
                        "Out of memory");
 
-    if (new_cache != nullptr)
+    if (new_cache_ptr != nullptr)
     {
-        new_cache->context = context;
+        new_cache_ptr->context = context;
     }
 
-    return (ogl_context_state_cache) new_cache;
+    return reinterpret_cast<ogl_context_state_cache>(new_cache_ptr);
 }
 
 /** Please see header for spec */
 PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache    cache,
                                                  ogl_context_state_cache_property property,
-                                                 void*                            out_result)
+                                                 void*                            out_result_ptr)
 {
-    const _ogl_context_state_cache* cache_ptr = (const _ogl_context_state_cache*) cache;
+    const _ogl_context_state_cache* cache_ptr = reinterpret_cast<const _ogl_context_state_cache*>(cache);
 
     switch (property)
     {
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_COLOR:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    cache_ptr->blend_color_local,
                    sizeof(cache_ptr->blend_color_local) );
 
@@ -173,49 +173,49 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA:
         {
-            *(GLenum*) out_result = cache_ptr->blend_equation_alpha_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->blend_equation_alpha_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB:
         {
-            *(GLenum*) out_result = cache_ptr->blend_equation_rgb_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->blend_equation_rgb_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA:
         {
-            *(GLenum*) out_result = cache_ptr->blend_function_dst_alpha_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->blend_function_dst_alpha_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB:
         {
-            *(GLenum*) out_result = cache_ptr->blend_function_dst_rgb_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->blend_function_dst_rgb_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA:
         {
-            *(GLenum*) out_result = cache_ptr->blend_function_src_alpha_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->blend_function_src_alpha_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB:
         {
-            *(GLenum*) out_result = cache_ptr->blend_function_src_rgb_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->blend_function_src_rgb_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_COLOR_MASK:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    cache_ptr->active_color_mask_local,
                    sizeof(cache_ptr->active_color_mask_local) );
 
@@ -224,231 +224,231 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_CULL_FACE:
         {
-            *(GLenum*) out_result = cache_ptr->active_cull_face_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->active_cull_face_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_FUNC:
         {
-            *(GLenum*) out_result = cache_ptr->active_depth_func_local;
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->active_depth_func_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_MASK:
         {
-            *(GLboolean*) out_result = cache_ptr->active_depth_mask_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_depth_mask_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER:
         {
-            *(GLuint*) out_result = cache_ptr->active_draw_fbo_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_draw_fbo_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
         {
-            *(GLuint*) out_result = cache_ptr->active_front_face_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_front_face_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
-            *((GLuint*) out_result) = cache_ptr->active_program_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_program_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER:
         {
-            *(GLuint*) out_result = cache_ptr->active_read_fbo_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_read_fbo_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER:
         {
-            *(GLuint*) out_result = cache_ptr->active_rbo_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_rbo_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_BLEND:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_blend_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_blend_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_COLOR_LOGIC_OP:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_color_logic_op_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_color_logic_op_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_cull_face_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_cull_face_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_CLAMP:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_depth_clamp_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_depth_clamp_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_TEST:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_depth_test_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_depth_test_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DITHER:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_dither_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_dither_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_FRAMEBUFFER_SRGB:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_framebuffer_srgb_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_framebuffer_srgb_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_LINE_SMOOTH:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_line_smooth_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_line_smooth_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_MULTISAMPLE:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_multisample_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_multisample_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_FILL:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_polygon_offset_fill_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_polygon_offset_fill_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_LINE:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_polygon_offset_line_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_polygon_offset_line_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_polygon_smooth_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_polygon_smooth_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_primitive_restart_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_primitive_restart_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART_FIXED_INDEX:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_primitive_restart_fixed_index_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_primitive_restart_fixed_index_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PROGRAM_POINT_SIZE:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_program_point_size_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_program_point_size_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_RASTERIZER_DISCARD:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_rasterizer_discard_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_rasterizer_discard_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_COVERAGE:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_sample_alpha_to_coverage_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_sample_alpha_to_coverage_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_ONE:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_sample_alpha_to_one_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_sample_alpha_to_one_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_COVERAGE:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_sample_coverage_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_sample_coverage_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_SHADING:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_sample_shading_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_sample_shading_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_MASK:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_sample_mask_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_sample_mask_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SCISSOR_TEST:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_scissor_test_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_scissor_test_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_STENCIL_TEST:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_stencil_test_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_stencil_test_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_TEXTURE_CUBE_MAP_SEAMLESS:
         {
-            *(GLboolean*) out_result = cache_ptr->active_rendering_mode_texture_cube_map_seamless_local;
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_texture_cube_map_seamless_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    cache_ptr->active_scissor_box_local,
                    sizeof(cache_ptr->active_scissor_box_local) );
 
@@ -457,21 +457,21 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT:
         {
-            *((GLuint*) out_result) = cache_ptr->active_texture_unit_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_texture_unit_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT:
         {
-            *((GLuint*) out_result) = cache_ptr->active_vertex_array_object_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_vertex_array_object_local;
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    cache_ptr->active_viewport_local,
                    sizeof(cache_ptr->active_viewport_local) );
 
@@ -490,7 +490,7 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
 PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                   cache,
                                          const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
-    _ogl_context_state_cache*    cache_ptr  = (_ogl_context_state_cache*) cache;
+    _ogl_context_state_cache*    cache_ptr  = reinterpret_cast<_ogl_context_state_cache*>(cache);
     const ogl_context_gl_limits* limits_ptr = nullptr;
 
     /* Cache info in private descriptor */
@@ -663,7 +663,7 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
 /** Please see header for spec */
 PUBLIC void ogl_context_state_cache_release(ogl_context_state_cache cache)
 {
-    _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
+    _ogl_context_state_cache* cache_ptr = reinterpret_cast<_ogl_context_state_cache*>(cache);
 
     /* Done */
     delete cache_ptr;
@@ -676,7 +676,7 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
                                                  ogl_context_state_cache_property property,
                                                  const void*                      data)
 {
-    _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
+    _ogl_context_state_cache* cache_ptr = reinterpret_cast<_ogl_context_state_cache*>(cache);
 
     switch (property)
     {
@@ -691,42 +691,42 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA:
         {
-            cache_ptr->blend_equation_alpha_local = *(GLenum*) data;
+            cache_ptr->blend_equation_alpha_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB:
         {
-            cache_ptr->blend_equation_rgb_local = *(GLenum*) data;
+            cache_ptr->blend_equation_rgb_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA:
         {
-            cache_ptr->blend_function_dst_alpha_local = *(GLenum*) data;
+            cache_ptr->blend_function_dst_alpha_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB:
         {
-            cache_ptr->blend_function_dst_rgb_local = *(GLenum*) data;
+            cache_ptr->blend_function_dst_rgb_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA:
         {
-            cache_ptr->blend_function_src_alpha_local = *(GLenum*) data;
+            cache_ptr->blend_function_src_alpha_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB:
         {
-            cache_ptr->blend_function_src_rgb_local = *(GLenum*) data;
+            cache_ptr->blend_function_src_rgb_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
@@ -742,7 +742,7 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH:
         {
-            cache_ptr->active_clear_depth_local = *(GLdouble*) data;
+            cache_ptr->active_clear_depth_local = *reinterpret_cast<const GLdouble*>(data);
 
             break;
         }
@@ -758,224 +758,224 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_CULL_FACE:
         {
-            cache_ptr->active_cull_face_local = *(GLenum*) data;
+            cache_ptr->active_cull_face_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_FUNC:
         {
-            cache_ptr->active_depth_func_local = *(GLenum*) data;
+            cache_ptr->active_depth_func_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_MASK:
         {
-            cache_ptr->active_depth_mask_local = *(GLboolean*) data;
+            cache_ptr->active_depth_mask_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER:
         {
-            cache_ptr->active_draw_fbo_local = *(GLuint*) data;
+            cache_ptr->active_draw_fbo_local = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
         {
-            cache_ptr->active_front_face_local = *(GLenum*) data;
+            cache_ptr->active_front_face_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
-            cache_ptr->active_program_local = *(GLuint*) data;
+            cache_ptr->active_program_local = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER:
         {
-            cache_ptr->active_read_fbo_local = *(GLuint*) data;
+            cache_ptr->active_read_fbo_local = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER:
         {
-            cache_ptr->active_rbo_local = *(GLuint*) data;
+            cache_ptr->active_rbo_local = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_BLEND:
         {
-            cache_ptr->active_rendering_mode_blend_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_blend_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_COLOR_LOGIC_OP:
         {
-            cache_ptr->active_rendering_mode_color_logic_op_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_color_logic_op_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE:
         {
-            cache_ptr->active_rendering_mode_cull_face_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_cull_face_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_CLAMP:
         {
-            cache_ptr->active_rendering_mode_depth_clamp_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_depth_clamp_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_TEST:
         {
-            cache_ptr->active_rendering_mode_depth_test_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_depth_test_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DITHER:
         {
-            cache_ptr->active_rendering_mode_dither_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_dither_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_FRAMEBUFFER_SRGB:
         {
-            cache_ptr->active_rendering_mode_framebuffer_srgb_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_framebuffer_srgb_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_LINE_SMOOTH:
         {
-            cache_ptr->active_rendering_mode_line_smooth_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_line_smooth_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_MULTISAMPLE:
         {
-            cache_ptr->active_rendering_mode_multisample_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_multisample_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_FILL:
         {
-            cache_ptr->active_rendering_mode_polygon_offset_fill_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_polygon_offset_fill_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_LINE:
         {
-            cache_ptr->active_rendering_mode_polygon_offset_line_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_polygon_offset_line_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH:
         {
-            cache_ptr->active_rendering_mode_polygon_smooth_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_polygon_smooth_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART:
         {
-            cache_ptr->active_rendering_mode_primitive_restart_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_primitive_restart_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART_FIXED_INDEX:
         {
-            cache_ptr->active_rendering_mode_primitive_restart_fixed_index_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_primitive_restart_fixed_index_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PROGRAM_POINT_SIZE:
         {
-            cache_ptr->active_rendering_mode_program_point_size_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_program_point_size_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_RASTERIZER_DISCARD:
         {
-            cache_ptr->active_rendering_mode_rasterizer_discard_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_rasterizer_discard_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_COVERAGE:
         {
-            cache_ptr->active_rendering_mode_sample_alpha_to_coverage_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_sample_alpha_to_coverage_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_ONE:
         {
-            cache_ptr->active_rendering_mode_sample_alpha_to_one_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_sample_alpha_to_one_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_COVERAGE:
         {
-            cache_ptr->active_rendering_mode_sample_coverage_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_sample_coverage_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_SHADING:
         {
-            cache_ptr->active_rendering_mode_sample_shading_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_sample_shading_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_MASK:
         {
-            cache_ptr->active_rendering_mode_sample_mask_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_sample_mask_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SCISSOR_TEST:
         {
-            cache_ptr->active_rendering_mode_scissor_test_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_scissor_test_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_STENCIL_TEST:
         {
-            cache_ptr->active_rendering_mode_stencil_test_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_stencil_test_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_TEXTURE_CUBE_MAP_SEAMLESS:
         {
-            cache_ptr->active_rendering_mode_texture_cube_map_seamless_local = *(GLboolean*) data;
+            cache_ptr->active_rendering_mode_texture_cube_map_seamless_local = *reinterpret_cast<const GLboolean*>(data);
 
             break;
         }
@@ -991,14 +991,14 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT:
         {
-            cache_ptr->active_texture_unit_local = *(GLuint*) data;
+            cache_ptr->active_texture_unit_local = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
 
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT:
         {
-            cache_ptr->active_vertex_array_object_local = *((GLuint*) data);
+            cache_ptr->active_vertex_array_object_local = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
@@ -1027,7 +1027,7 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
     /* NOTE: cache is NULL during rendering context initialization */
     if (cache != nullptr)
     {
-        _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
+        _ogl_context_state_cache* cache_ptr = reinterpret_cast<_ogl_context_state_cache*>(cache);
 
         /* Blending configuration */
         if ((sync_bits & STATE_CACHE_SYNC_BIT_BLENDING) )

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -30,52 +30,52 @@ PUBLIC object_manager_item object_manager_item_create(system_hashed_ansi_string 
                                                       object_manager_object_type type,
                                                       void*                      ptr)
 {
-    _object_manager_item* new_item = new (std::nothrow) _object_manager_item;
+    _object_manager_item* new_item_ptr = new (std::nothrow) _object_manager_item;
 
-    ASSERT_DEBUG_SYNC(new_item != NULL,
+    ASSERT_DEBUG_SYNC(new_item_ptr != nullptr,
                       "Out of memory while allocating object manager item descriptor.");
 
-    if (new_item != NULL)
+    if (new_item_ptr != nullptr)
     {
-        new_item->name             = name;
-        new_item->origin_file      = origin_file;
-        new_item->origin_file_line = origin_line;
-        new_item->ptr              = ptr;
-        new_item->type             = type;
+        new_item_ptr->name             = name;
+        new_item_ptr->origin_file      = origin_file;
+        new_item_ptr->origin_file_line = origin_line;
+        new_item_ptr->ptr              = ptr;
+        new_item_ptr->type             = type;
     }
 
-    return (object_manager_item) new_item;
+    return reinterpret_cast<object_manager_item>(new_item_ptr);
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string object_manager_item_get_name(object_manager_item item)
+PUBLIC system_hashed_ansi_string object_manager_item_get_name(object_manager_item item)
 {
-    return ((_object_manager_item*) item)->name;
+    return reinterpret_cast<_object_manager_item*>(item)->name;
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void object_manager_item_get_origin_details(object_manager_item        item,
-                                                               system_hashed_ansi_string* out_file,
-                                                               int*                       out_file_line)
+PUBLIC void object_manager_item_get_origin_details(object_manager_item        item,
+                                                   system_hashed_ansi_string* out_file_ptr,
+                                                   int*                       out_file_line_ptr)
 {
-    *out_file      = ((_object_manager_item*) item)->origin_file;
-    *out_file_line = ((_object_manager_item*) item)->origin_file_line;
+    *out_file_ptr      = reinterpret_cast<_object_manager_item*>(item)->origin_file;
+    *out_file_line_ptr = reinterpret_cast<_object_manager_item*>(item)->origin_file_line;
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void* object_manager_item_get_raw_pointer(object_manager_item item)
+PUBLIC void* object_manager_item_get_raw_pointer(object_manager_item item)
 {
-    return ((_object_manager_item*) item)->ptr;
+    return reinterpret_cast<_object_manager_item*>(item)->ptr;
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API object_manager_object_type object_manager_item_get_type(object_manager_item item)
+PUBLIC object_manager_object_type object_manager_item_get_type(object_manager_item item)
 {
-    return ((_object_manager_item*) item)->type;
+    return reinterpret_cast<_object_manager_item*>(item)->type;
 }
 
 /* Please see header for specification */
 PUBLIC void object_manager_item_release(object_manager_item item)
 {
-    delete (_object_manager_item*) item;
+    delete reinterpret_cast<_object_manager_item*>(item);
 }

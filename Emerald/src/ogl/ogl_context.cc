@@ -69,9 +69,9 @@ typedef void  (*PFNUNBINDFROMCURRENTTHREADPROC)   (ogl_context_platform         
 typedef struct
 {
 #ifdef _WIN32
-    ogl_context_win32           context_platform;
+    ogl_context_win32 context_platform;
 #else
-    ogl_context_linux           context_platform;
+    ogl_context_linux context_platform;
 #endif
 
     ral_backend_type     backend_type;
@@ -173,57 +173,58 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_context,
                               _ogl_context);
 
 /* Forward declarations */
-PRIVATE void APIENTRY             _ogl_context_debug_message_gl_callback                             (GLenum                       source,
-                                                                                                      GLenum                       type,
-                                                                                                      GLuint                       id,
-                                                                                                      GLenum                       severity,
-                                                                                                      GLsizei                      length,
-                                                                                                      const GLchar*                message,
-                                                                                                      const void*                  userParam);
-PRIVATE void                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback      (ogl_context                  context,
-                                                                                                      void*                        user_arg);
-PRIVATE bool                      _ogl_context_get_attachment_formats_for_system_pixel_format        (const system_pixel_format    pf,
-                                                                                                      ral_format*                  out_color_attachment_internalformat_ptr,
-                                                                                                      ral_format*                  out_depth_stencil_attachment_internalformat_ptr);
-PRIVATE bool                      _ogl_context_get_color_attachment_format_for_rgba_bits             (unsigned char*               n_rgba_bits,
-                                                                                                      bool                         use_srgb_color_space_ptr,
-                                                                                                      ral_format*                  out_format_ptr);
-PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename                               (void*                        user_arg,
-                                                                                                      system_hashed_ansi_string    decompressed_filename,
-                                                                                                      GLenum*                      out_compressed_gl_enum_ptr,
-                                                                                                      system_file_unpacker*        out_file_unpacker_ptr);
-PRIVATE bool                      _ogl_context_get_depth_attachment_format_for_bits                  (unsigned char                n_depth_bits,
-                                                                                                      ral_format*                  out_format_ptr);
-PRIVATE bool                      _ogl_context_get_depth_stencil_attachment_format_for_bits          (unsigned char                n_depth_bits,
-                                                                                                      unsigned char                n_stencil_bits,
-                                                                                                      ral_format*                  out_format_ptr);
-PRIVATE bool                      _ogl_context_get_function_pointers                                 (_ogl_context*                context_ptr,
-                                                                                                      const func_ptr_table_entry*  entries,
-                                                                                                      uint32_t                     n_entries);
-PRIVATE void                      _ogl_context_gl_info_deinit                                        (ogl_context_gl_info*         info_ptr);
-PRIVATE void                      _ogl_context_gl_info_init                                          (ogl_context_gl_info*         info_ptr,
-                                                                                                      const ogl_context_gl_limits* limits_ptr);
-PRIVATE void                      _ogl_context_init_context_after_creation                           (ogl_context                  context);
-PRIVATE void                      _ogl_context_initialize_es_ext_texture_buffer_extension            (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_fbo                                        (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_arb_buffer_storage_extension            (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_arb_multi_bind_extension                (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_arb_sparse_buffer_extension             (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_ext_direct_state_access_extension       (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension(_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_release                                               (void*                        ptr);
-PRIVATE void                      _ogl_context_retrieve_ES_function_pointers                         (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers      (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers          (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers       (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                  (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits     (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_function_pointers                         (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_info                                      (_ogl_context*                context_ptr);
-PRIVATE void                      _ogl_context_retrieve_GL_limits                                    (_ogl_context*                context_ptr);
-PRIVATE bool                      _ogl_context_sort_descending                                       (void*                        in_int_1,
-                                                                                                      void*                        in_int_2);
+PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*                     user_arg,
+                                                                       system_hashed_ansi_string decompressed_filename,
+                                                                       GLenum*                   out_compressed_gl_enum_ptr,
+                                                                       system_file_unpacker*     out_file_unpacker_ptr);
+
+PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback                             (GLenum                       source,
+                                                                                          GLenum                       type,
+                                                                                          GLuint                       id,
+                                                                                          GLenum                       severity,
+                                                                                          GLsizei                      length,
+                                                                                          const GLchar*                message,
+                                                                                          const void*                  userParam);
+PRIVATE void          _ogl_context_enumerate_msaa_samples_rendering_thread_callback      (ogl_context                  context,
+                                                                                          void*                        user_arg);
+PRIVATE bool          _ogl_context_get_attachment_formats_for_system_pixel_format        (const system_pixel_format    pf,
+                                                                                          ral_format*                  out_color_attachment_internalformat_ptr,
+                                                                                          ral_format*                  out_depth_stencil_attachment_internalformat_ptr);
+PRIVATE bool          _ogl_context_get_color_attachment_format_for_rgba_bits             (unsigned char*               n_rgba_bits,
+                                                                                          bool                         use_srgb_color_space_ptr,
+                                                                                          ral_format*                  out_format_ptr);
+PRIVATE bool          _ogl_context_get_depth_attachment_format_for_bits                  (unsigned char                n_depth_bits,
+                                                                                          ral_format*                  out_format_ptr);
+PRIVATE bool          _ogl_context_get_depth_stencil_attachment_format_for_bits          (unsigned char                n_depth_bits,
+                                                                                          unsigned char                n_stencil_bits,
+                                                                                          ral_format*                  out_format_ptr);
+PRIVATE bool          _ogl_context_get_function_pointers                                 (_ogl_context*                context_ptr,
+                                                                                          const func_ptr_table_entry*  entries,
+                                                                                          uint32_t                     n_entries);
+PRIVATE void          _ogl_context_gl_info_deinit                                        (ogl_context_gl_info*         info_ptr);
+PRIVATE void          _ogl_context_gl_info_init                                          (ogl_context_gl_info*         info_ptr,
+                                                                                          const ogl_context_gl_limits* limits_ptr);
+PRIVATE void          _ogl_context_init_context_after_creation                           (ogl_context                  context);
+PRIVATE void          _ogl_context_initialize_es_ext_texture_buffer_extension            (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_initialize_fbo                                        (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_initialize_gl_arb_buffer_storage_extension            (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_initialize_gl_arb_multi_bind_extension                (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_initialize_gl_arb_sparse_buffer_extension             (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_initialize_gl_ext_direct_state_access_extension       (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension(_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_release                                               (void*                        ptr);
+PRIVATE void          _ogl_context_retrieve_ES_function_pointers                         (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers      (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers          (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers       (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                  (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits     (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_function_pointers                         (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_info                                      (_ogl_context*                context_ptr);
+PRIVATE void          _ogl_context_retrieve_GL_limits                                    (_ogl_context*                context_ptr);
+PRIVATE bool          _ogl_context_sort_descending                                       (void*                        in_int_1,
+                                                                                          void*                        in_int_2);
 
 
 /** TODO */
@@ -301,7 +302,7 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
 
     if (new_context_ptr->parent_context != nullptr)
     {
-        ral_context_retain(((_ogl_context*) new_context_ptr->parent_context)->context);
+        ral_context_retain(reinterpret_cast<_ogl_context*>(new_context_ptr->parent_context)->context);
     }
 
     if (new_context_ptr->backend_type == RAL_BACKEND_TYPE_GL)
@@ -335,7 +336,7 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
                                                              const GLchar* message,
                                                              const void*   userParam)
 {
-    _ogl_context* context_ptr = (_ogl_context*) userParam;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(userParam);
     static char   local_message[4096];
 
     /* 1280: shader compilation failure. (Intel & NVIDIA)
@@ -424,7 +425,7 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
 PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_context context,
                                                                            void*       user_arg)
 {
-    _ogl_context*                context_ptr            = (_ogl_context*) context;
+    _ogl_context*                context_ptr            = reinterpret_cast<_ogl_context*>(context);
     PFNGLGETINTERNALFORMATIVPROC pGLGetInternalformativ = nullptr;
 
     /* Determine all supported n_samples for the internalformat we intend to use for the color attachment */
@@ -578,7 +579,7 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(void*    
                                                                        GLenum*                   out_compressed_gl_enum_ptr,
                                                                        system_file_unpacker*     out_file_unpacker_ptr)
 {
-    _ogl_context*             context_ptr                  = (_ogl_context*) user_arg;
+    _ogl_context*             context_ptr                  = reinterpret_cast<_ogl_context*>(user_arg);
     int                       n_compressed_internalformats = 0;
     system_hashed_ansi_string result                       = nullptr;
 
@@ -870,8 +871,8 @@ PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*               cont
                   n_entry < n_entries;
                 ++n_entry)
     {
-        GLvoid** ptr_to_update = (GLvoid**) entries[n_entry].func_ptr;
-        GLchar*  func_name     = (GLchar*)  entries[n_entry].func_name;
+        GLvoid** ptr_to_update = reinterpret_cast<GLvoid**>(entries[n_entry].func_ptr);
+        GLchar*  func_name     = reinterpret_cast<GLchar*> (entries[n_entry].func_name);
 
         *ptr_to_update = context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
                                                        func_name);
@@ -895,7 +896,7 @@ PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*               cont
 PRIVATE void _ogl_context_gl_info_deinit(ogl_context_gl_info* info_ptr)
 {
     ASSERT_DEBUG_SYNC(info_ptr != nullptr,
-                      "Input argument is NULL");
+                      "Input argument is nullptr");
 
     if (info_ptr != nullptr)
     {
@@ -915,7 +916,7 @@ PRIVATE void _ogl_context_gl_info_init(      ogl_context_gl_info*   info_ptr,
 {
     ASSERT_DEBUG_SYNC(info_ptr   != nullptr &&
                       limits_ptr != nullptr,
-                      "Input arguments are NULL.");
+                      "Input arguments are nullptr.");
 
     if (info_ptr   != nullptr &&
         limits_ptr != nullptr)
@@ -931,10 +932,10 @@ PRIVATE void _ogl_context_gl_info_init(      ogl_context_gl_info*   info_ptr,
 /** TODO */
 PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
 
     ASSERT_DEBUG_SYNC(context_ptr != nullptr,
-                      "Input argument is NULL");
+                      "Input argument is nullptr");
 
     memset(&context_ptr->limits,
            0,
@@ -1100,7 +1101,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     /* Update gfx_image alternative file getter provider so that it can
      * search for compressed textures supported by this rendering context. */
     gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_FUNC_PTR,
-                                  (void*) _ogl_context_get_compressed_filename);
+                                  reinterpret_cast<void*>(_ogl_context_get_compressed_filename) );
     gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_USER_ARG,
                                   context_ptr);
 
@@ -1456,7 +1457,7 @@ PRIVATE void _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension
  **/
 PRIVATE void _ogl_context_release(void* ptr)
 {
-    _ogl_context* context_ptr = (_ogl_context*) ptr;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(ptr);
 
     if (context_ptr->bo_bindings != nullptr)
     {
@@ -1541,7 +1542,7 @@ PRIVATE void _ogl_context_release(void* ptr)
     /* Release the parent context */
     if (context_ptr->parent_context != nullptr)
     {
-        ral_context_release(((_ogl_context*) context_ptr->parent_context)->context);
+        ral_context_release(reinterpret_cast<_ogl_context*>(context_ptr->parent_context)->context);
 
         context_ptr->parent_context = nullptr;
     }
@@ -2716,21 +2717,21 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
     context_ptr->info.shading_language_version = pGLGetString(GL_SHADING_LANGUAGE_VERSION);
 
     /* Is this an AMD driver? */
-    if (strstr((const char*) context_ptr->info.vendor,
+    if (strstr(reinterpret_cast<const char*>(context_ptr->info.vendor),
                "ATI") != nullptr)
     {
         context_ptr->is_amd_driver = true;
     }
 
     /* Is this an Intel driver? */
-    if (strstr((const char*) context_ptr->info.vendor,
+    if (strstr(reinterpret_cast<const char*>(context_ptr->info.vendor),
                "Intel") != nullptr)
     {
         context_ptr->is_intel_driver = true;
     }
 
     /* Is this a NV driver? */
-    if (strstr((const char*) context_ptr->info.vendor,
+    if (strstr(reinterpret_cast<const char*>(context_ptr->info.vendor),
                "NV") != nullptr)
     {
         context_ptr->is_nv_driver = true;
@@ -2764,7 +2765,7 @@ PRIVATE void _ogl_context_retrieve_GL_info(_ogl_context* context_ptr)
                      context_ptr->info.extensions[n_extension]);
 
             ASSERT_ALWAYS_SYNC(context_ptr->info.extensions[n_extension] != nullptr,
-                               "GL reports %d extensions supported but %dth extension name is NULL!",
+                               "GL reports %d extensions supported but %dth extension name is nullptr!",
                                context_ptr->limits.num_extensions,
                                n_extension);
         }
@@ -3032,10 +3033,10 @@ PRIVATE bool _ogl_context_sort_descending(void* in_int_1,
 /** Please see header for specification */
 PUBLIC void ogl_context_bind_to_current_thread(ogl_context context)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
 
     ASSERT_DEBUG_SYNC(context_ptr != nullptr,
-                      "Input argument is NULL");
+                      "Input argument is nullptr");
 
     if (context_ptr != nullptr)
     {
@@ -3050,10 +3051,10 @@ PUBLIC void ogl_context_bind_to_current_thread(ogl_context context)
 /** Please see header for specification */
 PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
 
     ASSERT_DEBUG_SYNC(context_ptr != nullptr,
-                      "Input argument is NULL");
+                      "Input argument is nullptr");
 
     if (context_ptr != nullptr)
     {
@@ -3076,7 +3077,7 @@ PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context)
  *  @param share_context TODO
  *  @param support_multisampling True if multisampling info should be extracted and made available. Slows down window creation.
  *
- *  @return A new ogl_context instance, if successful, or NULL otherwise.
+ *  @return A new ogl_context instance, if successful, or nullptr otherwise.
 */
 PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hashed_ansi_string name,
                                                                      ral_context               context,
@@ -3158,7 +3159,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
     }
 
     root_context_gl     = ral_context_get_gl_context(root_context);
-    root_context_gl_ptr = (_ogl_context*) root_context_gl;
+    root_context_gl_ptr = reinterpret_cast<_ogl_context*>(root_context_gl);
 
     root_context_gl_ptr->msaa_enumeration_color_internalformat         = raGL_utils_get_ogl_texture_internalformat_for_ral_format(format_color);
     root_context_gl_ptr->msaa_enumeration_depth_stencil_internalformat = raGL_utils_get_ogl_texture_internalformat_for_ral_format(format_depth_stencil);
@@ -3199,7 +3200,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
                     ++n_depth_stencil_n_samples)
     {
         system_resizable_vector_push(depth_stencil_samples_vector,
-                                     (void*) root_context_gl_ptr->msaa_enumeration_depth_stencil_samples[n_depth_stencil_n_samples]);
+                                     reinterpret_cast<void*>(root_context_gl_ptr->msaa_enumeration_depth_stencil_samples[n_depth_stencil_n_samples]));
     }
 
     if (depth_stencil_samples_vector != nullptr)
@@ -3213,7 +3214,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
                                              (void*) root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]) != ITEM_NOT_FOUND)
             {
                 system_resizable_vector_push(result_vector,
-                                             (void*) root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]);
+                                             reinterpret_cast<void*>(root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]));
             }
         }
     }
@@ -3225,7 +3226,7 @@ PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    b
                         ++n_result_sample)
         {
             system_resizable_vector_push(result_vector,
-                                         (void*) root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]);
+                                         reinterpret_cast<void*>(root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]));
         }
     }
 
@@ -3252,7 +3253,7 @@ end:
         *out_supported_samples = new unsigned int [*out_n_supported_samples];
 
         ASSERT_DEBUG_SYNC(result_vector_data_ptr != nullptr,
-                          "system_resizable_vector returned NULL for SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY query");
+                          "system_resizable_vector returned nullptr for SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY query");
         ASSERT_DEBUG_SYNC(*out_supported_samples != nullptr,
                           "Out of memory");
 
@@ -3298,17 +3299,17 @@ PUBLIC EMERALD_API ogl_context ogl_context_get_current_context()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
+PUBLIC EMERALD_API void ogl_context_get_property(const ogl_context    context,
                                                  ogl_context_property property,
-                                                 void*                out_result)
+                                                 void*                out_result_ptr)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
 
     if (context_ptr->context_platform != nullptr)
     {
         bool result = context_ptr->pfn_get_property(context_ptr->context_platform,
                                                     property,
-                                                    out_result);
+                                                    out_result_ptr);
 
         if (result)
         {
@@ -3320,35 +3321,35 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
     {
         case OGL_CONTEXT_PROPERTY_BACKEND:
         {
-            *((raGL_backend*) out_result) = context_ptr->backend;
+            *reinterpret_cast<raGL_backend*>(out_result_ptr) = context_ptr->backend;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_BACKEND_TYPE:
         {
-            *(ral_backend_type*) out_result = context_ptr->backend_type;
+            *reinterpret_cast<ral_backend_type*>(out_result_ptr) = context_ptr->backend_type;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_BO_BINDINGS:
         {
-            *((ogl_context_bo_bindings*) out_result) = context_ptr->bo_bindings;
+            *reinterpret_cast<ogl_context_bo_bindings*>(out_result_ptr) = context_ptr->bo_bindings;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_CONTEXT_RAL:
         {
-            *(ral_context*) out_result = context_ptr->context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = context_ptr->context;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_DEFAULT_FBO:
         {
-            *(raGL_framebuffer*) out_result = context_ptr->fbo;
+            *reinterpret_cast<raGL_framebuffer*>(out_result_ptr) = context_ptr->fbo;
 
             break;
         }
@@ -3357,7 +3358,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
         {
             ral_texture_get_property(context_ptr->fbo_color_texture,
                                      RAL_TEXTURE_PROPERTY_FORMAT,
-                                     out_result);
+                                     out_result_ptr);
 
             break;
         }
@@ -3368,7 +3369,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
                               context_ptr->fbo_to_size[1] > 0,
                               "Invalid default FB's size detected.");
 
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    context_ptr->fbo_to_size,
                    sizeof(context_ptr->fbo_to_size) );
 
@@ -3381,7 +3382,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_ES,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES property requested for a non-ES context");
 
-            *((const ogl_context_es_entrypoints**) out_result) = &context_ptr->entry_points_es;
+            *reinterpret_cast<const ogl_context_es_entrypoints**>(out_result_ptr) = &context_ptr->entry_points_es;
 
             break;
         }
@@ -3391,7 +3392,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_ES,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES_EXT_TEXTURE_BUFFER property requested for a non-ES context");
 
-            *((const ogl_context_es_entrypoints_ext_texture_buffer**) out_result) = &context_ptr->entry_points_es_ext_texture_buffer;
+            *reinterpret_cast<const ogl_context_es_entrypoints_ext_texture_buffer**>(out_result_ptr) = &context_ptr->entry_points_es_ext_texture_buffer;
 
             break;
         }
@@ -3401,7 +3402,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL property requested for a non-GL context");
 
-            *((const ogl_context_gl_entrypoints**) out_result) = &context_ptr->entry_points_gl;
+            *reinterpret_cast<const ogl_context_gl_entrypoints**>(out_result_ptr) = &context_ptr->entry_points_gl;
 
             break;
         }
@@ -3411,7 +3412,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE property requested for a non-GL context");
 
-            *((const ogl_context_gl_entrypoints_arb_buffer_storage**) out_result) = &context_ptr->entry_points_gl_arb_buffer_storage;
+            *reinterpret_cast<const ogl_context_gl_entrypoints_arb_buffer_storage**>(out_result_ptr) = &context_ptr->entry_points_gl_arb_buffer_storage;
 
             break;
         }
@@ -3421,7 +3422,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER property requested for a non-GL context");
 
-            *((const ogl_context_gl_entrypoints_arb_sparse_buffer**) out_result) = &context_ptr->entry_points_gl_arb_sparse_buffer;
+            *reinterpret_cast<const ogl_context_gl_entrypoints_arb_sparse_buffer**>(out_result_ptr) = &context_ptr->entry_points_gl_arb_sparse_buffer;
 
             break;
         }
@@ -3431,147 +3432,147 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS property requested for a non-GL context");
 
-            *((const ogl_context_gl_entrypoints_ext_direct_state_access**) out_result) = &context_ptr->entry_points_gl_ext_direct_state_access;
+            *reinterpret_cast<const ogl_context_gl_entrypoints_ext_direct_state_access**>(out_result_ptr) = &context_ptr->entry_points_gl_ext_direct_state_access;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_INFO:
         {
-            *((const ogl_context_gl_info**) out_result) = &context_ptr->info;
+            *reinterpret_cast<const ogl_context_gl_info**>(out_result_ptr) = &context_ptr->info;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_IS_AMD_DRIVER:
         {
-            *(bool*) out_result = context_ptr->is_amd_driver;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->is_amd_driver;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT:
         {
-            *(bool*) out_result = context_ptr->is_helper_context;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->is_helper_context;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_IS_INTEL_DRIVER:
         {
-            *(bool*) out_result = context_ptr->is_intel_driver;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->is_intel_driver;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_IS_NV_DRIVER:
         {
-            *(bool*) out_result = context_ptr->is_nv_driver;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->is_nv_driver;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_LIMITS:
         {
-            *((const ogl_context_gl_limits**) out_result) = &context_ptr->limits;
+            *reinterpret_cast<const ogl_context_gl_limits**>(out_result_ptr) = &context_ptr->limits;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER:
         {
-            *((const ogl_context_gl_limits_arb_sparse_buffer**) out_result) = &context_ptr->limits_arb_sparse_buffer;
+            *reinterpret_cast<const ogl_context_gl_limits_arb_sparse_buffer**>(out_result_ptr) = &context_ptr->limits_arb_sparse_buffer;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_LIMITS_EXT_TEXTURE_FILTER_ANISOTROPIC:
         {
-            *((const ogl_context_gl_limits_ext_texture_filter_anisotropic**) out_result) = &context_ptr->limits_ext_texture_filter_anisotropic;
+            *reinterpret_cast<const ogl_context_gl_limits_ext_texture_filter_anisotropic**>(out_result_ptr) = &context_ptr->limits_ext_texture_filter_anisotropic;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_MAJOR_VERSION:
         {
-            *(uint32_t*) out_result = context_ptr->major_version;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = context_ptr->major_version;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_MINOR_VERSION:
         {
-            *(uint32_t*) out_result = context_ptr->minor_version;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = context_ptr->minor_version;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_PIXEL_FORMAT:
         {
-            *(system_pixel_format*) out_result = context_ptr->pfd;
+            *reinterpret_cast<system_pixel_format*>(out_result_ptr) = context_ptr->pfd;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_PARENT_CONTEXT:
         {
-            *(ogl_context*) out_result = context_ptr->parent_context;
+            *reinterpret_cast<ogl_context*>(out_result_ptr) = context_ptr->parent_context;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS:
         {
-            *((ogl_context_sampler_bindings*) out_result) = context_ptr->sampler_bindings;
+            *reinterpret_cast<ogl_context_sampler_bindings*>(out_result_ptr) = context_ptr->sampler_bindings;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_STATE_CACHE:
         {
-            *((ogl_context_state_cache*) out_result) = context_ptr->state_cache;
+            *reinterpret_cast<ogl_context_state_cache*>(out_result_ptr) = context_ptr->state_cache;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_SUPPORT_ES_EXT_TEXTURE_BUFFER:
         {
-            *((bool*) out_result) = context_ptr->es_ext_texture_buffer_support;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->es_ext_texture_buffer_support;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE:
         {
-            *((bool*) out_result) = context_ptr->gl_arb_buffer_storage_support;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->gl_arb_buffer_storage_support;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_MULTI_BIND:
         {
-            *((bool*) out_result) = context_ptr->gl_arb_multi_bind_support;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->gl_arb_multi_bind_support;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS:
         {
-            *((bool*) out_result) = context_ptr->gl_arb_sparse_buffer_support;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->gl_arb_sparse_buffer_support;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_DIRECT_STATE_ACCESS:
         {
-            *((bool*) out_result) = context_ptr->gl_ext_direct_state_access_support;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->gl_ext_direct_state_access_support;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_TEXTURE_FILTER_ANISOTROPIC:
         {
-            *((bool*) out_result) = context_ptr->gl_ext_texture_filter_anisotropic_support;
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->gl_ext_texture_filter_anisotropic_support;
 
             break;
         }
@@ -3579,37 +3580,37 @@ PUBLIC EMERALD_API void ogl_context_get_property(ogl_context          context,
         case OGL_CONTEXT_PROPERTY_TEXT_RENDERER:
         {
             ASSERT_DEBUG_SYNC(context_ptr->text_renderer != nullptr,
-                              "Text renderer is NULL");
+                              "Text renderer is nullptr");
 
-            *((varia_text_renderer*) out_result) = context_ptr->text_renderer;
+            *reinterpret_cast<varia_text_renderer*>(out_result_ptr) = context_ptr->text_renderer;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_TEXTURE_COMPRESSION:
         {
-            *((ogl_context_texture_compression*) out_result) = context_ptr->texture_compression;
+            *reinterpret_cast<ogl_context_texture_compression*>(out_result_ptr) = context_ptr->texture_compression;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_TO_BINDINGS:
         {
-            *((ogl_context_to_bindings*) out_result) = context_ptr->to_bindings;
+            *reinterpret_cast<ogl_context_to_bindings*>(out_result_ptr) = context_ptr->to_bindings;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_WINDOW:
         {
-            *((system_window*) out_result) = context_ptr->window;
+            *reinterpret_cast<system_window*>(out_result_ptr) = context_ptr->window;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_VAOS:
         {
-            *(ogl_context_vaos*) out_result = context_ptr->vaos;
+            *reinterpret_cast<ogl_context_vaos*>(out_result_ptr) = context_ptr->vaos;
 
             break;
         }
@@ -3643,7 +3644,7 @@ PUBLIC void ogl_context_init_global()
 PUBLIC EMERALD_API bool ogl_context_is_extension_supported(ogl_context               context,
                                                            system_hashed_ansi_string extension_name)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
     bool          result      = false;
 
     for (int32_t n_extension = 0;
@@ -3665,7 +3666,7 @@ PUBLIC EMERALD_API bool ogl_context_is_extension_supported(ogl_context          
 /** Please see header for specification */
 PUBLIC bool ogl_context_release_managers(ogl_context context)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
 
     if (context_ptr->text_renderer != nullptr)
     {
@@ -3685,7 +3686,7 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_con
                                                                          raGL_rendering_handler_execution_mode       execution_mode)
 {
     bool                   result                 = false;
-    _ogl_context*          context_ptr            = (_ogl_context*) context;
+    _ogl_context*          context_ptr            = reinterpret_cast<_ogl_context*>(context);
     raGL_rendering_handler rendering_handler_raGL = nullptr;
     ral_rendering_handler  rendering_handler_ral  = nullptr;
 
@@ -3718,16 +3719,16 @@ PUBLIC bool ogl_context_set_property(ogl_context          context,
                                      ogl_context_property property,
                                      const void*          data)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
 
     ASSERT_DEBUG_SYNC(context_ptr != nullptr,
-                      "Input argument is NULL");
+                      "Input argument is nullptr");
 
     switch (property)
     {
         case OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT:
         {
-            context_ptr->is_helper_context = *(bool*) data;
+            context_ptr->is_helper_context = *reinterpret_cast<const bool*>(data);
 
             return true;
         }
@@ -3735,9 +3736,9 @@ PUBLIC bool ogl_context_set_property(ogl_context          context,
         case OGL_CONTEXT_PROPERTY_PLATFORM_CONTEXT:
         {
             ASSERT_DEBUG_SYNC(context_ptr->context_platform == nullptr,
-                              "Platform-specific context instance is not NULL");
+                              "Platform-specific context instance is not nullptr");
 
-            context_ptr->context_platform = *(ogl_context_platform*) data;
+            context_ptr->context_platform = *reinterpret_cast<const ogl_context_platform*>(data);
 
             return true;
         }
@@ -3754,10 +3755,10 @@ PUBLIC bool ogl_context_set_property(ogl_context          context,
 /** Please see header for specification */
 PUBLIC void ogl_context_swap_buffers(ogl_context context)
 {
-    _ogl_context* context_ptr = (_ogl_context*) context;
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
 
     ASSERT_DEBUG_SYNC(context_ptr != nullptr,
-                      "Input argument is NULL");
+                      "Input argument is nullptr");
 
     context_ptr->pfn_swap_buffers(context_ptr->context_platform);
 }

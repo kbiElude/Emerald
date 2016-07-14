@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  *
  * Helps cache general state information. Note that these functions are private only.
  */
@@ -11,52 +11,143 @@
 
 enum ogl_context_state_cache_property
 {
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_COLOR,                                  /* settable, GLfloat[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA,                         /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB,                           /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA,                         /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB,                           /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA,                         /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB,                           /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_COLOR,                                  /* settable, GLfloat[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH,                                  /* settable, GLdouble */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_COLOR_MASK,                                   /* settable, GLboolean[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_CULL_FACE,                                    /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_FUNC,                                   /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_MASK,                                   /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER,                             /* settable, GLuint */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE,                                   /* settable, GLenum */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,                               /* settable, GLuint */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER,                             /* settable, GLuint */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER,                                 /* settable, GLuint */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_BLEND,                         /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_COLOR_LOGIC_OP,                /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE,                     /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_CLAMP,                   /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_TEST,                    /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DITHER,                        /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_FRAMEBUFFER_SRGB,              /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_LINE_SMOOTH,                   /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_MULTISAMPLE,                   /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_FILL,           /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_LINE,           /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH,                /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART,             /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART_FIXED_INDEX, /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PROGRAM_POINT_SIZE,            /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_RASTERIZER_DISCARD,            /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_COVERAGE,      /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_ONE,           /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_COVERAGE,               /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_SHADING,                /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_MASK,                   /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SCISSOR_TEST,                  /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_STENCIL_TEST,                  /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_TEXTURE_CUBE_MAP_SEAMLESS,     /* settable, GLboolean */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,                                  /* settable, GLint[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,                                 /* settable, GLuint (GL_TEXTURE0 = 0, ..) */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,                          /* settable, GLuint */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,                                     /* settable, GLint[4] */
+    /* settable, GLfloat[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_COLOR,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB,
+
+    /* settable, GLfloat[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_COLOR,
+
+    /* settable, GLdouble */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH,
+
+    /* settable, GLboolean[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_COLOR_MASK,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_CULL_FACE,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_FUNC,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_MASK,
+
+    /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER,
+
+    /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE,
+
+    /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,
+
+    /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER,
+
+    /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERBUFFER,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_BLEND,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_COLOR_LOGIC_OP,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_CLAMP,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_TEST,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DITHER,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_FRAMEBUFFER_SRGB,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_LINE_SMOOTH,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_MULTISAMPLE,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_FILL,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_LINE,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART_FIXED_INDEX,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PROGRAM_POINT_SIZE,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_RASTERIZER_DISCARD,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_COVERAGE,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_ONE,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_COVERAGE,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_SHADING,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_MASK,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SCISSOR_TEST,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_STENCIL_TEST,
+
+    /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_TEXTURE_CUBE_MAP_SEAMLESS,
+
+    /* settable, GLint[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,
+
+    /* settable, GLuint (GL_TEXTURE0 = 0, ..) */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
+
+    /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
+
+    /* settable, GLint[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
 
     OGL_CONTEXT_STATE_CACHE_PROPERTY_UNKNOWN
 };
@@ -91,7 +182,7 @@ PUBLIC ogl_context_state_cache ogl_context_state_cache_create(ogl_context contex
 /** TODO */
 PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache    cache,
                                                  ogl_context_state_cache_property property,
-                                                 void*                            out_result);
+                                                 void*                            out_result_ptr);
 
 /** TODO */
 PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                   cache,

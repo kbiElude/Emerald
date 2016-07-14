@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  * TODO
  *
@@ -14,24 +14,24 @@
 PUBLIC object_manager_item object_manager_item_create(system_hashed_ansi_string  name,
                                                       system_hashed_ansi_string  origin_file,
                                                       int                        origin_line,
-                                                      object_manager_object_type,
-                                                      void*);
+                                                      object_manager_object_type type,
+                                                      void*                      ptr);
 
 /** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string object_manager_item_get_name(object_manager_item);
+PUBLIC system_hashed_ansi_string object_manager_item_get_name(object_manager_item item);
 
 /** TODO */
-PUBLIC EMERALD_API void object_manager_item_get_origin_details(object_manager_item,
-                                                               system_hashed_ansi_string*,
-                                                               int*);
+PUBLIC void object_manager_item_get_origin_details(object_manager_item        item,
+                                                   system_hashed_ansi_string* out_file_ptr,
+                                                   int*                       out_file_line_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void* object_manager_item_get_raw_pointer(object_manager_item);
+PUBLIC void* object_manager_item_get_raw_pointer(object_manager_item item);
 
 /** TODO */
-PUBLIC EMERALD_API object_manager_object_type object_manager_item_get_type(object_manager_item);
+PUBLIC object_manager_object_type object_manager_item_get_type(object_manager_item item);
 
 /** TODO */
-PUBLIC void object_manager_item_release(object_manager_item);
+PUBLIC void object_manager_item_release(object_manager_item item);
 
 #endif /* OBJECT_MANAGER_ITEM_H */

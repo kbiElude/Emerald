@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -13,83 +13,83 @@
 #include "system/system_resizable_vector.h"
 
 /* Private variables */
-object_manager_directory _root = NULL;
+static object_manager_directory _root = nullptr;
 
-static system_hashed_ansi_string _object_type_audio_stream_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_collada_data_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_context_menu_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_curve_container_hashed_ansi_string                       = NULL;
-static system_hashed_ansi_string _object_type_demo_flyby_hashed_ansi_string                            = NULL;
-static system_hashed_ansi_string _object_type_demo_timeline_hashed_ansi_string                         = NULL;
-static system_hashed_ansi_string _object_type_demo_timeline_segment_hashed_ansi_string                 = NULL;
-static system_hashed_ansi_string _object_type_gfx_bfg_font_table_hashed_ansi_string                    = NULL;
-static system_hashed_ansi_string _object_type_gfx_image_hashed_ansi_string                             = NULL;
-static system_hashed_ansi_string _object_type_glsl_shader_constructor_hashed_ansi_string               = NULL;
-static system_hashed_ansi_string _object_type_mesh_hashed_ansi_string                                  = NULL;
-static system_hashed_ansi_string _object_type_mesh_marchingcubes_hashed_ansi_string                    = NULL;
-static system_hashed_ansi_string _object_type_mesh_material_hashed_ansi_string                         = NULL;
-static system_hashed_ansi_string _object_type_ocl_context_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_ocl_kdtree_hashed_ansi_string                            = NULL;
-static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string                            = NULL;
-static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = NULL;
-static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = NULL;
-static system_hashed_ansi_string _object_type_postprocessing_motion_blur_hashed_ansi_string            = NULL;
-static system_hashed_ansi_string _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = NULL;
-static system_hashed_ansi_string _object_type_procedural_mesh_box_hashed_ansi_string                   = NULL;
-static system_hashed_ansi_string _object_type_procedural_mesh_circle_hashed_ansi_string                = NULL;
-static system_hashed_ansi_string _object_type_procedural_mesh_sphere_hashed_ansi_string                = NULL;
-static system_hashed_ansi_string _object_type_procedural_uv_generator_hashed_ansi_string               = NULL;
-static system_hashed_ansi_string _object_type_programs_curve_editor_curvebackground_hashed_ansi_string = NULL;
-static system_hashed_ansi_string _object_type_programs_curve_editor_lerp_hashed_ansi_string            = NULL;
-static system_hashed_ansi_string _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = NULL;
-static system_hashed_ansi_string _object_type_programs_curve_editor_static_hashed_ansi_string          = NULL;
-static system_hashed_ansi_string _object_type_programs_curve_editor_tcb_hashed_ansi_string             = NULL;
-static system_hashed_ansi_string _object_type_ragl_buffers_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_ragl_sync_hashed_ansi_string                             = NULL;
-static system_hashed_ansi_string _object_type_ragl_textures_hashed_ansi_string                         = NULL;
-static system_hashed_ansi_string _object_type_ral_context_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_ral_rendering_handler_hashed_ansi_string                 = NULL;
-static system_hashed_ansi_string _object_type_scalar_field_metaballs_hashed_ansi_string                = NULL;
-static system_hashed_ansi_string _object_type_scene_hashed_ansi_string                                 = NULL;
-static system_hashed_ansi_string _object_type_scene_camera_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_scene_curve_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_scene_light_hashed_ansi_string                           = NULL;
-static system_hashed_ansi_string _object_type_scene_material_hashed_ansi_string                        = NULL;
-static system_hashed_ansi_string _object_type_scene_mesh_hashed_ansi_string                            = NULL;
-static system_hashed_ansi_string _object_type_scene_renderer_uber_hashed_ansi_string                   = NULL;
-static system_hashed_ansi_string _object_type_scene_surface_hashed_ansi_string                         = NULL;
-static system_hashed_ansi_string _object_type_scene_texture_hashed_ansi_string                         = NULL;
-static system_hashed_ansi_string _object_type_sh_projector_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_sh_projector_combiner_hashed_ansi_string                 = NULL;
-static system_hashed_ansi_string _object_type_sh_rot_hashed_ansi_string                                = NULL;
-static system_hashed_ansi_string _object_type_sh_samples_hashed_ansi_string                            = NULL;
-static system_hashed_ansi_string _object_type_sh_shaders_object_hashed_ansi_string                     = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_rgb_to_Yxy                              = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_static                                  = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_filmic                        = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_filmic_customizable           = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_linear                        = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_plain                         = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_reinhardt                     = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_uber                                    = NULL;
-static system_hashed_ansi_string _object_type_shaders_fragment_Yxy_to_rgb                              = NULL;
-static system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_generic                       = NULL;
-static system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_simplified_two_point          = NULL;
-static system_hashed_ansi_string _object_type_shaders_vertex_fullscreen                                = NULL;
-static system_hashed_ansi_string _object_type_shaders_vertex_uber                                      = NULL;
-static system_hashed_ansi_string _object_type_system_file_serializer_hashed_ansi_string                = NULL;
-static system_hashed_ansi_string _object_type_system_randomizer_hashed_ansi_string                     = NULL;
-static system_hashed_ansi_string _object_type_system_window_hashed_ansi_string                         = NULL;
-static system_hashed_ansi_string _object_type_ui_hashed_ansi_string                                    = NULL;
-static system_hashed_ansi_string _object_type_unknown_hashed_ansi_string                               = NULL;
-static system_hashed_ansi_string _object_type_varia_curve_renderer_hashed_ansi_string                  = NULL;
-static system_hashed_ansi_string _object_type_varia_primitive_renderer_hashed_ansi_string              = NULL;
-static system_hashed_ansi_string _object_type_varia_skybox_hashed_ansi_string                          = NULL;
-static system_hashed_ansi_string _object_type_varia_text_renderer_hashed_ansi_string                   = NULL;
+static system_hashed_ansi_string _object_type_audio_stream_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_collada_data_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_context_menu_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_curve_container_hashed_ansi_string                       = nullptr;
+static system_hashed_ansi_string _object_type_demo_flyby_hashed_ansi_string                            = nullptr;
+static system_hashed_ansi_string _object_type_demo_timeline_hashed_ansi_string                         = nullptr;
+static system_hashed_ansi_string _object_type_demo_timeline_segment_hashed_ansi_string                 = nullptr;
+static system_hashed_ansi_string _object_type_gfx_bfg_font_table_hashed_ansi_string                    = nullptr;
+static system_hashed_ansi_string _object_type_gfx_image_hashed_ansi_string                             = nullptr;
+static system_hashed_ansi_string _object_type_glsl_shader_constructor_hashed_ansi_string               = nullptr;
+static system_hashed_ansi_string _object_type_mesh_hashed_ansi_string                                  = nullptr;
+static system_hashed_ansi_string _object_type_mesh_marchingcubes_hashed_ansi_string                    = nullptr;
+static system_hashed_ansi_string _object_type_mesh_material_hashed_ansi_string                         = nullptr;
+static system_hashed_ansi_string _object_type_ocl_context_hashed_ansi_string                           = nullptr;
+static system_hashed_ansi_string _object_type_ocl_kdtree_hashed_ansi_string                            = nullptr;
+static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string                            = nullptr;
+static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = nullptr;
+static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = nullptr;
+static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = nullptr;
+static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = nullptr;
+static system_hashed_ansi_string _object_type_postprocessing_motion_blur_hashed_ansi_string            = nullptr;
+static system_hashed_ansi_string _object_type_postprocessing_reinhard_tonemap_hashed_ansi_string       = nullptr;
+static system_hashed_ansi_string _object_type_procedural_mesh_box_hashed_ansi_string                   = nullptr;
+static system_hashed_ansi_string _object_type_procedural_mesh_circle_hashed_ansi_string                = nullptr;
+static system_hashed_ansi_string _object_type_procedural_mesh_sphere_hashed_ansi_string                = nullptr;
+static system_hashed_ansi_string _object_type_procedural_uv_generator_hashed_ansi_string               = nullptr;
+static system_hashed_ansi_string _object_type_programs_curve_editor_curvebackground_hashed_ansi_string = nullptr;
+static system_hashed_ansi_string _object_type_programs_curve_editor_lerp_hashed_ansi_string            = nullptr;
+static system_hashed_ansi_string _object_type_programs_curve_editor_quadselector_hashed_ansi_string    = nullptr;
+static system_hashed_ansi_string _object_type_programs_curve_editor_static_hashed_ansi_string          = nullptr;
+static system_hashed_ansi_string _object_type_programs_curve_editor_tcb_hashed_ansi_string             = nullptr;
+static system_hashed_ansi_string _object_type_ragl_buffers_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_ragl_sync_hashed_ansi_string                             = nullptr;
+static system_hashed_ansi_string _object_type_ragl_textures_hashed_ansi_string                         = nullptr;
+static system_hashed_ansi_string _object_type_ral_context_hashed_ansi_string                           = nullptr;
+static system_hashed_ansi_string _object_type_ral_rendering_handler_hashed_ansi_string                 = nullptr;
+static system_hashed_ansi_string _object_type_scalar_field_metaballs_hashed_ansi_string                = nullptr;
+static system_hashed_ansi_string _object_type_scene_hashed_ansi_string                                 = nullptr;
+static system_hashed_ansi_string _object_type_scene_camera_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_scene_curve_hashed_ansi_string                           = nullptr;
+static system_hashed_ansi_string _object_type_scene_light_hashed_ansi_string                           = nullptr;
+static system_hashed_ansi_string _object_type_scene_material_hashed_ansi_string                        = nullptr;
+static system_hashed_ansi_string _object_type_scene_mesh_hashed_ansi_string                            = nullptr;
+static system_hashed_ansi_string _object_type_scene_renderer_uber_hashed_ansi_string                   = nullptr;
+static system_hashed_ansi_string _object_type_scene_surface_hashed_ansi_string                         = nullptr;
+static system_hashed_ansi_string _object_type_scene_texture_hashed_ansi_string                         = nullptr;
+static system_hashed_ansi_string _object_type_sh_projector_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_sh_projector_combiner_hashed_ansi_string                 = nullptr;
+static system_hashed_ansi_string _object_type_sh_rot_hashed_ansi_string                                = nullptr;
+static system_hashed_ansi_string _object_type_sh_samples_hashed_ansi_string                            = nullptr;
+static system_hashed_ansi_string _object_type_sh_shaders_object_hashed_ansi_string                     = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_rgb_to_Yxy                              = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_static                                  = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_filmic                        = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_filmic_customizable           = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_linear                        = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_plain                         = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_texture2D_reinhardt                     = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_uber                                    = nullptr;
+static system_hashed_ansi_string _object_type_shaders_fragment_Yxy_to_rgb                              = nullptr;
+static system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_generic                       = nullptr;
+static system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_simplified_two_point          = nullptr;
+static system_hashed_ansi_string _object_type_shaders_vertex_fullscreen                                = nullptr;
+static system_hashed_ansi_string _object_type_shaders_vertex_uber                                      = nullptr;
+static system_hashed_ansi_string _object_type_system_file_serializer_hashed_ansi_string                = nullptr;
+static system_hashed_ansi_string _object_type_system_randomizer_hashed_ansi_string                     = nullptr;
+static system_hashed_ansi_string _object_type_system_window_hashed_ansi_string                         = nullptr;
+static system_hashed_ansi_string _object_type_ui_hashed_ansi_string                                    = nullptr;
+static system_hashed_ansi_string _object_type_unknown_hashed_ansi_string                               = nullptr;
+static system_hashed_ansi_string _object_type_varia_curve_renderer_hashed_ansi_string                  = nullptr;
+static system_hashed_ansi_string _object_type_varia_primitive_renderer_hashed_ansi_string              = nullptr;
+static system_hashed_ansi_string _object_type_varia_skybox_hashed_ansi_string                          = nullptr;
+static system_hashed_ansi_string _object_type_varia_text_renderer_hashed_ansi_string                   = nullptr;
 
 
 /** Please see header for specification */
@@ -193,8 +193,8 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
             object_manager_directory subdirectory = object_manager_directory_get_subdirectory_at(directory,
                                                                                                  n);
 
-            ASSERT_DEBUG_SYNC(subdirectory != NULL,
-                              "Subdirectory cannot be null.");
+            ASSERT_DEBUG_SYNC(subdirectory != nullptr,
+                              "Subdirectory cannot be nullptr.");
 
             system_resizable_vector_push(subdirectories,
                                          subdirectory);
@@ -203,7 +203,7 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
         /* Iterate through cached subdirectory names and recursively call the function */
         while (true)
         {
-            object_manager_directory subdirectory = NULL;
+            object_manager_directory subdirectory = nullptr;
             bool                     result       = system_resizable_vector_pop(subdirectories,
                                                                                &subdirectory);
 
@@ -240,7 +240,7 @@ PUBLIC void _object_manager_deinit()
         object_manager_directory  subdirectory      = object_manager_directory_find_subdirectory                             (_root,
                                                                                                                               subdirectory_name);
 
-        if (subdirectory != NULL)
+        if (subdirectory != nullptr)
         {
             _object_manager_delete_empty_subdirectories(subdirectory);
 
@@ -275,16 +275,16 @@ PUBLIC void _object_manager_deinit()
     }
 
     /* Now we're cool to release the storage */
-    if (_root != NULL)
+    if (_root != nullptr)
     {
         object_manager_directory_release(_root);
 
-        _root = NULL;
+        _root = nullptr;
     }
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API object_manager_directory object_manager_get_directory(system_hashed_ansi_string path)
+PUBLIC object_manager_directory object_manager_get_directory(system_hashed_ansi_string path)
 {
     return object_manager_directory_find_subdirectory(_root, path);
 }
@@ -298,9 +298,9 @@ PUBLIC system_hashed_ansi_string object_manager_get_object_path(system_hashed_an
      * This helps us avoid naming collisions.
      */
     system_hashed_ansi_string object_type_has = object_manager_convert_object_manager_object_type_to_hashed_ansi_string(object_type);
-    system_hashed_ansi_string result          = NULL;
+    system_hashed_ansi_string result          = nullptr;
 
-    if (scene_name != NULL)
+    if (scene_name != nullptr)
     {
         static const char* limiter        = "\\";
                const char* scene_name_raw = system_hashed_ansi_string_get_buffer(scene_name);
@@ -340,7 +340,7 @@ PUBLIC system_hashed_ansi_string object_manager_get_object_path(system_hashed_an
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API object_manager_directory object_manager_get_root_directory()
+PUBLIC object_manager_directory object_manager_get_root_directory()
 {
     return _root;
 }
@@ -451,8 +451,8 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
                                                        int                        source_code_file_line,
                                                        object_manager_object_type object_type)
 {
-    system_hashed_ansi_string item_name         = NULL;
-    system_hashed_ansi_string item_path         = NULL;
+    system_hashed_ansi_string item_name         = nullptr;
+    system_hashed_ansi_string item_path         = nullptr;
     bool                      extraction_result = object_manager_directory_extract_item_name_and_path(item_registration_path,
                                                                                                      &item_path,
                                                                                                      &item_name);
@@ -467,7 +467,7 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
                                                                                                item_path);
 
         /* If the directory we are to register the item at is unavailable, create it */
-        if (parent_directory == NULL)
+        if (parent_directory == nullptr)
         {
             object_manager_directory_create_directory_structure(_root,
                                                                 item_path);
@@ -476,11 +476,11 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
                                                                                     item_path);
         }
 
-        ASSERT_DEBUG_SYNC(parent_directory != NULL,
+        ASSERT_DEBUG_SYNC(parent_directory != nullptr,
                           "Could not find parent directory for an object! [%s]",
                           system_hashed_ansi_string_get_buffer(item_registration_path) );
 
-        if (parent_directory != NULL)
+        if (parent_directory != nullptr)
         {
             /* Instantiate item descriptor */
             object_manager_item item = object_manager_item_create(item_name,
@@ -489,11 +489,11 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
                                                                   object_type,
                                                                   ptr);
 
-            ASSERT_DEBUG_SYNC(item != NULL,
+            ASSERT_DEBUG_SYNC(item != nullptr,
                               "Could not create item of type [%d]",
                               object_type);
 
-            if (item != NULL)
+            if (item != nullptr)
             {
                 /* Try to insert the item into storage */
                 bool insert_result = object_manager_directory_insert_item(parent_directory,
@@ -504,7 +504,7 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
                     LOG_ERROR("Could not insert refcounted object descriptor");
 
                     object_manager_item_release(item);
-                    item = NULL;
+                    item = nullptr;
                 }
             }
         }
@@ -514,8 +514,8 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
 /** Please see header for specification */
 PUBLIC void _object_manager_unregister_refcounted_object(system_hashed_ansi_string item_registration_path)
 {
-    system_hashed_ansi_string item_name = NULL;
-    system_hashed_ansi_string item_path = NULL;
+    system_hashed_ansi_string item_name = nullptr;
+    system_hashed_ansi_string item_path = nullptr;
 
     if (object_manager_directory_extract_item_name_and_path(item_registration_path,
                                                            &item_path,
@@ -527,12 +527,12 @@ PUBLIC void _object_manager_unregister_refcounted_object(system_hashed_ansi_stri
         object_manager_directory  item_directory                  = object_manager_directory_find_subdirectory_recursive(_root,
                                                                                                                          item_registration_path_modified);
 
-        if (item_directory != NULL)
+        if (item_directory != nullptr)
         {
             object_manager_item item = object_manager_directory_find_item(item_directory,
                                                                           item_name);
 
-            if (item != NULL)
+            if (item != nullptr)
             {
                 /* Before releasing, remove the object from the storage */
                 if (!object_manager_directory_delete_item(item_directory,
@@ -547,7 +547,7 @@ PUBLIC void _object_manager_unregister_refcounted_object(system_hashed_ansi_stri
             }
             else
             {
-                LOG_ERROR        ("Even though item at [%s] was found, it corresponds to NULL which is WRONG",
+                LOG_ERROR        ("Even though item at [%s] was found, it corresponds to nullptr which is WRONG",
                                   system_hashed_ansi_string_get_buffer(item_registration_path) );
 
                 ASSERT_DEBUG_SYNC(false,
