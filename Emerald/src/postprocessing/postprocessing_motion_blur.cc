@@ -490,7 +490,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
 /** TODO */
 PRIVATE void _postprocessing_motion_blur_release(void* ptr)
 {
-    _postprocessing_motion_blur* motion_blur_ptr = (_postprocessing_motion_blur*) ptr;
+    _postprocessing_motion_blur* motion_blur_ptr = reinterpret_cast<_postprocessing_motion_blur*>(ptr);
 
     ral_context_delete_objects(motion_blur_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -905,13 +905,13 @@ PUBLIC EMERALD_API void postprocessing_motion_blur_get_property(postprocessing_m
                                                                 postprocessing_motion_blur_property property,
                                                                 void*                               out_value_ptr)
 {
-    const _postprocessing_motion_blur* motion_blur_ptr = (_postprocessing_motion_blur*) motion_blur;
+    const _postprocessing_motion_blur* motion_blur_ptr = reinterpret_cast<_postprocessing_motion_blur*>(motion_blur);
 
     switch (property)
     {
         case POSTPROCESSING_MOTION_BLUR_PROPERTY_N_VELOCITY_SAMPLES_MAX:
         {
-            *(unsigned int*) out_value_ptr = motion_blur_ptr->n_velocity_samples_max;
+            *reinterpret_cast<unsigned int*>(out_value_ptr) = motion_blur_ptr->n_velocity_samples_max;
 
             break;
         }
@@ -929,13 +929,13 @@ PUBLIC EMERALD_API void postprocessing_motion_blur_set_property(postprocessing_m
                                                                 postprocessing_motion_blur_property property,
                                                                 const void*                         value_ptr)
 {
-    _postprocessing_motion_blur* motion_blur_ptr = (_postprocessing_motion_blur*) motion_blur;
+    _postprocessing_motion_blur* motion_blur_ptr = reinterpret_cast<_postprocessing_motion_blur*>(motion_blur);
 
     switch (property)
     {
         case POSTPROCESSING_MOTION_BLUR_PROPERTY_N_VELOCITY_SAMPLES_MAX:
         {
-            motion_blur_ptr->n_velocity_samples_max = *(unsigned int*) value_ptr;
+            motion_blur_ptr->n_velocity_samples_max = *reinterpret_cast<const unsigned int*>(value_ptr);
 
             break;
         }

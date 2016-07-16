@@ -37,7 +37,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sync_release(void* sync)
     ogl_context                       current_context = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     bool                              is_nv_driver    = false;
-    _raGL_sync*                       sync_ptr        = (_raGL_sync*) sync;
+    _raGL_sync*                       sync_ptr        = reinterpret_cast<_raGL_sync*>(sync);
 
     ASSERT_DEBUG_SYNC(current_context != nullptr,
                       "No rendering context bound to the calling thread");
@@ -114,24 +114,24 @@ PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create()
 }
 
 /** Please see header for spec */
-PUBLIC void raGL_sync_get_property(raGL_sync          sync,
+PUBLIC void raGL_sync_get_property(const raGL_sync    sync,
                                    raGL_sync_property property,
                                    void*              out_result_ptr)
 {
-    _raGL_sync* sync_ptr = (_raGL_sync*) sync;
+    const _raGL_sync* sync_ptr = reinterpret_cast<const _raGL_sync*>(sync);
 
     switch (property)
     {
         case RAGL_SYNC_PROPERTY_HANDLE:
         {
-            *(GLsync*) out_result_ptr = sync_ptr->sync;
+            *reinterpret_cast<GLsync*>(out_result_ptr) = sync_ptr->sync;
 
             break;
         }
 
         case RAGL_SYNC_PROPERTY_PARENT_BACKEND:
         {
-            *(raGL_backend*) out_result_ptr = sync_ptr->parent_backend;
+            *reinterpret_cast<raGL_backend*>(out_result_ptr) = sync_ptr->parent_backend;
 
             break;
         }
@@ -150,7 +150,7 @@ PUBLIC RENDERING_CONTEXT_CALL void raGL_sync_wait_gpu(raGL_sync sync)
     ogl_context                       current_context = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     bool                              is_nv_driver    = false;
-    _raGL_sync*                       sync_ptr        = (_raGL_sync*) sync;
+    _raGL_sync*                       sync_ptr        = reinterpret_cast<_raGL_sync*>(sync);
 
     ASSERT_DEBUG_SYNC(current_context != nullptr,
                       "No rendering context bound to the calling thread");

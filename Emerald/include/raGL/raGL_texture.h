@@ -50,7 +50,7 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
                                           bool         async);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_texture_get_property(raGL_texture          texture,
+PUBLIC EMERALD_API bool raGL_texture_get_property(const raGL_texture    texture,
                                                   raGL_texture_property property,
                                                   void**                out_result_ptr);
 

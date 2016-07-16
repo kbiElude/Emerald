@@ -26,7 +26,7 @@ typedef struct raGL_vaos_vertex_buffer
 
 
 /** TODO */
-PUBLIC void raGL_vao_get_property(raGL_vao          vao,
+PUBLIC void raGL_vao_get_property(const raGL_vao    vao,
                                   raGL_vao_property property,
                                   void**            out_result_ptr);
 

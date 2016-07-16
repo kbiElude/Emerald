@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * TODO
  *
@@ -77,7 +77,7 @@ PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
                                             raGL_buffer  buffer);
 
 /** TODO */
-PUBLIC void raGL_buffers_get_buffer_property(raGL_buffers                 buffers,
+PUBLIC void raGL_buffers_get_buffer_property(const raGL_buffers           buffers,
                                              GLuint                       bo_id,
                                              raGL_buffers_buffer_property property,
                                              void*                        out_result_ptr);

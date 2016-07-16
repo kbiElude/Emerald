@@ -21,7 +21,7 @@ PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
                                                 ral_texture_view        opt_ds_attachment);
 
 /** TODO */
-PUBLIC EMERALD_API void raGL_framebuffer_get_property(raGL_framebuffer          fb,
+PUBLIC EMERALD_API void raGL_framebuffer_get_property(const raGL_framebuffer    fb,
                                                       raGL_framebuffer_property property,
                                                       void*                     out_result_ptr);
 

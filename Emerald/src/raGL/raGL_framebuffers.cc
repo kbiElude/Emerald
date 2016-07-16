@@ -171,5 +171,5 @@ PUBLIC void raGL_framebuffers_get_framebuffer(raGL_framebuffers       in_framebu
 /** Please see header for specification */
 PUBLIC void raGL_framebuffers_release(raGL_framebuffers framebuffers)
 {
-    delete (_raGL_framebuffers*) framebuffers;
+    delete reinterpret_cast<_raGL_framebuffers*>(framebuffers);
 }

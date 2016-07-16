@@ -46,7 +46,7 @@ PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ral_cont
 /** TODO */
 PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphere           sphere,
                                                             _procedural_mesh_sphere_property prop,
-                                                            void*                            out_result);
+                                                            void*                            out_result_ptr);
 
 
 #endif /* PROCEDURAL_MESH_SPHERE_H */

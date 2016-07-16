@@ -132,7 +132,7 @@ PUBLIC void raGL_dep_tracker_mark_as_dirty(raGL_dep_tracker tracker,
                               (system_hash64) object,
                              &object_ptr) )
     {
-        object_ptr = (_raGL_dep_tracker_object*) system_resource_pool_get_from_pool(tracker_ptr->handle_pool);
+        object_ptr = reinterpret_cast<_raGL_dep_tracker_object*>(system_resource_pool_get_from_pool(tracker_ptr->handle_pool) );
 
         if (object_ptr == nullptr)
         {
@@ -158,7 +158,7 @@ end:
 /** Please see header for specification */
 PUBLIC void raGL_dep_tracker_release(raGL_dep_tracker tracker)
 {
-    delete (_raGL_dep_tracker*) tracker;
+    delete reinterpret_cast<_raGL_dep_tracker*>(tracker);
 }
 
 /** Please see header for specification */

@@ -22,7 +22,7 @@ REFCOUNT_INSERT_DECLARATIONS(raGL_sync,
 PUBLIC RENDERING_CONTEXT_CALL raGL_sync raGL_sync_create();
 
 /** TODO */
-PUBLIC void raGL_sync_get_property(raGL_sync          sync,
+PUBLIC void raGL_sync_get_property(const raGL_sync    sync,
                                    raGL_sync_property property,
                                    void*              out_result_ptr);
 

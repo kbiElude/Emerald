@@ -117,7 +117,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_blur_poisson,
 /** TODO */
 PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
 {
-    _postprocessing_blur_poisson* data_ptr = (_postprocessing_blur_poisson*) ptr;
+    _postprocessing_blur_poisson* data_ptr = reinterpret_cast<_postprocessing_blur_poisson*>(ptr);
 
     ral_context_delete_objects(data_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,

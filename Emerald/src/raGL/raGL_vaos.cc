@@ -522,24 +522,24 @@ PRIVATE void _raGL_vaos_release_vaos_renderer_thread_callback(ogl_context contex
 
 
 /* Please see header for specification */
-PUBLIC void raGL_vao_get_property(raGL_vao          vao,
+PUBLIC void raGL_vao_get_property(const raGL_vao    vao,
                                   raGL_vao_property property,
                                   void**            out_result_ptr)
 {
-    _raGL_vao* vao_ptr = reinterpret_cast<_raGL_vao*>(vao);
+    const _raGL_vao* vao_ptr = reinterpret_cast<const _raGL_vao*>(vao);
 
     switch (property)
     {
         case RAGL_VAO_PROPERTY_ID:
         {
-            *(GLuint*) out_result_ptr = vao_ptr->vao_id;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = vao_ptr->vao_id;
 
             break;
         }
 
         case RAGL_VAO_PROPERTY_INDEX_BUFFER:
         {
-            *(raGL_buffer*) out_result_ptr = vao_ptr->index_buffer;
+            *reinterpret_cast<raGL_buffer*>(out_result_ptr) = vao_ptr->index_buffer;
 
             break;
         }

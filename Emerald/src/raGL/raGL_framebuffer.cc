@@ -67,7 +67,7 @@ typedef struct _raGL_framebuffer_init_rendering_thread_callback_data
 PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context,
                                                                                     void*       user_arg)
 {
-    _raGL_framebuffer_init_rendering_thread_callback_data*    args_ptr            = (_raGL_framebuffer_init_rendering_thread_callback_data*) user_arg;
+    _raGL_framebuffer_init_rendering_thread_callback_data*    args_ptr            = reinterpret_cast<_raGL_framebuffer_init_rendering_thread_callback_data*>(user_arg);
     raGL_backend                                              backend_gl          = nullptr;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = nullptr;
@@ -75,7 +75,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_init_rendering_thread_calb
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(args_ptr          != nullptr &&
                       args_ptr->fbo_ptr != nullptr,
-                      "Input callback args are NULL.");
+                      "Input callback args are nullptr.");
 
     /* Iterate over all attachments */
     ogl_context_get_property(context,
@@ -261,17 +261,17 @@ PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void raGL_framebuffer_get_property(raGL_framebuffer          fb,
+PUBLIC EMERALD_API void raGL_framebuffer_get_property(const raGL_framebuffer    fb,
                                                       raGL_framebuffer_property property,
                                                       void*                     out_result_ptr)
 {
-    _raGL_framebuffer* fb_ptr = (_raGL_framebuffer*) fb;
+    const _raGL_framebuffer* fb_ptr = reinterpret_cast<const _raGL_framebuffer*>(fb);
 
     /* Sanity checks */
-    if (fb_ptr == NULL)
+    if (fb_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(fb_ptr != NULL,
-                          "Input raGL_framebuffer instance is NULL");
+        ASSERT_DEBUG_SYNC(fb_ptr != nullptr,
+                          "Input raGL_framebuffer instance is nullptr");
 
         goto end;
     }
@@ -281,7 +281,7 @@ PUBLIC EMERALD_API void raGL_framebuffer_get_property(raGL_framebuffer          
     {
         case RAGL_FRAMEBUFFER_PROPERTY_ID:
         {
-            *(GLuint*) out_result_ptr = fb_ptr->id;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = fb_ptr->id;
 
             break;
         }
@@ -303,8 +303,8 @@ end:
 PUBLIC void raGL_framebuffer_release(raGL_framebuffer fb)
 {
     ASSERT_DEBUG_SYNC(fb != nullptr,
-                      "Input framebuffer is NULL");
+                      "Input framebuffer is nullptr");
 
     /* Safe to release the instance at this point */
-    delete (_raGL_framebuffer*) fb;
+    delete reinterpret_cast<_raGL_framebuffer*>(fb);
 }

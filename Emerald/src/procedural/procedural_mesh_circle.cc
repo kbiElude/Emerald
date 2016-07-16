@@ -98,7 +98,7 @@ PRIVATE void _procedural_mesh_circle_init(_procedural_mesh_circle* mesh_ptr)
 /** TODO */
 PRIVATE void _procedural_mesh_circle_release(void* arg)
 {
-    _procedural_mesh_circle* instance_ptr = (_procedural_mesh_circle*) arg;
+    _procedural_mesh_circle* instance_ptr = reinterpret_cast<_procedural_mesh_circle*>(arg);
 
     if (instance_ptr->nonindexed_bo != nullptr)
     {
@@ -154,7 +154,7 @@ PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ral_cont
 /* Please see header for specification */
 PUBLIC EMERALD_API void procedural_mesh_circle_get_property(procedural_mesh_circle          circle,
                                                             procedural_mesh_circle_property property,
-                                                            void*                           out_result)
+                                                            void*                           out_result_ptr)
 {
     const _procedural_mesh_circle* circle_ptr = reinterpret_cast<_procedural_mesh_circle*>(circle);
 
@@ -162,21 +162,21 @@ PUBLIC EMERALD_API void procedural_mesh_circle_get_property(procedural_mesh_circ
     {
         case PROCEDURAL_MESH_CIRCLE_PROPERTY_NONINDEXED_BUFFER:
         {
-            *(ral_buffer*) out_result = circle_ptr->nonindexed_bo;
+            *reinterpret_cast<ral_buffer*>(out_result_ptr) = circle_ptr->nonindexed_bo;
 
             break;
         }
 
         case PROCEDURAL_MESH_CIRCLE_PROPERTY_NONINDEXED_BUFFER_VERTEX_DATA_OFFSET:
         {
-            *(uint32_t*) out_result = 0;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = 0;
 
             break;
         }
 
         case PROCEDURAL_MESH_CIRCLE_PROPERTY_N_VERTICES:
         {
-            *(unsigned int*) out_result = circle_ptr->n_vertices;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = circle_ptr->n_vertices;
 
             break;
         }

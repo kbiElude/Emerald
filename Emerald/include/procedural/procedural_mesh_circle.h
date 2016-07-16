@@ -49,6 +49,6 @@ PUBLIC EMERALD_API procedural_mesh_circle procedural_mesh_circle_create(ral_cont
 /** TODO */
 PUBLIC EMERALD_API void procedural_mesh_circle_get_property(procedural_mesh_circle          circle,
                                                             procedural_mesh_circle_property property,
-                                                            void*                           out_result);
+                                                            void*                           out_result_ptr);
 
 #endif /* PROCEDURAL_MESH_CIRCLE_H */

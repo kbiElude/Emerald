@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -624,71 +624,71 @@ PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ral_context   
 /* Please see header for specification */
 PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box          box,
                                                          procedural_mesh_box_property property,
-                                                         void*                        out_result)
+                                                         void*                        out_result_ptr)
 {
-    _procedural_mesh_box* mesh_box_ptr = (_procedural_mesh_box*) box;
+    _procedural_mesh_box* mesh_box_ptr = reinterpret_cast<_procedural_mesh_box*>(box);
 
     switch (property)
     {
         case PROCEDURAL_MESH_BOX_PROPERTY_NONINDEXED_BUFFER:
         {
-            *(ral_buffer*) out_result = mesh_box_ptr->nonindexed_bo;
+            *reinterpret_cast<ral_buffer*>(out_result_ptr) = mesh_box_ptr->nonindexed_bo;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_NONINDEXED_BUFFER_NORMAL_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->nonindexed_bo_normal_data_offset;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = mesh_box_ptr->nonindexed_bo_normal_data_offset;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_NONINDEXED_BUFFER_VERTEX_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = 0;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = 0;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_INDEXED_BUFFER_INDEX_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->indexed_bo_index_data_offset;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = mesh_box_ptr->indexed_bo_index_data_offset;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_INDEXED_BUFFER_NORMAL_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->indexed_bo_normal_data_offset;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = mesh_box_ptr->indexed_bo_normal_data_offset;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_INDEXED_BUFFER_VERTEX_DATA_OFFSET:
         {
-            *(unsigned int*) out_result = 0;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = 0;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->n_triangles;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = mesh_box_ptr->n_triangles;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_N_VERTICES:
         {
-            *(unsigned int*) out_result = mesh_box_ptr->n_points;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = mesh_box_ptr->n_points;
 
             break;
         }
 
         case PROCEDURAL_MESH_BOX_PROPERTY_RESTART_INDEX:
         {
-            *(GLuint*) out_result = mesh_box_ptr->primitive_restart_index;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = mesh_box_ptr->primitive_restart_index;
 
             break;
         }

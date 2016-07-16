@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef RAGL_PROGRAM_H
@@ -10,19 +10,6 @@
 #include "raGL/raGL_types.h"
 #include "ral/ral_types.h"
 #include "system/system_types.h"
-
-/* TODO TODO TODO: This should be moved to raGL_program.cc once RAL integration is finished. */
-typedef struct _raGL_program_attribute
-{
-    int32_t                   location;
-    system_hashed_ansi_string name;
-
-    _raGL_program_attribute()
-    {
-        location = -1;
-        name     = NULL;
-    }
-} _raGL_program_attribute;
 
 typedef enum
 {
@@ -49,7 +36,7 @@ typedef struct _raGL_program_variable
     {
         block_index  = -1;
         image_unit   = -1;
-        name         = NULL;
+        name         = nullptr;
         texture_unit = -1;
     }
 } _raGL_program_variable;
@@ -85,35 +72,30 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
                                         ral_program program_ral);
 
 /** TODO */
-PUBLIC void raGL_program_get_block_property(raGL_program                program,
+PUBLIC void raGL_program_get_block_property(const raGL_program          program,
                                             ral_program_block_type      block_type,
                                             uint32_t                    index,
                                             raGL_program_block_property property,
                                             void*                       out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(raGL_program                program,
+PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(const raGL_program          program,
                                                                 system_hashed_ansi_string   block_name,
                                                                 raGL_program_block_property property,
                                                                 void*                       out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void raGL_program_get_property(raGL_program          program,
+PUBLIC EMERALD_API void raGL_program_get_property(const raGL_program    program,
                                                   raGL_program_property property,
                                                   void*                 out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_by_location(raGL_program                   program,
-                                                             uint32_t                       location,
-                                                             const _raGL_program_variable** out_uniform_ptr);
-
-/** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(raGL_program                   program,
+PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(const raGL_program             program,
                                                          system_hashed_ansi_string      name,
                                                          const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(raGL_program                    program,
+PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(const raGL_program              program,
                                                                   system_hashed_ansi_string       index,
                                                                   const _raGL_program_attribute** out_vertex_attribute_ptr);
 

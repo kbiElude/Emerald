@@ -612,7 +612,7 @@ PRIVATE void _postprocessing_blur_gaussian_init(_postprocessing_blur_gaussian* i
                 }
                 else
                 {
-                    *(float*) final_data_bo_raw_traveller_ptr = 1.0f;
+                    *reinterpret_cast<float*>(final_data_bo_raw_traveller_ptr) = 1.0f;
                 }
 
                 final_data_bo_raw_traveller_ptr += misaligned_dataset_size + padding;
@@ -892,7 +892,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                                                                          ral_texture_view                        dst_src_texture_view,
                                                                          postprocessing_blur_gaussian_resolution blur_resolution)
 {
-    _postprocessing_blur_gaussian* blur_ptr                    = (_postprocessing_blur_gaussian*) blur;
+    _postprocessing_blur_gaussian* blur_ptr                    = reinterpret_cast<_postprocessing_blur_gaussian*>(blur);
     ral_command_buffer_create_info cmd_buffer_create_info;
     ral_texture                    dst_src_texture             = nullptr;
     ral_format                     dst_src_texture_view_format = RAL_FORMAT_UNKNOWN;

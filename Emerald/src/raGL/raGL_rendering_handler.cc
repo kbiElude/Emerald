@@ -495,7 +495,7 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
 /** TODO */
 PUBLIC void raGL_rendering_handler_lock_bound_context(raGL_rendering_handler rendering_handler)
 {
-    _raGL_rendering_handler* rendering_handler_ptr = (_raGL_rendering_handler*) rendering_handler;
+    _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler);
 
     if (!ral_rendering_handler_is_current_thread_rendering_thread(rendering_handler_ptr->rendering_handler_ral) )
     {
@@ -708,14 +708,14 @@ PUBLIC void raGL_rendering_handler_set_property(raGL_rendering_handler          
     {
         case RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_CONTEXT:
         {
-            rendering_handler_ptr->call_passthrough_context = *(ral_context*) value;
+            rendering_handler_ptr->call_passthrough_context = *reinterpret_cast<const ral_context*>(value);
 
             break;
         }
 
         case RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_MODE:
         {
-            rendering_handler_ptr->call_passthrough_mode = *(bool*) value;
+            rendering_handler_ptr->call_passthrough_mode = *reinterpret_cast<const bool*>(value);
 
             break;
         }
@@ -732,7 +732,7 @@ PUBLIC void raGL_rendering_handler_set_property(raGL_rendering_handler          
 /** TODO */
 PUBLIC void raGL_rendering_handler_unlock_bound_context(raGL_rendering_handler rendering_handler)
 {
-    _raGL_rendering_handler* rendering_handler_ptr = (_raGL_rendering_handler*) rendering_handler;
+    _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler);
 
     if (!ral_rendering_handler_is_current_thread_rendering_thread(rendering_handler_ptr->rendering_handler_ral) )
     {

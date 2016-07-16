@@ -264,15 +264,15 @@ PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(ral_cont
 /* Please see header for specification */
 PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphere           sphere,
                                                             _procedural_mesh_sphere_property prop,
-                                                            void*                            out_result)
+                                                            void*                            out_result_ptr)
 {
-    _procedural_mesh_sphere* sphere_ptr = (_procedural_mesh_sphere*) sphere;
+    _procedural_mesh_sphere* sphere_ptr = reinterpret_cast<_procedural_mesh_sphere*>(sphere);
 
     switch (prop)
     {
         case PROCEDURAL_MESH_SPHERE_PROPERTY_NONINDEXED_BUFFER:
         {
-            *(ral_buffer*) out_result = sphere_ptr->nonindexed_bo;
+            *reinterpret_cast<ral_buffer*>(out_result_ptr) = sphere_ptr->nonindexed_bo;
 
             break;
         }
@@ -280,7 +280,7 @@ PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphe
         case PROCEDURAL_MESH_SPHERE_PROPERTY_NONINDEXED_BUFFER_NORMAL_DATA_OFFSET:
         case PROCEDURAL_MESH_SPHERE_PROPERTY_NONINDEXED_BUFFER_VERTEX_DATA_OFFSET:
         {
-            *(uint32_t*) out_result = 0;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = 0;
 
             break;
         }
@@ -291,14 +291,14 @@ PUBLIC EMERALD_API void procedural_mesh_sphere_get_property(procedural_mesh_sphe
                               "PROCEDURAL_MESH_DATA_TYPE_RAW_BIT request but the procedural_mesh_sphere was"
                               " not created with PROCEDURAL_MESH_DATA_TYPE_RAW_BIT flag");
 
-            *(float**) out_result = sphere_ptr->raw_data_ptr;
+            *reinterpret_cast<float**>(out_result_ptr) = sphere_ptr->raw_data_ptr;
 
             break;
         }
 
         case PROCEDURAL_MESH_SPHERE_PROPERTY_N_TRIANGLES:
         {
-            *(unsigned int*) out_result = sphere_ptr->n_triangles;
+            *reinterpret_cast<unsigned int*>(out_result_ptr) = sphere_ptr->n_triangles;
 
             break;
         }

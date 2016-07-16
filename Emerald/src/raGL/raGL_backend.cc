@@ -324,11 +324,11 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
         context_data.helper_context = context;
         context_data.helper_window  = window;
 
-        backend_ptr = (_raGL_backend*) backend;
+        backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
 
-        if (((_raGL_backend*) _global.helper_contexts[0].helper_backend)->buffers != nullptr)
+        if (reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->buffers != nullptr)
         {
-            backend_ptr->buffers = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->buffers;
+            backend_ptr->buffers = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->buffers;
 
             raGL_buffers_retain(backend_ptr->buffers);
         }
@@ -342,9 +342,9 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
         backend_ptr->dep_tracker  = raGL_dep_tracker_create ();
         backend_ptr->framebuffers = raGL_framebuffers_create(backend_ptr->context_gl);
 
-        if (((_raGL_backend*) _global.helper_contexts[0].helper_backend)->textures != nullptr)
+        if (reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->textures != nullptr)
         {
-            backend_ptr->textures = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->textures;
+            backend_ptr->textures = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->textures;
 
             raGL_textures_retain(backend_ptr->textures);
         }
@@ -358,7 +358,7 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
                                  OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT,
                                 &true_value);
 
-        ((_raGL_backend*) backend)->is_helper_context = true;
+        reinterpret_cast<_raGL_backend*>(backend)->is_helper_context = true;
     }
 
     _global.backend_type = backend_type;
@@ -377,7 +377,7 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
     {
         ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(_global.helper_contexts[n_helper_context].helper_context),
                                                          _raGL_backend_helper_context_renderer_callback,
-                                                         (void*) n_helper_context,
+                                                         reinterpret_cast<void*>(n_helper_context),
                                                          false,  /* swap_buffers_afterward */
                                                          RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK);
 
@@ -398,7 +398,7 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
 
     if (_global.helper_contexts[0].helper_backend != nullptr)
     {
-        _raGL_backend* root_backend_ptr = (_raGL_backend*) _global.helper_contexts[0].helper_backend;
+        _raGL_backend* root_backend_ptr = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend);
 
         buffers_map                    = root_backend_ptr->buffers_map;
         buffers_map_rw_mutex           = root_backend_ptr->buffers_map_rw_mutex;
@@ -726,7 +726,7 @@ PRIVATE bool _raGL_backend_get_object(void*                   backend,
                                       void*                   object_ral,
                                       void**                  out_result_ptr)
 {
-    _raGL_backend*           backend_ptr      = (_raGL_backend*) backend;
+    _raGL_backend*           backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
     bool                     is_owner         = false;
     system_hash64map*        map_ptr          = nullptr;
     system_read_write_mutex* map_rw_mutex_ptr = nullptr;
@@ -865,7 +865,7 @@ PRIVATE void _raGL_backend_get_object_vars(_raGL_backend*            backend_ptr
 /** TODO */
 PRIVATE void _raGL_backend_link_program_handler(void* job_arg_raw_ptr)
 {
-    _raGL_backend_link_program_job_arg* job_arg_ptr        = (_raGL_backend_link_program_job_arg*) job_arg_raw_ptr;
+    _raGL_backend_link_program_job_arg* job_arg_ptr        = reinterpret_cast<_raGL_backend_link_program_job_arg*>(job_arg_raw_ptr);
     uint32_t                            n_shaders_attached = 0;
     raGL_program                        program_raGL       = job_arg_ptr->program;
     ral_program                         program_ral        = nullptr;
@@ -942,8 +942,8 @@ PRIVATE void _raGL_backend_link_program_handler(void* job_arg_raw_ptr)
 PRIVATE void _raGL_backend_on_buffer_to_buffer_copy_request(const void* callback_arg_data,
                                                             void*       backend)
 {
-    _raGL_backend*                          backend_ptr      = (_raGL_backend*)                          backend;
-    ral_buffer_copy_to_buffer_callback_arg* callback_arg_ptr = (ral_buffer_copy_to_buffer_callback_arg*) callback_arg_data;
+    _raGL_backend*                          backend_ptr      = reinterpret_cast<_raGL_backend*>                         (backend);
+    ral_buffer_copy_to_buffer_callback_arg* callback_arg_ptr = reinterpret_cast<ral_buffer_copy_to_buffer_callback_arg*>(callback_arg_data);
     raGL_buffer                             dst_buffer_raGL  = nullptr;
     raGL_buffer                             src_buffer_raGL  = nullptr;
 
@@ -981,9 +981,9 @@ PRIVATE void _raGL_backend_on_buffer_to_buffer_copy_request(const void* callback
 PRIVATE void _raGL_backend_on_buffer_clear_region_request(const void* callback_arg_data,
                                                           void*       backend)
 {
-    _raGL_backend*                        backend_ptr      = (_raGL_backend*) backend;
+    _raGL_backend*                        backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
     raGL_buffer                           buffer_raGL      = nullptr;
-    ral_buffer_clear_region_callback_arg* callback_arg_ptr = (ral_buffer_clear_region_callback_arg*) callback_arg_data;
+    ral_buffer_clear_region_callback_arg* callback_arg_ptr = reinterpret_cast<ral_buffer_clear_region_callback_arg*>(callback_arg_data);
 
     system_read_write_mutex_lock(backend_ptr->buffers_map_rw_mutex,
                                  ACCESS_READ);
@@ -1012,9 +1012,9 @@ PRIVATE void _raGL_backend_on_buffer_clear_region_request(const void* callback_a
 PRIVATE void _raGL_backend_on_buffer_client_memory_sourced_update_request(const void* callback_arg_data,
                                                                           void*       backend)
 {
-    _raGL_backend*                                      backend_ptr      = (_raGL_backend*)                                      backend;
+    _raGL_backend*                                      backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
     raGL_buffer                                         buffer_raGL      = nullptr;
-    ral_buffer_client_sourced_update_info_callback_arg* callback_arg_ptr = (ral_buffer_client_sourced_update_info_callback_arg*) callback_arg_data;
+    ral_buffer_client_sourced_update_info_callback_arg* callback_arg_ptr = reinterpret_cast<ral_buffer_client_sourced_update_info_callback_arg*>(callback_arg_data);
 
     /* Identify the raGL_buffer instance for the source ral_buffer object and forward
      * the request. */
@@ -1106,8 +1106,8 @@ _raGL_backend*     backend_ptr    = reinterpret_cast<_raGL_backend*>(backend);
 PRIVATE void _raGL_backend_on_objects_created(const void* callback_arg_data,
                                               void*       backend)
 {
-    _raGL_backend*                                           backend_ptr      = (_raGL_backend*)                                     backend;
-    const ral_context_callback_objects_created_callback_arg* callback_arg_ptr = (ral_context_callback_objects_created_callback_arg*) callback_arg_data;
+    _raGL_backend*                                           backend_ptr      = reinterpret_cast<_raGL_backend*>                                          (backend);
+    const ral_context_callback_objects_created_callback_arg* callback_arg_ptr = reinterpret_cast<const ral_context_callback_objects_created_callback_arg*>(callback_arg_data);
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(backend_ptr != nullptr,
@@ -1217,7 +1217,7 @@ PRIVATE void _raGL_backend_on_objects_created(const void* callback_arg_data,
 PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context context,
                                                                  void*       callback_arg)
 {
-    const _raGL_backend_on_objects_created_rendering_callback_arg* callback_arg_ptr         = (const _raGL_backend_on_objects_created_rendering_callback_arg*) callback_arg;
+    const _raGL_backend_on_objects_created_rendering_callback_arg* callback_arg_ptr         = reinterpret_cast<const _raGL_backend_on_objects_created_rendering_callback_arg*>(callback_arg);
     const ogl_context_gl_entrypoints*                              entrypoints_ptr          = nullptr;
     bool                                                           is_object_owner          = false;
     uint32_t                                                       n_objects_to_initialize  = 0;
@@ -1333,7 +1333,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
                 raGL_buffers_allocate_buffer_memory_for_ral_buffer(callback_arg_ptr->backend_ptr->buffers,
                                                                    buffer_ral,
-                                                                   (raGL_buffer*) &new_object);
+                                                                   reinterpret_cast<raGL_buffer*>(&new_object) );
 
                 break;
             }
@@ -1465,7 +1465,7 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
 
                     raGL_texture_get_property(new_texture_raGL,
                                               RAGL_TEXTURE_PROPERTY_ID,
-                                              (void**) &new_texture_id);
+                                              reinterpret_cast<void**>(&new_texture_id) );
 
                     ASSERT_DEBUG_SYNC(new_texture_id != 0,
                                       "New raGL_texture's GL id is 0");
@@ -1524,8 +1524,8 @@ end:
 PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                                               void*       backend)
 {
-    _raGL_backend*                                           backend_ptr             = (_raGL_backend*)                                           backend;
-    const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr        = (const ral_context_callback_objects_deleted_callback_arg*) callback_arg;
+    _raGL_backend*                                           backend_ptr             = reinterpret_cast<_raGL_backend*>                                          (backend);
+    const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr        = reinterpret_cast<const ral_context_callback_objects_deleted_callback_arg*>(callback_arg);
     bool                                                     is_owner                = false;
     system_hash64map*                                        object_map_ptr          = nullptr;
     system_read_write_mutex*                                 object_map_rw_mutex_ptr = nullptr;
@@ -1692,7 +1692,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 
                     raGL_texture_get_property((raGL_texture) object_raGL,
                                               RAGL_TEXTURE_PROPERTY_ID,
-                                              (void**) &object_id);
+                                              reinterpret_cast<void**>(&object_id) );
 
                     ASSERT_DEBUG_SYNC(object_id != 0,
                                       "raGL_texture's GL id is 0");
@@ -1713,7 +1713,7 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context context,
                                                                  void*       callback_arg)
 {
-    const _raGL_backend_on_objects_deleted_rendering_callback_arg* callback_arg_ptr        = (const _raGL_backend_on_objects_deleted_rendering_callback_arg*) callback_arg;
+    const _raGL_backend_on_objects_deleted_rendering_callback_arg* callback_arg_ptr        = reinterpret_cast<const _raGL_backend_on_objects_deleted_rendering_callback_arg*>(callback_arg);
     const ogl_context_gl_entrypoints*                              entrypoints_ptr         = nullptr;
     bool                                                           is_owner                = false;
     system_hash64map*                                              object_map_ptr          = nullptr;
@@ -1761,13 +1761,13 @@ end:
 PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_data,
                                                     void*       backend)
 {
-    _raGL_backend*                                         backend_ptr      = (_raGL_backend*)                                         backend;
-    _ral_program_callback_shader_attach_callback_argument* callback_arg_ptr = (_ral_program_callback_shader_attach_callback_argument*) callback_arg_data;
-    const raGL_program                                     program_raGL     = ral_context_get_program_gl(backend_ptr->context_ral,
-                                                                                                         callback_arg_ptr->program);
-    bool                                                   result           = false;
-    const raGL_shader                                      shader_raGL      = ral_context_get_shader_gl (backend_ptr->context_ral,
-                                                                                                         callback_arg_ptr->shader);
+    _raGL_backend*                                               backend_ptr      = reinterpret_cast<_raGL_backend*>                                              (backend);
+    const _ral_program_callback_shader_attach_callback_argument* callback_arg_ptr = reinterpret_cast<const _ral_program_callback_shader_attach_callback_argument*>(callback_arg_data);
+    const raGL_program                                           program_raGL     = ral_context_get_program_gl(backend_ptr->context_ral,
+                                                                                                               callback_arg_ptr->program);
+    bool                                                         result           = false;
+    const raGL_shader                                            shader_raGL      = ral_context_get_shader_gl (backend_ptr->context_ral,
+                                                                                                               callback_arg_ptr->shader);
 
     if (!raGL_program_attach_shader(program_raGL,
                                     shader_raGL) )
@@ -1837,9 +1837,9 @@ end:
 PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callback_arg_data,
                                                                void*       backend)
 {
-    _raGL_backend*    backend_ptr       = (_raGL_backend*) backend;
+    _raGL_backend*    backend_ptr       = reinterpret_cast<_raGL_backend*>(backend);
     bool              result            = false;
-    ral_shader        shader_to_compile = (ral_shader)     callback_arg_data;
+    ral_shader        shader_to_compile = (ral_shader) callback_arg_data;
     const raGL_shader shader_raGL       = ral_context_get_shader_gl(backend_ptr->context_ral,
                                                                     shader_to_compile);
 
@@ -1928,9 +1928,9 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
 PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const void* callback_arg_data,
                                                                            void*       backend)
 {
-    _raGL_backend*                                                   backend_ptr      = (_raGL_backend*)                                                   backend;
-    _ral_texture_client_memory_source_update_requested_callback_arg* callback_arg_ptr = (_ral_texture_client_memory_source_update_requested_callback_arg*) callback_arg_data;
-    raGL_texture                                                     texture_raGL     = nullptr;
+    _raGL_backend*                                                         backend_ptr      = reinterpret_cast<_raGL_backend*>                                                        (backend);
+    const _ral_texture_client_memory_source_update_requested_callback_arg* callback_arg_ptr = reinterpret_cast<const _ral_texture_client_memory_source_update_requested_callback_arg*>(callback_arg_data);
+    raGL_texture                                                           texture_raGL     = nullptr;
 
     /* Identify the raGL_texture instance for the source ral_texture object and forward
      * the request.
@@ -1963,9 +1963,9 @@ PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const
 PRIVATE void _raGL_backend_on_texture_mipmap_generation_request(const void* callback_arg_data,
                                                                 void*       backend)
 {
-    _raGL_backend*                                         backend_ptr      = (_raGL_backend*) backend;
-    _ral_texture_mipmap_generation_requested_callback_arg* callback_arg_ptr = (_ral_texture_mipmap_generation_requested_callback_arg*) callback_arg_data;
-    raGL_texture                                           texture_raGL     = nullptr;
+    _raGL_backend*                                               backend_ptr      = reinterpret_cast<_raGL_backend*>                                              (backend);
+    const _ral_texture_mipmap_generation_requested_callback_arg* callback_arg_ptr = reinterpret_cast<const _ral_texture_mipmap_generation_requested_callback_arg*>(callback_arg_data);
+    raGL_texture                                                 texture_raGL     = nullptr;
 
     /* Identify the raGL_texture instance for the source ral_texture object and forward
      * the request. */
@@ -2054,7 +2054,7 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
 PRIVATE void _raGL_backend_release_rendering_callback(ogl_context context,
                                                       void*       callback_arg)
 {
-    delete (_raGL_backend*) callback_arg;
+    delete reinterpret_cast<_raGL_backend*>(callback_arg);
 }
 
 /** TODO */
@@ -2430,8 +2430,8 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
 
         if (_global.n_owners > 0)
         {
-            new_backend_ptr->buffers  = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->buffers;
-            new_backend_ptr->textures = ((_raGL_backend*) _global.helper_contexts[0].helper_backend)->textures;
+            new_backend_ptr->buffers  = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->buffers;
+            new_backend_ptr->textures = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->textures;
 
             raGL_buffers_retain (new_backend_ptr->buffers);
             raGL_textures_retain(new_backend_ptr->textures);
@@ -2550,8 +2550,8 @@ PUBLIC void raGL_backend_enqueue_sync()
 /** Please see header for specification */
 PUBLIC void raGL_backend_init(raGL_backend backend)
 {
-    _raGL_backend* backend_ptr      = (_raGL_backend*) backend;
-    _raGL_backend* root_backend_ptr = (_raGL_backend*) _global.helper_contexts[0].helper_backend;
+    _raGL_backend* backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
+    _raGL_backend* root_backend_ptr = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend);
     system_window  window           = nullptr;
     bool           vsync_enabled    = false;
 
@@ -2595,7 +2595,7 @@ PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 
                                                    raGL_buffers_buffer_property property,
                                                    void*                        out_result_ptr)
 {
-    raGL_buffers_get_buffer_property(((_raGL_backend*) backend)->buffers,
+    raGL_buffers_get_buffer_property(reinterpret_cast<_raGL_backend*>(backend)->buffers,
                                      bo_id,
                                      property,
                                      out_result_ptr);
@@ -2630,34 +2630,34 @@ PUBLIC void raGL_backend_get_private_property(raGL_backend                  back
                                               raGL_backend_private_property property,
                                               void*                         out_result_ptr)
 {
-    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
 
     switch (property)
     {
         case RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER:
         {
-            *(raGL_dep_tracker*) out_result_ptr = backend_ptr->dep_tracker;
+            *reinterpret_cast<raGL_dep_tracker*>(out_result_ptr) = backend_ptr->dep_tracker;
 
             break;
         }
 
         case RAGL_BACKEND_PRIVATE_PROPERTY_FBOS:
         {
-            *(raGL_framebuffers*) out_result_ptr = backend_ptr->framebuffers;
+            *reinterpret_cast<raGL_framebuffers*>(out_result_ptr) = backend_ptr->framebuffers;
 
             break;
         }
 
         case RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS:
         {
-            *(system_critical_section*) out_result_ptr = _global.rendering_cs;
+            *reinterpret_cast<system_critical_section*>(out_result_ptr) = _global.rendering_cs;
 
             break;
         }
 
         case RAGL_BACKEND_PRIVATE_PROPERTY_VAOS:
         {
-            *(raGL_vaos*) out_result_ptr = backend_ptr->vaos;
+            *reinterpret_cast<raGL_vaos*>(out_result_ptr) = backend_ptr->vaos;
 
             break;
         }
@@ -2686,7 +2686,7 @@ PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
                                            GLuint        program_id,
                                            raGL_program* out_program_raGL_ptr)
 {
-    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
     bool           result      = false;
 
     /* Sanity checks*/
@@ -2788,7 +2788,7 @@ PUBLIC bool raGL_backend_get_texture_by_id(raGL_backend  backend,
                                            GLuint        texture_id,
                                            raGL_texture* out_texture_raGL_ptr)
 {
-    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
     bool           result      = false;
 
     /* Sanity checks*/
@@ -2847,7 +2847,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                       void*                out_result_ptr)
 
 {
-    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
 
     /* Sanity checks */
     if (backend == nullptr)
@@ -2863,7 +2863,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
     {
         case RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT:
         {
-            *(ogl_context*) out_result_ptr = backend_ptr->context_gl;
+            *reinterpret_cast<ogl_context*>(out_result_ptr) = backend_ptr->context_gl;
 
             break;
         }
@@ -2894,7 +2894,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
-            *(const GLint**) out_result_ptr = limits_ptr->max_compute_work_group_count;
+            *reinterpret_cast<const GLint**>(out_result_ptr) = limits_ptr->max_compute_work_group_count;
 
             break;
         }
@@ -2907,7 +2907,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
-            *(uint32_t*) out_result_ptr = limits_ptr->max_compute_work_group_invocations;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = limits_ptr->max_compute_work_group_invocations;
 
             break;
         }
@@ -2920,7 +2920,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
-            *(const GLint**) out_result_ptr = limits_ptr->max_compute_work_group_size;
+            *reinterpret_cast<const GLint**>(out_result_ptr) = limits_ptr->max_compute_work_group_size;
 
             break;
         }
@@ -2933,7 +2933,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
-            *(uint32_t*) out_result_ptr = limits_ptr->max_uniform_block_size;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = limits_ptr->max_uniform_block_size;
 
             break;
         }
@@ -2946,7 +2946,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
-            *(uint32_t*) out_result_ptr = limits_ptr->shader_storage_buffer_offset_alignment;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = limits_ptr->shader_storage_buffer_offset_alignment;
 
             break;
         }
@@ -2977,7 +2977,7 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
-            *(uint32_t*) out_result_ptr = limits_ptr->uniform_buffer_offset_alignment;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = limits_ptr->uniform_buffer_offset_alignment;
 
             break;
         }
@@ -2996,7 +2996,7 @@ end:
 /** Please see header for specification */
 PUBLIC void raGL_backend_release(void* backend)
 {
-    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
 
     ASSERT_DEBUG_SYNC(backend != nullptr,
                       "Input backend is NULL");
@@ -3075,7 +3075,7 @@ PUBLIC void raGL_backend_set_private_property(raGL_backend                  back
                                               raGL_backend_private_property property,
                                               const void*                   data_ptr)
 {
-    _raGL_backend* backend_ptr = (_raGL_backend*) backend;
+    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
 
     switch (property)
     {
@@ -3084,7 +3084,7 @@ PUBLIC void raGL_backend_set_private_property(raGL_backend                  back
             ASSERT_DEBUG_SYNC(backend_ptr->context_gl == nullptr,
                               "Rendering context is already set");
 
-            backend_ptr->context_gl = *(ogl_context*) data_ptr;
+            backend_ptr->context_gl = *reinterpret_cast<const ogl_context*>(data_ptr);
 
             break;
         }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef RAGL_SHADER_H
@@ -69,7 +69,7 @@ PUBLIC raGL_shader raGL_shader_create(ral_context context_ral,
                                       ral_shader  shader_ral);
 
 /** TODO */
-PUBLIC void raGL_shader_get_property(raGL_shader          shader,
+PUBLIC void raGL_shader_get_property(const raGL_shader    shader,
                                      raGL_shader_property property,
                                      void*                out_result_ptr);
 

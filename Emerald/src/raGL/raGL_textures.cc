@@ -121,7 +121,7 @@ PRIVATE void          _raGL_textures_release_rendering_thread_callback      (ogl
 PRIVATE void _raGL_textures_alloc_texture_rendering_thread_callback(ogl_context context,
                                                                     void*       callback_arg)
 {
-    _raGL_textures_alloc_texture_rendering_thread_callback_arg* callback_arg_ptr = (_raGL_textures_alloc_texture_rendering_thread_callback_arg*) callback_arg;
+    _raGL_textures_alloc_texture_rendering_thread_callback_arg* callback_arg_ptr = reinterpret_cast<_raGL_textures_alloc_texture_rendering_thread_callback_arg*>(callback_arg);
 
     callback_arg_ptr->result_texture = raGL_texture_create(callback_arg_ptr->textures_ptr->context,
                                                            callback_arg_ptr->texture_ral);
@@ -211,7 +211,7 @@ PRIVATE system_hash64 _raGL_textures_get_texture_hash(ral_texture texture)
 /** TODO */
 PRIVATE void _raGL_textures_release(void* textures)
 {
-    _raGL_textures* textures_ptr = (_raGL_textures*) textures;
+    _raGL_textures* textures_ptr = reinterpret_cast<_raGL_textures*>(textures);
 
     /* Request a rendering thread call-back, so that we can release all the textures we
      * were holding in the heaps */
@@ -224,7 +224,7 @@ PRIVATE void _raGL_textures_release(void* textures)
 PRIVATE void _raGL_textures_release_rendering_thread_callback(ogl_context context,
                                                               void*       callback_arg)
 {
-    _raGL_textures* textures_ptr = (_raGL_textures*) callback_arg;
+    _raGL_textures* textures_ptr = reinterpret_cast<_raGL_textures*>(callback_arg);
 
     /* Iterate over all heaps.. */
     uint32_t n_heaps = 0;
@@ -303,13 +303,13 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
     raGL_texture                 result           = nullptr;
     _raGL_textures_texture_heap* texture_heap_ptr = nullptr;
     system_hash64                texture_key      = 0;
-    _raGL_textures*              textures_ptr     = (_raGL_textures*) textures;
+    _raGL_textures*              textures_ptr     = reinterpret_cast<_raGL_textures*>(textures);
 
     /* Sanity checks */
     if (textures == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input raGL_textures instance is NULL");
+                          "Input raGL_textures instance is nullptr");
 
         goto end;
     }
@@ -317,7 +317,7 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
     if (texture_ral == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input ral_texture instance is NULL");
+                          "Input ral_texture instance is nullptr");
 
         goto end;
     }
@@ -392,7 +392,7 @@ end:
 PUBLIC raGL_texture raGL_textures_get_texture_from_pool_with_create_info(raGL_textures                  textures,
                                                                          const ral_texture_create_info* info_ptr)
 {
-    _raGL_textures* textures_ptr   = (_raGL_textures*) textures;
+    _raGL_textures* textures_ptr   = reinterpret_cast<_raGL_textures*>(textures);
     raGL_texture    result_texture = nullptr;
     ral_texture     temp_texture   = nullptr;
 
@@ -416,13 +416,13 @@ PUBLIC void raGL_textures_return_to_pool(raGL_textures textures,
     system_hash64                texture_hash     = 0;
     _raGL_textures_texture_heap* texture_heap_ptr = nullptr;
     ral_texture                  texture_ral      = nullptr;
-    _raGL_textures*              textures_ptr     = (_raGL_textures*) textures;
+    _raGL_textures*              textures_ptr     = reinterpret_cast<_raGL_textures*>(textures);
 
     /* Sanity checks */
     if (textures == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input raGL_textures instance is NULL");
+                          "Input raGL_textures instance is nullptr");
 
         goto end;
     }
@@ -430,7 +430,7 @@ PUBLIC void raGL_textures_return_to_pool(raGL_textures textures,
     if (texture == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Input raGL_texture instance is NULL");
+                          "Input raGL_texture instance is nullptr");
 
         goto end;
     }
@@ -438,7 +438,7 @@ PUBLIC void raGL_textures_return_to_pool(raGL_textures textures,
     /* Identify the heap we want to store the returned texture in. */
     raGL_texture_get_property(texture,
                               RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
-                              (void**) &texture_ral);
+                              reinterpret_cast<void**>(&texture_ral) );
 
     texture_hash = _raGL_textures_get_texture_hash(texture_ral);
 

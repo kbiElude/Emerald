@@ -68,6 +68,6 @@ PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(ral_context   
 /** TODO */
 PUBLIC EMERALD_API void procedural_mesh_box_get_property(procedural_mesh_box          box,
                                                          procedural_mesh_box_property property,
-                                                         void*                        out_result);
+                                                         void*                        out_result_ptr);
 
 #endif /* PROCEDURAL_MESH_BOX_H */

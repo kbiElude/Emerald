@@ -974,7 +974,7 @@ void _raGL_command_buffer::bake_and_bind_fbo()
 
     /* Bind the framebuffer */
     {
-        _raGL_command* bind_fb_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* bind_fb_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
         bind_fb_command_ptr->bind_framebuffer_command_info.framebuffer = fbo_raGL_id;
         bind_fb_command_ptr->bind_framebuffer_command_info.target      = GL_DRAW_FRAMEBUFFER;
@@ -987,7 +987,7 @@ void _raGL_command_buffer::bake_and_bind_fbo()
     /* Update the draw buffers if needed */
     if (bake_state.active_fbo_draw_buffers_dirty)
     {
-        _raGL_command* draw_buffers_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* draw_buffers_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
         memcpy(draw_buffers_command_ptr->draw_buffers_command_info.bufs,
                bake_state.active_fbo_draw_buffers,
@@ -1063,10 +1063,10 @@ void _raGL_command_buffer::bake_and_bind_vao()
 
     raGL_vao_get_property(vao,
                           RAGL_VAO_PROPERTY_ID,
-                          (void**) &vao_id);
+                          reinterpret_cast<void**>(&vao_id) );
 
     /* Enqueue a command to bind the VAO */
-    _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* bind_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
     bind_command_ptr->bind_vertex_array_command_info.vao_id = vao_id;
     bind_command_ptr->type                                  = RAGL_COMMAND_TYPE_BIND_VERTEX_ARRAY;
@@ -1334,7 +1334,7 @@ void _raGL_command_buffer::bake_gfx_state()
         const _mode_state& current_mode_state = mode_states[n_mode];
 
         /* Enqueue a GL command */
-        _raGL_command* new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* new_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
         if (current_mode_state.state)
         {
@@ -1354,7 +1354,7 @@ void _raGL_command_buffer::bake_gfx_state()
     /* Cull mode */
     if (culling_enabled)
     {
-        _raGL_command* new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* new_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
         switch (cull_mode)
         {
@@ -1408,8 +1408,8 @@ void _raGL_command_buffer::bake_gfx_state()
     /* Depth writes + depth test related states. */
     if (depth_writes_enabled)
     {
-        _raGL_command* depth_func_command_ptr          = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-        _raGL_command* enable_depth_writes_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* depth_func_command_ptr          = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
+        _raGL_command* enable_depth_writes_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
         enable_depth_writes_command_ptr->depth_mask_command_info.flag = GL_FALSE;
         enable_depth_writes_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_MASK;
@@ -1424,7 +1424,7 @@ void _raGL_command_buffer::bake_gfx_state()
     }
     else
     {
-        _raGL_command* disable_depth_writes_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* disable_depth_writes_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         disable_depth_writes_command_ptr->depth_mask_command_info.flag = GL_FALSE;
         disable_depth_writes_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_MASK;
@@ -1455,14 +1455,14 @@ void _raGL_command_buffer::bake_gfx_state()
 
         if (current_mode.status)
         {
-            _raGL_command* new_enable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* new_enable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             new_enable_command_ptr->enable_command_info.capability = current_mode.mode;
             new_enable_command_ptr->type                           = RAGL_COMMAND_TYPE_ENABLE;
 
             if (!has_set_polygon_offset)
             {
-                _raGL_command* new_polygon_offset_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+                _raGL_command* new_polygon_offset_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
                 new_polygon_offset_command_ptr->polygon_offset_command_info.factor = depth_bias_slope_factor;
                 new_polygon_offset_command_ptr->polygon_offset_command_info.units  = depth_bias_constant_factor;
@@ -1479,7 +1479,7 @@ void _raGL_command_buffer::bake_gfx_state()
         }
         else
         {
-            _raGL_command* new_disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* new_disable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
             new_disable_command_ptr->disable_command_info.capability = current_mode.mode;
             new_disable_command_ptr->type                            = RAGL_COMMAND_TYPE_DISABLE;
@@ -1492,7 +1492,7 @@ void _raGL_command_buffer::bake_gfx_state()
 
     /* Front face */
     {
-        _raGL_command* new_front_face_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* new_front_face_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         switch (front_face)
         {
@@ -1514,7 +1514,7 @@ void _raGL_command_buffer::bake_gfx_state()
 
     /* Line width. */
     {
-        _raGL_command* new_line_width_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* new_line_width_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         ASSERT_DEBUG_SYNC(line_width >= limits_ptr->aliased_line_width_range[0] &&
                           line_width <= limits_ptr->aliased_line_width_range[1],
@@ -1530,7 +1530,7 @@ void _raGL_command_buffer::bake_gfx_state()
     /* Logic op */
     if (logic_op_enabled)
     {
-        _raGL_command* new_logic_op_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* new_logic_op_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         switch (logic_op)
         {
@@ -1570,7 +1570,7 @@ void _raGL_command_buffer::bake_gfx_state()
      * tying GFX state with the active program for now.
      **/
     {
-        _raGL_command* new_patch_parameteri_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* new_patch_parameteri_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         new_patch_parameteri_command_ptr->patch_parameteri_command_info.pname = GL_PATCH_VERTICES;
         new_patch_parameteri_command_ptr->patch_parameteri_command_info.value = n_patch_control_points;
@@ -1585,7 +1585,7 @@ void _raGL_command_buffer::bake_gfx_state()
     {
         if (polygon_mode_back == polygon_mode_front)
         {
-            _raGL_command* new_polygon_mode_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* new_polygon_mode_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             new_polygon_mode_command_ptr->polygon_mode_command_info.face = GL_FRONT_AND_BACK;
             new_polygon_mode_command_ptr->polygon_mode_command_info.mode = raGL_utils_get_ogl_enum_for_ral_polygon_mode(polygon_mode_back);
@@ -1596,8 +1596,8 @@ void _raGL_command_buffer::bake_gfx_state()
         }
         else
         {
-            _raGL_command* new_polygon_mode_back_command_ptr  = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            _raGL_command* new_polygon_mode_front_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* new_polygon_mode_back_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            _raGL_command* new_polygon_mode_front_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             new_polygon_mode_back_command_ptr->polygon_mode_command_info.face = GL_BACK;
             new_polygon_mode_back_command_ptr->polygon_mode_command_info.mode = raGL_utils_get_ogl_enum_for_ral_polygon_mode(polygon_mode_back);
@@ -1618,7 +1618,7 @@ void _raGL_command_buffer::bake_gfx_state()
     /* Sample shading */
     if (sample_shading_enabled)
     {
-        _raGL_command* disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* disable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         disable_command_ptr->disable_command_info.capability = GL_SAMPLE_SHADING;
         disable_command_ptr->type                            = RAGL_COMMAND_TYPE_DISABLE;
@@ -1628,8 +1628,8 @@ void _raGL_command_buffer::bake_gfx_state()
     }
     else
     {
-        _raGL_command* enable_command_ptr             = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-        _raGL_command* min_sample_shading_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* enable_command_ptr             = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+        _raGL_command* min_sample_shading_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         enable_command_ptr->disable_command_info.capability = GL_SAMPLE_SHADING;
         enable_command_ptr->type                            = RAGL_COMMAND_TYPE_ENABLE;
@@ -1675,8 +1675,8 @@ void _raGL_command_buffer::bake_gfx_state()
                       n_viewport < n_viewports;
                     ++n_viewport)
         {
-            _raGL_command* depth_range_indexed_command_raGL_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            _raGL_command* set_viewport_command_raGL_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* depth_range_indexed_command_raGL_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            _raGL_command* set_viewport_command_raGL_ptr        = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             depth_range_indexed_command_raGL_ptr->depth_range_indexed_command_info.farVal  = set_viewport_commands_ral[n_viewport].depth_range[1];
             depth_range_indexed_command_raGL_ptr->depth_range_indexed_command_info.index   = set_viewport_commands_ral[n_viewport].index;
@@ -1698,7 +1698,7 @@ void _raGL_command_buffer::bake_gfx_state()
 
             if (scissor_test_enabled)
             {
-                _raGL_command* scissor_indexedv_command_raGL_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+                _raGL_command* scissor_indexedv_command_raGL_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
                 scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.index = set_scissor_box_commands_ral[n_viewport].index;
                 scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[0]  = set_scissor_box_commands_ral[n_viewport].xy[0];
@@ -1726,9 +1726,9 @@ void _raGL_command_buffer::bake_gfx_state()
             const ral_stencil_op_state& state                   = (is_back_state_iteration) ? stencil_test_back
                                                                                             : stencil_test_front;
 
-            _raGL_command* stencil_func_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            _raGL_command* stencil_mask_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            _raGL_command* stencil_op_command_ptr   = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* stencil_func_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            _raGL_command* stencil_mask_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            _raGL_command* stencil_op_command_ptr   = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             stencil_func_command_ptr->stencil_func_separate_command_info.face = current_face;
             stencil_func_command_ptr->stencil_func_separate_command_info.func = raGL_utils_get_ogl_enum_for_ral_compare_op(state.compare_op);
@@ -2056,7 +2056,7 @@ void _raGL_command_buffer::bake_rt_state()
 
     if (current_rt.blend_enabled)
     {
-        _raGL_command* disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* disable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         disable_command_ptr->disable_command_info.capability = GL_BLEND;
         disable_command_ptr->type                            = RAGL_COMMAND_TYPE_DISABLE;
@@ -2068,7 +2068,7 @@ void _raGL_command_buffer::bake_rt_state()
     {
         {
             /* Enable blending */
-            _raGL_command* enable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* enable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             enable_command_ptr->enable_command_info.capability = GL_BLEND;
             enable_command_ptr->type                           = RAGL_COMMAND_TYPE_ENABLE;
@@ -2079,7 +2079,7 @@ void _raGL_command_buffer::bake_rt_state()
 
         {
             /* Blend constant */
-            _raGL_command* blend_color_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* blend_color_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             ASSERT_DEBUG_SYNC(current_rt.blend_constant.data_type == RAL_COLOR_DATA_TYPE_FLOAT,
                               "Invalid blend constant color data type");
@@ -2098,7 +2098,7 @@ void _raGL_command_buffer::bake_rt_state()
 
         {
             /* Blend ops */
-            _raGL_command* blend_equation_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* blend_equation_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             blend_equation_command_ptr->blend_equation_separate_command_info.modeAlpha = raGL_utils_get_ogl_enum_for_ral_blend_op(current_rt.blend_op_alpha);
             blend_equation_command_ptr->blend_equation_separate_command_info.modeRGB   = raGL_utils_get_ogl_enum_for_ral_blend_op(current_rt.blend_op_color);
@@ -2110,7 +2110,7 @@ void _raGL_command_buffer::bake_rt_state()
 
         {
             /* Blend functions */
-            _raGL_command* blend_func_separate_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* blend_func_separate_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             blend_func_separate_command_ptr->blend_func_separate_command_info.dstAlpha = raGL_utils_get_ogl_enum_for_ral_blend_factor(current_rt.dst_alpha_blend_factor);
             blend_func_separate_command_ptr->blend_func_separate_command_info.dstRGB   = raGL_utils_get_ogl_enum_for_ral_blend_factor(current_rt.dst_color_blend_factor);
@@ -2173,7 +2173,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
     {
         /* In OpenGL, clear regions can be controlled with a scissor test. Enable one now. */
-        _raGL_command* enable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* enable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         enable_command_ptr->enable_command_info.capability = GL_SCISSOR_TEST;
         enable_command_ptr->type                           = RAGL_COMMAND_TYPE_ENABLE;
@@ -2355,7 +2355,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
          * rendertarget */
         if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0)
         {
-            _raGL_command* draw_buffers_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* draw_buffers_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             draw_buffers_command_ptr->draw_buffers_command_info.bufs[0] = GL_COLOR_ATTACHMENT0 + current_rt.rt_index;
             draw_buffers_command_ptr->type                              = RAGL_COMMAND_TYPE_DRAW_BUFFERS;
@@ -2369,7 +2369,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
         /* Adjust clear color values */
         if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0)
         {
-            _raGL_command* clear_color_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* clear_color_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             /* TODO: We should handle sint/uint clear requests differently */
             ASSERT_DEBUG_SYNC(current_rt_format_type == RAL_FORMAT_TYPE_SFLOAT ||
@@ -2390,7 +2390,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
         if ((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0)
         {
-            _raGL_command* clear_depth_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* clear_depth_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             clear_depth_command_ptr->clear_depthf_command_info.depth = current_rt.clear_value.depth;
             clear_depth_command_ptr->type                            = RAGL_COMMAND_TYPE_CLEAR_DEPTHF;
@@ -2401,7 +2401,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
         if ((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0)
         {
-            _raGL_command* clear_stencil_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* clear_stencil_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             clear_stencil_command_ptr->clear_stencil_command_info.stencil = current_rt.clear_value.stencil;
             clear_stencil_command_ptr->type                               = RAGL_COMMAND_TYPE_CLEAR_STENCIL;
@@ -2436,7 +2436,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
             }
 
             /* Adjust the scissor box */
-            scissor_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            scissor_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             scissor_command_ptr->scissor_indexedv_command_info.index = 0;
             scissor_command_ptr->scissor_indexedv_command_info.v[0]  = current_region.xy  [0];
@@ -2449,7 +2449,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
                                          scissor_command_ptr);
 
             /* Enqueue clear command */
-            clear_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            clear_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             clear_command_ptr->clear_command_info.mask = (((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT)   != 0) ? GL_COLOR_BUFFER_BIT   : 0) |
                                                          (((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT)   != 0) ? GL_DEPTH_BUFFER_BIT   : 0) |
@@ -2463,7 +2463,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
     if (should_restore_draw_buffers)
     {
-        _raGL_command* draw_buffers_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* draw_buffers_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         static_assert(sizeof(draw_buffers_command_ptr->draw_buffers_command_info.bufs) == sizeof(bake_state.active_fbo_draw_buffers), "");
 
@@ -2480,7 +2480,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
     if (should_restore_scissor_test_state)
     {
-        _raGL_command* scissor_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* scissor_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         scissor_command_ptr->scissor_indexedv_command_info.index = 0;
         scissor_command_ptr->scissor_indexedv_command_info.v[0]  = bake_state.active_scissor_boxes[0].xy  [0];
@@ -2495,7 +2495,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
         if (!scissor_test_pre_enabled)
         {
-            _raGL_command* disable_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* disable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             disable_command_ptr->enable_command_info.capability = GL_SCISSOR_TEST;
             disable_command_ptr->type                           = RAGL_COMMAND_TYPE_DISABLE;
@@ -2572,7 +2572,7 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                               (void**) &src_texture_is_rb);
 
-    new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    new_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     if (command_ral_ptr->dst_size[0] == command_ral_ptr->src_size[0] &&
         command_ral_ptr->dst_size[1] == command_ral_ptr->src_size[1] &&
@@ -2870,7 +2870,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
                                   index_buffer_raGL,
                                   GL_ELEMENT_ARRAY_BARRIER_BIT) )
     {
-        _raGL_command* memory_barrier_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_ELEMENT_ARRAY_BARRIER_BIT;
         memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
@@ -2911,7 +2911,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
     bake_pre_draw_call_memory_barriers();
 
     /* Issue the draw call */
-    _raGL_command* draw_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* draw_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     raGL_buffer_get_property(index_buffer_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
@@ -2990,7 +2990,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 {
     /* TODO: Coalesce multiple indirect draw calls into a single multi-draw call. */
     raGL_backend   backend_raGL     = nullptr;
-    _raGL_command* draw_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* draw_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     ASSERT_DEBUG_SYNC(command_ral_ptr->indirect_buffer != nullptr,
                       "Indirect buffer is nullptr");
@@ -3001,7 +3001,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
     /* Bind the indirect buffer */
     {
-        _raGL_command* bind_command_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* bind_command_ptr        = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
         raGL_buffer    indirect_buffer_raGL    = nullptr;
         GLuint         indirect_buffer_raGL_id = 0;
 
@@ -3027,7 +3027,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
                                       indirect_buffer_raGL,
                                       GL_COMMAND_BARRIER_BIT) )
         {
-            _raGL_command* memory_barrier_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_COMMAND_BARRIER_BIT;
             memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
@@ -3074,7 +3074,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
         _raGL_command_multi_draw_arrays_indirect_command_info& command_args = draw_command_ptr->multi_draw_arrays_indirect_command_info;
 
         command_args.drawcount = 1;
-        command_args.indirect  = (GLvoid*) command_ral_ptr->offset;
+        command_args.indirect  = reinterpret_cast<GLvoid*>(command_ral_ptr->offset);
         command_args.stride    = command_ral_ptr->stride;
 
         draw_command_ptr->type = RAGL_COMMAND_TYPE_MULTI_DRAW_ARRAYS_INDIRECT;
@@ -3083,7 +3083,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
     {
         /* Bind the index buffer */
         {
-            _raGL_command* bind_command_ptr  = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* bind_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
             raGL_buffer    index_buffer_raGL = nullptr;
 
             raGL_backend_get_buffer (backend_raGL,
@@ -3112,7 +3112,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
                                           index_buffer_raGL,
                                           GL_ELEMENT_ARRAY_BARRIER_BIT) )
             {
-                _raGL_command* memory_barrier_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+                _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
                 memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_ELEMENT_ARRAY_BARRIER_BIT;
                 memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
@@ -3128,7 +3128,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
         _raGL_command_multi_draw_elements_indirect_command_info& command_args = draw_command_ptr->multi_draw_elements_indirect_command_info;
 
         command_args.drawcount = 1;
-        command_args.indirect  = (GLvoid*) command_ral_ptr->offset;
+        command_args.indirect  = reinterpret_cast<GLvoid*>(command_ral_ptr->offset);
         command_args.stride    = command_ral_ptr->stride;
         command_args.type      = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
 
@@ -3142,7 +3142,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_buffer_draw_call_regular_command_info* command_ral_ptr)
 {
     /* TODO: Coalesce multiple draw calls into a single multi-draw call. */
-    _raGL_command* draw_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* draw_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     /* Update context state if a new GFX state has been bound */
     if (bake_state.active_gfx_state_dirty)
@@ -3231,7 +3231,7 @@ void _raGL_command_buffer::process_execute_command_buffer_command(const ral_comm
 {
     raGL_backend        backend_raGL        = nullptr;
     raGL_command_buffer command_buffer_raGL = nullptr;
-    _raGL_command*      execute_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command*      execute_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BACKEND,
@@ -3281,7 +3281,7 @@ void _raGL_command_buffer::process_invalidate_texture_command(const ral_command_
                   n_mip < command_ral_ptr->n_start_mip + command_ral_ptr->n_mips;
                 ++n_mip)
     {
-        _raGL_command* new_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+        _raGL_command* new_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
         new_command_ptr->invalidate_tex_image_command_info.level   = n_mip;
         new_command_ptr->invalidate_tex_image_command_info.texture = texture_raGL_id;
@@ -3399,10 +3399,10 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                                      RAL_SAMPLER_PROPERTY_LOD_BIAS,
                                     &sampler_lod_bias);
 
-            active_texture_command_ptr      = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            bind_sampler_command_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            bind_texture_command_ptr        = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-            texture_parameterfv_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            active_texture_command_ptr      = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            bind_sampler_command_ptr        = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            bind_texture_command_ptr        = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+            texture_parameterfv_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             active_texture_command_ptr->active_texture_command_info.target = GL_TEXTURE0 + variable_raGL_ptr->texture_unit;
             active_texture_command_ptr->type                               = RAGL_COMMAND_TYPE_ACTIVE_TEXTURE;
@@ -3487,7 +3487,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                               "Too large binding point was requested.");
 
             /* Enqueue a GL command */
-            _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* bind_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             ASSERT_DEBUG_SYNC(buffer_binding_info.size != 0,
                               "Zero-sized buffer binding was requested.");
@@ -3565,7 +3565,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                               "Cannot bind a renderbuffer to a storage image binding.");
 
             /* Bind the image */
-            _raGL_command* bind_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+            _raGL_command* bind_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             bind_command_ptr->bind_image_texture_command_info.access     = ((command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_READ) != 0 && (command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_WRITE) == 0) ? GL_READ_ONLY
                                                                          : ((command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_READ) != 0 && (command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_WRITE) != 0) ? GL_READ_WRITE
@@ -3630,7 +3630,7 @@ void _raGL_command_buffer::process_set_program_command(const ral_command_buffer_
                              &program_raGL_id);
 
     /* Enqueue the GL command */
-    _raGL_command* gl_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* gl_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     gl_command_ptr->use_program_command_info.po_id = program_raGL_id;
     gl_command_ptr->type                           = RAGL_COMMAND_TYPE_USE_PROGRAM;
@@ -3657,7 +3657,7 @@ void _raGL_command_buffer::process_set_scissor_box_command(const ral_command_buf
                       "Invalid scissor box index");
 
     /* Enqueue the GL command */
-    _raGL_command* gl_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* gl_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     gl_command_ptr->scissor_indexedv_command_info.index = command_ral_ptr->index;
     gl_command_ptr->scissor_indexedv_command_info.v[0]  = command_ral_ptr->xy  [0];
@@ -3733,8 +3733,8 @@ void _raGL_command_buffer::process_set_viewport_command(const ral_command_buffer
     }
 
     /* Enqueue the GL command */
-    _raGL_command* depth_range_indexed_command_ptr = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
-    _raGL_command* viewport_indexedfv_command_ptr  = (_raGL_command*) system_resource_pool_get_from_pool(command_pool);
+    _raGL_command* depth_range_indexed_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    _raGL_command* viewport_indexedfv_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     depth_range_indexed_command_ptr->depth_range_indexed_command_info.index   = command_ral_ptr->index;
     depth_range_indexed_command_ptr->depth_range_indexed_command_info.nearVal = command_ral_ptr->depth_range[0];

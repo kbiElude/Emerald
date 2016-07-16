@@ -28,7 +28,7 @@ PUBLIC raGL_sampler raGL_sampler_create(ogl_context context,
                                         ral_sampler sampler);
 
 /** TODO */
-PUBLIC void raGL_sampler_get_property(raGL_sampler          sampler,
+PUBLIC void raGL_sampler_get_property(const raGL_sampler    sampler,
                                       raGL_sampler_property property,
                                       void*                 out_result_ptr);
 

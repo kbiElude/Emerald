@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -79,20 +79,20 @@ typedef struct _raGL_buffers
 
     ~_raGL_buffers()
     {
-        if (id_to_buffer_map != NULL)
+        if (id_to_buffer_map != nullptr)
         {
             system_hash64map_release(id_to_buffer_map);
 
-            id_to_buffer_map = NULL;
+            id_to_buffer_map = nullptr;
         }
 
-        if (nonsparse_heaps != NULL)
+        if (nonsparse_heaps != nullptr)
         {
             for (unsigned int n_heap = 0;
                               n_heap < RAGL_BUFFERS_HEAP_COUNT;
                             ++n_heap)
             {
-                _raGL_buffers_buffer* buffer_ptr = NULL;
+                _raGL_buffers_buffer* buffer_ptr = nullptr;
 
                 /* Note: nonsparse buffer descriptors are carved out of the buffer descriptor pool.
                  *       The pool takes care of releasing the embedded GL objects at the release time.
@@ -109,20 +109,20 @@ typedef struct _raGL_buffers
 
                 system_resizable_vector_release(nonsparse_heaps[n_heap]);
 
-                nonsparse_heaps[n_heap] = NULL;
-            } /* for (all heap types) */
-        } /* if (nonsparse_buffers != NULL) */
+                nonsparse_heaps[n_heap] = nullptr;
+            }
+        }
 
-        if (ral_buffer_to_buffer_map != NULL)
+        if (ral_buffer_to_buffer_map != nullptr)
         {
             system_hash64map_release(ral_buffer_to_buffer_map);
 
-            ral_buffer_to_buffer_map = NULL;
+            ral_buffer_to_buffer_map = nullptr;
         }
 
-        if (sparse_buffers != NULL)
+        if (sparse_buffers != nullptr)
         {
-            _raGL_buffers_buffer* buffer_ptr = NULL;
+            _raGL_buffers_buffer* buffer_ptr = nullptr;
 
             /* The note above regarding the nonsparse buffer descriptors applies here, too. */
             while (system_resizable_vector_pop(sparse_buffers,
@@ -130,20 +130,20 @@ typedef struct _raGL_buffers
             {
                 system_resource_pool_return_to_pool(buffer_descriptor_pool,
                                                     (system_resource_pool_block) buffer_ptr);
-            } /* while (descriptors are available) */
+            }
 
             system_resizable_vector_release(sparse_buffers);
 
-            sparse_buffers = NULL;
-        } /* if (sparse_buffers != NULL) */
+            sparse_buffers = nullptr;
+        }
 
         /* The descriptor pool needs to be released at the end */
-        if (buffer_descriptor_pool != NULL)
+        if (buffer_descriptor_pool != nullptr)
         {
             system_resource_pool_release(buffer_descriptor_pool);
 
-            buffer_descriptor_pool = NULL;
-        } /* if (buffer_descriptor_pool != NULL) */
+            buffer_descriptor_pool = nullptr;
+        }
     }
 } _raGL_buffers;
 
@@ -183,14 +183,14 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
     backend                  = in_backend;
     buffer_descriptor_pool   = system_resource_pool_create(sizeof(_raGL_buffers_buffer),
                                                            16,                                   /* n_elements_to_preallocate */
-                                                           NULL,                                 /* init_fn */
+                                                           nullptr,                                 /* init_fn */
                                                            _raGL_buffers_dealloc_sparse_buffer); /* deinit_fn */
     context                  = in_context;
     context_ral              = in_context_ral;
-    entry_points_es          = NULL;
-    entry_points_gl          = NULL;
-    entry_points_gl_bs       = NULL;
-    entry_points_gl_sb       = NULL;
+    entry_points_es          = nullptr;
+    entry_points_gl          = nullptr;
+    entry_points_gl_bs       = nullptr;
+    entry_points_gl_sb       = nullptr;
     id_to_buffer_map         = system_hash64map_create(sizeof(_raGL_buffers_buffer*) );
     page_size                = 0;
     ral_buffer_to_buffer_map = system_hash64map_create       (sizeof(_raGL_buffers_buffer*) );
@@ -198,7 +198,7 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
 
     /* Retrieve alignment requirements */
     ral_backend_type             backend_type;
-    const ogl_context_gl_limits* limits_ptr = NULL;
+    const ogl_context_gl_limits* limits_ptr = nullptr;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
@@ -220,7 +220,7 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
                     ++n_heap)
     {
         nonsparse_heaps[n_heap] = system_resizable_vector_create(4); /* capacity */
-    } /* for (all buffer usage types) */
+    }
 
     /* Cache the entry-points */
     if (backend_type == RAL_BACKEND_TYPE_ES)
@@ -228,7 +228,7 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                 &entry_points_es);
-    } /* if (context_type == OGL_CONTEXT_TYPE_ES) */
+    }
     else
     {
         ogl_context_get_property(context,
@@ -248,7 +248,7 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
     if (are_sparse_buffers_in)
     {
         /* Retrieve entry-point & limits descriptors */
-        const ogl_context_gl_limits_arb_sparse_buffer* limits_sb = NULL;
+        const ogl_context_gl_limits_arb_sparse_buffer* limits_sb = nullptr;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER,
@@ -258,7 +258,7 @@ _raGL_buffers::_raGL_buffers(raGL_backend in_backend,
                                 &limits_sb);
 
         page_size = limits_sb->sparse_buffer_page_size;
-    } /* if (are_sparse_buffers_in) */
+    }
 }
 
 /** TODO */
@@ -272,7 +272,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
     GLuint                bo_id          = 0;
     unsigned int          bo_size        = _raGL_buffers_get_nonsparse_buffer_size(heap_index);
     GLenum                bo_target      = 0;
-    _raGL_buffers_buffer* new_buffer_ptr = (_raGL_buffers_buffer*) system_resource_pool_get_from_pool(buffers_ptr->buffer_descriptor_pool);
+    _raGL_buffers_buffer* new_buffer_ptr = reinterpret_cast<_raGL_buffers_buffer*>(system_resource_pool_get_from_pool(buffers_ptr->buffer_descriptor_pool));
 
     /** TODO */
     ASSERT_DEBUG_SYNC( (mappability_bits & RAL_BUFFER_MAPPABILITY_COHERENT_BIT) == 0,
@@ -349,9 +349,9 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
         bo_size = required_size;
     }
 
-    if (buffers_ptr->entry_points_gl != NULL)
+    if (buffers_ptr->entry_points_gl != nullptr)
     {
-        ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_gl_bs != NULL,
+        ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_gl_bs != nullptr,
                           "Immutable buffer support is missing. Crash ahead.");
 
         buffers_ptr->entry_points_gl->pGLGenBuffers      (1,
@@ -360,7 +360,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
                                                           bo_id);
         buffers_ptr->entry_points_gl_bs->pGLBufferStorage(bo_target,
                                                           bo_size,
-                                                          NULL,
+                                                          nullptr,
                                                           bo_flags);
     }
     else
@@ -371,14 +371,14 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
                                                     bo_id);
         buffers_ptr->entry_points_es->pGLBufferData(bo_target,
                                                     bo_size,
-                                                    NULL,           /* data */
+                                                    nullptr,           /* data */
                                                     GL_STATIC_DRAW);
     }
 
     /* Check if the request was successful */
     GLint64 reported_bo_size = 0;
 
-    if (buffers_ptr->entry_points_gl != NULL)
+    if (buffers_ptr->entry_points_gl != nullptr)
     {
         buffers_ptr->entry_points_gl->pGLGetBufferParameteri64v(bo_target,
                                                                 GL_BUFFER_SIZE,
@@ -401,8 +401,8 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
         new_buffer_ptr->mappability = mappability_bits;
         new_buffer_ptr->manager     = system_memory_manager_create(bo_size,
                                                                    1,             /* page_size - immutable buffers have no special requirements */
-                                                                   NULL,          /* pfn_on_memory_block_alloced */
-                                                                   NULL,          /* pfn_on_memory_block_freed */
+                                                                   nullptr,          /* pfn_on_memory_block_alloced */
+                                                                   nullptr,          /* pfn_on_memory_block_freed */
                                                                    new_buffer_ptr,
                                                                    true);         /* should_be_thread_safe */
 
@@ -417,16 +417,16 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
         system_hash64map_insert(buffers_ptr->id_to_buffer_map,
                                 bo_id,
                                 new_buffer_ptr,
-                                NULL,  /* callback          */
-                                NULL); /* callback_argument */
-    } /* if (reported_bo_size >= bo_size) */
+                                nullptr,  /* callback          */
+                                nullptr); /* callback_argument */
+    }
     else
     {
         /* BO allocation failure! */
         ASSERT_DEBUG_SYNC(false,
                           "Failed to allocate storage for an immutable buffer object.");
 
-        if (buffers_ptr->entry_points_gl != NULL)
+        if (buffers_ptr->entry_points_gl != nullptr)
         {
             buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
                                                           &bo_id);
@@ -440,7 +440,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
         system_resource_pool_return_to_pool(buffers_ptr->buffer_descriptor_pool,
                                             (system_resource_pool_block) new_buffer_ptr);
 
-        new_buffer_ptr = NULL;
+        new_buffer_ptr = nullptr;
     }
 
     {
@@ -453,10 +453,10 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_immutable_buffer(_raGL_buf
 /** TODO */
 PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_sparse_buffer(_raGL_buffers* buffers_ptr)
 {
-    _raGL_buffers_buffer* new_buffer_ptr = (_raGL_buffers_buffer*) system_resource_pool_get_from_pool(buffers_ptr->buffer_descriptor_pool);
+    _raGL_buffers_buffer* new_buffer_ptr = reinterpret_cast<_raGL_buffers_buffer*>(system_resource_pool_get_from_pool(buffers_ptr->buffer_descriptor_pool));
 
-    ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_gl    != NULL &&
-                      buffers_ptr->entry_points_gl_bs != NULL,
+    ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_gl    != nullptr &&
+                      buffers_ptr->entry_points_gl_bs != nullptr,
                       "GL_ARB_buffer_storage and/or GL entry-points are unavailable.");
 
     buffers_ptr->entry_points_gl->pGLGenBuffers      (1,
@@ -465,7 +465,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_sparse_buffer(_raGL_buffer
                                                       new_buffer_ptr->bo_id);
     buffers_ptr->entry_points_gl_bs->pGLBufferStorage(GL_ARRAY_BUFFER,
                                                       SPARSE_BUFFER_SIZE,
-                                                      NULL, /* data */
+                                                      nullptr, /* data */
                                                       GL_SPARSE_STORAGE_BIT_ARB |
                                                       GL_DYNAMIC_STORAGE_BIT);
 
@@ -503,7 +503,7 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_sparse_buffer(_raGL_buffer
         system_resource_pool_return_to_pool(buffers_ptr->buffer_descriptor_pool,
                                             (system_resource_pool_block) new_buffer_ptr);
 
-        new_buffer_ptr = NULL;
+        new_buffer_ptr = nullptr;
     }
 
     raGL_backend_enqueue_sync();
@@ -514,18 +514,18 @@ PRIVATE _raGL_buffers_buffer* _raGL_buffers_alloc_new_sparse_buffer(_raGL_buffer
 /** TODO */
 PRIVATE void _raGL_buffers_dealloc_sparse_buffer(system_resource_pool_block buffer_block)
 {
-    _raGL_buffers_buffer* buffer_ptr = (_raGL_buffers_buffer*) buffer_block;
+    _raGL_buffers_buffer* buffer_ptr = reinterpret_cast<_raGL_buffers_buffer*>(buffer_block);
 
     if (buffer_ptr->bo_id != 0)
     {
-        if (buffer_ptr->buffers_ptr->entry_points_gl != NULL)
+        if (buffer_ptr->buffers_ptr->entry_points_gl != nullptr)
         {
             buffer_ptr->buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
                                                                       &buffer_ptr->bo_id);
         }
         else
         {
-            ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_es != NULL,
+            ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_es != nullptr,
                               "ES and GL entry-point descriptors are unavailable.");
 
             buffer_ptr->buffers_ptr->entry_points_es->pGLDeleteBuffers(1,
@@ -535,11 +535,11 @@ PRIVATE void _raGL_buffers_dealloc_sparse_buffer(system_resource_pool_block buff
         buffer_ptr->bo_id = 0;
     }
 
-    if (buffer_ptr->manager != NULL)
+    if (buffer_ptr->manager != nullptr)
     {
         system_memory_manager_release(buffer_ptr->manager);
 
-        buffer_ptr->manager = NULL;
+        buffer_ptr->manager = nullptr;
     }
 
     raGL_backend_enqueue_sync();
@@ -615,7 +615,7 @@ PRIVATE unsigned int _raGL_buffers_get_nonsparse_buffer_size(_raGL_buffers_heap 
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized _raGL_buffers_heap value.");
         }
-    } /* switch (usage) */
+    }
 
     return result;
 }
@@ -624,13 +624,13 @@ PRIVATE unsigned int _raGL_buffers_get_nonsparse_buffer_size(_raGL_buffers_heap 
 PRIVATE void _raGL_buffers_init_rendering_callback(ogl_context     context,
                                                    void*           buffers_raw_ptr)
 {
-    _raGL_buffers* buffers_ptr = (_raGL_buffers*) buffers_raw_ptr;
+    _raGL_buffers* buffers_ptr = reinterpret_cast<_raGL_buffers*>(buffers_raw_ptr);
 
     /* If sparse buffers are supported, allocate a single sparse buffer */
     if (buffers_ptr->are_sparse_buffers_in)
     {
         _raGL_buffers_alloc_new_sparse_buffer(buffers_ptr);
-    } /* if (new_buffers->are_sparse_buffers_in) */
+    }
     else
     {
         for (unsigned int n_heap = 0;
@@ -657,10 +657,10 @@ PRIVATE void _raGL_buffers_on_sparse_memory_block_alloced(system_memory_manager 
                                                           unsigned int          size,
                                                           void*                 user_arg)
 {
-    _raGL_buffers_buffer* buffer_ptr = (_raGL_buffers_buffer*) user_arg;
+    _raGL_buffers_buffer* buffer_ptr = reinterpret_cast<_raGL_buffers_buffer*>(user_arg);
 
     /* Commit the pages the caller will later fill with data. */
-    ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_gl_sb != NULL,
+    ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_gl_sb != nullptr,
                       "GL_ARB_sparse_buffer entry-points are unavailable.");
 
     buffer_ptr->buffers_ptr->entry_points_gl_sb->pGLNamedBufferPageCommitmentEXT(buffer_ptr->bo_id,
@@ -677,14 +677,14 @@ PRIVATE void _raGL_buffers_on_sparse_memory_block_freed(system_memory_manager ma
                                                         unsigned int          size,
                                                         void*                 user_arg)
 {
-    _raGL_buffers_buffer* buffer_ptr = (_raGL_buffers_buffer*) user_arg;
+    _raGL_buffers_buffer* buffer_ptr = reinterpret_cast<_raGL_buffers_buffer*>(user_arg);
 
     /* Release the pages we no longer need.
      *
      * Note: system_memory_manager ensures the pages that we are told to release no longer hold
      *       any other data, so we need not worry about damaging data owned by other allocations.
      */
-    ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_gl_sb != NULL,
+    ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_gl_sb != nullptr,
                       "GL_ARB_sparse_buffer entry-points are unavailable.");
 
     buffer_ptr->buffers_ptr->entry_points_gl_sb->pGLNamedBufferPageCommitmentEXT(buffer_ptr->bo_id,
@@ -708,15 +708,15 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
 {
     uint32_t                    alignment_requirement      = 1;
     ral_buffer_mappability_bits buffer_mappability         = 0;
-    ral_buffer                  buffer_parent              = NULL;
-    raGL_buffer                 buffer_parent_raGL         = NULL;
+    ral_buffer                  buffer_parent              = nullptr;
+    raGL_buffer                 buffer_parent_raGL         = nullptr;
     ral_buffer_property_bits    buffer_properties          = 0;
-    raGL_buffer                 buffer_raGL                = NULL;
+    raGL_buffer                 buffer_raGL                = nullptr;
     uint32_t                    buffer_size                = 0;
     uint32_t                    buffer_start_offset        = -1;
     ral_buffer_usage_bits       buffer_usage               = 0;
-    _raGL_buffers_buffer*       buffer_ptr                 = NULL;
-    _raGL_buffers*              buffers_ptr                = (_raGL_buffers*) in_raGL_buffers;
+    _raGL_buffers_buffer*       buffer_ptr                 = nullptr;
+    _raGL_buffers*              buffers_ptr                = reinterpret_cast<_raGL_buffers*>(in_raGL_buffers);
     bool                        is_sparse                  = false;
     bool                        must_be_immutable_bo_based = false;
     bool                        result                     = false;
@@ -750,9 +750,9 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
 
     /* If this raGL_buffer instance is being created with aliasing the existing buffer memory storage in mind,
      * do not allocate any memory. */
-    if (buffer_parent != NULL)
+    if (buffer_parent != nullptr)
     {
-        raGL_buffer result_buffer_raGL = NULL;
+        raGL_buffer result_buffer_raGL = nullptr;
 
         if (!raGL_backend_get_buffer(buffers_ptr->backend,
                                      buffer_parent,
@@ -777,13 +777,13 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                               "Requested subregion's start offset exceeds parent buffer's size");
 
             buffer_size = buffer_parent_size - buffer_start_offset;
-        } /* if (buffer_size == 0) */
+        }
 
         result_buffer_raGL = raGL_buffer_create_raGL_buffer_subregion(buffer_parent_raGL,
                                                                       buffer_start_offset,
                                                                       buffer_size);
 
-        if (result_buffer_raGL == NULL)
+        if (result_buffer_raGL == nullptr)
         {
             ASSERT_DEBUG_SYNC(false,
                               "Failed to create a new raGL_buffer subregion instance");
@@ -795,7 +795,7 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
         result          = true;
 
         goto end;
-    } /* if (buffer_parent != NULL) */
+    }
 
     /* Determine the alignment requirement */
     if ((buffer_usage & RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT) != 0)
@@ -848,14 +848,14 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                 {
                     is_sparse = true;
                     result_id = buffer_ptr->bo_id;
-                } /* if (result) */
-            } /* if (sparse descriptor found) */
+                }
+            }
             else
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve sparse buffer descriptor");
             }
-        } /* for (all sparse buffers) */
+        }
 
         /* No free sparse buffer available? Create a new one IF the requested size does not
          * exceed the sparse buffer size for the requested buffer usage type. */
@@ -865,7 +865,7 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
             {
                 buffer_ptr = _raGL_buffers_alloc_new_sparse_buffer(buffers_ptr);
 
-                if (buffer_ptr != NULL)
+                if (buffer_ptr != nullptr)
                 {
                     result = system_memory_manager_alloc_block(buffer_ptr->manager,
                                                                buffer_size,
@@ -876,27 +876,27 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                     {
                         is_sparse = true;
                         result_id = buffer_ptr->bo_id;
-                    } /* if (result) */
+                    }
                     else
                     {
                         ASSERT_DEBUG_SYNC(false,
                                           "Memory block allocation failed in a brand new sparse buffer.");
                     }
-                } /* if (buffer_ptr != NULL) */
+                }
                 else
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "Sparse buffer allocation failed.");
                 }
-            }/* if (size < SPARSE_BUFFER_SIZE) */
+            }
             else
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Requested buffer size is larger than the permitted sparse buffer size! "
                                   "Falling back to immutable buffer objects");
             }
-        } /* if (!result) */
-    } /* if (can use a sparse buffer) */
+        }
+    }
 
     if (!result)
     {
@@ -926,14 +926,14 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                 {
                     result_id = buffer_ptr->bo_id;
                 }
-            } /* if (non-sparse descriptor was found) */
+            }
             else
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Could not retrieve a non-sparse buffer descriptor at index [%d]",
                                   n_nonsparse_buffer);
             }
-        } /* for (all non-sparse buffers defined) */
+        }
 
         /* No suitable BO found? Try instantiating a new one */
         if (!result)
@@ -943,7 +943,7 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                                                                   buffer_usage,
                                                                   buffer_size);
 
-            if (buffer_ptr != NULL)
+            if (buffer_ptr != nullptr)
             {
                 result = system_memory_manager_alloc_block(buffer_ptr->manager,
                                                            buffer_size,
@@ -959,9 +959,9 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                     ASSERT_DEBUG_SYNC(false,
                                       "Could not allocate a new immutable buffer");
                 }
-            } /* if (buffer_ptr != NULL) */
-        } /* if (!result) */
-    } /* if (!result) */
+            }
+        }
+    }
 
     LOG_ERROR("raGL_buffers_allocate_buffer_memory(): size:[%u] alignment_requirement:[%u] => BO id:[%u] offset:[%u]",
               buffer_size,
@@ -981,7 +981,7 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
                                              result_offset,
                                              buffer_size);
 
-        ASSERT_ALWAYS_SYNC(*out_buffer_ptr != NULL,
+        ASSERT_ALWAYS_SYNC(*out_buffer_ptr != nullptr,
                            "Out of memory");
     }
 
@@ -994,7 +994,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_b
                                                                                                   const ral_buffer_create_info* buffer_create_info_ptr,
                                                                                                   raGL_buffer*                  out_buffer_ptr)
 {
-    _raGL_buffers* buffers_ptr = (_raGL_buffers*) buffers;
+    _raGL_buffers* buffers_ptr = reinterpret_cast<_raGL_buffers*>(buffers);
     bool           result      = false;
     ral_buffer     temp_buffer = nullptr;
 
@@ -1020,10 +1020,10 @@ PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
                                                                   context_ral,
                                                                   context);
 
-    ASSERT_DEBUG_SYNC(new_buffers != NULL,
+    ASSERT_DEBUG_SYNC(new_buffers != nullptr,
                       "Out of memory");
 
-    if (new_buffers != NULL)
+    if (new_buffers != nullptr)
     {
         ogl_context_request_callback_from_context_thread(context,
                                                          _raGL_buffers_init_rendering_callback,
@@ -1035,7 +1035,7 @@ PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
                                                        OBJECT_TYPE_RAGL_BUFFERS,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\raGL Buffers\\",
                                                                                                                "Context-wide GL buffer object manager") );
-    } /* if (new_buffers != NULL) */
+    }
 
     return (raGL_buffers) new_buffers;
 }
@@ -1045,9 +1045,9 @@ PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
                                             raGL_buffer  buffer)
 {
     GLuint                bo_id             = -1;
-    system_memory_manager bo_memory_manager = NULL;
+    system_memory_manager bo_memory_manager = nullptr;
     uint32_t              bo_start_offset   = 0;
-    _raGL_buffers*        buffers_ptr       = (_raGL_buffers*) buffers;
+    _raGL_buffers*        buffers_ptr       = reinterpret_cast<_raGL_buffers*>(buffers);
 
     raGL_buffer_get_property(buffer,
                              RAGL_BUFFER_PROPERTY_ID,
@@ -1067,22 +1067,22 @@ PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
                                      bo_start_offset);
 
     raGL_buffer_release(buffer);
-    buffer = NULL;
+    buffer = nullptr;
 }
 
 /** Please see header for spec */
-PUBLIC void raGL_buffers_get_buffer_property(raGL_buffers                 buffers,
+PUBLIC void raGL_buffers_get_buffer_property(const raGL_buffers           buffers,
                                              GLuint                       bo_id,
                                              raGL_buffers_buffer_property property,
                                              void*                        out_result_ptr)
 {
-    _raGL_buffers_buffer* buffer_ptr  = NULL;
-    _raGL_buffers*        buffers_ptr = (_raGL_buffers*) buffers;
+    _raGL_buffers_buffer* buffer_ptr  = nullptr;
+    _raGL_buffers*        buffers_ptr = reinterpret_cast<_raGL_buffers*>(buffers);
 
-    if (buffers_ptr == NULL)
+    if (buffers_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(buffers_ptr != NULL,
-                          "Input raGL_buffers instance is NULL");
+        ASSERT_DEBUG_SYNC(buffers_ptr != nullptr,
+                          "Input raGL_buffers instance is nullptr");
 
         goto end;
     }
@@ -1102,7 +1102,7 @@ PUBLIC void raGL_buffers_get_buffer_property(raGL_buffers                 buffer
     {
         case RAGL_BUFFERS_BUFFER_PROPERTY_SIZE:
         {
-            *(uint32_t*) out_result_ptr = buffer_ptr->bo_size;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = buffer_ptr->bo_size;
 
             break;
         }

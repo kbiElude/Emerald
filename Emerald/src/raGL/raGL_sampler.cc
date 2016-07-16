@@ -86,7 +86,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback
     ral_texture_filter      min_filter_ral       = RAL_TEXTURE_FILTER_UNKNOWN;
     float                   min_lod;
     ral_texture_mipmap_mode mipmap_mode_ral      = RAL_TEXTURE_MIPMAP_MODE_UNKNOWN;
-    _raGL_sampler*          sampler_ptr          = (_raGL_sampler*) sampler;
+    _raGL_sampler*          sampler_ptr          = reinterpret_cast<_raGL_sampler*>(sampler);
     GLenum                  wrap_r_gl            = GL_NONE;
     ral_texture_wrap_mode   wrap_r_ral           = RAL_TEXTURE_WRAP_MODE_UNKNOWN;
     GLenum                  wrap_s_gl            = GL_NONE;
@@ -265,11 +265,11 @@ PUBLIC raGL_sampler raGL_sampler_create(ogl_context context,
 
 
 /** Please see header for specification */
-PUBLIC void raGL_sampler_get_property(raGL_sampler          sampler,
+PUBLIC void raGL_sampler_get_property(const raGL_sampler    sampler,
                                       raGL_sampler_property property,
                                       void*                 out_result_ptr)
 {
-    _raGL_sampler* sampler_ptr = (_raGL_sampler*) sampler;
+    const _raGL_sampler* sampler_ptr = reinterpret_cast<const _raGL_sampler*>(sampler);
 
     /* Sanity checks */
     if (sampler == nullptr)
@@ -285,14 +285,14 @@ PUBLIC void raGL_sampler_get_property(raGL_sampler          sampler,
     {
         case RAGL_SAMPLER_PROPERTY_ID:
         {
-            *(GLuint*) out_result_ptr = sampler_ptr->id;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = sampler_ptr->id;
 
             break;
         }
 
         case RAGL_SAMPLER_PROPERTY_SAMPLER:
         {
-            *(ral_sampler*) out_result_ptr = sampler_ptr->sampler;
+            *reinterpret_cast<ral_sampler*>(out_result_ptr) = sampler_ptr->sampler;
 
             break;
         }
@@ -313,5 +313,5 @@ PUBLIC void raGL_sampler_release(raGL_sampler sampler)
     ASSERT_DEBUG_SYNC(sampler != nullptr,
                       "Input sampler is NULL");
 
-    delete (_raGL_sampler*) sampler;
+    delete reinterpret_cast<_raGL_sampler*>(sampler);
 }
