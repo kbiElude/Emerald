@@ -172,7 +172,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step(_ogl_pipeline_stage_step* 
 PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(ogl_context context,
                                                                         void*       user_arg)
 {
-    _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
+    _ogl_pipeline_stage_step* step_ptr = reinterpret_cast<_ogl_pipeline_stage_step*>(user_arg);
 
     if (step_ptr->primitives_generated_qo != nullptr)
     {
@@ -287,7 +287,7 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step(_ogl_pipeline_stage_step*  s
 PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback(ogl_context context,
                                                                       void*       user_arg)
 {
-    _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
+    _ogl_pipeline_stage_step* step_ptr = reinterpret_cast<_ogl_pipeline_stage_step*>(user_arg);
 
     step_ptr->primitives_generated_qo = ogl_query_create(step_ptr->context,
                                                          QO_RING_BUFFER_SIZE,
@@ -300,7 +300,7 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback(ogl_contex
 /** TODO */
 PRIVATE void _ogl_pipeline_release(void* pipeline)
 {
-    _ogl_pipeline_deinit_pipeline( (_ogl_pipeline*) pipeline);
+    _ogl_pipeline_deinit_pipeline(reinterpret_cast<_ogl_pipeline*>(pipeline) );
 }
 
 
@@ -308,7 +308,7 @@ PRIVATE void _ogl_pipeline_release(void* pipeline)
 /** Please see header for specification */
 PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance)
 {
-    _ogl_pipeline*       pipeline_ptr       = (_ogl_pipeline*) instance;
+    _ogl_pipeline*       pipeline_ptr       = reinterpret_cast<_ogl_pipeline*>(instance);
     _ogl_pipeline_stage* pipeline_stage_ptr = nullptr;
     uint32_t             result_stage_id    = -1;
 
@@ -349,7 +349,7 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline            
                                                         const ogl_pipeline_stage_step_declaration* step_ptr)
 {
     _ogl_pipeline_stage_step* new_step_ptr       = nullptr;
-    _ogl_pipeline*            pipeline_ptr       = (_ogl_pipeline*) instance;
+    _ogl_pipeline*            pipeline_ptr       = reinterpret_cast<_ogl_pipeline*>(instance);
     _ogl_pipeline_stage*      pipeline_stage_ptr = nullptr;
     uint32_t                  result             = -1;
 
@@ -550,7 +550,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
     demo_flyby                                                flyby              = nullptr;
     bool                                                      is_stage_dirty     = false;
     uint32_t                                                  n_stages           = 0;
-    _ogl_pipeline*                                            pipeline_ptr       = (_ogl_pipeline*) instance;
+    _ogl_pipeline*                                            pipeline_ptr       = reinterpret_cast<_ogl_pipeline*>(instance);
     _ogl_pipeline_stage*                                      pipeline_stage_ptr = nullptr;
     bool                                                      result             = false;
     demo_window                                               window             = nullptr;
@@ -806,17 +806,17 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipel
 /** Please see header for specification */
 PUBLIC EMERALD_API ral_context ogl_pipeline_get_context(ogl_pipeline instance)
 {
-    return ((_ogl_pipeline*) instance)->context;
+    return reinterpret_cast<_ogl_pipeline*>(instance)->context;
 }
 
 /** Please see header for specification */
 PUBLIC varia_text_renderer ogl_pipeline_get_text_renderer(ogl_pipeline instance)
 {
-    return ((_ogl_pipeline*) instance)->text_renderer;
+    return reinterpret_cast<_ogl_pipeline*>(instance)->text_renderer;
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API ui ogl_pipeline_get_ui(ogl_pipeline instance)
 {
-    return ((_ogl_pipeline*) instance)->ui_instance;
+    return reinterpret_cast<_ogl_pipeline*>(instance)->ui_instance;
 }

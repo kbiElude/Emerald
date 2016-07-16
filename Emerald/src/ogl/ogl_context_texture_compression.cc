@@ -538,13 +538,13 @@ PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(og
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(ogl_context_texture_compression                    texture_compression,
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(const ogl_context_texture_compression              texture_compression,
                                                                                uint32_t                                           index,
                                                                                ogl_context_texture_compression_algorithm_property property,
-                                                                               void*                                              out_result)
+                                                                               void*                                              out_result_ptr)
 {
     _ogl_context_texture_compression_algorithm* algorithm_ptr           = nullptr;
-    _ogl_context_texture_compression*           texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
+    _ogl_context_texture_compression*           texture_compression_ptr = reinterpret_cast<_ogl_context_texture_compression*>(texture_compression);
 
     if (system_resizable_vector_get_element_at(texture_compression_ptr->algorithms,
                                                index,
@@ -554,21 +554,21 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(o
         {
             case OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_FILE_EXTENSION:
             {
-                *(system_hashed_ansi_string*) out_result = algorithm_ptr->file_extension;
+                *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = algorithm_ptr->file_extension;
 
                 break;
             }
 
             case OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_GL_VALUE:
             {
-                *(GLenum*) out_result = algorithm_ptr->gl_value;
+                *reinterpret_cast<GLenum*>(out_result_ptr) = algorithm_ptr->gl_value;
 
                 break;
             }
 
             case OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_NAME:
             {
-                *(system_hashed_ansi_string*) out_result = algorithm_ptr->name;
+                *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = algorithm_ptr->name;
 
                 break;
             }
@@ -589,11 +589,11 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(o
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(ogl_context_texture_compression          texture_compression,
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(const ogl_context_texture_compression    texture_compression,
                                                                      ogl_context_texture_compression_property property,
-                                                                     void*                                    out_result)
+                                                                     void*                                    out_result_ptr)
 {
-    _ogl_context_texture_compression* texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
+    _ogl_context_texture_compression* texture_compression_ptr = reinterpret_cast<_ogl_context_texture_compression*>(texture_compression);
 
     switch (property)
     {
@@ -601,7 +601,7 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(ogl_context
         {
             system_resizable_vector_get_property(texture_compression_ptr->algorithms,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                 out_result);
+                                                 out_result_ptr);
 
             break;
         }
@@ -618,7 +618,7 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(ogl_context
 PUBLIC void ogl_context_texture_compression_init(ogl_context_texture_compression           texture_compression,
                                                  const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
-    _ogl_context_texture_compression* texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
+    _ogl_context_texture_compression* texture_compression_ptr = reinterpret_cast<_ogl_context_texture_compression*>(texture_compression);
 
     /* First, retrieve all compressed texture formats, supported by the
      * running GL implementation.
@@ -642,7 +642,7 @@ PUBLIC void ogl_context_texture_compression_init(ogl_context_texture_compression
         if (compressed_texture_formats != nullptr)
         {
             entrypoints_private_ptr->pGLGetIntegerv(GL_COMPRESSED_TEXTURE_FORMATS,
-                                                    (GLint*) compressed_texture_formats);
+                                                    reinterpret_cast<GLint*>(compressed_texture_formats) );
 
             /* OpenGL 4.3 context implies support for GL_ARB_texture_compression_bptc */
             _ogl_context_texture_compression_init_bptc_support(texture_compression_ptr,
@@ -700,7 +700,7 @@ PUBLIC void ogl_context_texture_compression_init(ogl_context_texture_compression
 /** Please see header for spec */
 PUBLIC void ogl_context_texture_compression_release(ogl_context_texture_compression texture_compression)
 {
-    _ogl_context_texture_compression* texture_compression_ptr = (_ogl_context_texture_compression*) texture_compression;
+    _ogl_context_texture_compression* texture_compression_ptr = reinterpret_cast<_ogl_context_texture_compression*>(texture_compression);
 
     /* Done */
     delete texture_compression_ptr;

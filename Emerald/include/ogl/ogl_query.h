@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * Helps cache program object uniform setter calls. Note that these functions are private only.
  */

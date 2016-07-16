@@ -195,7 +195,7 @@ PRIVATE _ogl_context_to_binding_target _ogl_context_to_bindings_get_ogl_context_
 PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(ogl_context_to_bindings          bindings,
                                                               ogl_context_to_bindings_sync_bit sync_bits)
 {
-    _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
+    _ogl_context_to_bindings* bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
 
     /* Iterate over all binding targets */
     for (_ogl_context_to_binding_target binding_target = (_ogl_context_to_binding_target) 0;
@@ -260,7 +260,7 @@ PRIVATE void _ogl_context_to_bindings_sync_multi_bind_process(ogl_context_to_bin
 PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(ogl_context_to_bindings          bindings,
                                                                   ogl_context_to_bindings_sync_bit sync_bits)
 {
-    _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
+    _ogl_context_to_bindings* bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
 
     /* Iterate over all binding targets */
     for (_ogl_context_to_binding_target binding_target = (_ogl_context_to_binding_target) 0;
@@ -329,7 +329,7 @@ PUBLIC GLuint ogl_context_to_bindings_get_bound_texture_id(const ogl_context_to_
                                                            GLenum                        target)
 {
     GLuint                          result          = 0;
-    const _ogl_context_to_bindings* to_bindings_ptr = (const _ogl_context_to_bindings*) to_bindings;
+    const _ogl_context_to_bindings* to_bindings_ptr = reinterpret_cast<const _ogl_context_to_bindings*>(to_bindings);
 
     ASSERT_DEBUG_SYNC(texture_unit < to_bindings_ptr->gl_max_texture_image_units_value,
                       "Invalid texture unit requested");
@@ -413,7 +413,7 @@ PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_
 PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                   bindings,
                                          const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
 {
-    _ogl_context_to_bindings*    bindings_ptr = (_ogl_context_to_bindings*) bindings;
+    _ogl_context_to_bindings*    bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
     const ogl_context_gl_limits* limits_ptr   = nullptr;
 
     ogl_context_get_property(bindings_ptr->context,
@@ -449,7 +449,7 @@ PUBLIC void ogl_context_to_bindings_on_textures_created(ogl_context_to_bindings 
                                                         uint32_t                n_texture_ids,
                                                         GLuint*                 texture_ids)
 {
-    _ogl_context_to_bindings* to_bindings_ptr = (_ogl_context_to_bindings*) bindings;
+    _ogl_context_to_bindings* to_bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
 
     for (uint32_t n_texture_id = 0;
                   n_texture_id < n_texture_ids;
@@ -479,7 +479,7 @@ PUBLIC void ogl_context_to_bindings_on_textures_deleted(ogl_context_to_bindings 
                                                         uint32_t                n_texture_ids,
                                                         const GLuint*           texture_ids)
 {
-    _ogl_context_to_bindings* to_bindings_ptr = (_ogl_context_to_bindings*) bindings;
+    _ogl_context_to_bindings* to_bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
 
     for (uint32_t n_texture_id = 0;
                   n_texture_id < n_texture_ids;
@@ -518,7 +518,7 @@ PUBLIC void ogl_context_to_bindings_on_textures_deleted(ogl_context_to_bindings 
 /** Please see header for spec */
 PUBLIC void ogl_context_to_bindings_release(ogl_context_to_bindings bindings)
 {
-    _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
+    _ogl_context_to_bindings* bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
 
     /* Release binding storage */
     if (bindings_ptr->texture_units != nullptr)
@@ -546,7 +546,7 @@ PUBLIC void ogl_context_to_bindings_release(ogl_context_to_bindings bindings)
 PUBLIC void ogl_context_to_bindings_reset_all_bindings_for_texture_unit(ogl_context_to_bindings to_bindings,
                                                                         uint32_t                texture_unit)
 {
-    _ogl_context_to_bindings* to_bindings_ptr = (_ogl_context_to_bindings*) to_bindings;
+    _ogl_context_to_bindings* to_bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(to_bindings);
 
     ASSERT_DEBUG_SYNC(to_bindings_ptr != nullptr,
                      "Specified ogl_context_to_bindings instance is null.");
@@ -573,7 +573,7 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
                                                 GLenum                  target,
                                                 GLuint                  texture)
 {
-    _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
+    _ogl_context_to_bindings* bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
 
     ASSERT_DEBUG_SYNC(texture_unit < bindings_ptr->gl_max_texture_image_units_value,
                       "Invalid texture unit requested");
@@ -631,7 +631,7 @@ PUBLIC void ogl_context_to_bindings_sync(ogl_context_to_bindings          bindin
     /* NOTE: bindings is NULL during rendering context initialization */
     if (bindings != nullptr)
     {
-        _ogl_context_to_bindings* bindings_ptr = (_ogl_context_to_bindings*) bindings;
+        _ogl_context_to_bindings* bindings_ptr = reinterpret_cast<_ogl_context_to_bindings*>(bindings);
 
         if (bindings_ptr->is_arb_multi_bind_supported)
         {

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * Internal use only.
  */
@@ -22,9 +22,9 @@ PUBLIC void* ogl_context_win32_get_func_ptr(ogl_context_win32 context_win32,
                                             const char*       name);
 
 /** TODO */
-PUBLIC bool ogl_context_win32_get_property(ogl_context_win32    context_win32,
-                                           ogl_context_property property,
-                                           void*                out_result);
+PUBLIC bool ogl_context_win32_get_property(const ogl_context_win32 context_win32,
+                                           ogl_context_property    property,
+                                           void*                   out_result_ptr);
 
 /** TODO
  *

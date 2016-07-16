@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015-2016s)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -128,22 +128,22 @@ PUBLIC ogl_vao ogl_vao_create(ogl_context  context,
 /** Please see header for spec */
 PUBLIC void ogl_vao_get_property(const ogl_vao    vao,
                                  ogl_vao_property property,
-                                 void*            out_result)
+                                 void*            out_result_ptr)
 {
-    const _ogl_vao* vao_ptr = (const _ogl_vao*) vao;
+    const _ogl_vao* vao_ptr = reinterpret_cast<const _ogl_vao*>(vao);
 
     switch (property)
     {
         case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT:
         {
-            *(GLuint*) out_result = vao_ptr->index_buffer_binding_context;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = vao_ptr->index_buffer_binding_context;
 
             break;
         }
 
         case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL:
         {
-            *(GLuint*) out_result = vao_ptr->index_buffer_binding_local;
+            *reinterpret_cast<GLuint*>(out_result_ptr) = vao_ptr->index_buffer_binding_local;
 
             break;
         }
@@ -160,7 +160,7 @@ PUBLIC void ogl_vao_get_property(const ogl_vao    vao,
 PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
                                      unsigned int         n_vaa,
                                      ogl_vao_vaa_property property,
-                                     void*                out_result)
+                                     void*                out_result_ptr)
 {
     const _ogl_vao* vao_ptr = (const _ogl_vao*) vao;
 
@@ -175,56 +175,56 @@ PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
         {
             case OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING:
             {
-                *(GLuint*) out_result = vaa.array_buffer_binding;
+                *reinterpret_cast<GLuint*>(out_result_ptr) = vaa.array_buffer_binding;
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_DIVISOR:
             {
-                *(GLuint*) out_result = vaa.divisor;
+                *reinterpret_cast<GLuint*>(out_result_ptr) = vaa.divisor;
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_ENABLED:
             {
-                *(GLboolean*) out_result = vaa.enabled;
+                *reinterpret_cast<GLboolean*>(out_result_ptr) = vaa.enabled;
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_NORMALIZED:
             {
-                *(GLboolean*) out_result = vaa.normalized;
+                *reinterpret_cast<GLboolean*>(out_result_ptr) = vaa.normalized;
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_POINTER:
             {
-                *(GLvoid**) out_result = vaa.pointer;
+                *reinterpret_cast<const GLvoid**>(out_result_ptr) = vaa.pointer;
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_SIZE:
             {
-                *(GLuint*) out_result = vaa.size;
+                *reinterpret_cast<GLuint*>(out_result_ptr) = vaa.size;
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_STRIDE:
             {
-                *(GLuint*) out_result = vaa.stride;
+                *reinterpret_cast<GLuint*>(out_result_ptr) = vaa.stride;
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_TYPE:
             {
-                *(GLenum*) out_result = vaa.type;
+                *reinterpret_cast<GLenum*>(out_result_ptr) = vaa.type;
 
                 break;
             }
@@ -241,7 +241,7 @@ PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
 /** Please see header for spec */
 PUBLIC void ogl_vao_release(ogl_vao vao)
 {
-    _ogl_vao* vao_ptr = (_ogl_vao*) vao;
+    _ogl_vao* vao_ptr = reinterpret_cast<_ogl_vao*>(vao);
 
     /* Done */
     delete vao_ptr;
@@ -254,20 +254,20 @@ PUBLIC void ogl_vao_set_property(ogl_vao          vao,
                                  ogl_vao_property property,
                                  const void*      data)
 {
-    _ogl_vao* vao_ptr = (_ogl_vao*) vao;
+    _ogl_vao* vao_ptr = reinterpret_cast<_ogl_vao*>(vao);
 
     switch (property)
     {
         case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT:
         {
-            vao_ptr->index_buffer_binding_context = *(GLuint*) data;
+            vao_ptr->index_buffer_binding_context = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
 
         case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL:
         {
-            vao_ptr->index_buffer_binding_local = *(GLuint*) data;
+            vao_ptr->index_buffer_binding_local = *reinterpret_cast<const GLuint*>(data);
 
             break;
         }
@@ -286,7 +286,7 @@ PUBLIC void ogl_vao_set_vaa_property(ogl_vao              vao,
                                      ogl_vao_vaa_property property,
                                      const void*          data)
 {
-    _ogl_vao* vao_ptr = (_ogl_vao*) vao;
+    _ogl_vao* vao_ptr = reinterpret_cast<_ogl_vao*>(vao);
 
     ASSERT_DEBUG_SYNC(n_vaa < vao_ptr->n_vaas,
                       "Invalid VAA index requested.");
@@ -299,56 +299,56 @@ PUBLIC void ogl_vao_set_vaa_property(ogl_vao              vao,
         {
             case OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING:
             {
-                vaa.array_buffer_binding = *(GLuint*) data;
+                vaa.array_buffer_binding = *reinterpret_cast<const GLuint*>(data);
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_DIVISOR:
             {
-                vaa.divisor = *(GLuint*) data;
+                vaa.divisor = *reinterpret_cast<const GLuint*>(data);
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_ENABLED:
             {
-                vaa.enabled = *(GLboolean*) data;
+                vaa.enabled = *reinterpret_cast<const GLboolean*>(data);
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_NORMALIZED:
             {
-                vaa.normalized = *(GLboolean*) data;
+                vaa.normalized = *reinterpret_cast<const GLboolean*>(data);
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_POINTER:
             {
-                vaa.pointer = *(GLvoid**) data;
+                vaa.pointer = *reinterpret_cast<GLvoid* const*>(data);
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_SIZE:
             {
-                vaa.size = *(GLuint*) data;
+                vaa.size = *reinterpret_cast<const GLuint*>(data);
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_STRIDE:
             {
-                vaa.stride = *(GLuint*) data;
+                vaa.stride = *reinterpret_cast<const GLuint*>(data);
 
                 break;
             }
 
             case OGL_VAO_VAA_PROPERTY_TYPE:
             {
-                vaa.type = *(GLenum*) data;
+                vaa.type = *reinterpret_cast<const GLenum*>(data);
 
                 break;
             }

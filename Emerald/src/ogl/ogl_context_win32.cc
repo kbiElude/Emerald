@@ -138,7 +138,7 @@ PRIVATE bool _ogl_context_win32_set_pixel_format_multisampling(_ogl_context_win3
 /** Please see header for spec */
 PUBLIC void ogl_context_win32_bind_to_current_thread(ogl_context_win32 context_win32)
 {
-    _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
+    _ogl_context_win32* win32_ptr = reinterpret_cast<_ogl_context_win32*>(context_win32);
 
     if (win32_ptr != nullptr)
     {
@@ -155,7 +155,7 @@ PUBLIC void ogl_context_win32_bind_to_current_thread(ogl_context_win32 context_w
 /** Please see header for spec */
 PUBLIC void ogl_context_win32_deinit(ogl_context_win32 context_win32)
 {
-    _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
+    _ogl_context_win32* win32_ptr = reinterpret_cast<_ogl_context_win32*>(context_win32);
 
     ASSERT_DEBUG_SYNC(win32_ptr != nullptr,
                       "Input argument is NULL");
@@ -181,7 +181,7 @@ PUBLIC void* ogl_context_win32_get_func_ptr(ogl_context_win32 context_win32,
                                             const char*       name)
 {
     void*               result    = nullptr;
-    _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
+    _ogl_context_win32* win32_ptr = reinterpret_cast<_ogl_context_win32*>(context_win32);
 
     ASSERT_DEBUG_SYNC(name      != nullptr &&
                       win32_ptr != nullptr,
@@ -199,27 +199,27 @@ PUBLIC void* ogl_context_win32_get_func_ptr(ogl_context_win32 context_win32,
 }
 
 /** Please see header for spec */
-PUBLIC bool ogl_context_win32_get_property(ogl_context_win32    context_win32,
-                                           ogl_context_property property,
-                                           void*                out_result)
+PUBLIC bool ogl_context_win32_get_property(const ogl_context_win32 context_win32,
+                                           ogl_context_property    property,
+                                           void*                   out_result_ptr)
 {
     bool                result    = false;
-    _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
+    _ogl_context_win32* win32_ptr = reinterpret_cast<_ogl_context_win32*>(context_win32);
 
     switch (property)
     {
         case OGL_CONTEXT_PROPERTY_DC:
         {
-            *((HDC*) out_result) = win32_ptr->device_context_handle;
-                     result      = true;
+            *reinterpret_cast<HDC*>(out_result_ptr) = win32_ptr->device_context_handle;
+            result                                  = true;
 
             break;
         }
 
         case OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT:
         {
-            *(HGLRC*) out_result = win32_ptr->wgl_rendering_context;
-                      result     = true;
+            *reinterpret_cast<HGLRC*>(out_result_ptr) = win32_ptr->wgl_rendering_context;
+            result                                    = true;
 
             break;
         }
@@ -452,7 +452,7 @@ PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
                                            const void*          data)
 {
     bool                result    = false;
-    _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
+    _ogl_context_win32* win32_ptr = reinterpret_cast<_ogl_context_win32*>(context_win32);
 
     ASSERT_DEBUG_SYNC(win32_ptr != nullptr,
                       "Input argument is NULL");
@@ -461,7 +461,7 @@ PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
     {
         case OGL_CONTEXT_PROPERTY_VSYNC_ENABLED:
         {
-            bool vsync_enabled = *(bool*) data;
+            bool vsync_enabled = *reinterpret_cast<const bool*>(data);
 
             ASSERT_ALWAYS_SYNC(win32_ptr->wgl_swap_control_support,
                                "WGL_EXT_swap_control extension not supported. Update your drivers.");
@@ -489,7 +489,7 @@ PUBLIC bool ogl_context_win32_set_property(ogl_context_win32    context_win32,
 /** Please see header for spec */
 PUBLIC void ogl_context_win32_swap_buffers(ogl_context_win32 context_win32)
 {
-    _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
+    _ogl_context_win32* win32_ptr = reinterpret_cast<_ogl_context_win32*>(context_win32);
 
     ::SwapBuffers(win32_ptr->device_context_handle);
 }

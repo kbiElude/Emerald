@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014-2015)
+ * Emerald (kbi/elude @2014-2016)
  */
 #ifndef OGL_CONTEXT_TEXTURE_COMPRESSION_H
 #define OGL_CONTEXT_TEXTURE_COMPRESSION_H
@@ -62,15 +62,15 @@ DECLARE_HANDLE(ogl_context_texture_compression);
 PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(ogl_context_texture_compression                    texture_compression,
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(const ogl_context_texture_compression              texture_compression,
                                                                                uint32_t                                           index,
                                                                                ogl_context_texture_compression_algorithm_property property,
-                                                                               void*                                              out_result);
+                                                                               void*                                              out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(ogl_context_texture_compression          texture_compression,
+PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(const ogl_context_texture_compression    texture_compression,
                                                                      ogl_context_texture_compression_property property,
-                                                                     void*                                    out_result);
+                                                                     void*                                    out_result_ptr);
 
 /** TODO */
 PUBLIC void ogl_context_texture_compression_init(ogl_context_texture_compression           texture_compression,

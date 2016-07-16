@@ -76,7 +76,7 @@ PUBLIC void ogl_context_vaos_add_vao(ogl_context_vaos vaos,
                                      GLuint           gl_id,
                                      ogl_vao          vao)
 {
-    _ogl_context_vaos* vaos_ptr = (_ogl_context_vaos*) vaos;
+    _ogl_context_vaos* vaos_ptr = reinterpret_cast<_ogl_context_vaos*>(vaos);
 
     ASSERT_DEBUG_SYNC(!system_hash64map_contains(vaos_ptr->vaos,
                                                  gl_id),
@@ -119,7 +119,7 @@ PUBLIC ogl_context_vaos ogl_context_vaos_create(ogl_context context)
 PUBLIC void ogl_context_vaos_delete_vao(ogl_context_vaos vaos,
                                         GLuint           gl_id)
 {
-    _ogl_context_vaos* vaos_ptr = (_ogl_context_vaos*) vaos;
+    _ogl_context_vaos* vaos_ptr = reinterpret_cast<_ogl_context_vaos*>(vaos);
 
     if (!system_hash64map_remove(vaos_ptr->vaos,
                                  gl_id) )
@@ -140,7 +140,7 @@ PUBLIC ogl_vao ogl_context_vaos_get_vao(ogl_context_vaos vaos,
                                         GLuint           gl_id)
 {
     ogl_vao            result   = nullptr;
-    _ogl_context_vaos* vaos_ptr = (_ogl_context_vaos*) vaos;
+    _ogl_context_vaos* vaos_ptr = reinterpret_cast<_ogl_context_vaos*>(vaos);
 
     system_hash64map_get(vaos_ptr->vaos,
                          (system_hash64) gl_id,
@@ -154,7 +154,7 @@ PUBLIC void ogl_context_vaos_release(ogl_context_vaos vaos)
 {
     if (vaos != nullptr)
     {
-        delete (_ogl_context_vaos*) vaos;
+        delete reinterpret_cast<_ogl_context_vaos*>(vaos);
 
         vaos = nullptr;
     }

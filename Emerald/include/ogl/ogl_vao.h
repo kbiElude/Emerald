@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * TODO: Vertex attribute array buffer bindings support (GL_ARB_vertex_attrib_binding!)
  *
@@ -54,13 +54,13 @@ PUBLIC ogl_vao ogl_vao_create(ogl_context  context,
 /** TODO */
 PUBLIC void ogl_vao_get_property(const ogl_vao    vao,
                                  ogl_vao_property property,
-                                 void*            out_result);
+                                 void*            out_result_ptr);
 
 /** TODO */
 PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
                                      unsigned int         n_vaa,
                                      ogl_vao_vaa_property property,
-                                     void*                out_result);
+                                     void*                out_result_ptr);
 
 /** TODO */
 PUBLIC void ogl_vao_release(ogl_vao vao);
