@@ -226,6 +226,11 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
                                                  void*                out_result_ptr);
 
 /** TODO */
+PUBLIC EMERALD_API bool ral_program_get_vertex_attribute_by_name(ral_program                   program,
+                                                                 system_hashed_ansi_string     va_name,
+                                                                 const ral_program_attribute** out_attribute_ptr_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API bool ral_program_is_block_defined(ral_program               program,
                                                      system_hashed_ansi_string block_name);
 

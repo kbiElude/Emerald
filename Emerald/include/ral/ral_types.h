@@ -220,30 +220,32 @@ typedef int ral_pipeline_stage_bits;
 typedef uint32_t ral_present_job_connection_id;
 typedef uint32_t ral_present_task_id;
 
+typedef void (*PFNRALPRESENTTASKCPUCALLBACKPROC)(void* user_arg);
+
 /** Enumerator that describes allowed types for a program attribute */
 typedef enum
 {
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT             = GL_FLOAT,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC2        = GL_FLOAT_VEC2,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC3        = GL_FLOAT_VEC3,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC4        = GL_FLOAT_VEC4,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2        = GL_FLOAT_MAT2,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3        = GL_FLOAT_MAT3,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4        = GL_FLOAT_MAT4,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x3      = GL_FLOAT_MAT2x3,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x4      = GL_FLOAT_MAT2x4,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x2      = GL_FLOAT_MAT3x2,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x4      = GL_FLOAT_MAT3x4,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x2      = GL_FLOAT_MAT4x2,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x3      = GL_FLOAT_MAT4x3,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_INT               = GL_INT, 
-    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC2          = GL_INT_VEC2,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC3          = GL_INT_VEC3,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC4          = GL_INT_VEC4,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT      = GL_UNSIGNED_INT,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC2 = GL_UNSIGNED_INT_VEC2,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC3 = GL_UNSIGNED_INT_VEC3,
-    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC4 = GL_UNSIGNED_INT_VEC4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_VEC4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT2x4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT3x4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_FLOAT_MAT4x3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_INT_VEC4,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC2,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC3,
+    RAL_PROGRAM_ATTRIBUTE_TYPE_UNSIGNED_INT_VEC4,
 
     RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED
 } ral_program_attribute_type;
@@ -629,9 +631,18 @@ typedef struct ral_command_buffer_create_info
     bool           is_resettable;
     bool           is_transient;
 
+    /* If false, this command buffer will be ignored by back-ends. This means you will not be permitted
+     * to schedule such cmd buffer for execution.
+     *
+     * Useful if you need the command buffer to act as a command container. Commnds from such cmd buffer
+     * can still be appended to another executable command buffer.
+     */
+    bool is_executable;
+
     ral_command_buffer_create_info()
     {
         compatible_queues                       = 0;
+        is_executable                           = true;
         is_invokable_from_other_command_buffers = false;
         is_resettable                           = false;
         is_transient                            = false;
@@ -1321,23 +1332,28 @@ typedef enum
 
 typedef struct ral_gfx_state_vertex_attribute
 {
-    ral_format            format;     // attr
-    ral_vertex_input_rate input_rate; // binding
-    uint32_t              location;   // attr
-    uint32_t              offset;     // attr
-    uint32_t              stride;     // binding
+    ral_format                format;
+    ral_vertex_input_rate     input_rate;
+    system_hashed_ansi_string name;
+    uint32_t                  offset;
+    uint32_t                  stride;
 
     bool operator==(const ral_gfx_state_vertex_attribute& in) const
     {
         return (format     == in.format     &&
                 input_rate == in.input_rate &&
-                location   == in.location   &&
                 offset     == in.offset     &&
-                stride     == in.stride);
+                stride     == in.stride)    &&
+               system_hashed_ansi_string_is_equal_to_hash_string(name,
+                                                                 in.name);
     }
 } ral_gfx_state_vertex_attribute;
 
-
+/**
+ *
+ *  NOTE: This structure does not use a default destructor.
+ *
+ **/
 typedef struct ral_gfx_state_create_info
 {
     bool alpha_to_coverage;
@@ -1412,8 +1428,8 @@ typedef struct ral_gfx_state_create_info
     ral_polygon_mode   polygon_mode_front;
     ral_primitive_type primitive_type;
 
-    uint32_t                              n_vertex_attributes;
-    const ral_gfx_state_vertex_attribute* vertex_attribute_ptrs;
+    uint32_t                        n_vertex_attributes;
+    ral_gfx_state_vertex_attribute* vertex_attribute_ptrs;
 
     ral_gfx_state_create_info()
     {
@@ -1453,6 +1469,19 @@ typedef struct ral_gfx_state_create_info
         sample_shading_min_sample_shading = 1.0f;
         vertex_attribute_ptrs             = nullptr;
     }
+
+    /** Creates a clone of the input gfx_state instance.
+     *
+     *  When no longer needed, the cloned instance must be released with .release() function.
+     */
+    static ral_gfx_state_create_info* clone(const ral_gfx_state_create_info* in_gfx_state_ptr,
+                                            bool                             should_include_static_scissor_box_data,
+                                            bool                             should_include_static_viewport_data,
+                                            bool                             should_include_va_data);
+
+    /** TODO */
+    static void release(ral_gfx_state_create_info* in_gfx_state_ptr);
+
 } ral_gfx_state_create_info;
 
 typedef struct ral_texture_view_create_info

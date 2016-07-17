@@ -7,7 +7,7 @@
 #define SCENE_RENDERER_UBER_H
 
 #include "mesh/mesh_types.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_types.h"
 #include "scene/scene_types.h"
 #include "scene_renderer/scene_renderer_types.h"
 #include "shaders/shaders_fragment_uber.h"
@@ -121,11 +121,11 @@ typedef enum
     /* not settable, scene_light_shadow_map_algorithm */
     SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,
 
-    /* settable, ral_texture */
-    SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR,
+    /* settable, ral_texture_view */
+    SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_VIEW_COLOR,
 
-    /* settable, ral_texture */
-    SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH,
+    /* settable, ral_texture_view */
+    SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_VIEW_DEPTH,
 
     /* not settable, scene_light_shadow_map_bias */
     SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,
@@ -185,27 +185,40 @@ PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create_from_ral_progr
 /** TODO */
 PUBLIC EMERALD_API void scene_renderer_uber_get_shader_general_property(const scene_renderer_uber            uber,
                                                                         scene_renderer_uber_general_property property,
-                                                                        void*                                out_result);
+                                                                        void*                                out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_renderer_uber_get_shader_item_property(const scene_renderer_uber         uber,
                                                                      scene_renderer_uber_item_id       item_id,
                                                                      scene_renderer_uber_item_property property,
-                                                                     void*                             result);
+                                                                     void*                             out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_renderer_uber_link(scene_renderer_uber uber);
 
-/** TODO */
-PUBLIC void scene_renderer_uber_render_mesh(mesh                mesh_gpu,
-                                            system_matrix4x4    model,
-                                            system_matrix4x4    normal_matrix,
-                                            scene_renderer_uber uber,
-                                            mesh_material       material,
-                                            system_time         time);
+/** TODO.
+ *
+ *  Returns a secondary command buffer holding commands which render the specified mesh.
+ *  The caller is required to release the command buffer when no longer needed.
+ *
+ **/
+PUBLIC void scene_renderer_uber_render_mesh(mesh                              mesh_gpu,
+                                            system_matrix4x4                  model,
+                                            system_matrix4x4                  normal_matrix,
+                                            scene_renderer_uber               uber,
+                                            mesh_material                     material,
+                                            system_time                       time,
+                                            const ral_gfx_state_create_info*  ref_gfx_state_create_info_ptr,
+                                            ral_command_buffer*               out_result_cmd_buffer_ptr,
+                                            PFNRALPRESENTTASKCPUCALLBACKPROC* out_pfn_cpu_callback_proc_ptr,
+                                            void**                            out_cpu_callback_proc_user_arg);
 
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void scene_renderer_uber_rendering_start(scene_renderer_uber);
+/** TODO
+ *
+ *  Note: For the cpu callback, pass a pointer to the uber instance.
+ */
+PUBLIC EMERALD_API void scene_renderer_uber_rendering_start(scene_renderer_uber               uber,
+                                                            PFNRALPRESENTTASKCPUCALLBACKPROC* out_pfn_cpu_callback_proc_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_renderer_uber_set_shader_general_property(scene_renderer_uber                  uber,
@@ -220,5 +233,6 @@ PUBLIC EMERALD_API void scene_renderer_uber_set_shader_item_property(scene_rende
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void scene_renderer_uber_rendering_stop(scene_renderer_uber uber);
+
 
 #endif /* SCENE_RENDERER_UBER_H */

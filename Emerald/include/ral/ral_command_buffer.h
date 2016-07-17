@@ -256,7 +256,7 @@ typedef struct ral_command_buffer_draw_call_indirect_command_info
 {
     ral_buffer indirect_buffer;
     uint32_t   offset;
-    uint32_t   stride;
+    uint32_t   stride; /* if 0, sizeof(indirect draw call args) should be used by the back-end. */
 
     /* May be nullptr */
     ral_buffer index_buffer;
@@ -438,9 +438,9 @@ typedef struct ral_command_buffer_set_scissor_box_command_info
 
 typedef struct ral_command_buffer_set_vertex_buffer_command_info
 {
-    ral_buffer buffer;
-    uint32_t   location;
-    uint32_t   start_offset;
+    ral_buffer                buffer;
+    system_hashed_ansi_string name;
+    uint32_t                  start_offset;
 } ral_command_buffer_set_vertex_buffer_command_info;
 
 typedef struct ral_command_buffer_set_viewport_command_info
@@ -480,6 +480,21 @@ typedef enum
     RAL_COMMAND_TYPE_UNKNOWN
 } ral_command_type;
 
+
+/** Adds a sequence of commands from @param src_command_buffer (ranged <n_start_command, n_start_command + n_commands) to
+ *  @param recording_command_buffer.
+ *
+ *  Note that:
+ *
+ * 1) @param recording_command_buffer must be in a recording state for this command to succeed.
+ * 2) @param recording_command_buffer must require a set of the same, or a a superset of queue types defined for @param src_command_buffer.
+ *
+ *  TODO
+ **/
+PUBLIC void ral_command_buffer_append_commands_from_command_buffer(ral_command_buffer recording_command_buffer,
+                                                                   ral_command_buffer src_command_buffer,
+                                                                   uint32_t           n_start_command,
+                                                                   uint32_t           n_commands);
 
 /** TODO */
 PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                           context,

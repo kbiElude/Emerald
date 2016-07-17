@@ -1561,11 +1561,10 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                    material,
-                                                                         mesh_material_shading_property   property,
-                                                                         ral_texture*                     out_texture_ptr,
-                                                                         unsigned int*                    out_mipmap_level_ptr,
-                                                                         ral_sampler*                     out_sampler_ptr)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture_view(mesh_material                    material,
+                                                                              mesh_material_shading_property   property,
+                                                                              ral_texture_view*                out_texture_view_ptr,
+                                                                              ral_sampler*                     out_sampler_ptr)
 {
     _mesh_material_property*         property_ptr     = reinterpret_cast<_mesh_material*>(material)->shading_properties + property;
     _mesh_material_property_texture* texture_data_ptr = &property_ptr->texture_data;

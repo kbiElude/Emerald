@@ -65,7 +65,7 @@ PUBLIC EMERALD_API bool ral_buffer_clear_region(ral_buffer                    bu
                                                 ral_buffer_clear_region_info* clear_ops,
                                                 bool                          sync_other_contexts)
 {
-    _ral_buffer*                         buffer_ptr   = (_ral_buffer*) buffer;
+    _ral_buffer*                         buffer_ptr   = reinterpret_cast<_ral_buffer*>(buffer);
     ral_buffer_clear_region_callback_arg callback_arg;
     bool                                 result       = false;
 
@@ -126,9 +126,9 @@ PUBLIC EMERALD_API bool ral_buffer_copy_to_buffer(ral_buffer                    
                                                   bool                            sync_other_contexts)
 {
     ral_buffer_copy_to_buffer_callback_arg callback_arg;
-    _ral_buffer*                           dst_buffer_ptr = (_ral_buffer*) dst_buffer;
+    _ral_buffer*                           dst_buffer_ptr = reinterpret_cast<_ral_buffer*>(dst_buffer);
     bool                                   result         = false;
-    _ral_buffer*                           src_buffer_ptr = (_ral_buffer*) src_buffer;
+    _ral_buffer*                           src_buffer_ptr = reinterpret_cast<_ral_buffer*>(src_buffer);
 
     /* Sanity checks */
     if (dst_buffer == nullptr || src_buffer == nullptr)
@@ -267,11 +267,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
+PUBLIC EMERALD_API void ral_buffer_get_property(const ral_buffer    buffer,
                                                 ral_buffer_property property,
                                                 void*               out_result_ptr)
 {
-    _ral_buffer* buffer_ptr = (_ral_buffer*) buffer;
+    const _ral_buffer* buffer_ptr = reinterpret_cast<const _ral_buffer*>(buffer);
 
     /* Sanity checks */
     if (buffer_ptr == nullptr)
@@ -287,63 +287,63 @@ PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
     {
         case RAL_BUFFER_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result_ptr = buffer_ptr->callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = buffer_ptr->callback_manager;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_CONTEXT:
         {
-            *(ral_context*) out_result_ptr = buffer_ptr->context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = buffer_ptr->context;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_MAPPABILITY_BITS:
         {
-            *(ral_buffer_mappability_bits*) out_result_ptr = buffer_ptr->mappability_bits;
+            *reinterpret_cast<ral_buffer_mappability_bits*>(out_result_ptr) = buffer_ptr->mappability_bits;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_PARENT_BUFFER:
         {
-            *(ral_buffer*) out_result_ptr = buffer_ptr->parent_buffer;
+            *reinterpret_cast<ral_buffer*>(out_result_ptr) = buffer_ptr->parent_buffer;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_PROPERTY_BITS:
         {
-            *(ral_buffer_property_bits*) out_result_ptr = buffer_ptr->property_bits;
+            *reinterpret_cast<ral_buffer_property_bits*>(out_result_ptr) = buffer_ptr->property_bits;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_START_OFFSET:
         {
-            *(uint32_t*) out_result_ptr = buffer_ptr->start_offset;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = buffer_ptr->start_offset;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_USAGE_BITS:
         {
-            *(ral_buffer_usage_bits*) out_result_ptr = buffer_ptr->usage_bits;
+            *reinterpret_cast<ral_buffer_usage_bits*>(out_result_ptr) = buffer_ptr->usage_bits;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_USER_QUEUE_BITS:
         {
-            *(ral_queue_bits*) out_result_ptr = buffer_ptr->user_queue_bits;
+            *reinterpret_cast<ral_queue_bits*>(out_result_ptr) = buffer_ptr->user_queue_bits;
 
             break;
         }
 
         case RAL_BUFFER_PROPERTY_SIZE:
         {
-            *(uint32_t*) out_result_ptr = buffer_ptr->size;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = buffer_ptr->size;
 
             break;
         }
@@ -361,7 +361,7 @@ end:
 /** Please see header for specification */
 PUBLIC void ral_buffer_release(ral_buffer& buffer)
 {
-    delete (_ral_buffer*) buffer;
+    delete reinterpret_cast<_ral_buffer*>(buffer);
 }
 
 /** Please see header for specification */
@@ -370,7 +370,7 @@ PUBLIC EMERALD_API bool ral_buffer_set_data_from_client_memory(ral_buffer       
                                                                bool                                                                 async,
                                                                bool                                                                 sync_other_contexts)
 {
-    _ral_buffer*                                       buffer_ptr = (_ral_buffer*) buffer;
+    _ral_buffer*                                       buffer_ptr = reinterpret_cast<_ral_buffer*>(buffer);
     ral_buffer_client_sourced_update_info_callback_arg callback_arg;
     bool                                               result     = false;
 

@@ -131,7 +131,7 @@ PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
                                     const ral_buffer_create_info* create_info_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void ral_buffer_get_property(ral_buffer          buffer,
+PUBLIC EMERALD_API void ral_buffer_get_property(const ral_buffer    buffer,
                                                 ral_buffer_property property,
                                                 void*               out_result_ptr);
 

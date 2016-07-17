@@ -45,8 +45,8 @@ typedef struct mesh_draw_call_arguments
 typedef enum
 {
     /* TODO: Add the other draw call types when needed. */
-    MESH_DRAW_CALL_TYPE_ARRAYS,
-    MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT,
+    MESH_DRAW_CALL_TYPE_NONINDEXED,
+    MESH_DRAW_CALL_TYPE_NONINDEXED_INDIRECT,
 
     /* Always last */
     MESH_DRAW_CALL_TYPE_UNKNOWN

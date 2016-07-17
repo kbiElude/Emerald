@@ -4,8 +4,6 @@
 #include "ral/ral_context.h"
 #include "ral/ral_types.h"
 
-typedef void (*PFNRALPRESENTTASKCPUCALLBACKPROC)(void* user_arg);
-
 typedef struct
 {
     ral_context_object_type object_type;

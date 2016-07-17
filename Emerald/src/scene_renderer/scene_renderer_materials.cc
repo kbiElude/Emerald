@@ -33,21 +33,21 @@ typedef struct _scene_renderer_materials_mesh_material_setting
     _scene_renderer_materials_mesh_material_setting()
     {
         attachment      = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
-        attachment_data = NULL;
+        attachment_data = nullptr;
         property        = MESH_MATERIAL_SHADING_PROPERTY_UNKNOWN;
     }
 
     ~_scene_renderer_materials_mesh_material_setting()
     {
-        if (attachment_data != NULL)
+        if (attachment_data != nullptr)
         {
             switch (attachment)
             {
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
                 {
-                    delete (float*) attachment_data;
+                    delete reinterpret_cast<float*>(attachment_data);
 
-                    attachment_data = NULL;
+                    attachment_data = nullptr;
                     break;
                 }
 
@@ -57,15 +57,15 @@ typedef struct _scene_renderer_materials_mesh_material_setting
                      *
                      * DO NOT release the invalidated texture here.
                      */
-                    attachment_data = NULL;
+                    attachment_data = nullptr;
                     break;
                 }
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
                 {
-                    delete (float*) attachment_data;
+                    delete reinterpret_cast<float*>(attachment_data);
 
-                    attachment_data = NULL;
+                    attachment_data = nullptr;
                     break;
                 }
 
@@ -74,8 +74,8 @@ typedef struct _scene_renderer_materials_mesh_material_setting
                     ASSERT_DEBUG_SYNC(false, 
                                       "Unrecognized mesh material property attachment type");
                 }
-            } /* switch (attachment) */
-        } /* if (attachment_data != NULL) */
+            }
+        }
     }
 } _scene_renderer_materials_mesh_material_setting;
 
@@ -86,24 +86,24 @@ typedef struct _scene_renderer_materials_uber_context_data
 
     explicit _scene_renderer_materials_uber_context_data()
     {
-        material = NULL;
-        uber     = NULL;
+        material = nullptr;
+        uber     = nullptr;
     }
 
     ~_scene_renderer_materials_uber_context_data()
     {
-        if (material != NULL)
+        if (material != nullptr)
         {
             mesh_material_release(material);
 
-            material = NULL;
+            material = nullptr;
         }
 
-        if (uber != NULL)
+        if (uber != nullptr)
         {
             scene_renderer_uber_release(uber);
 
-            uber = NULL;
+            uber = nullptr;
         }
     }
 } _scene_renderer_materials_uber_context_data;
@@ -121,7 +121,7 @@ typedef struct _scene_renderer_materials_uber
 
     ~_scene_renderer_materials_uber()
     {
-        if (per_context_data != NULL)
+        if (per_context_data != nullptr)
         {
             uint32_t n_per_context_data_items = 0;
 
@@ -133,18 +133,18 @@ typedef struct _scene_renderer_materials_uber
                           n_data_item < n_per_context_data_items;
                         ++n_data_item)
             {
-                _scene_renderer_materials_uber_context_data* data_ptr = NULL;
+                _scene_renderer_materials_uber_context_data* data_ptr = nullptr;
 
                 system_hash64map_get_element_at(per_context_data,
                                                 n_data_item,
                                                &data_ptr,
-                                                NULL /* result_hash_ptr */);
+                                                nullptr /* result_hash_ptr */);
 
                 delete data_ptr;
             }
 
             system_hash64map_release(per_context_data);
-            per_context_data = NULL;
+            per_context_data = nullptr;
         }
     }
 } _scene_renderer_materials_uber;
@@ -170,16 +170,16 @@ typedef struct _scene_renderer_materials
 
     ~_scene_renderer_materials()
     {
-        if (forced_mesh_material_settings != NULL)
+        if (forced_mesh_material_settings != nullptr)
         {
-            _scene_renderer_materials_mesh_material_setting* mesh_material_setting_ptr = NULL;
+            _scene_renderer_materials_mesh_material_setting* mesh_material_setting_ptr = nullptr;
 
             while (system_resizable_vector_pop(forced_mesh_material_settings,
                                               &mesh_material_setting_ptr) )
             {
                 delete mesh_material_setting_ptr;
 
-                mesh_material_setting_ptr = NULL;
+                mesh_material_setting_ptr = nullptr;
             }
         }
 
@@ -197,23 +197,23 @@ typedef struct _scene_renderer_materials
                           n_context < n_contexts;
                         ++n_context)
             {
-                mesh_material context_material = NULL;
+                mesh_material context_material = nullptr;
 
                 system_hash64map_get_element_at(per_context_special_materials[special_material],
                                                 n_context,
                                                &context_material,
-                                                NULL /* result_hash_ptr */);
+                                                nullptr /* result_hash_ptr */);
 
                 mesh_material_release(context_material);
             }
 
             system_hash64map_release(per_context_special_materials[special_material]);
-            per_context_special_materials[special_material] = NULL;
+            per_context_special_materials[special_material] = nullptr;
         }
 
-        if (ubers != NULL)
+        if (ubers != nullptr)
         {
-            _scene_renderer_materials_uber* uber_ptr = NULL;
+            _scene_renderer_materials_uber* uber_ptr = nullptr;
 
             while (system_resizable_vector_pop(ubers,
                                               &uber_ptr) )
@@ -222,7 +222,7 @@ typedef struct _scene_renderer_materials
             }
             system_resizable_vector_release(ubers);
 
-            ubers = NULL;
+            ubers = nullptr;
         }
     }
 } _scene_renderer_materials;
@@ -255,14 +255,14 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                                                 scene                    scene,
                                                                 bool                     use_shadow_maps)
 {
-    _scene_renderer_materials* materials_ptr = (_scene_renderer_materials*) materials;
-    ral_context                context       = NULL;
+    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(materials);
+    ral_context                context       = nullptr;
 
     LOG_INFO("Performance warning: _scene_renderer_materials_bake_uber() called.");
 
     /* Spawn a new uber  */
     mesh_material_type        material_type = MESH_MATERIAL_TYPE_UNDEFINED;
-    scene_renderer_uber       new_uber      = NULL;
+    scene_renderer_uber       new_uber      = nullptr;
     system_hashed_ansi_string uber_name     = _scene_renderer_materials_get_uber_name(material,
                                                                                       scene,
                                                                                       use_shadow_maps);
@@ -281,10 +281,10 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
             new_uber = scene_renderer_uber_create(context,
                                                   uber_name);
 
-            ASSERT_ALWAYS_SYNC(new_uber != NULL,
+            ASSERT_ALWAYS_SYNC(new_uber != nullptr,
                                "Could not spawn an uber instance");
 
-            if (new_uber != NULL)
+            if (new_uber != nullptr)
             {
                 mesh_material_shading material_shading             = MESH_MATERIAL_SHADING_UNKNOWN;
                 bool                  scene_shadow_mapping_enabled = false;
@@ -348,7 +348,7 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                         _scene_renderer_materials_get_forced_setting(materials,
                                                                      mapping.material_property,
                                                                     &material_attachment,
-                                                                    NULL /* out_attachment_data */);
+                                                                    nullptr /* out_attachment_data */);
 
                         if (material_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
                         {
@@ -396,14 +396,14 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                     ASSERT_DEBUG_SYNC(false,
                                                       "Unrecognized material attachment type");
                                 }
-                            } /* switch (material_attachment) */
+                            }
 
                             n_uber_fragment_property_value_pairs++;
                         }
-                    } /* for (all mappings) */
+                    }
 
                     /* Add lights */
-                    if (scene != NULL)
+                    if (scene != nullptr)
                     {
                         unsigned int n_scene_lights = 0;
 
@@ -451,10 +451,10 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                             ASSERT_DEBUG_SYNC(false,
                                                               "TODO: Unrecognized scene light type for Lambert shading");
                                         }
-                                    } /* switch (current_light_type) */
+                                    }
 
                                     break;
-                                } /* case MESH_MATERIAL_SHADING_LAMBERT: */
+                                }
 
                                 case MESH_MATERIAL_SHADING_PHONG:
                                 {
@@ -493,7 +493,7 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                             ASSERT_DEBUG_SYNC(false,
                                                               "TODO: Unrecognized scene light type for phong shading");
                                         }
-                                    } /* switch (current_light_type) */
+                                    }
 
                                     break;
                                 }
@@ -503,7 +503,7 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                     ASSERT_DEBUG_SYNC(false,
                                                       "TODO: Unsupported shading algorithm");
                                 }
-                            } /* switch (material_shading) */
+                            }
 
                             /* Determine if we should check visibility for the light.
                              *
@@ -521,7 +521,7 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                             uses_shadow_mapping &= scene_shadow_mapping_enabled;
                             uses_shadow_mapping &= use_shadow_maps;
 
-                            /* Add the light item if not a NULL light */
+                            /* Add the light item if not a nullptr light */
                             if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
                             {
                                 scene_renderer_uber_add_light_item(new_uber,
@@ -530,10 +530,10 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                                                    uses_shadow_mapping,
                                                                    n_uber_fragment_property_value_pairs,
                                                                    uber_fragment_property_value_pairs);
-                            } /* if (uber_light_type != UBER_LIGHT_NONE) */
-                        } /* for (all scene lights) */
-                    } /* if (scene != NULL) */
-                } /* if (material_shading == MESH_MATERIAL_SHADING_LAMBERT || material_shading == MESH_MATERIAL_SHADING_PHONG) */
+                            }
+                        }
+                    }
+                }
                 else
                 if (material_shading == MESH_MATERIAL_SHADING_NONE)
                 {
@@ -591,14 +591,14 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                                                               uber_input_attribute);
                     }
                 }
-            } /* if (new_uber != NULL) */
+            }
 
             break;
-        } /* case MESH_MATERIAL_TYPE_GENERAL: */
+        }
 
         case MESH_MATERIAL_TYPE_PROGRAM:
         {
-            ral_program material_program = NULL;
+            ral_program material_program = nullptr;
 
             mesh_material_get_property(material,
                                        MESH_MATERIAL_PROPERTY_SOURCE_RAL_PROGRAM,
@@ -608,18 +608,18 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                                                                    uber_name,
                                                                    material_program);
 
-            ASSERT_ALWAYS_SYNC(new_uber != NULL,
+            ASSERT_ALWAYS_SYNC(new_uber != nullptr,
                                "Could not spawn an uber instance");
 
             break;
-        } /* case MESH_MATERIAL_TYPE_PROGRAM: */
+        }
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized mesh_material_type value.");
         }
-    } /* switch (type) */
+    }
 
     /* Return the result */
     return (scene_renderer_uber) new_uber;
@@ -635,7 +635,7 @@ PRIVATE bool _scene_renderer_materials_does_uber_match_scene(scene_renderer_uber
     /* The purpose of this function is to make sure that uber we're fed implements shading
      * for exactly the same light configuration as defined in scene.
      */
-    scene_light  current_light    = NULL;
+    scene_light  current_light    = nullptr;
     unsigned int n_scene_lights   = 0;
     unsigned int n_uber_lights    = 0;
     bool         scene_sm_enabled = false;
@@ -827,7 +827,7 @@ PRIVATE bool _scene_renderer_materials_does_uber_match_scene(scene_renderer_uber
 
             goto end;
         }
-    } /* for (all lights attached to the scene) */
+    }
 
     /* Hey, that's a match! */
 end:
@@ -841,7 +841,7 @@ PRIVATE void _scene_renderer_materials_get_forced_setting(scene_renderer_materia
                                                           mesh_material_property_attachment* out_attachment,
                                                           void**                             out_attachment_data)
 {
-    const _scene_renderer_materials* materials_ptr     = (const _scene_renderer_materials*) materials;
+    const _scene_renderer_materials* materials_ptr     = reinterpret_cast<const _scene_renderer_materials*>(materials);
     unsigned int                     n_forced_settings = 0;
 
     system_resizable_vector_get_property(materials_ptr->forced_mesh_material_settings,
@@ -852,7 +852,7 @@ PRIVATE void _scene_renderer_materials_get_forced_setting(scene_renderer_materia
                       n_setting < n_forced_settings;
                     ++n_setting)
     {
-        _scene_renderer_materials_mesh_material_setting* setting_ptr = NULL;
+        _scene_renderer_materials_mesh_material_setting* setting_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(materials_ptr->forced_mesh_material_settings,
                                                    n_setting,
@@ -860,12 +860,12 @@ PRIVATE void _scene_renderer_materials_get_forced_setting(scene_renderer_materia
         {
             if (setting_ptr->property == shading_property)
             {
-                if (out_attachment != NULL)
+                if (out_attachment != nullptr)
                 {
                     *out_attachment = setting_ptr->attachment;
                 }
 
-                if (out_attachment_data != NULL)
+                if (out_attachment_data != nullptr)
                 {
                     *out_attachment_data = setting_ptr->attachment_data;
                 }
@@ -886,7 +886,7 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
                                                                           scene         scene,
                                                                           bool          use_shadow_maps)
 {
-    system_hashed_ansi_string material_name = NULL;
+    system_hashed_ansi_string material_name = nullptr;
     std::stringstream         name_sstream;
     std::string               name_string;
 
@@ -944,8 +944,8 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
                              << "] uses an attachment of type ["
                              << system_hashed_ansi_string_get_buffer(current_attachment_has)
                              << "]\n";
-            } /* if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE) */
-        } /* for (all shading properties) */
+            }
+        }
 
         name_sstream << "<<\n\n";
 
@@ -972,7 +972,7 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
                                                                                              n_light);
                 bool                      current_light_is_caster = false;
                 scene_light_type          current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
-                system_hashed_ansi_string current_light_type_has  = NULL;
+                system_hashed_ansi_string current_light_type_has  = nullptr;
 
                 scene_light_get_property(current_light,
                                          SCENE_LIGHT_PROPERTY_TYPE,
@@ -993,11 +993,11 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
                 if (current_light_is_caster)
                 {
                     scene_light_shadow_map_algorithm shadow_map_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
-                    system_hashed_ansi_string        shadow_map_algorithm_has = NULL;
+                    system_hashed_ansi_string        shadow_map_algorithm_has = nullptr;
                     scene_light_shadow_map_bias      shadow_map_bias          = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
-                    system_hashed_ansi_string        shadow_map_bias_has      = NULL;
+                    system_hashed_ansi_string        shadow_map_bias_has      = nullptr;
                     scene_light_shadow_map_filtering shadow_map_filtering     = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
-                    system_hashed_ansi_string        shadow_map_filtering_has = NULL;
+                    system_hashed_ansi_string        shadow_map_filtering_has = nullptr;
 
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
@@ -1021,14 +1021,14 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
                                  << "] filtering:["
                                  << system_hashed_ansi_string_get_buffer(shadow_map_filtering_has)
                                  << "]\n";
-                } /* if (current_light_is_caster) */
+                }
 
                 /* If this is a point or a spot light, include falloff setting */
                 if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
                     current_light_type == SCENE_LIGHT_TYPE_SPOT)
                 {
                     scene_light_falloff       current_light_falloff     = SCENE_LIGHT_FALLOFF_UNKNOWN;
-                    system_hashed_ansi_string current_light_falloff_has = NULL;
+                    system_hashed_ansi_string current_light_falloff_has = nullptr;
 
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_FALLOFF,
@@ -1059,8 +1059,8 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
                 }
 
                 name_sstream << "\n";
-            } /* for (all lights) */
-        } /* if (lambert or phong shading is used) */
+            }
+        }
 
         /* SM global setting */
         name_sstream << "<<\n"
@@ -1068,7 +1068,7 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
                      << "Global SM setting:["
                      << ((use_shadow_maps) ? "ON" : "OFF")
                      << "]\n";
-    } /* if (material_type == MESH_MATERIAL_TYPE_GENERAL) */
+    }
 
     name_string = name_sstream.str();
 
@@ -1087,56 +1087,56 @@ PRIVATE void _scene_renderer_materials_init_special_materials(_scene_renderer_ma
      * NOTE: These bodies need to adhere to the requirements inposed
      *       by how ogl_uber works.
      */
-    mesh_material depth_clip                                        = NULL;
-    mesh_material depth_clip_and_depth_clip_squared                 = NULL;
-    mesh_material depth_clip_and_depth_clip_squared_dual_paraboloid = NULL;
-    mesh_material depth_clip_dual_paraboloid                        = NULL;
-    mesh_material normal                                            = NULL;
-    mesh_material texcoord                                          = NULL;
+    mesh_material depth_clip                                        = nullptr;
+    mesh_material depth_clip_and_depth_clip_squared                 = nullptr;
+    mesh_material depth_clip_and_depth_clip_squared_dual_paraboloid = nullptr;
+    mesh_material depth_clip_dual_paraboloid                        = nullptr;
+    mesh_material normal                                            = nullptr;
+    mesh_material texcoord                                          = nullptr;
 
     depth_clip = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space"),
                                                          context,
-                                                         NULL, /* object_manager_path */
+                                                         nullptr, /* object_manager_path */
                                                          scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_FS),
-                                                         NULL, /* gs_body */
-                                                         NULL, /* tc_body */
-                                                         NULL, /* te_body */
+                                                         nullptr, /* gs_body */
+                                                         nullptr, /* tc_body */
+                                                         nullptr, /* te_body */
                                                          scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_VS) );
 
     depth_clip_and_depth_clip_squared_dual_paraboloid = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space and depth squared clip space dual paraboloid"),
                                                                                                 context,
-                                                                                                NULL, /* object_manager_path */
+                                                                                                nullptr, /* object_manager_path */
                                                                                                 scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_FS),
-                                                                                                NULL, /* gs_body */
-                                                                                                NULL, /* tc_body */
-                                                                                                NULL, /* te_body */
+                                                                                                nullptr, /* gs_body */
+                                                                                                nullptr, /* tc_body */
+                                                                                                nullptr, /* te_body */
                                                                                                 scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_VS) );
 
     depth_clip_dual_paraboloid = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space dual paraboloid"),
                                                                          context,
-                                                                         NULL, /* object_manager_path */
+                                                                         nullptr, /* object_manager_path */
                                                                          scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_FS),
-                                                                         NULL, /* gs_body */
-                                                                         NULL, /* tc_body */
-                                                                         NULL, /* te_body */
+                                                                         nullptr, /* gs_body */
+                                                                         nullptr, /* tc_body */
+                                                                         nullptr, /* te_body */
                                                                          scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_VS) );
 
     depth_clip_and_depth_clip_squared = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),
                                                                                 context,
-                                                                                NULL, /* object_manager_path */
+                                                                                nullptr, /* object_manager_path */
                                                                                 scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS),
-                                                                                NULL, /* gs_body */
-                                                                                NULL, /* tc_body */
-                                                                                NULL, /* te_body */
+                                                                                nullptr, /* gs_body */
+                                                                                nullptr, /* tc_body */
+                                                                                nullptr, /* te_body */
                                                                                 scene_renderer_sm_get_special_material_shader_body(SCENE_RENDERER_SM_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_VS) );
 
     normal = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
                                   context,
-                                  NULL); /* object_manager_path */
+                                  nullptr); /* object_manager_path */
 
     texcoord = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
                                     context,
-                                    NULL); /* object_manager_path */
+                                    nullptr); /* object_manager_path */
 
     /* Configure "normal preview" material */
     mesh_material_set_property                                    (normal,
@@ -1166,45 +1166,45 @@ PRIVATE void _scene_renderer_materials_init_special_materials(_scene_renderer_ma
     system_hash64map_insert(materials_ptr->per_context_special_materials[SPECIAL_MATERIAL_DEPTH_CLIP],
                             (system_hash64) context,
                             depth_clip,
-                            NULL, /* callback */
-                            NULL  /* callback_argument*/);
+                            nullptr, /* callback */
+                            nullptr  /* callback_argument*/);
     system_hash64map_insert(materials_ptr->per_context_special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_DUAL_PARABOLOID],
                             (system_hash64) context,
                             depth_clip_dual_paraboloid,
-                            NULL, /* callback */
-                            NULL  /* callback_argument*/);
+                            nullptr, /* callback */
+                            nullptr  /* callback_argument*/);
     system_hash64map_insert(materials_ptr->per_context_special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED],
                             (system_hash64) context,
                             depth_clip_and_depth_clip_squared,
-                            NULL, /* callback */
-                            NULL  /* callback_argument*/);
+                            nullptr, /* callback */
+                            nullptr  /* callback_argument*/);
     system_hash64map_insert(materials_ptr->per_context_special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED_DUAL_PARABOLOID],
                             (system_hash64) context,
                             depth_clip_and_depth_clip_squared_dual_paraboloid,
-                            NULL, /* callback */
-                            NULL  /* callback_argument*/);
+                            nullptr, /* callback */
+                            nullptr  /* callback_argument*/);
     system_hash64map_insert(materials_ptr->per_context_special_materials[SPECIAL_MATERIAL_NORMALS],
                             (system_hash64) context,
                             normal,
-                            NULL, /* callback */
-                            NULL  /* callback_argument*/);
+                            nullptr, /* callback */
+                            nullptr  /* callback_argument*/);
     system_hash64map_insert(materials_ptr->per_context_special_materials[SPECIAL_MATERIAL_TEXCOORD],
                             (system_hash64) context,
                             texcoord,
-                            NULL, /* callback */
-                            NULL  /* callback_argument*/);
+                            nullptr, /* callback */
+                            nullptr  /* callback_argument*/);
 }
 
 /** TODO */
 PRIVATE void _scene_renderer_materials_window_about_to_be_destroyed_callback(const void* callback_data,
                                                                              void*       user_arg)
 {
-    _scene_renderer_materials* materials_ptr = (_scene_renderer_materials*) user_arg;
-    demo_window                window        = (demo_window)                callback_data;
+    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(user_arg);
+    demo_window                window        = (demo_window)                               (callback_data);
 
     /* Iterate over all ubers and release those which have been created for the context attached to
      * the window, which is about to be destroyed. */
-    ral_context context = NULL;
+    ral_context context = nullptr;
     uint32_t    n_ubers = 0;
 
     demo_window_get_property(window,
@@ -1219,8 +1219,8 @@ PRIVATE void _scene_renderer_materials_window_about_to_be_destroyed_callback(con
                   n_uber < n_ubers;
                 ++n_uber)
     {
-        _scene_renderer_materials_uber*              uber_ptr                  = NULL;
-        _scene_renderer_materials_uber_context_data* uber_per_context_data_ptr = NULL;
+        _scene_renderer_materials_uber*              uber_ptr                  = nullptr;
+        _scene_renderer_materials_uber_context_data* uber_per_context_data_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(materials_ptr->ubers,
                                                     n_uber,
@@ -1271,9 +1271,9 @@ PRIVATE void _scene_renderer_materials_window_about_to_be_destroyed_callback(con
 PRIVATE void _scene_renderer_materials_window_created_callback(const void* callback_data,
                                                                void*       user_arg)
 {
-    ral_context                context       = NULL;
-    _scene_renderer_materials* materials_ptr = (_scene_renderer_materials*) user_arg;
-    demo_window                window        = (demo_window)                callback_data;
+    ral_context                context       = nullptr;
+    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(user_arg);
+    demo_window                window        = (demo_window)                               (callback_data);
 
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
@@ -1289,13 +1289,13 @@ PUBLIC scene_renderer_materials scene_renderer_materials_create()
 {
     _scene_renderer_materials* materials_ptr = new (std::nothrow) _scene_renderer_materials;
 
-    ASSERT_ALWAYS_SYNC(materials_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(materials_ptr != nullptr,
                        "Out of memory");
 
-    if (materials_ptr != NULL)
+    if (materials_ptr != nullptr)
     {
         /* Sign up for window created/destroyed notifications */
-        system_callback_manager app_callback_manager = NULL;
+        system_callback_manager app_callback_manager = nullptr;
 
         demo_app_get_property(DEMO_APP_PROPERTY_CALLBACK_MANAGER,
                              &app_callback_manager);
@@ -1321,13 +1321,13 @@ PUBLIC EMERALD_API void scene_renderer_materials_force_mesh_material_shading_pro
                                                                                                  mesh_material_property_attachment attachment,
                                                                                                  void*                             attachment_data)
 {
-    _scene_renderer_materials*                       materials_ptr   = (_scene_renderer_materials*) materials;
+    _scene_renderer_materials*                       materials_ptr   = reinterpret_cast<_scene_renderer_materials*>(materials);
     _scene_renderer_materials_mesh_material_setting* new_setting_ptr = new _scene_renderer_materials_mesh_material_setting;
 
-    ASSERT_ALWAYS_SYNC(new_setting_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_setting_ptr != nullptr,
                        "Out of memory");
 
-    if (new_setting_ptr != NULL)
+    if (new_setting_ptr != nullptr)
     {
         /* TODO: This really could check if the property is not already overloaded with another attachment */
         new_setting_ptr->attachment      = attachment;
@@ -1336,7 +1336,7 @@ PUBLIC EMERALD_API void scene_renderer_materials_force_mesh_material_shading_pro
 
         system_resizable_vector_push(materials_ptr->forced_mesh_material_settings,
                                      new_setting_ptr);
-    } /* if (new_setting_ptr != NULL) */
+    }
 }
 
 /** Please see header for specification */
@@ -1344,14 +1344,14 @@ PUBLIC mesh_material scene_renderer_materials_get_special_material(scene_rendere
                                                                    ral_context                               context,
                                                                    scene_renderer_materials_special_material special_material)
 {
-    _scene_renderer_materials* materials_ptr = (_scene_renderer_materials*) materials;
-    mesh_material              result        = NULL;
+    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(materials);
+    mesh_material              result        = nullptr;
 
     system_hash64map_get(materials_ptr->per_context_special_materials[special_material],
                          (system_hash64) context,
                         &result);
 
-    ASSERT_DEBUG_SYNC(result != NULL,
+    ASSERT_DEBUG_SYNC(result != nullptr,
                       "Could not retrieve a special material for the specified RAL context");
 
     return result;
@@ -1363,10 +1363,10 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                                                              scene                    scene,
                                                              bool                     use_shadow_maps)
 {
-    ral_context                     context                   = NULL;
-    _scene_renderer_materials*      materials_ptr             = (_scene_renderer_materials*) materials;
-    _scene_renderer_materials_uber* parent_materials_uber_ptr = NULL;
-    scene_renderer_uber             result                    = NULL;
+    ral_context                     context                   = nullptr;
+    _scene_renderer_materials*      materials_ptr             = reinterpret_cast<_scene_renderer_materials*>(materials);
+    _scene_renderer_materials_uber* parent_materials_uber_ptr = nullptr;
+    scene_renderer_uber             result                    = nullptr;
 
     mesh_material_get_property(material,
                                MESH_MATERIAL_PROPERTY_CONTEXT,
@@ -1383,8 +1383,8 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                       n_material < n_materials;
                     ++n_material)
     {
-        _scene_renderer_materials_uber_context_data* uber_context_data_ptr = NULL;
-        _scene_renderer_materials_uber*              uber_ptr              = NULL;
+        _scene_renderer_materials_uber_context_data* uber_context_data_ptr = nullptr;
+        _scene_renderer_materials_uber*              uber_ptr              = nullptr;
 
         if (system_resizable_vector_get_element_at(materials_ptr->ubers,
                                                    n_material,
@@ -1405,7 +1405,7 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                 system_hash64map_get_element_at(uber_ptr->per_context_data,
                                                 0,                     /* n_element       */
                                                 &uber_context_data_ptr,
-                                                NULL);                 /* result_hash_ptr */
+                                                nullptr);                 /* result_hash_ptr */
                 continue;
             }
 
@@ -1414,8 +1414,8 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
 
             if (do_materials_match)
             {
-                does_material_match_scene = (scene == NULL                                                                                ||
-                                             scene != NULL && _scene_renderer_materials_does_uber_match_scene(uber_context_data_ptr->uber,
+                does_material_match_scene = (scene == nullptr                                                                                ||
+                                             scene != nullptr && _scene_renderer_materials_does_uber_match_scene(uber_context_data_ptr->uber,
                                                                                                               scene,
                                                                                                               use_shadow_maps) );
 
@@ -1441,7 +1441,7 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                 }
                 else
                 {
-                    parent_materials_uber_ptr = NULL;
+                    parent_materials_uber_ptr = nullptr;
                 }
 
                 break;
@@ -1453,18 +1453,18 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                               "Could not get uber descriptor at index [%d]",
                               n_material);
         }
-    } /* for (all materials) */
+    }
 
-    if (result == NULL)
+    if (result == nullptr)
     {
-        scene_renderer_uber new_uber = NULL;
+        scene_renderer_uber new_uber = nullptr;
 
         /* Nope? Gotta bake a new uber then */
-        if (parent_materials_uber_ptr == NULL)
+        if (parent_materials_uber_ptr == nullptr)
         {
             parent_materials_uber_ptr = new _scene_renderer_materials_uber;
 
-            ASSERT_ALWAYS_SYNC(parent_materials_uber_ptr != NULL,
+            ASSERT_ALWAYS_SYNC(parent_materials_uber_ptr != nullptr,
                                "Out of memory");
 
             parent_materials_uber_ptr->use_shadow_maps = use_shadow_maps;
@@ -1478,23 +1478,23 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                                                        scene,
                                                        use_shadow_maps);
 
-        ASSERT_DEBUG_SYNC(new_uber != NULL,
+        ASSERT_DEBUG_SYNC(new_uber != nullptr,
                           "Could not bake a new uber");
 
-        if (new_uber != NULL)
+        if (new_uber != nullptr)
         {
-            _scene_renderer_materials_uber_context_data* new_uber_context_data_ptr = NULL;
+            _scene_renderer_materials_uber_context_data* new_uber_context_data_ptr = nullptr;
 
             new_uber_context_data_ptr = new (std::nothrow) _scene_renderer_materials_uber_context_data;
 
-            ASSERT_ALWAYS_SYNC(new_uber_context_data_ptr != NULL,
+            ASSERT_ALWAYS_SYNC(new_uber_context_data_ptr != nullptr,
                                "Out of memory");
 
-            if (new_uber_context_data_ptr != NULL)
+            if (new_uber_context_data_ptr != nullptr)
             {
                 const char*               name_suffix   = (use_shadow_maps) ? " copy with SM" : " copy without SM";
-                const char*               uber_name     = NULL;
-                system_hashed_ansi_string uber_name_has = NULL;
+                const char*               uber_name     = nullptr;
+                system_hashed_ansi_string uber_name_has = nullptr;
 
                 scene_renderer_uber_get_shader_general_property(new_uber,
                                                                 SCENE_RENDERER_UBER_GENERAL_PROPERTY_NAME,
@@ -1514,8 +1514,8 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                 system_hash64map_insert(parent_materials_uber_ptr->per_context_data,
                                         (system_hash64) context,
                                         new_uber_context_data_ptr,
-                                        NULL,  /* callback          */
-                                        NULL); /* callback_argument */
+                                        nullptr,  /* callback          */
+                                        nullptr); /* callback_argument */
             }
         }
     }
@@ -1526,11 +1526,11 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
 /** Please see header for specification */
 PUBLIC void scene_renderer_materials_release(scene_renderer_materials materials)
 {
-    if (materials != NULL)
+    if (materials != nullptr)
     {
         /* Release the container */
-        delete (_scene_renderer_materials*) materials;
+        delete reinterpret_cast<_scene_renderer_materials*>(materials);
 
-        materials = NULL;
+        materials = nullptr;
     }
 }

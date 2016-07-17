@@ -249,11 +249,10 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_
                                                                                           mesh_material_input_fragment_attribute* out_attribute_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(mesh_material                   material,
-                                                                         mesh_material_shading_property  property,
-                                                                         ral_texture*                    out_texture_ptr,
-                                                                         unsigned int*                   out_mipmap_level_ptr,
-                                                                         ral_sampler*                    out_sampler_ptr);
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture_view(mesh_material                   material,
+                                                                              mesh_material_shading_property  property,
+                                                                              ral_texture_view*               out_texture_view_ptr,
+                                                                              ral_sampler*                    out_sampler_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(mesh_material                  material,

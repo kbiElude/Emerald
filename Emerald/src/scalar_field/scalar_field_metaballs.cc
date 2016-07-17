@@ -525,7 +525,7 @@ PRIVATE void _scalar_field_metaballs_init_present_tasks(_scalar_field_metaballs*
 /** Please see header for specification */
 PRIVATE void _scalar_field_metaballs_release(void* metaballs)
 {
-    _scalar_field_metaballs* metaballs_ptr = (_scalar_field_metaballs*) metaballs;
+    _scalar_field_metaballs* metaballs_ptr = reinterpret_cast<_scalar_field_metaballs*>(metaballs);
 
     ral_present_task* present_tasks_to_release[] =
     {
@@ -763,7 +763,7 @@ PUBLIC EMERALD_API void scalar_field_metaballs_set_property(scalar_field_metabal
         case SCALAR_FIELD_METABALLS_PROPERTY_N_METABALLS:
         {
             metaballs_ptr->is_update_needed = true;
-            metaballs_ptr->n_metaballs      = *(unsigned int*) data;
+            metaballs_ptr->n_metaballs      = *reinterpret_cast<const unsigned int*>(data);
 
             break;
         }
