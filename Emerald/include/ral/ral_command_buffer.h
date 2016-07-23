@@ -588,6 +588,10 @@ PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer
                                                               const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs);
 
 /** TODO */
+PUBLIC void ral_command_buffer_record_set_depth_rendertarget(ral_command_buffer recording_command_buffer,
+                                                             ral_texture_view   depth_rt);
+
+/** TODO */
 PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
                                                         uint32_t                                               n_scissor_boxes,
                                                         const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs);

@@ -7,7 +7,6 @@
 #include "curve/curve_container.h"
 #include "demo/demo_app.h"
 #include "mesh/mesh_material.h"
-#include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
@@ -1390,7 +1389,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
 PRIVATE void _scene_renderer_return_shadow_maps_to_pool(scene_renderer renderer)
 {
     uint32_t         n_lights     = 0;
-    _scene_renderer* renderer_ptr = (_scene_renderer*) renderer;
+    _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(renderer);
 
     scene_get_property(renderer_ptr->owned_scene,
                        SCENE_PROPERTY_N_LIGHTS,

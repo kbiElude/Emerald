@@ -23,34 +23,40 @@
 
 typedef enum
 {
-    /* general property, value: ral_context */
+    /* general property; ral_context */
     SCENE_RENDERER_PROPERTY_CONTEXT_RAL,
 
-    /* general property, value: scene_graph */
+    /* general property; ral_texture_view */
+    SCENE_RENDERER_PROPERTY_FORWARD_COLOR_RT,
+
+    /* general property; ral_texture_view */
+    SCENE_RENDERER_PROPERTY_FORWARD_DEPTH_RT,
+
+    /* general property; scene_graph */
     SCENE_RENDERER_PROPERTY_GRAPH,
 
-    /* indexed property, key: mesh id // value: mesh */
+    /* indexed property; key: mesh id // value: mesh */
     SCENE_RENDERER_PROPERTY_MESH_INSTANCE,
 
-    /* indexed property, key: mesh id // value: system_matrix4x4.
+    /* indexed property; key: mesh id // value: system_matrix4x4.
      *
      * May not return any value if the model was frustum-culled out.
      */
     SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
 
-    /* indexed property, key: mesh id // value: system_matrix4x4 */
+    /* indexed property; key: mesh id // value: system_matrix4x4 */
     SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX,
 
-    /* general property, value: scene_renderer_sm */
+    /* general property; scene_renderer_sm */
     SCENE_RENDERER_PROPERTY_SHADOW_MAPPING_MANAGER,
 
-    /* general property, value: float[3] */
+    /* general property; float[3] */
     SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
 
-    /* general property, value: float[3] */
+    /* general property; float[3] */
     SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
 
-    /* general property, value: system_matrix4x4 */
+    /* general property; system_matrix4x4 */
     SCENE_RENDERER_PROPERTY_VP,
 } scene_renderer_property;
 

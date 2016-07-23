@@ -158,6 +158,18 @@ typedef struct
     GLuint bo_offset;
 } scene_renderer_uber_light_sh_data;
 
+typedef struct scene_renderer_uber_start_info
+{
+    ral_texture_view color_rt;
+    ral_texture_view depth_rt;
+
+    scene_renderer_uber_start_info()
+    {
+        color_rt = nullptr;
+        depth_rt = nullptr;
+    }
+
+} scene_renderer_uber_start_info;
 
 typedef unsigned int scene_renderer_uber_item_id;
 
@@ -202,23 +214,16 @@ PUBLIC EMERALD_API void scene_renderer_uber_link(scene_renderer_uber uber);
  *  The caller is required to release the command buffer when no longer needed.
  *
  **/
-PUBLIC void scene_renderer_uber_render_mesh(mesh                              mesh_gpu,
-                                            system_matrix4x4                  model,
-                                            system_matrix4x4                  normal_matrix,
-                                            scene_renderer_uber               uber,
-                                            mesh_material                     material,
-                                            system_time                       time,
-                                            const ral_gfx_state_create_info*  ref_gfx_state_create_info_ptr,
-                                            ral_command_buffer*               out_result_cmd_buffer_ptr,
-                                            PFNRALPRESENTTASKCPUCALLBACKPROC* out_pfn_cpu_callback_proc_ptr,
-                                            void**                            out_cpu_callback_proc_user_arg);
+PUBLIC void scene_renderer_uber_render_mesh(mesh                mesh_gpu,
+                                            system_matrix4x4    model,
+                                            system_matrix4x4    normal_matrix,
+                                            scene_renderer_uber uber,
+                                            mesh_material       material,
+                                            system_time         time);
 
-/** TODO
- *
- *  Note: For the cpu callback, pass a pointer to the uber instance.
- */
-PUBLIC EMERALD_API void scene_renderer_uber_rendering_start(scene_renderer_uber               uber,
-                                                            PFNRALPRESENTTASKCPUCALLBACKPROC* out_pfn_cpu_callback_proc_ptr);
+/** TODO */
+PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber                   uber,
+                                                const scene_renderer_uber_start_info* start_info_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_renderer_uber_set_shader_general_property(scene_renderer_uber                  uber,
@@ -232,7 +237,7 @@ PUBLIC EMERALD_API void scene_renderer_uber_set_shader_item_property(scene_rende
                                                                      const void*                       data);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void scene_renderer_uber_rendering_stop(scene_renderer_uber uber);
+PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber uber);
 
 
 #endif /* SCENE_RENDERER_UBER_H */

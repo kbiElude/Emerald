@@ -126,9 +126,9 @@ PUBLIC void scene_renderer_sm_get_matrices_for_light(scene_renderer_sm          
                                                      system_matrix4x4*             out_projection_matrix);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_renderer_sm_get_property(scene_renderer_sm          shadow_mapping,
+PUBLIC EMERALD_API void scene_renderer_sm_get_property(const scene_renderer_sm    shadow_mapping,
                                                        scene_renderer_sm_property property,
-                                                       void*                      out_result);
+                                                       void*                      out_result_ptr);
 
 /** TODO.
  *
@@ -156,14 +156,4 @@ PUBLIC void scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mappin
                                                  scene_camera      target_camera,
                                                  system_time       frame_time);
 
-/** TODO.
- *
- *  NOTE: This function changes the draw framebuffer binding!
- *
- **/
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_sm_toggle(scene_renderer_sm             handler,
-                                                            scene_light                   light,
-                                                            bool                          should_enable,
-                                                            scene_renderer_sm_target_face target_face = SCENE_RENDERER_SM_TARGET_FACE_2D);
-
-#endif /* SCENE_RENDERER_SM_H */
+/#endif /* SCENE_RENDERER_SM_H */

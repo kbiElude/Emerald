@@ -13,6 +13,7 @@
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_gfx_state.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
@@ -198,13 +199,6 @@ typedef struct _scene_renderer_uber_mesh_data_material
     }
 } _scene_renderer_uber_mesh_data_material;
 
-typedef struct
-{
-    _scene_renderer_uber_mesh_data_material* mesh_data_material_ptr;
-    system_time                              render_time;
-
-} _scene_renderer_uber_render_mesh_present_task_cpu_callback_arg;
-
 typedef enum
 {
     /* Created with scene_renderer_uber_create() */
@@ -223,6 +217,9 @@ typedef struct _scene_renderer_uber
     shaders_fragment_uber     shader_fragment;
     uint32_t                  shader_fragment_n_items;
     shaders_vertex_uber       shader_vertex;
+
+    ral_texture_view active_color_rt;
+    ral_texture_view active_depth_rt;
 
     /* These are stored in UBs so we need to store UB offsets instead of locations */
     uint32_t ambient_material_ub_offset;
@@ -255,9 +252,9 @@ typedef struct _scene_renderer_uber
     _scene_renderer_uber_type type;
     system_variant            variant_float;
 
-    system_hash64map     mesh_to_mesh_data_map;
-    ral_command_buffer   preamble_command_buffer;
-    system_resource_pool present_task_cpu_callback_arg_pool;
+    system_hash64map        mesh_to_mesh_data_map;
+    ral_command_buffer      preamble_command_buffer;
+    system_resizable_vector scheduled_mesh_command_buffers;
 
     REFCOUNT_INSERT_VARIABLES
 
@@ -292,11 +289,8 @@ _scene_renderer_uber::_scene_renderer_uber(ral_context               in_context,
     mesh_to_mesh_data_map              = system_hash64map_create(sizeof(_scene_renderer_uber_mesh_data*),
                                                                  false);
     name                               = in_name;
-    present_task_cpu_callback_arg_pool = system_resource_pool_create(sizeof(_scene_renderer_uber_render_mesh_present_task_cpu_callback_arg),
-                                                                     8,        /* n_elements_to_preallocate */
-                                                                     nullptr,  /* init_fn                   */
-                                                                     nullptr); /* deinit_fn                 */
     program                            = nullptr;
+    scheduled_mesh_command_buffers     = system_resizable_vector_create(16); /* capacity */
     shader_fragment                    = nullptr;
     shader_vertex                      = nullptr;
     type                               = in_type;
@@ -814,11 +808,24 @@ PRIVATE void _scene_renderer_uber_release(void* uber)
             uber_ptr->graph_rendering_current_matrix = nullptr;
         }
 
-        if (uber_ptr->present_task_cpu_callback_arg_pool != nullptr)
+        if (uber_ptr->scheduled_mesh_command_buffers != nullptr)
         {
-            system_resource_pool_release(uber_ptr->present_task_cpu_callback_arg_pool);
+            #ifdef _DEBUG
+            {
+                uint32_t n_cmd_buffers = 0;
 
-            uber_ptr->present_task_cpu_callback_arg_pool = nullptr;
+                system_resizable_vector_get_property(uber_ptr->scheduled_mesh_command_buffers,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_cmd_buffers);
+
+                ASSERT_DEBUG_SYNC(n_cmd_buffers == 0,
+                                  "Number of scheduled cmd buffers > 0 at destruction time.");
+            }
+            #endif
+
+            system_resizable_vector_release(uber_ptr->scheduled_mesh_command_buffers);
+
+            uber_ptr->scheduled_mesh_command_buffers = nullptr;
         }
 
         if (uber_ptr->shader_fragment != nullptr)
@@ -912,267 +919,6 @@ PRIVATE void _scene_renderer_uber_reset_uniform_offsets(_scene_renderer_uber* ub
     uber_ptr->specular_material_ub_offset   = -1;
     uber_ptr->vp_ub_offset                  = -1;
     uber_ptr->world_camera_ub_offset        = -1;
-}
-
-/** TODO */
-PRIVATE void _scene_renderer_uber_render_mesh_present_task_cpu_callback(void* arg_raw_ptr)
-{
-    _scene_renderer_uber_render_mesh_present_task_cpu_callback_arg* arg_ptr                = reinterpret_cast<_scene_renderer_uber_render_mesh_present_task_cpu_callback_arg*>(arg_raw_ptr);
-    _scene_renderer_uber_mesh_data_material*                        mesh_data_material_ptr = arg_ptr->mesh_data_material_ptr;
-    const system_time                                               render_time            = arg_ptr->render_time;
-
-    ral_buffer mesh_data_bo = nullptr;
-    uint32_t   n_layers     = 0;
-
-    ASSERT_DEBUG_SYNC(mesh_data_material_ptr != nullptr,
-                      "Material instance is null");
-
-    /* Return the arg container back to the pool. */
-    system_resource_pool_return_to_pool(mesh_data_material_ptr->uber_ptr->present_task_cpu_callback_arg_pool,
-                                        reinterpret_cast<system_resource_pool_block>(arg_raw_ptr) );
-
-    arg_ptr     = nullptr;
-    arg_raw_ptr = nullptr;
-
-    /* If the mesh is instantiated, retrieve the mesh instance we should be using
-     * for the rendering */
-    mesh mesh_instantiation_parent_gpu = nullptr;
-
-    mesh_get_property(mesh_data_material_ptr->mesh_data_ptr->mesh_instance,
-                      MESH_PROPERTY_INSTANTIATION_PARENT,
-                     &mesh_instantiation_parent_gpu);
-
-    if (mesh_instantiation_parent_gpu == nullptr)
-    {
-        mesh_instantiation_parent_gpu = mesh_data_material_ptr->mesh_data_ptr->mesh_instance;
-    }
-
-    mesh_get_property(mesh_instantiation_parent_gpu,
-                      MESH_PROPERTY_N_LAYERS,
-                     &n_layers);
-
-    for (uint32_t n_layer = 0;
-                  n_layer < n_layers;
-                ++n_layer)
-    {
-        const uint32_t n_layer_passes = mesh_get_number_of_layer_passes(mesh_instantiation_parent_gpu,
-                                                                        n_layer);
-    
-        ASSERT_DEBUG_SYNC(n_layer_passes == 1,
-                          "TODO: After RAL integration, this may not work correctly. Do we need to update"
-                          " the UBs for each layer pass, or can we update all at once (as we do right now?)");
-
-        /* Iterate over all layer passes */
-        for (uint32_t n_layer_pass = 0;
-                      n_layer_pass < n_layer_passes;
-                    ++n_layer_pass)
-        {
-            mesh_material layer_pass_material = nullptr;
-
-            /* Retrieve layer pass properties */
-            mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                         n_layer,
-                                         n_layer_pass,
-                                         MESH_LAYER_PROPERTY_MATERIAL,
-                                        &layer_pass_material);
-
-            if (layer_pass_material              != mesh_data_material_ptr->material &&
-                mesh_data_material_ptr->material != nullptr)
-            {
-                continue;
-            }
-
-            if (mesh_data_material_ptr != nullptr)
-            {
-                /* Bind shading data for each supported shading property */
-                struct _attachment
-                {
-                    mesh_material_shading_property property;
-                    const char*                    shader_sampler_name;
-                    uint32_t                       shader_scalar_ub_offset;
-                    const char*                    shader_uv_attribute_name;
-                    bool                           convert_to_linear;
-                } attachments[] =
-                {
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
-                        _scene_renderer_uber_uniform_name_ambient_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->ambient_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        true,
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-                        _scene_renderer_uber_uniform_name_diffuse_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->diffuse_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        true,
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
-                        _scene_renderer_uber_uniform_name_luminosity_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->luminosity_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        false
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-                        _scene_renderer_uber_uniform_name_shininess_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->shininess_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        false
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
-                        _scene_renderer_uber_uniform_name_specular_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->specular_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        false
-                    },
-                };
-                const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
-
-                for (uint32_t n_attachment = 0;
-                              n_attachment < n_attachments;
-                            ++n_attachment)
-                {
-                    const _attachment&                      attachment      = attachments[n_attachment];
-                    const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
-                                                                                                                                 attachment.property);
-
-                    switch (attachment_type)
-                    {
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
-                        {
-                            /* Nothing to be done here */
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
-                        {
-                            float        data_vec3[3];
-                            unsigned int n_components = 1;
-
-                            if (attachment.shader_scalar_ub_offset == -1)
-                            {
-                                continue;
-                            }
-
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
-                            {
-                                mesh_material_get_shading_property_value_float(layer_pass_material,
-                                                                               attachment.property,
-                                                                               data_vec3 + 0);
-                            }
-                            else
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
-                            {
-                                mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
-                                                                                               attachment.property,
-                                                                                               render_time,
-                                                                                               data_vec3 + 0);
-                            }
-                            else
-                            {
-                                mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
-                                                                                              attachment.property,
-                                                                                              render_time,
-                                                                                              data_vec3);
-
-                                n_components = 3;
-                            }
-
-                            if (attachment.convert_to_linear)
-                            {
-                                for (unsigned int n_component = 0;
-                                                  n_component < n_components;
-                                                ++n_component)
-                                {
-                                    data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
-                                }
-                            }
-
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
-                                attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
-                            {
-                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                       attachment.shader_scalar_ub_offset,
-                                                                                       data_vec3,
-                                                                                       sizeof(float) );
-                            }
-                            else
-                            {
-                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                       attachment.shader_scalar_ub_offset,
-                                                                                       data_vec3,
-                                                                                       sizeof(float) * 3);
-                            }
-
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-                        {
-                            /* Nothing to do here - will be handled by the GPU task's command buffer instead */
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
-                        {
-                            float data_vec4[4];
-
-                            if (attachment.shader_scalar_ub_offset == -1)
-                            {
-                                continue;
-                            }
-
-                            mesh_material_get_shading_property_value_vec4(layer_pass_material,
-                                                                          attachment.property,
-                                                                          data_vec4);
-
-                            if (attachment.convert_to_linear)
-                            {
-                                for (unsigned int n_component = 0;
-                                                  n_component < 4;
-                                                ++n_component)
-                                {
-                                    data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
-                                }
-                            }
-
-                            ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                   attachment.shader_scalar_ub_offset,
-                                                                                   data_vec4,
-                                                                                   sizeof(float) * 4);
-
-                            break;
-                        }
-
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false, "Unrecognized material property attachment");
-                        }
-                    }
-                }
-            }
-
-            if (mesh_data_material_ptr->uber_ptr->ub_fs != nullptr)
-            {
-                ral_program_block_buffer_sync_immediately(mesh_data_material_ptr->uber_ptr->ub_fs);
-            }
-
-            if (mesh_data_material_ptr->uber_ptr->ub_vs != nullptr)
-            {
-                ral_program_block_buffer_sync_immediately(mesh_data_material_ptr->uber_ptr->ub_vs);
-            }
-        }
-    }
 }
 
 /** TODO */
@@ -1279,11 +1025,6 @@ PRIVATE void _scene_renderer_uber_start_rendering_cpu_task_callback(void* uber_r
     if (uber_ptr->ub_fs != nullptr)
     {
         ral_program_block_buffer_sync_immediately(uber_ptr->ub_fs);
-    }
-
-    if (uber_ptr->ub_vs != nullptr)
-    {
-        ral_program_block_buffer_sync_immediately(uber_ptr->ub_vs);
     }
 }
 
@@ -2313,21 +2054,18 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void scene_renderer_uber_render_mesh(mesh                              mesh_gpu,
-                                            system_matrix4x4                  model,
-                                            system_matrix4x4                  normal_matrix,
-                                            scene_renderer_uber               uber,
-                                            mesh_material                     material,
-                                            system_time                       time,
-                                            const ral_gfx_state_create_info*  ref_gfx_state_create_info_ptr,
-                                            ral_command_buffer*               out_result_cmd_buffer_ptr,
-                                            PFNRALPRESENTTASKCPUCALLBACKPROC* out_pfn_cpu_callback_proc_ptr,
-                                            void**                            out_cpu_callback_proc_user_arg)
+PUBLIC void scene_renderer_uber_render_mesh(mesh                             mesh_gpu,
+                                            system_matrix4x4                 model,
+                                            system_matrix4x4                 normal_matrix,
+                                            scene_renderer_uber              uber,
+                                            mesh_material                    material,
+                                            system_time                      time,
+                                            const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr)
 {
     _scene_renderer_uber* uber_ptr = reinterpret_cast<_scene_renderer_uber*>(uber);
 
     ASSERT_DEBUG_SYNC(mesh_gpu != nullptr,
-                      "Null mesh isntance was specified");
+                      "Null mesh instance was specified");
     ASSERT_DEBUG_SYNC(material != nullptr,
                       "Material must not be null");
 
@@ -2389,14 +2127,16 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                              me
                                 nullptr,  /* on_removal_callback          */
                                 nullptr); /* on_removal_callback_user_arg */
     }
-
-    ASSERT_DEBUG_SYNC(mesh_data_material_ptr != nullptr,
-                      "Mesh material data instance is null");
-
-    if (mesh_data_material_ptr->mesh_modification_timestamp == mesh_modification_timestamp)
+    else
     {
-        /* No need to re-record commands */
-        goto end;
+        ASSERT_DEBUG_SYNC(mesh_data_material_ptr != nullptr,
+                          "Mesh material data instance is null");
+
+        if (mesh_data_material_ptr->mesh_modification_timestamp == mesh_modification_timestamp)
+        {
+            /* No need to re-record commands */
+            goto end;
+        }
     }
 
     /* Start recording the command buffer and append the preamble */
@@ -2414,6 +2154,44 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                              me
                                                                    uber_ptr->preamble_command_buffer,
                                                                    0, /* n_start_command */
                                                                    n_preamble_commands);
+        }
+
+        /* Set up rendertarget bindings */
+        if (uber_ptr->active_color_rt != nullptr)
+        {
+            ral_command_buffer_set_binding_command_info            rt_binding;
+            ral_command_buffer_set_color_rendertarget_command_info rt_info    = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+
+            /* Make sure color writes are enabled. */
+            ASSERT_DEBUG_SYNC(!ref_gfx_state_create_info_ptr->rasterizer_discard,
+                              "Color rendertarget specified even though rasterizer discard mode is enabled.");
+
+            /* Configure the bindings */
+            rt_binding.binding_type                  = RAL_BINDING_TYPE_RENDERTARGET;
+            rt_binding.name                          = system_hashed_ansi_string_create("result_fragment");
+            rt_binding.rendertarget_binding.rt_index = 0;
+
+            rt_info.rendertarget_index = 0;
+            rt_info.texture_view       = uber_ptr->active_color_rt;
+
+            ral_command_buffer_record_set_color_rendertargets(mesh_data_material_ptr->command_buffer,
+                                                              1, /* n_rendertargets */
+                                                             &rt_info);
+            ral_command_buffer_record_set_bindings           (mesh_data_material_ptr->command_buffer,
+                                                              1, /* n_rendertargets */
+                                                             &rt_binding);
+        }
+
+        if (uber_ptr->active_depth_rt != nullptr)
+        {
+            ral_command_buffer_record_set_depth_rendertarget(mesh_data_material_ptr->command_buffer,
+                                                             uber_ptr->active_depth_rt);
+        }
+        else
+        {
+            /* Make sure depth writes are disabled */
+            ASSERT_DEBUG_SYNC(!ref_gfx_state_create_info_ptr->depth_writes,
+                              "Depth writes enabled despite no depth rendertarget being specified.");
         }
 
         /* Update model matrix */
@@ -2477,6 +2255,195 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                              me
                     mesh_data_material_ptr->material != nullptr)
                 {
                     continue;
+                }
+
+                /* Bind shading data for each supported shading property */
+                struct _attachment
+                {
+                    mesh_material_shading_property property;
+                    const char*                    shader_sampler_name;
+                    uint32_t                       shader_scalar_ub_offset;
+                    const char*                    shader_uv_attribute_name;
+                    bool                           convert_to_linear;
+                } attachments[] =
+                {
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                        _scene_renderer_uber_uniform_name_ambient_material_sampler,
+                        mesh_data_material_ptr->uber_ptr->ambient_material_ub_offset,
+                        _scene_renderer_uber_attribute_name_object_uv,
+                        true,
+                    },
+
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                        _scene_renderer_uber_uniform_name_diffuse_material_sampler,
+                        mesh_data_material_ptr->uber_ptr->diffuse_material_ub_offset,
+                        _scene_renderer_uber_attribute_name_object_uv,
+                        true,
+                    },
+
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+                        _scene_renderer_uber_uniform_name_luminosity_material_sampler,
+                        mesh_data_material_ptr->uber_ptr->luminosity_material_ub_offset,
+                        _scene_renderer_uber_attribute_name_object_uv,
+                        false
+                    },
+
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+                        _scene_renderer_uber_uniform_name_shininess_material_sampler,
+                        mesh_data_material_ptr->uber_ptr->shininess_material_ub_offset,
+                        _scene_renderer_uber_attribute_name_object_uv,
+                        false
+                    },
+
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+                        _scene_renderer_uber_uniform_name_specular_material_sampler,
+                        mesh_data_material_ptr->uber_ptr->specular_material_ub_offset,
+                        _scene_renderer_uber_attribute_name_object_uv,
+                        false
+                    },
+                };
+                const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
+
+                for (uint32_t n_attachment = 0;
+                              n_attachment < n_attachments;
+                            ++n_attachment)
+                {
+                    const _attachment&                      attachment      = attachments[n_attachment];
+                    const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
+                                                                                                                                 attachment.property);
+
+                    switch (attachment_type)
+                    {
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
+                        {
+                            /* Nothing to be done here */
+                            break;
+                        }
+
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
+                        {
+                            float        data_vec3[3];
+                            unsigned int n_components = 1;
+
+                            if (attachment.shader_scalar_ub_offset == -1)
+                            {
+                                continue;
+                            }
+
+                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
+                            {
+                                mesh_material_get_shading_property_value_float(layer_pass_material,
+                                                                               attachment.property,
+                                                                               data_vec3 + 0);
+                            }
+                            else
+                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                            {
+                                mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
+                                                                                               attachment.property,
+                                                                                               time,
+                                                                                               data_vec3 + 0);
+                            }
+                            else
+                            {
+                                mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
+                                                                                              attachment.property,
+                                                                                              time,
+                                                                                              data_vec3);
+
+                                n_components = 3;
+                            }
+
+                            if (attachment.convert_to_linear)
+                            {
+                                for (unsigned int n_component = 0;
+                                                  n_component < n_components;
+                                                ++n_component)
+                                {
+                                    data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
+                                }
+                            }
+
+                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
+                                attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                            {
+                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                       attachment.shader_scalar_ub_offset,
+                                                                                       data_vec3,
+                                                                                       sizeof(float) );
+                            }
+                            else
+                            {
+                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                       attachment.shader_scalar_ub_offset,
+                                                                                       data_vec3,
+                                                                                       sizeof(float) * 3);
+                            }
+
+                            break;
+                        }
+
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+                        {
+                            /* Nothing to do here - will be handled by the GPU task's command buffer instead */
+                            break;
+                        }
+
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
+                        {
+                            float data_vec4[4];
+
+                            if (attachment.shader_scalar_ub_offset == -1)
+                            {
+                                continue;
+                            }
+
+                            mesh_material_get_shading_property_value_vec4(layer_pass_material,
+                                                                          attachment.property,
+                                                                          data_vec4);
+
+                            if (attachment.convert_to_linear)
+                            {
+                                for (unsigned int n_component = 0;
+                                                  n_component < 4;
+                                                ++n_component)
+                                {
+                                    data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
+                                }
+                            }
+
+                            ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                   attachment.shader_scalar_ub_offset,
+                                                                                   data_vec4,
+                                                                                   sizeof(float) * 4);
+
+                            break;
+                        }
+
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false, "Unrecognized material property attachment");
+                        }
+                    }
+                }
+
+                if (mesh_data_material_ptr->uber_ptr->ub_fs != nullptr)
+                {
+                    ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                     mesh_data_material_ptr->command_buffer);
+                }
+
+                if (mesh_data_material_ptr->uber_ptr->ub_vs != nullptr)
+                {
+                    ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_vs,
+                                                                     mesh_data_material_ptr->command_buffer);
                 }
 
                 /* Issue the draw call. We need to handle two separate cases here:
@@ -2638,7 +2605,8 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                              me
     ral_command_buffer_stop_recording(mesh_data_material_ptr->command_buffer);
 
 end:
-    *out_result_cmd_buffer_ptr = mesh_data_material_ptr->command_buffer;
+    system_resizable_vector_push(uber_ptr->scheduled_mesh_command_buffers,
+                                 mesh_data_material_ptr->command_buffer);
 }
 
 /* Please see header for specification */
@@ -3078,13 +3046,23 @@ PUBLIC EMERALD_API void scene_renderer_uber_set_shader_item_property(scene_rende
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_uber_rendering_start(scene_renderer_uber               uber,
-                                                            PFNRALPRESENTTASKCPUCALLBACKPROC* out_pfn_cpu_callback_proc_ptr)
+PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber                   uber,
+                                                const scene_renderer_uber_start_info* start_info_ptr)
 {
     _scene_renderer_uber* uber_ptr = reinterpret_cast<_scene_renderer_uber*>(uber);
 
     ASSERT_DEBUG_SYNC(!uber_ptr->is_rendering,
                       "Already started");
+
+    /* Validate & cache the information specified in start info */
+    ASSERT_DEBUG_SYNC(start_info_ptr != nullptr,
+                      "Specified a null start info structure");
+    ASSERT_DEBUG_SYNC(start_info_ptr->color_rt != nullptr ||
+                      start_info_ptr->depth_rt != nullptr,
+                      "All specified rendertargets are null");
+
+    uber_ptr->active_color_rt = start_info_ptr->color_rt;
+    uber_ptr->active_depth_rt = start_info_ptr->depth_rt;
 
     /* Update shaders if the configuration has been changed since the last call */
     if (uber_ptr->dirty)
@@ -3250,18 +3228,148 @@ PUBLIC EMERALD_API void scene_renderer_uber_rendering_start(scene_renderer_uber 
     ral_command_buffer_stop_recording(uber_ptr->preamble_command_buffer);
 
     /* Mark as 'being rendered' */
-    *out_pfn_cpu_callback_proc_ptr = _scene_renderer_uber_start_rendering_cpu_task_callback;
-    uber_ptr->is_rendering         = true;
+    uber_ptr->is_rendering = true;
 }
 
 /* Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void scene_renderer_uber_rendering_stop(scene_renderer_uber uber)
+PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber uber)
 {
-    _scene_renderer_uber* uber_ptr = reinterpret_cast<_scene_renderer_uber*>(uber);
+    ral_present_task      result_task = nullptr;
+    _scene_renderer_uber* uber_ptr    = reinterpret_cast<_scene_renderer_uber*>(uber);
+    ral_buffer            ub_fs_bo    = nullptr;
+    ral_buffer            ub_vs_bo    = nullptr;
 
     ASSERT_DEBUG_SYNC(uber_ptr->is_rendering,
                       "Not started");
 
+    ral_program_block_buffer_get_property(uber_ptr->ub_fs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &ub_fs_bo);
+    ral_program_block_buffer_get_property(uber_ptr->ub_vs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &ub_vs_bo);
+
+    /* Form the result present task */
+    ral_present_task                     global_cpu_update_task;
+    ral_present_task_cpu_create_info     global_cpu_update_task_info;
+    ral_present_task_io                  global_cpu_update_task_output;
+    uint32_t                             n_render_command_buffers = 0;
+    uint32_t                             n_render_unique_outputs   = 0;
+    ral_present_task*                    render_gpu_tasks = nullptr;
+    ral_present_task_io                  render_gpu_task_unique_outputs[2];
+    ral_present_task*                    result_present_tasks = nullptr;
+    ral_present_task_group_create_info   result_task_create_info;
+    ral_present_task_ingroup_connection* result_task_ingroup_connections = nullptr;
+    ral_present_task_group_mapping*      result_task_unique_mappings     = nullptr;
+
+    system_resizable_vector_get_property(uber_ptr->scheduled_mesh_command_buffers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_render_command_buffers);
+
+    ASSERT_DEBUG_SYNC(n_render_command_buffers > 0,
+                      "Zero uber meshes recorded for rendering.");
+
+    global_cpu_update_task_output.buffer      = ub_vs_bo;
+    global_cpu_update_task_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    global_cpu_update_task_info.cpu_task_callback_user_arg = uber_ptr;
+    global_cpu_update_task_info.n_unique_inputs            = 0;
+    global_cpu_update_task_info.n_unique_outputs           = 1;
+    global_cpu_update_task_info.pfn_cpu_task_callback_proc = _scene_renderer_uber_start_rendering_cpu_task_callback;
+    global_cpu_update_task_info.unique_inputs              = nullptr;
+    global_cpu_update_task_info.unique_outputs             = &global_cpu_update_task_output;
+
+    global_cpu_update_task = ral_present_task_create_cpu(system_hashed_ansi_string_create("Uber: CPU update"),
+                                                        &global_cpu_update_task_info);
+
+
+    if (uber_ptr->active_color_rt != nullptr)
+    {
+        render_gpu_task_unique_outputs[n_render_unique_outputs]  .texture_view = uber_ptr->active_color_rt;
+        render_gpu_task_unique_outputs[n_render_unique_outputs++].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    }
+
+    if (uber_ptr->active_depth_rt != nullptr)
+    {
+        render_gpu_task_unique_outputs[n_render_unique_outputs]  .texture_view = uber_ptr->active_depth_rt;
+        render_gpu_task_unique_outputs[n_render_unique_outputs++].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    }
+
+    render_gpu_tasks = reinterpret_cast<ral_present_task*>(_malloca(n_render_command_buffers * sizeof(ral_present_task) ));
+
+    for (uint32_t n_render_command_buffer = 0;
+                  n_render_command_buffer < n_render_command_buffers;
+                ++n_render_command_buffer)
+    {
+        ral_command_buffer               render_command_buffer = nullptr;
+        ral_present_task_gpu_create_info render_gpu_task_info;
+
+        system_resizable_vector_get_element_at(uber_ptr->scheduled_mesh_command_buffers,
+                                               n_render_command_buffer,
+                                              &render_command_buffer);
+
+        render_gpu_task_info.command_buffer   = render_command_buffer;
+        render_gpu_task_info.n_unique_inputs  = 1;
+        render_gpu_task_info.n_unique_outputs = n_render_unique_outputs;
+        render_gpu_task_info.unique_inputs    = &global_cpu_update_task_output;
+        render_gpu_task_info.unique_outputs   = render_gpu_task_unique_outputs;
+
+        render_gpu_tasks[n_render_command_buffer] = ral_present_task_create_gpu(system_hashed_ansi_string_create("Uber render command buffer: rasterization"),
+                                                                               &render_gpu_task_info);
+    }
+
+
+    result_task_create_info.ingroup_connections                      = result_task_ingroup_connections;
+    result_task_create_info.n_ingroup_connections                    = n_render_command_buffers;
+    result_task_create_info.n_present_tasks                          = 1 + n_render_command_buffers;
+    result_task_create_info.n_total_unique_inputs                    = n_render_unique_outputs;
+    result_task_create_info.n_total_unique_outputs                   = n_render_unique_outputs;
+    result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_render_unique_outputs * n_render_command_buffers;
+    result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_render_unique_outputs * n_render_command_buffers;
+    result_task_create_info.present_tasks                            = result_present_tasks;
+    result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_unique_mappings;
+    result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_unique_mappings;
+
+    result_task_ingroup_connections = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(result_task_create_info.n_ingroup_connections * sizeof(ral_present_task_ingroup_connection)) );
+
+    for (uint32_t n_ingroup_connection = 0;
+                  n_ingroup_connection < result_task_create_info.n_ingroup_connections;
+                ++n_ingroup_connection)
+    {
+        /* Make sure the UB used by FS is executed after the CPU-side update takes place */
+        ral_present_task_ingroup_connection& current_connection = result_task_ingroup_connections[n_ingroup_connection];
+
+        current_connection.input_present_task_index     = 1 + n_ingroup_connection;
+        current_connection.input_present_task_io_index  = 0;
+        current_connection.output_present_task_index    = 0;
+        current_connection.output_present_task_io_index = 0;
+    }
+
+    result_present_tasks    = reinterpret_cast<ral_present_task*> (_malloca(result_task_create_info.n_present_tasks * sizeof(ral_present_task) ));
+    result_present_tasks[0] = global_cpu_update_task;
+
+    memcpy(result_present_tasks + 1,
+           render_gpu_tasks,
+           sizeof(ral_present_task) * result_task_create_info.n_present_tasks);
+
+
+    result_task_unique_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_input_to_ingroup_task_mappings * sizeof(ral_present_task_group_mapping) ));
+
+    ASSERT_DEBUG_SYNC(result_task_create_info.n_unique_input_to_ingroup_task_mappings == result_task_create_info.n_unique_output_to_ingroup_task_mappings,
+                      "Size mismatch detected");
+
+    for (uint32_t n_mapping = 0;
+                  n_mapping < result_task_create_info.n_unique_input_to_ingroup_task_mappings;
+                ++n_mapping)
+    {
+        result_task_unique_mappings[n_mapping].io_index       = n_mapping % n_render_unique_outputs;
+        result_task_unique_mappings[n_mapping].n_present_task = 1 + n_mapping / n_render_unique_outputs;
+    }
+
+    result_task = ral_present_task_create_group(&result_task_create_info);
+
     /* Mark as no longer rendered */
     uber_ptr->is_rendering = false;
+
+    return result_task;
 }
