@@ -20,15 +20,21 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
                                                                       scene_renderer owner);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_render(scene_renderer_bbox_preview preview,
-                                                                      uint32_t                    mesh_id);
+PUBLIC void scene_renderer_bbox_preview_render(scene_renderer_bbox_preview preview,
+                                               uint32_t                    mesh_id);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,
-                                                                     system_matrix4x4            vp);
+PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,
+                                              ral_texture_view            rendertarget,
+                                              system_matrix4x4            vp);
 
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_stop(scene_renderer_bbox_preview preview);
+/** Returns a new present task which encapsulates a GPU task which draws the bounding boxl.
+ *
+ *  The result present task takes no unique inputs, and exposes a single output corresponding
+ *  to the texture view the bboxes are going to be rasterized to, as specified at
+ *  scene_renderer_bbox_preview_start() call time.
+ **/
+PUBLIC ral_present_task scene_renderer_bbox_preview_stop(scene_renderer_bbox_preview preview);
 
 /** TODO. **/
 PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview renderer);

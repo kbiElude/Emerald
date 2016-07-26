@@ -5,11 +5,11 @@
  */
 #include "shared.h"
 #include "mesh/mesh.h"
-#include "ogl/ogl_context.h"
-#include "raGL/raGL_buffer.h"
-#include "raGL/raGL_program.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_gfx_state.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
@@ -20,94 +20,97 @@
 #include "system/system_matrix4x4.h"
 #include <string.h>
 
-static const char* preview_fragment_shader = "#version 430 core\n"
-                                             "\n"
-                                             "out vec4 result;\n"
-                                             "\n"
-                                             "void main()\n"
-                                             "{\n"
-                                             "    result = vec4(1, 1, 1, 1);\n"
-                                             "}\n";
-static const char* preview_geometry_shader = "#version 430 core\n"
-                                             "\n"
-                                             "#define N_MESHES (__value)\n"
-                                             "\n"
-                                             "layout(points)                       in;\n"
-                                             "layout(line_strip, max_vertices=18) out;\n"
-                                             "\n"
-                                             "in uint vertex_id[];\n"
-                                             "\n"
-                                             "layout(std140) uniform data\n"
-                                             "{\n"
-                                             "                      vec4 aabb_max[N_MESHES];\n"
-                                             "                      vec4 aabb_min[N_MESHES];\n"
-                                             "    layout(row_major) mat4 model;\n"
-                                             "    layout(row_major) mat4 vp;\n"
-                                             "};\n"
-                                             "\n"
-                                             "void main()\n"
-                                             "{\n"
-                                             "    vec4 aabb_max = aabb_max[vertex_id[0] ];\n"
-                                             "    vec4 aabb_min = aabb_min[vertex_id[0] ];\n"
-                                             "    mat4 mvp      = vp * model;\n"
-                                             "\n"
-                                             /* Bottom plane */
-                                             "    gl_Position = mvp * vec4(aabb_min.xy, aabb_max.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_min.xyz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.yz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.y, aabb_max.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_min.xy, aabb_max.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    EndPrimitive();\n"
-                                             /* Top plane */
-                                             "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.yz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.y, aabb_min.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_max.xy, aabb_min.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp* vec4(aabb_max.xyz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.yz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    EndPrimitive();\n"
-                                             /* Lines connecting bottom & top planes */
-                                             "    gl_Position = mvp * vec4(aabb_min.xy, aabb_max.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.yz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    EndPrimitive();\n"
-                                             "\n"
-                                             "    gl_Position = mvp * vec4(aabb_min.xyz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.y, aabb_min.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    EndPrimitive();\n"
-                                             "\n"
-                                             "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.yz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_max.xy, aabb_min.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    EndPrimitive();\n"
-                                             "\n"
-                                             "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.y, aabb_max.z, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    gl_Position = mvp * vec4(aabb_max.xyz, 1.0);\n"
-                                             "    EmitVertex();\n"
-                                             "    EndPrimitive();\n"
-                                             "}\n";
-static const char* preview_vertex_shader   = "#version 430 core\n"
-                                             "\n"
-                                             "out uint vertex_id;\n"
-                                             "\n"
-                                             "void main()\n"
-                                             "{\n"
-                                             "    vertex_id = gl_VertexID;\n"
-                                             "}\n";
+static const char* preview_fragment_shader =
+    "#version 430 core\n"
+    "\n"
+    "out vec4 result;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    result = vec4(1, 1, 1, 1);\n"
+    "}\n";
+static const char* preview_geometry_shader =
+    "#version 430 core\n"
+    "\n"
+    "#define N_MESHES (__value)\n"
+    "\n"
+    "layout(points)                       in;\n"
+    "layout(line_strip, max_vertices=18) out;\n"
+    "\n"
+    "in uint vertex_id[];\n"
+    "\n"
+    "layout(std140) uniform data\n"
+    "{\n"
+    "                      vec4 aabb_max[N_MESHES];\n"
+    "                      vec4 aabb_min[N_MESHES];\n"
+    "    layout(row_major) mat4 model;\n"
+    "    layout(row_major) mat4 vp;\n"
+    "};\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    vec4 aabb_max = aabb_max[vertex_id[0] ];\n"
+    "    vec4 aabb_min = aabb_min[vertex_id[0] ];\n"
+    "    mat4 mvp      = vp * model;\n"
+    "\n"
+    /* Bottom plane */
+    "    gl_Position = mvp * vec4(aabb_min.xy, aabb_max.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_min.xyz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.yz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.y, aabb_max.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_min.xy, aabb_max.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    EndPrimitive();\n"
+    /* Top plane */
+    "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.yz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.y, aabb_min.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_max.xy, aabb_min.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp* vec4(aabb_max.xyz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.yz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    EndPrimitive();\n"
+    /* Lines connecting bottom & top planes */
+    "    gl_Position = mvp * vec4(aabb_min.xy, aabb_max.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.yz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    EndPrimitive();\n"
+    "\n"
+    "    gl_Position = mvp * vec4(aabb_min.xyz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_min.x, aabb_max.y, aabb_min.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    EndPrimitive();\n"
+    "\n"
+    "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.yz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_max.xy, aabb_min.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    EndPrimitive();\n"
+    "\n"
+    "    gl_Position = mvp * vec4(aabb_max.x, aabb_min.y, aabb_max.z, 1.0);\n"
+    "    EmitVertex();\n"
+    "    gl_Position = mvp * vec4(aabb_max.xyz, 1.0);\n"
+    "    EmitVertex();\n"
+    "    EndPrimitive();\n"
+    "}\n";
+static const char* preview_vertex_shader =
+    "#version 430 core\n"
+    "\n"
+    "out uint vertex_id;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "    vertex_id = gl_VertexID;\n"
+    "}\n";
 
 /** TODO */
 typedef struct _scene_renderer_bbox_preview
@@ -115,34 +118,27 @@ typedef struct _scene_renderer_bbox_preview
     /* DO NOT release. */
     ral_context context;
 
+    ral_command_buffer       active_command_buffer;
+    ral_texture_view         active_rendertarget;
     uint32_t                 data_n_meshes;
+    ral_gfx_state            gfx_state;
     scene                    owned_scene;
     scene_renderer           owner;
     ral_program              preview_program;
     ral_program_block_buffer preview_program_data_ub;
-    GLuint                   preview_program_ub_offset_model;
-    GLuint                   preview_program_ub_offset_vp;
-
-    /* Cached func ptrs */
-    PFNGLBINDBUFFERPROC          pGLBindBuffer;
-    PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
-    PFNGLBINDVERTEXARRAYPROC     pGLBindVertexArray;
-    PFNGLDELETEVERTEXARRAYSPROC  pGLDeleteVertexArrays;
-    PFNGLDRAWARRAYSPROC          pGLDrawArrays;
-    PFNGLGENVERTEXARRAYSPROC     pGLGenVertexArrays;
-    PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
-    PFNGLUSEPROGRAMPROC          pGLUseProgram;
+    uint32_t                 preview_program_ub_offset_model;
+    uint32_t                 preview_program_ub_offset_vp;
 } _scene_renderer_bbox_preview;
 
 
 /** TODO */
 PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_bbox_preview* preview_ptr)
 {
-    const ral_program_variable* model_uniform_ral_ptr = NULL;
-    const ral_program_variable* vp_uniform_ral_ptr    = NULL;
+    const ral_program_variable* model_uniform_ral_ptr = nullptr;
+    const ral_program_variable* vp_uniform_ral_ptr    = nullptr;
 
-    ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
-                      "Previe wprogram has already been initialized");
+    ASSERT_DEBUG_SYNC(preview_ptr->preview_program == nullptr,
+                      "Preview program has already been initialized");
 
     /* Form a string from the number of meshes associated with the scene */
     std::stringstream n_scene_meshes_sstream;
@@ -166,10 +162,10 @@ PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_b
     }
 
     /* Create shaders and set their bodies */
-    ral_shader                fs         = NULL;
-    ral_shader                gs         = NULL;
-    system_hashed_ansi_string scene_name = NULL;
-    ral_shader                vs         = NULL;
+    ral_shader                fs         = nullptr;
+    ral_shader                gs         = nullptr;
+    system_hashed_ansi_string scene_name = nullptr;
+    ral_shader                vs         = nullptr;
 
     scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
@@ -267,14 +263,6 @@ PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_b
     }
 
     /* Retrieve uniform block manager */
-    const raGL_program preview_program_raGL    = ral_context_get_program_gl(preview_ptr->context,
-                                                                            preview_ptr->preview_program);
-    GLuint             preview_program_raGL_id = 0;
-
-    raGL_program_get_property(preview_program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &preview_program_raGL_id);
-
     preview_ptr->preview_program_data_ub = ral_program_block_buffer_create(preview_ptr->context,
                                                                            preview_ptr->preview_program,
                                                                            system_hashed_ansi_string_create("data") );
@@ -288,10 +276,10 @@ PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_b
                                            system_hashed_ansi_string_create("vp"),
                                           &vp_uniform_ral_ptr);
 
-    ASSERT_DEBUG_SYNC(model_uniform_ral_ptr != NULL,
-                      "Model uniform descriptor is NULL");
-    ASSERT_DEBUG_SYNC(vp_uniform_ral_ptr != NULL,
-                      "Vp uniform descriptor is NULL");
+    ASSERT_DEBUG_SYNC(model_uniform_ral_ptr != nullptr,
+                      "Model uniform descriptor is nullptr");
+    ASSERT_DEBUG_SYNC(vp_uniform_ral_ptr != nullptr,
+                      "Vp uniform descriptor is nullptr");
 
     ASSERT_DEBUG_SYNC(model_uniform_ral_ptr->block_offset != -1,
                       "Model matrix UB offset is -1");
@@ -300,11 +288,6 @@ PRIVATE void _scene_renderer_bbox_preview_init_preview_program(_scene_renderer_b
 
     preview_ptr->preview_program_ub_offset_model = model_uniform_ral_ptr->block_offset;
     preview_ptr->preview_program_ub_offset_vp    = vp_uniform_ral_ptr->block_offset;
-
-    /* Set up UBO bindings */
-    preview_ptr->pGLUniformBlockBinding(preview_program_raGL_id,
-                                        0,  /* uniformBlockIndex */
-                                        0); /* uniformBlockBinding */
 
     /* All done */
     goto end;
@@ -328,9 +311,9 @@ end:
 PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_preview* preview_ptr)
 {
     ral_backend_type backend_type                    = RAL_BACKEND_TYPE_UNKNOWN;
-    float*           traveller_ptr                   = NULL;
-    float*           ub_data                         = NULL;
-    GLuint           uniform_buffer_offset_alignment = -1;
+    float*           traveller_ptr                   = nullptr;
+    float*           ub_data                         = nullptr;
+    uint32_t         uniform_buffer_offset_alignment = -1;
 
     /* Allocate space for AABB data. */
     const uint32_t min_bbox_ub_offset = 4 /* vec4 */ *                    preview_ptr->data_n_meshes * sizeof(float);
@@ -338,10 +321,10 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
 
     ub_data = new (std::nothrow) float[matrix_data_size / sizeof(float)];
 
-    ASSERT_ALWAYS_SYNC(ub_data != NULL,
+    ASSERT_ALWAYS_SYNC(ub_data != nullptr,
                        "Out of memory");
 
-    if (ub_data == NULL)
+    if (ub_data == nullptr)
     {
         goto end;
     }
@@ -355,14 +338,14 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
                           n_mesh < preview_ptr->data_n_meshes;
                         ++n_mesh)
         {
-            float*     aabb_max_ptr              = NULL;
-            float*     aabb_min_ptr              = NULL;
+            float*     aabb_max_ptr              = nullptr;
+            float*     aabb_min_ptr              = nullptr;
             uint32_t   mesh_id                   = -1;
             scene_mesh mesh_instance             = scene_get_mesh_instance_by_index(preview_ptr->owned_scene,
                                                                                     n_mesh);
-            mesh       mesh_current              = NULL;
+            mesh       mesh_current              = nullptr;
             mesh_type  mesh_instance_type;
-            mesh       mesh_instantiation_parent = NULL;
+            mesh       mesh_instantiation_parent = nullptr;
 
             scene_mesh_get_property(mesh_instance,
                                     SCENE_MESH_PROPERTY_ID,
@@ -381,7 +364,7 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
                                   MESH_PROPERTY_INSTANTIATION_PARENT,
                                  &mesh_instantiation_parent);
 
-                if (mesh_instantiation_parent != NULL)
+                if (mesh_instantiation_parent != nullptr)
                 {
                     mesh_current = mesh_instantiation_parent;
                 }
@@ -419,32 +402,13 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
                        aabb_min_ptr,
                        sizeof(float) * 3);
             }
-        } /* for (all meshes) */
-    } /* for (both iterations) */
+        }
+    }
 
     /* Retrieve UB offset alignment */
     ral_context_get_property(preview_ptr->context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                            &backend_type);
-
-    if (backend_type == RAL_BACKEND_TYPE_ES)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "TODO: ES limits");
-    } /* if (backend_type == RAL_BACKEND_TYPE_ES) */
-    else
-    {
-        ogl_context_gl_limits* limits_ptr = NULL;
-
-        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
-                          "Unrecognized rendering bakcend type.");
-
-        ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
-                                 OGL_CONTEXT_PROPERTY_LIMITS,
-                                &limits_ptr);
-
-        uniform_buffer_offset_alignment = limits_ptr->uniform_buffer_offset_alignment;
-    }
+                             RAL_CONTEXT_PROPERTY_UNIFORM_BUFFER_ALIGNMENT,
+                            &uniform_buffer_offset_alignment);
 
     /* Initialize UBO storage. */
     uint32_t data_bo_size = 0;
@@ -462,13 +426,13 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
                                                         0,                    /* dst_array_start_index */
                                                         preview_ptr->data_n_meshes);
 
-    ral_program_block_buffer_sync(preview_ptr->preview_program_data_ub);
+    ral_program_block_buffer_sync_immediately(preview_ptr->preview_program_data_ub);
 end:
-    if (ub_data != NULL)
+    if (ub_data != nullptr)
     {
         delete [] ub_data;
 
-        ub_data = NULL;
+        ub_data = nullptr;
     }
 }
 
@@ -479,66 +443,41 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
 {
     _scene_renderer_bbox_preview* new_instance_ptr = new (std::nothrow) _scene_renderer_bbox_preview;
 
-    ASSERT_ALWAYS_SYNC(new_instance_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_instance_ptr != nullptr,
                        "Out of memory");
 
-    if (new_instance_ptr != NULL)
+    if (new_instance_ptr != nullptr)
     {
-        /* Do not allocate any GL objects at this point. We will only create GL objects if we
-         * are asked to render the preview.
-         */
+        new_instance_ptr->active_command_buffer           = nullptr;
+        new_instance_ptr->active_rendertarget             = nullptr;
         new_instance_ptr->context                         = context;
         new_instance_ptr->data_n_meshes                   = 0;
+        new_instance_ptr->gfx_state                       = nullptr;
         new_instance_ptr->owned_scene                     = scene;
         new_instance_ptr->owner                           = owner;
-        new_instance_ptr->preview_program                 = NULL;
-        new_instance_ptr->preview_program_data_ub         = NULL;
+        new_instance_ptr->preview_program                 = nullptr;
+        new_instance_ptr->preview_program_data_ub         = nullptr;
         new_instance_ptr->preview_program_ub_offset_model = -1;
         new_instance_ptr->preview_program_ub_offset_vp    = -1;
 
-        /* Is buffer_storage supported? */
-        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+        /* Set up the gfx state instance */
+        ral_gfx_state_create_info gfx_state_create_info;
 
-        ral_context_get_property(context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                                &backend_type);
+        gfx_state_create_info.primitive_type = RAL_PRIMITIVE_TYPE_POINTS;
 
-        if (backend_type == RAL_BACKEND_TYPE_ES)
+        new_instance_ptr->gfx_state = ral_gfx_state_create(context,
+                                                          &gfx_state_create_info);
+
+        /* Initialize the program object */
+        _scene_renderer_bbox_preview_init_preview_program(new_instance_ptr);
+
+        ASSERT_DEBUG_SYNC(new_instance_ptr->preview_program != nullptr,
+                          "Could not initialize preview program");
+
+        /* Initialize a BO store */
+        if (new_instance_ptr->preview_program_data_ub == nullptr)
         {
-            const ogl_context_es_entrypoints* entry_points_ptr = NULL;
-
-            ogl_context_get_property(ral_context_get_gl_context(new_instance_ptr->context),
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                    &entry_points_ptr);
-
-            new_instance_ptr->pGLBindBuffer          = entry_points_ptr->pGLBindBuffer;
-            new_instance_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
-            new_instance_ptr->pGLBindVertexArray     = entry_points_ptr->pGLBindVertexArray;
-            new_instance_ptr->pGLDeleteVertexArrays  = entry_points_ptr->pGLDeleteVertexArrays;
-            new_instance_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
-            new_instance_ptr->pGLGenVertexArrays     = entry_points_ptr->pGLGenVertexArrays;
-            new_instance_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
-            new_instance_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
-                              "Unrecognized rendering backend type");
-
-            const ogl_context_gl_entrypoints* entry_points_ptr = NULL;
-
-            ogl_context_get_property(ral_context_get_gl_context(new_instance_ptr->context),
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                    &entry_points_ptr);
-
-            new_instance_ptr->pGLBindBuffer          = entry_points_ptr->pGLBindBuffer;
-            new_instance_ptr->pGLBindBufferRange     = entry_points_ptr->pGLBindBufferRange;
-            new_instance_ptr->pGLBindVertexArray     = entry_points_ptr->pGLBindVertexArray;
-            new_instance_ptr->pGLDeleteVertexArrays  = entry_points_ptr->pGLDeleteVertexArrays;
-            new_instance_ptr->pGLDrawArrays          = entry_points_ptr->pGLDrawArrays;
-            new_instance_ptr->pGLGenVertexArrays     = entry_points_ptr->pGLGenVertexArrays;
-            new_instance_ptr->pGLUniformBlockBinding = entry_points_ptr->pGLUniformBlockBinding;
-            new_instance_ptr->pGLUseProgram          = entry_points_ptr->pGLUseProgram;
+            _scene_renderer_bbox_preview_init_ub_data(new_instance_ptr);
         }
 
         /* Wrap up */
@@ -547,7 +486,7 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
         scene_get_property(scene,
                            SCENE_PROPERTY_N_MESH_INSTANCES,
                           &new_instance_ptr->data_n_meshes);
-    } /* if (new_instance != NULL) */
+    }
 
     return (scene_renderer_bbox_preview) new_instance_ptr;
 }
@@ -555,47 +494,61 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
 /** Please see header for spec */
 PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview preview)
 {
-    _scene_renderer_bbox_preview* preview_ptr = (_scene_renderer_bbox_preview*) preview;
+    _scene_renderer_bbox_preview* preview_ptr = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
 
-    if (preview_ptr->preview_program_data_ub != NULL)
+    ASSERT_DEBUG_SYNC(preview_ptr->active_command_buffer == nullptr &&
+                      preview_ptr->active_rendertarget   == nullptr,
+                      "Rendering needs to be stopped at scene_renderer_bbox_preview_release() call time.");
+
+    if (preview_ptr->gfx_state != nullptr)
+    {
+        ral_gfx_state_release(preview_ptr->gfx_state);
+
+        preview_ptr->gfx_state = nullptr;
+    }
+
+    if (preview_ptr->preview_program_data_ub != nullptr)
     {
         ral_program_block_buffer_release(preview_ptr->preview_program_data_ub);
 
-        preview_ptr->preview_program_data_ub = NULL;
+        preview_ptr->preview_program_data_ub = nullptr;
     }
 
-    if (preview_ptr->preview_program != NULL)
+    if (preview_ptr->preview_program != nullptr)
     {
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
                                    (const void**) &preview_ptr->preview_program);
 
-        preview_ptr->preview_program = NULL;
+        preview_ptr->preview_program = nullptr;
     }
 
-    if (preview_ptr->preview_program_data_ub != NULL)
+    if (preview_ptr->preview_program_data_ub != nullptr)
     {
         ral_program_block_buffer_release(preview_ptr->preview_program_data_ub);
 
-        preview_ptr->preview_program_data_ub = NULL;
+        preview_ptr->preview_program_data_ub = nullptr;
     }
 
-    if (preview_ptr->owned_scene != NULL)
+    if (preview_ptr->owned_scene != nullptr)
     {
         scene_release(preview_ptr->owned_scene);
     }
 
     delete preview_ptr;
-    preview_ptr = NULL;
+    preview_ptr = nullptr;
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_render(scene_renderer_bbox_preview preview,
-                                                                      uint32_t                    mesh_id)
+PUBLIC void scene_renderer_bbox_preview_render(scene_renderer_bbox_preview preview,
+                                               uint32_t                    mesh_id)
 {
-    system_matrix4x4              model       = NULL;
-    _scene_renderer_bbox_preview* preview_ptr = (_scene_renderer_bbox_preview*) preview;
+    system_matrix4x4              model       = nullptr;
+    _scene_renderer_bbox_preview* preview_ptr = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
+
+    ASSERT_DEBUG_SYNC(preview_ptr->active_command_buffer != nullptr,
+                      "No rendering in progress");
 
     scene_renderer_get_indexed_property(preview_ptr->owner,
                                         SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
@@ -603,100 +556,143 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_render(scene_rend
                                        &model);
 
     /* NOTE: model may be null at this point if the item was culled out. */
-    if (model != NULL)
+    if (model != nullptr)
     {
-        ral_program_block_buffer_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub,
-                                                               preview_ptr->preview_program_ub_offset_model,
-                                                               system_matrix4x4_get_row_major_data(model),
-                                                               sizeof(float) * 16);
+        ral_buffer                                        data_bo_ral     = nullptr;
+        ral_command_buffer_draw_call_regular_command_info draw_call_info;
 
-        ral_program_block_buffer_sync(preview_ptr->preview_program_data_ub);
+        ral_program_block_buffer_get_property(preview_ptr->preview_program_data_ub,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &data_bo_ral);
 
-        preview_ptr->pGLDrawArrays(GL_POINTS,
-                                   mesh_id, /* first */
-                                   1);      /* count */
+        draw_call_info.base_instance = 0;
+        draw_call_info.base_vertex   = mesh_id;
+        draw_call_info.n_instances   = 1;
+        draw_call_info.n_vertices    = 1;
+
+        ral_command_buffer_record_update_buffer(preview_ptr->active_command_buffer,
+                                                data_bo_ral,
+                                                preview_ptr->preview_program_ub_offset_model,
+                                                sizeof(float) * 16,
+                                                system_matrix4x4_get_row_major_data(model));
+
+        ral_command_buffer_record_draw_call_regular(preview_ptr->active_command_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call_info);
     }
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,
-                                                                     system_matrix4x4            vp)
+PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,
+                                              ral_texture_view            rendertarget,
+                                              system_matrix4x4            vp)
 {
-    _scene_renderer_bbox_preview* preview_ptr  = (_scene_renderer_bbox_preview*) preview;
+    ral_buffer                    data_bo_ral          = nullptr;
+    uint32_t                      data_bo_size         =  0;
+    uint32_t                      data_bo_start_offset = -1;
+    _scene_renderer_bbox_preview* preview_ptr          = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
 
-    /* Initialize the program object if one has not been initialized yet */
-    if (preview_ptr->preview_program == NULL)
-    {
-        _scene_renderer_bbox_preview_init_preview_program(preview_ptr);
-
-        ASSERT_DEBUG_SYNC(preview_ptr->preview_program != NULL,
-                          "Could not initialize preview program");
-    }
-
-    /* Initialize a BO store if one has not been created yet */
-    if (preview_ptr->preview_program_data_ub == NULL)
-    {
-        _scene_renderer_bbox_preview_init_ub_data(preview_ptr);
-    }
-
-    /* Issue the draw call */
-    GLuint             data_bo_id           = 0;
-    raGL_buffer        data_bo_raGL         = NULL;
-    ral_buffer         data_bo_ral          = NULL;
-    uint32_t           data_bo_size         =  0;
-    uint32_t           data_bo_start_offset = -1;
-    const raGL_program program_raGL         = ral_context_get_program_gl(preview_ptr->context,
-                                                                         preview_ptr->preview_program);
-    GLuint             program_raGL_id      = 0;
-    GLuint             vao_id               = 0;
-
-    raGL_program_get_property(program_raGL,
-                              RAGL_PROGRAM_PROPERTY_ID,
-                             &program_raGL_id);
+    ASSERT_DEBUG_SYNC(rendertarget != nullptr,
+                      "Null rendertarget was specified");
 
     ral_program_block_buffer_get_property(preview_ptr->preview_program_data_ub,
                                           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
                                          &data_bo_ral);
 
-    data_bo_raGL = ral_context_get_buffer_gl(preview_ptr->context,
-                                             data_bo_ral);
+    ral_buffer_get_property(data_bo_ral,
+                            RAL_BUFFER_PROPERTY_SIZE,
+                           &data_bo_size);
 
-    raGL_buffer_get_property(data_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &data_bo_id);
-    raGL_buffer_get_property(data_bo_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &data_bo_start_offset);
-    ral_buffer_get_property (data_bo_ral,
-                             RAL_BUFFER_PROPERTY_SIZE,
-                            &data_bo_size);
+    /* Start recording the result command buffer */
+    ral_command_buffer_set_binding_command_info            bindings[2];
+    ral_command_buffer_create_info                         cmd_buffer_create_info;
+    ral_command_buffer_set_color_rendertarget_command_info rt_info                = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
 
-    ogl_context_get_property(ral_context_get_gl_context(preview_ptr->context),
-                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
-                            &vao_id);
+    cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+    cmd_buffer_create_info.is_executable                           = true;
+    cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
+    cmd_buffer_create_info.is_resettable                           = false;
+    cmd_buffer_create_info.is_transient                            = true;
 
-    preview_ptr->pGLUseProgram(program_raGL_id);
+    bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+    bindings[0].name                          = system_hashed_ansi_string_create("data");
+    bindings[0].uniform_buffer_binding.buffer = data_bo_ral;
+    bindings[0].uniform_buffer_binding.offset = 0;
+    bindings[0].uniform_buffer_binding.size   = data_bo_size;
 
-    ral_program_block_buffer_set_nonarrayed_variable_value(preview_ptr->preview_program_data_ub,
-                                                           preview_ptr->preview_program_ub_offset_vp,
-                                                           system_matrix4x4_get_row_major_data(vp),
-                                                           sizeof(float) * 16);
+    bindings[1].binding_type                  = RAL_BINDING_TYPE_RENDERTARGET;
+    bindings[1].name                          = system_hashed_ansi_string_create("result");
+    bindings[1].rendertarget_binding.rt_index = 0;
 
-    preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                    0, /* index */
-                                    data_bo_id,
-                                    data_bo_start_offset,
-                                    data_bo_size);
+    rt_info.rendertarget_index = 0;
+    rt_info.texture_view       = rendertarget;
 
-    preview_ptr->pGLBindVertexArray(vao_id);
+    ral_context_create_command_buffers(preview_ptr->context,
+                                       1, /* n_command_buffers */
+                                      &cmd_buffer_create_info,
+                                      &preview_ptr->active_command_buffer);
+
+    ral_command_buffer_start_recording               (preview_ptr->active_command_buffer);
+    ral_command_buffer_record_set_bindings           (preview_ptr->active_command_buffer,
+                                                      sizeof(bindings) / sizeof(bindings[0]),
+                                                      bindings);
+    ral_command_buffer_record_set_color_rendertargets(preview_ptr->active_command_buffer,
+                                                      1, /* n_rendertargets */
+                                                     &rt_info);
+    ral_command_buffer_record_set_program            (preview_ptr->active_command_buffer,
+                                                      preview_ptr->preview_program);
+
+    ral_command_buffer_record_update_buffer(preview_ptr->active_command_buffer,
+                                            data_bo_ral,
+                                            preview_ptr->preview_program_ub_offset_vp,
+                                            sizeof(float) * 16,
+                                            system_matrix4x4_get_row_major_data(vp));
+
+    preview_ptr->active_rendertarget = rendertarget;
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_bbox_preview_stop(scene_renderer_bbox_preview preview)
+PUBLIC ral_present_task scene_renderer_bbox_preview_stop(scene_renderer_bbox_preview preview)
 {
-    _scene_renderer_bbox_preview* preview_ptr = (_scene_renderer_bbox_preview*) preview;
+    _scene_renderer_bbox_preview* preview_ptr = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
+    ral_present_task              result      = nullptr;
 
-    preview_ptr->pGLBindVertexArray(0);
+    ASSERT_DEBUG_SYNC(preview_ptr->active_command_buffer != nullptr,
+                      "No ongoing rendering process");
+
+    ral_command_buffer_stop_recording(preview_ptr->active_command_buffer);
+
+    /* Stop recording and form a GPU present task */
+    ral_present_task_gpu_create_info task_create_info;
+    ral_present_task_io              task_unique_output;
+
+    task_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    task_unique_output.texture_view = preview_ptr->active_rendertarget;
+
+    task_create_info.command_buffer   = preview_ptr->active_command_buffer;
+    task_create_info.n_unique_inputs  = 0;
+    task_create_info.n_unique_outputs = 1;
+    task_create_info.unique_inputs    = nullptr;
+    task_create_info.unique_outputs   = &task_unique_output;
+
+    result = ral_present_task_create_gpu(system_hashed_ansi_string_create("Scene renderre (BBox preview): Rasterization"),
+                                        &task_create_info);
+
+    /* Clean up */
+    ral_context_delete_objects(preview_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               1, /* n_objects */
+                               (const void**) &preview_ptr->active_command_buffer);
+    ral_context_delete_objects(preview_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                               1, /* n_objects */
+                               (const void**) &preview_ptr->active_rendertarget);
+
+    preview_ptr->active_command_buffer = nullptr;
+    preview_ptr->active_rendertarget   = nullptr;
+
+    /* All done */
+    return result;
 }
 
 

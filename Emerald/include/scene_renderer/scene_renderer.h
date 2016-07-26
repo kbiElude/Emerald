@@ -128,14 +128,14 @@ PUBLIC EMERALD_API void scene_renderer_get_property(scene_renderer          rend
  *  @param frame_time           TODO
  *
  **/
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_renderer                      renderer,
-                                                                                 system_matrix4x4                    view,
-                                                                                 system_matrix4x4                    projection,
-                                                                                 scene_camera                        camera,
-                                                                                 const scene_renderer_render_mode&   render_mode,
-                                                                                 bool                                apply_shadow_mapping,
-                                                                                 scene_renderer_helper_visualization helper_visualization,
-                                                                                 system_time                         frame_time);
+PUBLIC EMERALD_API void scene_renderer_render_scene_graph(scene_renderer                      renderer,
+                                                          system_matrix4x4                    view,
+                                                          system_matrix4x4                    projection,
+                                                          scene_camera                        camera,
+                                                          const scene_renderer_render_mode&   render_mode,
+                                                          bool                                apply_shadow_mapping,
+                                                          scene_renderer_helper_visualization helper_visualization,
+                                                          system_time                         frame_time);
 
 /** TODO. **/
 PUBLIC EMERALD_API void scene_renderer_release(scene_renderer renderer);

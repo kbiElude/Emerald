@@ -3373,8 +3373,9 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                   n_mapping < result_task_create_info.n_unique_input_to_ingroup_task_mappings;
                 ++n_mapping)
     {
-        result_task_unique_mappings[n_mapping].io_index       = n_mapping % n_render_unique_outputs;
-        result_task_unique_mappings[n_mapping].n_present_task = 1 + n_mapping / n_render_unique_outputs;
+        result_task_unique_mappings[n_mapping].present_task_io_index = n_mapping % n_render_unique_outputs;
+        result_task_unique_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_outputs;
+        result_task_unique_mappings[n_mapping].unique_output_index   = result_task_unique_mappings[n_mapping].present_task_io_index;
     }
 
     result_task = ral_present_task_create_group(&result_task_create_info);

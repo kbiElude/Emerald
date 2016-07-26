@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #ifndef SYSTEM_TYPES_H
@@ -12,9 +12,6 @@
 /* Shared macros */
 #define PUBLIC
 #define PRIVATE static
-
-/* Indicates the call must be made from a rendering thread */
-#define RENDERING_CONTEXT_CALL
 
 
 /*********************** ASSERTION CHECKS ********************************/

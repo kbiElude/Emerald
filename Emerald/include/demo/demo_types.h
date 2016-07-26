@@ -233,25 +233,25 @@ typedef enum
  *                                  These will be provided to the node by demo_timeline_video_segment after init() is called.
  *                                  Do NOT release these textures at deinit() time.
  */
-typedef RENDERING_CONTEXT_CALL void                               (*PFNSEGMENTNODEDEINITCALLBACKPROC)                   (demo_timeline_segment_node_private node);
-typedef                        bool                               (*PFNSEGMENTNODEGETPROPERTYCALLBACKPROC)              (demo_timeline_segment_node_private node,
-                                                                                                                         int                                property,
-                                                                                                                         void*                              out_result_ptr);
-typedef                        bool                               (*PFNSEGMENTNODEGETTEXTUREMEMORYALLOCATIONDETAILSPROC)(demo_timeline_segment_node_private node,
-                                                                                                                         uint32_t                           n_allocation,
-                                                                                                                         demo_texture_memory_allocation*    out_memory_allocation_data_ptr);
-typedef RENDERING_CONTEXT_CALL demo_timeline_segment_node_private (*PFNSEGMENTNODEINITCALLBACKPROC)                     (demo_timeline_segment              segment,
-                                                                                                                         demo_timeline_segment_node         node,
-                                                                                                                         ral_context                        context);
-typedef RENDERING_CONTEXT_CALL bool                               (*PFNSEGMENTNODERENDERCALLBACKPROC)                   (demo_timeline_segment_node_private node,
-                                                                                                                         uint32_t                           frame_index,
-                                                                                                                         system_time                        frame_time,
-                                                                                                                         const int32_t*                     rendering_area_px_topdown);
-typedef                        bool                               (*PFNSEGMENTNODESETPROPERTYCALLBACKPROC)              (demo_timeline_segment_node_private node,
-                                                                                                                         int                                property,
-                                                                                                                         const void*                        data);
-typedef                       void                                (*PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC)       (demo_timeline_segment_node_private node,
-                                                                                                                         uint32_t                           n_allocation,
-                                                                                                                         ral_texture                        texture);
+typedef void                               (*PFNSEGMENTNODEDEINITCALLBACKPROC)                   (demo_timeline_segment_node_private node);
+typedef bool                               (*PFNSEGMENTNODEGETPROPERTYCALLBACKPROC)              (demo_timeline_segment_node_private node,
+                                                                                                  int                                property,
+                                                                                                  void*                              out_result_ptr);
+typedef bool                               (*PFNSEGMENTNODEGETTEXTUREMEMORYALLOCATIONDETAILSPROC)(demo_timeline_segment_node_private node,
+                                                                                                  uint32_t                           n_allocation,
+                                                                                                  demo_texture_memory_allocation*    out_memory_allocation_data_ptr);
+typedef demo_timeline_segment_node_private (*PFNSEGMENTNODEINITCALLBACKPROC)                     (demo_timeline_segment              segment,
+                                                                                                  demo_timeline_segment_node         node,
+                                                                                                  ral_context                        context);
+typedef bool                               (*PFNSEGMENTNODERENDERCALLBACKPROC)                   (demo_timeline_segment_node_private node,
+                                                                                                  uint32_t                           frame_index,
+                                                                                                  system_time                        frame_time,
+                                                                                                  const int32_t*                     rendering_area_px_topdown);
+typedef bool                               (*PFNSEGMENTNODESETPROPERTYCALLBACKPROC)              (demo_timeline_segment_node_private node,
+                                                                                                  int                                property,
+                                                                                                  const void*                        data);
+typedef void                               (*PFNSEGMENTNODESETTEXTUREMEMORYALLOCATIONPROC)       (demo_timeline_segment_node_private node,
+                                                                                                  uint32_t                           n_allocation,
+                                                                                                  ral_texture                        texture);
 
 #endif /* DEMO_TYPES_H */
