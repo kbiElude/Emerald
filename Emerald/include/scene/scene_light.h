@@ -136,14 +136,15 @@ typedef enum
     /* Settable, uint[2]. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
 
-    /* Settable, ral_texture.
+    /* Settable, ral_texture_view.
      *
-     * Set in run-time. Note that SM textures are taken from the texture pool
-     * and are returned as soon as the SM-enabled rendering process finishes.
+     * Set in run-time. Note that SM textures & texture views are taken from the
+     * texture pool and are returned as soon as the SM-enabled rendering process
+     * finishes.
      *
      */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL,
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
 
     /* Not settable, system_matrix4x4.
      *

@@ -214,12 +214,13 @@ PUBLIC EMERALD_API void scene_renderer_uber_link(scene_renderer_uber uber);
  *  The caller is required to release the command buffer when no longer needed.
  *
  **/
-PUBLIC void scene_renderer_uber_render_mesh(mesh                mesh_gpu,
-                                            system_matrix4x4    model,
-                                            system_matrix4x4    normal_matrix,
-                                            scene_renderer_uber uber,
-                                            mesh_material       material,
-                                            system_time         time);
+PUBLIC void scene_renderer_uber_render_mesh(mesh                             mesh_gpu,
+                                            system_matrix4x4                 model,
+                                            system_matrix4x4                 normal_matrix,
+                                            scene_renderer_uber              uber,
+                                            mesh_material                    material,
+                                            system_time                      time,
+                                            const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr);
 
 /** TODO */
 PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber                   uber,

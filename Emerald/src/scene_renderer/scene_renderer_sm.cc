@@ -8,7 +8,9 @@
 #include "glsl/glsl_shader_constructor.h"
 #include "mesh/mesh.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_shader.h"
@@ -61,6 +63,15 @@ typedef struct _scene_renderer_sm
      * instance, for which the SMs are to be rendered. */
     scene_camera current_camera;
 
+    /** TODO */
+    ral_command_buffer current_command_buffer;
+
+    /** TODO */
+    ral_gfx_state_create_info current_gfx_state_create_info;
+
+    /** TODO */
+    ral_command_buffer_set_viewport_command_info current_viewport;
+
     /* Set by scene_renderer_sm_render_shadow_maps(). Stores scene_light
      * instance, for which the SM is to be rendered. */
     scene_light current_light;
@@ -88,17 +99,21 @@ typedef struct _scene_renderer_sm
     /* A variant of FP type */
     system_variant temp_variant_float;
 
-    /* Tells what ogl_texture is currently being used as a zeroth color attachment for SM rendering.
+    /* Tells which texture view is currently being used as a zeroth color attachment for SM rendering.
      *
-     * This only makes sense if is_enabled is true.
+     * These only make sense while is_enabled is true.
      */
-    ral_texture current_sm_color0_texture;
+    ral_texture_view current_sm_color0_l0_texture_view;
+    ral_texture_view current_sm_color0_l1_texture_view;
+    ral_texture_view current_sm_color0_texture_view;
 
     /* Tells what ogl_texture is currently being used as a depth attachment for SM rendering.
      *
-     * This only makes sense if is_enabled is true.
+     * These only make sense while is_enabled is true.
      */
-    ral_texture current_sm_depth_texture;
+    ral_texture_view current_sm_depth_l0_texture_view;
+    ral_texture_view current_sm_depth_l1_texture_view;
+    ral_texture_view current_sm_depth_texture_view;
 
     /* Tells whether scene_renderer_sm has been toggled on.
      *
@@ -116,29 +131,37 @@ typedef struct _scene_renderer_sm
 
     _scene_renderer_sm()
     {
-        blur_handler              = nullptr;
-        context                   = nullptr;
-        current_camera            = nullptr;
-        current_light             = nullptr;
-        current_sm_color0_texture = nullptr;
-        current_sm_depth_texture  = nullptr;
-        current_target_face       = SCENE_RENDERER_SM_TARGET_FACE_UNKNOWN;
-        is_enabled                = false;
-        meshes_to_render          = system_resizable_vector_create(16,                                     /* capacity              */
-                                                                   false);                                 /* should_be_thread_safe */
-        mesh_item_pool            = system_resource_pool_create   (sizeof(_scene_renderer_sm_mesh_item),
-                                                                   64 ,                                    /* n_elements_to_preallocate */
-                                                                   nullptr,                                /* init_fn                   */
-                                                                   nullptr);                               /* deinit_fn                 */
-        pcf_color_sampler         = nullptr;
-        pcf_depth_sampler         = nullptr;
-        plain_color_sampler       = nullptr;
-        plain_depth_sampler       = nullptr;
-        temp_variant_float        = system_variant_create(SYSTEM_VARIANT_FLOAT);
+        blur_handler                      = nullptr;
+        context                           = nullptr;
+        current_camera                    = nullptr;
+        current_command_buffer            = nullptr;
+        current_light                     = nullptr;
+        current_sm_color0_texture_view    = nullptr;
+        current_sm_color0_l0_texture_view = nullptr;
+        current_sm_color0_l1_texture_view = nullptr;
+        current_sm_depth_texture_view     = nullptr;
+        current_sm_depth_l0_texture_view  = nullptr;
+        current_sm_depth_l1_texture_view  = nullptr;
+        current_target_face               = SCENE_RENDERER_SM_TARGET_FACE_UNKNOWN;
+        is_enabled                        = false;
+        meshes_to_render                  = system_resizable_vector_create(16,     /* capacity              */
+                                                                           false); /* should_be_thread_safe */
+        mesh_item_pool                    = system_resource_pool_create   (sizeof(_scene_renderer_sm_mesh_item),
+                                                                           64 ,      /* n_elements_to_preallocate */
+                                                                           nullptr,  /* init_fn                   */
+                                                                           nullptr); /* deinit_fn                 */
+        pcf_color_sampler                 = nullptr;
+        pcf_depth_sampler                 = nullptr;
+        plain_color_sampler               = nullptr;
+        plain_depth_sampler               = nullptr;
+        temp_variant_float                = system_variant_create(SYSTEM_VARIANT_FLOAT);
     }
 
     ~_scene_renderer_sm()
     {
+        ASSERT_DEBUG_SYNC(current_command_buffer == nullptr,
+                          "An active command buffer was found at _scene_renderer_sm destruction time.");
+
         if (blur_handler != nullptr)
         {
             postprocessing_blur_gaussian_release(blur_handler);
@@ -1200,539 +1223,599 @@ PRIVATE void _scene_renderer_sm_process_mesh_for_shadow_map_pre_pass(scene_mesh 
 }
 
 /** Please see header for spec */
-PRIVATE void _scene_renderer_sm_toggle(_scene_renderer_sm*           handler_ptr,
-                                       scene_light                   light,
-                                       bool                          should_enable,
-                                       scene_renderer_sm_target_face target_face = SCENE_RENDERER_SM_TARGET_FACE_2D)
+PRIVATE ral_command_buffer _scene_renderer_sm_start(_scene_renderer_sm*           handler_ptr,
+                                                    scene_light                   light,
+                                                    scene_renderer_sm_target_face target_face = SCENE_RENDERER_SM_TARGET_FACE_2D)
 {
-    if (should_enable)
+    /* If scene_renderer_sm is not already enabled, grab a texture from the texture pool.
+     * It will serve as storage for the shadow map. After the SM is rendered, the ownership
+     * is assumed to be passed to the caller.
+     */
+    system_hashed_ansi_string light_name                   = nullptr;
+    uint32_t                  light_shadow_map_n_layer;
+    uint32_t                  light_shadow_map_size[3]     = {0, 0, 1};
+    ral_texture_type          light_shadow_map_texture_type;
+    scene_light_type          light_type                   = SCENE_LIGHT_TYPE_UNKNOWN;
+
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_NAME,
+                            &light_name);
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
+                             light_shadow_map_size);
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_TYPE,
+                            &light_type);
+
+    _scene_renderer_sm_get_texture_targets_from_target_face(target_face,
+                                                           &light_shadow_map_texture_type,
+                                                           &light_shadow_map_n_layer);
+
+    if (!handler_ptr->is_enabled)
     {
-        /* If scene_renderer_sm is not already enabled, grab a texture from the texture pool.
-         * It will serve as storage for the shadow map. After the SM is rendered, the ownership
-         * is assumed to be passed to the caller.
+        ral_command_buffer_create_info   command_buffer_create_info;
+        scene_light_shadow_map_algorithm light_shadow_map_algorithm        = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+        bool                             light_shadow_map_cull_front_faces = false;
+        scene_light_shadow_map_filtering light_shadow_map_filtering        = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
+        ral_format                       light_shadow_map_format_color     = RAL_FORMAT_UNKNOWN;
+        ral_format                       light_shadow_map_format_depth     = RAL_FORMAT_UNKNOWN;
+        ral_texture_type                 light_shadow_map_type             = RAL_TEXTURE_TYPE_UNKNOWN;
+        ral_texture                      sm_color_texture                  = nullptr;
+        ral_texture_create_info          sm_color_texture_create_info;
+        ral_texture_view_create_info     sm_color_texture_view_create_info;
+        ral_texture                      sm_depth_texture                  = nullptr;
+        ral_texture_create_info          sm_depth_texture_create_info;
+        ral_texture_view_create_info     sm_depth_texture_view_create_info;
+
+        command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+        command_buffer_create_info.is_executable                           = true;
+        command_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        command_buffer_create_info.is_resettable                           = false;
+        command_buffer_create_info.is_transient                            = true;
+
+        ASSERT_DEBUG_SYNC(handler_ptr->current_command_buffer == nullptr,
+                          "A command buffer is already being recorded");
+
+        handler_ptr->current_command_buffer = ral_command_buffer_create(handler_ptr->context,
+                                                                       &command_buffer_create_info);
+
+        ral_command_buffer_start_recording(handler_ptr->current_command_buffer);
+
+        /* Determine shadow map texture type */
+        switch (light_type)
+        {
+            case SCENE_LIGHT_TYPE_POINT:
+            {
+                if (target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT ||
+                    target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR)
+                {
+                    light_shadow_map_type    = RAL_TEXTURE_TYPE_2D_ARRAY;
+                    light_shadow_map_size[2] = 2; /* front + rear */
+                }
+                else
+                {
+                    light_shadow_map_type = RAL_TEXTURE_TYPE_CUBE_MAP;
+                }
+
+                break;
+            }
+
+            case SCENE_LIGHT_TYPE_DIRECTIONAL:
+            case SCENE_LIGHT_TYPE_SPOT:
+            {
+                light_shadow_map_type = RAL_TEXTURE_TYPE_2D;
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized light type");
+            }
+        }
+
+        /* Set up shadow map texture(s).
+         *
+         * For plain shadow mapping, we only use a single depth texture attachment. The texture
+         * must only define a single mip-map, as the depth data is not linear.
+         *
+         * For VSM, we use a two-component color attachment & a depth texture attachment. Since we're
+         * working with moments, the data fetches can be linearized. We therefore want the whole
+         * mip-map chain to be present for the color texture.
          */
-        system_hashed_ansi_string light_name                   = nullptr;
-        uint32_t                  light_shadow_map_n_layer;
-        ral_texture_type          light_shadow_map_texture_type;
-        scene_light_type          light_type                   = SCENE_LIGHT_TYPE_UNKNOWN;
-
-        scene_light_get_property(light,
-                                 SCENE_LIGHT_PROPERTY_NAME,
-                                &light_name);
-        scene_light_get_property(light,
-                                 SCENE_LIGHT_PROPERTY_TYPE,
-                                &light_type);
-
-        _scene_renderer_sm_get_texture_targets_from_target_face(target_face,
-                                                               &light_shadow_map_texture_type,
-                                                               &light_shadow_map_n_layer);
-
-        if (!handler_ptr->is_enabled)
-        {
-            scene_light_shadow_map_algorithm light_shadow_map_algorithm            = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
-            bool                             light_shadow_map_cull_front_faces     = false;
-            scene_light_shadow_map_filtering light_shadow_map_filtering            = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
-            ral_format                       light_shadow_map_format_color         = RAL_FORMAT_UNKNOWN;
-            ral_format                       light_shadow_map_format_depth         = RAL_FORMAT_UNKNOWN;
-            uint32_t                         light_shadow_map_size[3]              = {0, 0, 1};
-            ral_texture_type                 light_shadow_map_type                 = RAL_TEXTURE_TYPE_UNKNOWN;
-            ral_texture_create_info          sm_color_texture_create_info;
-            ral_texture_create_info          sm_depth_texture_create_info;
-
-            /* Determine shadow map texture type */
-            switch (light_type)
-            {
-                case SCENE_LIGHT_TYPE_POINT:
-                {
-                    if (target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT ||
-                        target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR)
-                    {
-                        light_shadow_map_type    = RAL_TEXTURE_TYPE_2D_ARRAY;
-                        light_shadow_map_size[2] = 2; /* front + rear */
-                    }
-                    else
-                    {
-                        light_shadow_map_type = RAL_TEXTURE_TYPE_CUBE_MAP;
-                    }
-
-                    break;
-                }
-
-                case SCENE_LIGHT_TYPE_DIRECTIONAL:
-                case SCENE_LIGHT_TYPE_SPOT:
-                {
-                    light_shadow_map_type = RAL_TEXTURE_TYPE_2D;
-
-                    break;
-                }
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Unrecognized light type");
-                }
-            }
-
-            /* Set up shadow map texture(s).
-             *
-             * For plain shadow mapping, we only use a single depth texture attachment. The texture
-             * must only define a single mip-map, as the depth data is not linear.
-             *
-             * For VSM, we use a two-component color attachment & a depth texture attachment. Since we're
-             * working with the moments, the data fetches can be linearized. We therefore want the whole
-             * mip-map chain to be present for the color texture.
-             */
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
-                                    &light_shadow_map_algorithm);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES,
-                                    &light_shadow_map_cull_front_faces);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
-                                    &light_shadow_map_filtering);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR,
-                                    &light_shadow_map_format_color);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH,
-                                    &light_shadow_map_format_depth);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
-                                     light_shadow_map_size);
-
-            ASSERT_DEBUG_SYNC(light_shadow_map_size[0] > 0 &&
-                              light_shadow_map_size[1] > 0,
-                              "Invalid shadow map size requested for a scene_light instance.");
-            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_texture == nullptr &&
-                              handler_ptr->current_sm_depth_texture  == nullptr,
-                              "SM texture(s) are already active");
-
-            sm_depth_texture_create_info.base_mipmap_depth      = 1;
-            sm_depth_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
-            sm_depth_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
-            sm_depth_texture_create_info.fixed_sample_locations = false;
-            sm_depth_texture_create_info.format                 = light_shadow_map_format_depth;
-            sm_depth_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
-                                                                                                                          " [shadow map depth texture]");
-            sm_depth_texture_create_info.n_layers               = light_shadow_map_size[2];
-            sm_depth_texture_create_info.n_samples              = 1;
-            sm_depth_texture_create_info.type                   = light_shadow_map_type;
-            sm_depth_texture_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                                                                  RAL_TEXTURE_USAGE_SAMPLED_BIT;
-            sm_depth_texture_create_info.use_full_mipmap_chain  = false;
-
-            ral_context_create_textures(handler_ptr->context,
-                                        1, /* n_textures*/
-                                       &sm_depth_texture_create_info,
-                                       &handler_ptr->current_sm_depth_texture);
-
-            if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
-            {
-                ASSERT_DEBUG_SYNC(light_shadow_map_size[0] == light_shadow_map_size[1],
-                                  "For VSM, shadow map textures must be square.");
-                ASSERT_DEBUG_SYNC(light_shadow_map_type == RAL_TEXTURE_TYPE_2D       && light_shadow_map_size[2] == 1 ||
-                                  light_shadow_map_type == RAL_TEXTURE_TYPE_2D_ARRAY && light_shadow_map_size[2] >  1 ||
-                                  light_shadow_map_type == RAL_TEXTURE_TYPE_CUBE_MAP && light_shadow_map_size[2] == 1,
-                                  "Sanity check failed");
-
-                sm_color_texture_create_info.base_mipmap_depth      = 1;
-                sm_color_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
-                sm_color_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
-                sm_color_texture_create_info.fixed_sample_locations = false;
-                sm_color_texture_create_info.format                 = light_shadow_map_format_color;
-                sm_color_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
-                                                                                                                              " [shadow map color texture]");
-                sm_color_texture_create_info.n_layers               = light_shadow_map_size[2];
-                sm_color_texture_create_info.n_samples              = 1;
-                sm_color_texture_create_info.type                   = light_shadow_map_type;
-                sm_color_texture_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
-                                                                      RAL_TEXTURE_USAGE_SAMPLED_BIT;
-                sm_color_texture_create_info.use_full_mipmap_chain  = true;
-
-                ral_context_create_textures(handler_ptr->context,
-                                            1, /* n_textures */
-                                           &sm_color_texture_create_info,
-                                           &handler_ptr->current_sm_color0_texture);
-
-                ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_texture != nullptr,
-                                  "Could not retrieve a shadow map color texture from the texture pool.");
-            }
-
-            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture != nullptr,
-                             "Could not retrieve a shadow map depth texture from the texture pool.");
-
-            switch (light_shadow_map_filtering)
-            {
-                case SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF:
-                {
-                    if (handler_ptr->current_sm_color0_texture != nullptr)
-                    {
-                        dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                                    handler_ptr->current_sm_color0_texture),
-                                                                      light_shadow_map_texture_target_general_gl,
-                                                                      GL_TEXTURE_MAG_FILTER,
-                                                                      GL_LINEAR);
-                    }
-
-                    dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                                handler_ptr->current_sm_depth_texture),
-                                                                  light_shadow_map_texture_target_general_gl,
-                                                                  GL_TEXTURE_MAG_FILTER,
-                                                                  GL_LINEAR);
-
-                    break;
-                }
-
-                case SCENE_LIGHT_SHADOW_MAP_FILTERING_PLAIN:
-                {
-                    if (handler_ptr->current_sm_color0_texture != nullptr)
-                    {
-                        dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                                    handler_ptr->current_sm_color0_texture),
-                                                                      light_shadow_map_texture_target_general_gl,
-                                                                      GL_TEXTURE_MAG_FILTER,
-                                                                      GL_NEAREST);
-                    }
-
-                    dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                                handler_ptr->current_sm_depth_texture),
-                                                                  light_shadow_map_texture_target_general_gl,
-                                                                  GL_TEXTURE_MAG_FILTER,
-                                                                  GL_NEAREST);
-
-                    break;
-                }
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Unrecognized shadow map filtering mode");
-                }
-            }
-
-            const float border_color[] = {1, 0, 0, 0};
-
-            if (handler_ptr->current_sm_color0_texture != nullptr)
-            {
-                dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                            handler_ptr->current_sm_color0_texture),
-                                                              light_shadow_map_texture_target_general_gl,
-                                                              GL_TEXTURE_MIN_FILTER,
-                                                              GL_LINEAR_MIPMAP_LINEAR);
-            }
-            dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                        handler_ptr->current_sm_depth_texture),
-                                                          light_shadow_map_texture_target_general_gl,
-                                                          GL_TEXTURE_MIN_FILTER,
-                                                          GL_LINEAR);
-
-            dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                        handler_ptr->current_sm_depth_texture),
-                                                          light_shadow_map_texture_target_general_gl,
-                                                          GL_TEXTURE_COMPARE_FUNC,
-                                                          GL_LESS);
-            dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                        handler_ptr->current_sm_depth_texture),
-                                                          light_shadow_map_texture_target_general_gl,
-                                                          GL_TEXTURE_COMPARE_MODE,
-                                                          GL_COMPARE_REF_TO_TEXTURE);
-
-            if (handler_ptr->current_sm_color0_texture != nullptr)
-            {
-                dsa_entry_points_ptr->pGLTextureParameterfvEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                             handler_ptr->current_sm_color0_texture),
-                                                               light_shadow_map_texture_target_general_gl,
-                                                               GL_TEXTURE_BORDER_COLOR,
-                                                               border_color);
-            }
-            dsa_entry_points_ptr->pGLTextureParameterfvEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                         handler_ptr->current_sm_depth_texture),
-                                                          light_shadow_map_texture_target_general_gl,
-                                                          GL_TEXTURE_BORDER_COLOR,
-                                                          border_color);
-
-            dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                        handler_ptr->current_sm_depth_texture),
-                                                          light_shadow_map_texture_target_general_gl,
-                                                          GL_TEXTURE_WRAP_R,
-                                                          GL_CLAMP_TO_BORDER);
-
-            if (handler_ptr->current_sm_color0_texture != nullptr)
-            {
-                dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                            handler_ptr->current_sm_color0_texture),
-                                                              light_shadow_map_texture_target_general_gl,
-                                                              GL_TEXTURE_WRAP_S,
-                                                              GL_CLAMP_TO_BORDER);
-            }
-            dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                        handler_ptr->current_sm_depth_texture),
-                                                           light_shadow_map_texture_target_general_gl,
-                                                           GL_TEXTURE_WRAP_S,
-                                                           GL_CLAMP_TO_BORDER);
-
-            if (handler_ptr->current_sm_color0_texture != nullptr)
-            {
-                dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                            handler_ptr->current_sm_color0_texture),
-                                                              light_shadow_map_texture_target_general_gl,
-                                                              GL_TEXTURE_WRAP_T,
-                                                              GL_CLAMP_TO_BORDER);
-            }
-            dsa_entry_points_ptr->pGLTextureParameteriEXT(ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                        handler_ptr->current_sm_depth_texture),
-                                                          light_shadow_map_texture_target_general_gl,
-                                                          GL_TEXTURE_WRAP_T,
-                                                          GL_CLAMP_TO_BORDER);
-
-            scene_light_set_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
-                                    &handler_ptr->current_sm_color0_texture);
-            scene_light_set_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL,
-                                    &handler_ptr->current_sm_depth_texture);
-
-            /* Set up color & depth masks */
-            if (handler_ptr->current_sm_color0_texture == nullptr)
-            {
-                entry_points_ptr->pGLColorMask(GL_FALSE,
-                                               GL_FALSE,
-                                               GL_FALSE,
-                                               GL_FALSE);
-            }
-            else
-            {
-                entry_points_ptr->pGLColorMask(GL_TRUE,
-                                               GL_TRUE,
-                                               GL_TRUE,
-                                               GL_TRUE);
-            }
-
-            entry_points_ptr->pGLDepthMask(GL_TRUE);
-
-            /* render back-facing faces only: THIS WON'T WORK FOR NON-CONVEX GEOMETRY */
-            if (light_shadow_map_cull_front_faces)
-            {
-                entry_points_ptr->pGLCullFace  (GL_FRONT);
-                entry_points_ptr->pGLEnable    (GL_CULL_FACE);
-            }
-            else
-            {
-                /* :C */
-                entry_points_ptr->pGLDisable(GL_CULL_FACE);
-            }
-
-            /* Set up depth function */
-            entry_points_ptr->pGLDepthFunc (GL_LESS);
-            entry_points_ptr->pGLEnable    (GL_DEPTH_TEST);
-
-            /* Adjust viewport to match shadow map size */
-            entry_points_ptr->pGLViewport  (0, /* x */
-                                            0, /* y */
-                                            light_shadow_map_size[0],
-                                            light_shadow_map_size[1]);
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture != nullptr,
-                              "scene_renderer_sm is enabled but no depth SM texture is associated with the instance");
-        }
-
-        /* Set up the draw FBO */
-        entry_points_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                             handler_ptr->fbo_id);
-        entry_points_ptr->pGLDrawBuffer     ((handler_ptr->current_sm_color0_texture != nullptr) ? GL_COLOR_ATTACHMENT0 : GL_NONE);
-
-        if (light_shadow_map_texture_target_detailed_gl != GL_TEXTURE_2D_ARRAY)
-        {
-            entry_points_ptr->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
-                                                      GL_COLOR_ATTACHMENT0,
-                                                      light_shadow_map_texture_target_detailed_gl,
-                                                      (handler_ptr->current_sm_color0_texture == nullptr) ? 0
-                                                                                                       : ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                                                                       handler_ptr->current_sm_color0_texture),
-                                                      0); /* level */
-            entry_points_ptr->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
-                                                      GL_DEPTH_ATTACHMENT,
-                                                      light_shadow_map_texture_target_detailed_gl,
-                                                      ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                    handler_ptr->current_sm_depth_texture),
-                                                      0); /* level */
-        }
-        else
-        {
-            uint32_t slice_index = -1;
-
-            switch (target_face)
-            {
-                case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT:
-                {
-                    slice_index = 0;
-
-                    break;
-                }
-
-                case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR:
-                {
-                    slice_index = 1;
-
-                    break;
-                }
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Unrecognized target face value");
-                }
-            }
-
-            if (handler_ptr->current_sm_color0_texture != nullptr)
-            {
-                entry_points_ptr->pGLFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER,
-                                                             GL_COLOR_ATTACHMENT0,
-                                                             ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                           handler_ptr->current_sm_color0_texture),
-                                                             0, /* level */
-                                                             slice_index);
-            }
-
-            if (handler_ptr->current_sm_depth_texture != nullptr)
-            {
-                entry_points_ptr->pGLFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER,
-                                                             GL_DEPTH_ATTACHMENT,
-                                                             ral_context_get_texture_gl_id(handler_ptr->context,
-                                                                                           handler_ptr->current_sm_depth_texture),
-                                                             0, /* level */
-                                                             slice_index);
-            }
-        }
-
-        /* Clear the color & depth buffer */
-        int clear_bits = GL_DEPTH_BUFFER_BIT;
-
-        if (handler_ptr->current_sm_color0_texture != nullptr)
-        {
-            clear_bits |= GL_COLOR_BUFFER_BIT;
-
-            entry_points_ptr->pGLClearColor(1.0f, 1.0f, 0.0f, 1.0f);
-        }
-
-        entry_points_ptr->pGLClearDepth(1.0);
-        entry_points_ptr->pGLClear     (clear_bits);
-    }
-    else
-    {
-        system_window    context_window         = nullptr;
-        int32_t          context_window_size[2] = {0};
-        ral_framebuffer  system_fb              = nullptr;
-        raGL_framebuffer system_fb_raGL         = nullptr;
-        GLuint           system_fb_raGL_id      = 0;
-
-        entry_points_ptr->pGLColorMask(GL_TRUE,
-                                       GL_TRUE,
-                                       GL_TRUE,
-                                       GL_TRUE);
-        entry_points_ptr->pGLDepthMask(GL_TRUE);
-        entry_points_ptr->pGLDisable  (GL_DEPTH_TEST);
-
-        /* Bring back the face culling setting */
-        ral_context_get_property(handler_ptr->context,
-                                 RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
-                                &system_fb);
-
-        system_fb_raGL = ral_context_get_framebuffer_gl(handler_ptr->context,
-                                                        system_fb);
-
-        raGL_framebuffer_get_property(system_fb_raGL,
-                                      RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                     &system_fb_raGL_id);
-
-        entry_points_ptr->pGLCullFace(GL_BACK);
-
-        ral_context_get_property    (handler_ptr->context,
-                                     RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
-                                    &context_window);
-        system_window_get_property  (context_window,
-                                     SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                                     context_window_size);
-
-        /* Restore cotnext-specific viewport */
-        entry_points_ptr->pGLViewport(0, /* x */
-                                      0, /* y */
-                                      context_window_size[0],
-                                      context_window_size[1]);
-
-        /* Unbind the SM FBO */
-        entry_points_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                             system_fb_raGL_id);
-
-        /* Blur the SM if it makes sense */
-        scene_light_shadow_map_algorithm light_shadow_map_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
-
         scene_light_get_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
                                 &light_shadow_map_algorithm);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES,
+                                &light_shadow_map_cull_front_faces);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
+                                &light_shadow_map_filtering);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_COLOR,
+                                &light_shadow_map_format_color);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_FORMAT_DEPTH,
+                                &light_shadow_map_format_depth);
+
+        ASSERT_DEBUG_SYNC(light_shadow_map_size[0] > 0 &&
+                          light_shadow_map_size[1] > 0,
+                          "Invalid shadow map size requested for a scene_light instance.");
+        ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_texture_view == nullptr &&
+                          handler_ptr->current_sm_depth_texture_view  == nullptr,
+                          "SM texture views are already defined");
+
+        sm_depth_texture_create_info.base_mipmap_depth      = 1;
+        sm_depth_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
+        sm_depth_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
+        sm_depth_texture_create_info.fixed_sample_locations = false;
+        sm_depth_texture_create_info.format                 = light_shadow_map_format_depth;
+        sm_depth_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
+                                                                                                                      " [shadow map depth texture]");
+        sm_depth_texture_create_info.n_layers               = light_shadow_map_size[2];
+        sm_depth_texture_create_info.n_samples              = 1;
+        sm_depth_texture_create_info.type                   = light_shadow_map_type;
+        sm_depth_texture_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                                                              RAL_TEXTURE_USAGE_SAMPLED_BIT;
+        sm_depth_texture_create_info.use_full_mipmap_chain  = false;
+
+        ral_context_create_textures(handler_ptr->context,
+                                    1, /* n_textures */
+                                   &sm_depth_texture_create_info,
+                                   &sm_depth_texture);
+
+        sm_depth_texture_view_create_info.aspect             = RAL_TEXTURE_ASPECT_DEPTH_BIT;
+        sm_depth_texture_view_create_info.component_order[0] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        sm_depth_texture_view_create_info.component_order[1] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        sm_depth_texture_view_create_info.component_order[2] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        sm_depth_texture_view_create_info.component_order[3] = RAL_TEXTURE_COMPONENT_IDENTITY;
+        sm_depth_texture_view_create_info.format             = sm_depth_texture_create_info.format;
+        sm_depth_texture_view_create_info.n_base_layer       = 0;
+        sm_depth_texture_view_create_info.n_base_mip         = 0;
+        sm_depth_texture_view_create_info.n_layers           = sm_depth_texture_create_info.n_layers;
+        sm_depth_texture_view_create_info.n_mips             = 1;
+        sm_depth_texture_view_create_info.texture            = sm_depth_texture;
+        sm_depth_texture_view_create_info.type               = sm_depth_texture_create_info.type;
+
+        ral_context_create_texture_views(handler_ptr->context,
+                                         1, /* n_texture_views */
+                                        &sm_depth_texture_view_create_info,
+                                        &handler_ptr->current_sm_depth_texture_view);
+
+        if (sm_depth_texture_create_info.n_layers != 1)
+        {
+            ASSERT_DEBUG_SYNC(sm_depth_texture_create_info.n_layers == 2,
+                              "TODO");
+
+            sm_depth_texture_view_create_info.n_base_layer = 0;
+            sm_depth_texture_view_create_info.n_layers     = 1;
+
+            ral_context_create_texture_views(handler_ptr->context,
+                                             1, /* n_texture_views */
+                                            &sm_depth_texture_view_create_info,
+                                            &handler_ptr->current_sm_depth_l0_texture_view);
+
+            sm_depth_texture_view_create_info.n_base_layer = 1;
+
+            ral_context_create_texture_views(handler_ptr->context,
+                                             1, /* n_texture_views */
+                                            &sm_depth_texture_view_create_info,
+                                            &handler_ptr->current_sm_depth_l1_texture_view);
+        }
+        else
+        {
+            handler_ptr->current_sm_depth_l0_texture_view = handler_ptr->current_sm_depth_texture_view;
+            handler_ptr->current_sm_depth_l1_texture_view = nullptr;
+
+            ral_context_retain_object(handler_ptr->context,
+                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                      handler_ptr->current_sm_depth_texture_view);
+        }
+
+        ral_context_delete_objects(handler_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   1, /* n_objects */
+                                   (const void**) &sm_depth_texture);
 
         if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
         {
-            float                                   sm_blur_n_iterations;
-            unsigned int                            sm_blur_n_taps;
-            postprocessing_blur_gaussian_resolution sm_blur_resolution;
-            ral_texture                             sm_color_texture = nullptr;
+            ASSERT_DEBUG_SYNC(light_shadow_map_size[0] == light_shadow_map_size[1],
+                              "For VSM, shadow map textures must be square.");
+            ASSERT_DEBUG_SYNC(light_shadow_map_type == RAL_TEXTURE_TYPE_2D       && light_shadow_map_size[2] == 1 ||
+                              light_shadow_map_type == RAL_TEXTURE_TYPE_2D_ARRAY && light_shadow_map_size[2] >  1 ||
+                              light_shadow_map_type == RAL_TEXTURE_TYPE_CUBE_MAP && light_shadow_map_size[2] == 1,
+                              "Sanity check failed");
 
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION,
-                                    &sm_blur_resolution);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES,
-                                    &sm_blur_n_iterations);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS,
-                                    &sm_blur_n_taps);
-            scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
-                                    &sm_color_texture);
+            sm_color_texture_create_info.base_mipmap_depth      = 1;
+            sm_color_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
+            sm_color_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
+            sm_color_texture_create_info.fixed_sample_locations = false;
+            sm_color_texture_create_info.format                 = light_shadow_map_format_color;
+            sm_color_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
+                                                                                                                          " [shadow map color texture]");
+            sm_color_texture_create_info.n_layers               = light_shadow_map_size[2];
+            sm_color_texture_create_info.n_samples              = 1;
+            sm_color_texture_create_info.type                   = light_shadow_map_type;
+            sm_color_texture_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                                  RAL_TEXTURE_USAGE_SAMPLED_BIT;
+            sm_color_texture_create_info.use_full_mipmap_chain  = true;
 
-            if (sm_blur_n_taps < N_MIN_BLUR_TAPS)
+            ral_context_create_textures(handler_ptr->context,
+                                        1, /* n_textures */
+                                       &sm_color_texture_create_info,
+                                       &sm_color_texture);
+
+            ral_texture_get_property(sm_color_texture,
+                                     RAL_TEXTURE_PROPERTY_N_MIPMAPS,
+                                     &sm_color_texture_view_create_info.n_mips);
+
+            sm_color_texture_view_create_info.aspect             = RAL_TEXTURE_ASPECT_COLOR_BIT;
+            sm_color_texture_view_create_info.component_order[0] = RAL_TEXTURE_COMPONENT_IDENTITY;
+            sm_color_texture_view_create_info.component_order[1] = RAL_TEXTURE_COMPONENT_IDENTITY;
+            sm_color_texture_view_create_info.component_order[2] = RAL_TEXTURE_COMPONENT_IDENTITY;
+            sm_color_texture_view_create_info.component_order[3] = RAL_TEXTURE_COMPONENT_IDENTITY;
+            sm_color_texture_view_create_info.format             = sm_color_texture_create_info.format;
+            sm_color_texture_view_create_info.n_base_layer       = 0;
+            sm_color_texture_view_create_info.n_base_mip         = 0;
+            sm_color_texture_view_create_info.n_layers           = sm_color_texture_create_info.n_layers;
+            sm_color_texture_view_create_info.texture            = sm_color_texture;
+            sm_color_texture_view_create_info.type               = sm_color_texture_create_info.type;
+
+            ral_context_create_texture_views(handler_ptr->context,
+                                             1, /* n_texture_views */
+                                            &sm_color_texture_view_create_info,
+                                            &handler_ptr->current_sm_color0_texture_view);
+
+            if (sm_color_texture_create_info.n_layers != 1)
             {
-                LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to lower boundary!");
+                ASSERT_DEBUG_SYNC(sm_color_texture_create_info.n_layers == 2,
+                                  "TODO");
 
-                sm_blur_n_taps = N_MIN_BLUR_TAPS;
+                sm_color_texture_view_create_info.n_base_layer = 0;
+                sm_color_texture_view_create_info.n_layers     = 1;
+
+                ral_context_create_texture_views(handler_ptr->context,
+                                                 1, /* n_texture_views */
+                                                &sm_color_texture_view_create_info,
+                                                &handler_ptr->current_sm_color0_l0_texture_view);
+
+                sm_color_texture_view_create_info.n_base_layer = 1;
+
+                ral_context_create_texture_views(handler_ptr->context,
+                                                 1, /* n_texture_views */
+                                                &sm_color_texture_view_create_info,
+                                                &handler_ptr->current_sm_color0_l1_texture_view);
             }
             else
-            if (sm_blur_n_taps > N_MAX_BLUR_TAPS)
             {
-                LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to upper boundary!");
+                handler_ptr->current_sm_color0_l0_texture_view = handler_ptr->current_sm_color0_texture_view;
+                handler_ptr->current_sm_color0_l1_texture_view = nullptr;
 
-                sm_blur_n_taps = N_MAX_BLUR_TAPS;
+                ral_context_retain_object(handler_ptr->context,
+                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                          handler_ptr->current_sm_color0_texture_view);
             }
 
-            postprocessing_blur_gaussian_execute(handler_ptr->blur_handler,
-                                                 sm_blur_n_taps,
-                                                 sm_blur_n_iterations,
-                                                 sm_color_texture,
-                                                 sm_blur_resolution);
+            ral_context_delete_objects(handler_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                       1, /* n_objects */
+                                       (const void**) &sm_color_texture);
         }
 
-        /* If necessary, also generate mipmaps for the color texture */
-        if (handler_ptr->current_sm_color0_texture != nullptr)
+        scene_light_set_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
+                                &handler_ptr->current_sm_color0_texture_view);
+        scene_light_set_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
+                                &handler_ptr->current_sm_depth_texture_view);
+
+        /* Set up color & depth masks */
+        handler_ptr->current_gfx_state_create_info.depth_writes       = true;
+        handler_ptr->current_gfx_state_create_info.rasterizer_discard = (handler_ptr->current_sm_color0_texture_view == nullptr);
+
+        /* render back-facing faces only: THIS WON'T WORK FOR NON-CONVEX GEOMETRY */
+        if (light_shadow_map_cull_front_faces)
         {
-            ral_texture_generate_mipmaps(handler_ptr->current_sm_color0_texture,
-                                         false /* async */);
+            handler_ptr->current_gfx_state_create_info.culling   = true;
+            handler_ptr->current_gfx_state_create_info.cull_mode = RAL_CULL_MODE_FRONT;
+        }
+        else
+        {
+            /* :C */
+            handler_ptr->current_gfx_state_create_info.culling = false;
         }
 
-        /* "Unbind" the SM texture from the scene_renderer_sm instance */
-        ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture != nullptr,
-                          "scene_renderer_sm_toggle() called to disable SM rendering without an active SM");
+        /* Set up depth function */
+        handler_ptr->current_gfx_state_create_info.depth_test            = true;
+        handler_ptr->current_gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_LESS;
 
-        handler_ptr->current_sm_color0_texture = nullptr;
-        handler_ptr->current_sm_depth_texture  = nullptr;
+        /* Adjust viewport to match shadow map size */
+        handler_ptr->current_viewport.depth_range[0] = 0.0f;
+        handler_ptr->current_viewport.depth_range[1] = 1.0f;
+        handler_ptr->current_viewport.index          = 0;
+        handler_ptr->current_viewport.size[0]        = static_cast<float>(light_shadow_map_size[0]);
+        handler_ptr->current_viewport.size[1]        = static_cast<float>(light_shadow_map_size[1]);
+        handler_ptr->current_viewport.xy[0]          = 0;
+        handler_ptr->current_viewport.xy[1]          = 0;
+
+        handler_ptr->current_gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+        handler_ptr->current_gfx_state_create_info.static_viewports_enabled             = true;
+        handler_ptr->current_gfx_state_create_info.static_viewports                     = &handler_ptr->current_viewport;
+
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture_view != nullptr,
+                          "scene_renderer_sm is enabled but no depth SM texture view is associated with the instance");
     }
 
-    handler_ptr->is_enabled = should_enable;
+    /* Set up render-targets */
+    ral_command_buffer_set_binding_command_info color_rt_binding_info;
+
+    color_rt_binding_info.binding_type                  = RAL_BINDING_TYPE_RENDERTARGET;
+    color_rt_binding_info.name                          = system_hashed_ansi_string_create("result_fragment");
+    color_rt_binding_info.rendertarget_binding.rt_index = (handler_ptr->current_sm_color0_texture_view != nullptr)  ? 0 : -1;
+
+    ral_command_buffer_record_set_bindings(handler_ptr->current_command_buffer,
+                                           1, /* n_bindings */
+                                          &color_rt_binding_info);
+
+    if (light_shadow_map_texture_type != RAL_TEXTURE_TYPE_2D_ARRAY)
+    {
+        ral_command_buffer_set_color_rendertarget_command_info color_rt_info = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+        color_rt_info.rendertarget_index = 0;
+
+        color_rt_info.texture_view       = handler_ptr->current_sm_color0_texture_view;
+
+        ral_command_buffer_record_set_color_rendertargets(handler_ptr->current_command_buffer,
+                                                          1, /* n_rendertargets */
+                                                         &color_rt_info);
+        ral_command_buffer_record_set_depth_rendertarget (handler_ptr->current_command_buffer,
+                                                          handler_ptr->current_sm_depth_texture_view);
+    }
+    else
+    {
+        uint32_t slice_index = -1;
+
+        switch (target_face)
+        {
+            case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT:
+            {
+                slice_index = 0;
+
+                break;
+            }
+
+            case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR:
+            {
+                slice_index = 1;
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized target face value");
+            }
+        }
+
+        if (handler_ptr->current_sm_color0_texture_view != nullptr)
+        {
+            ral_command_buffer_set_color_rendertarget_command_info color_rt_info = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+
+            ASSERT_DEBUG_SYNC(slice_index == 0 || slice_index == 1,
+                              "Invalid slice index");
+
+            color_rt_info.rendertarget_index = 0;
+            color_rt_info.texture_view       = (slice_index == 0) ? handler_ptr->current_sm_color0_l0_texture_view
+                                                                  : handler_ptr->current_sm_color0_l1_texture_view;
+
+            ral_command_buffer_record_set_color_rendertargets(handler_ptr->current_command_buffer,
+                                                              1, /* n_rendertargets */
+                                                             &color_rt_info);
+        }
+
+        if (handler_ptr->current_sm_depth_texture_view != nullptr)
+        {
+            ASSERT_DEBUG_SYNC(slice_index == 0 || slice_index == 1,
+                              "Invalid slice index");
+
+            ral_command_buffer_record_set_depth_rendertarget(handler_ptr->current_command_buffer,
+                                                             (slice_index == 0) ? handler_ptr->current_sm_depth_l0_texture_view
+                                                                                : handler_ptr->current_sm_depth_l1_texture_view);
+        }
+    }
+
+    /* Clear the color & depth buffers */
+    ral_command_buffer_clear_rt_binding_command_info clear_command_info;
+
+    clear_command_info.clear_regions[0].n_base_layer      = 0;
+    clear_command_info.clear_regions[0].n_layers          = 1;
+    clear_command_info.clear_regions[0].size[0]           = static_cast<uint32_t>(light_shadow_map_size[0]);
+    clear_command_info.clear_regions[0].size[1]           = static_cast<uint32_t>(light_shadow_map_size[1]);
+    clear_command_info.n_clear_regions                    = 1;
+    clear_command_info.n_rendertargets                    = 1 + ((handler_ptr->current_sm_color0_texture_view != nullptr) ? 1 : 0);
+    clear_command_info.rendertargets[0].aspect            = RAL_TEXTURE_ASPECT_DEPTH_BIT;
+    clear_command_info.rendertargets[0].clear_value.depth = 1.0f;
+    clear_command_info.rendertargets[0].rt_index          = -1; /* irrelevant */
+
+    if (handler_ptr->current_sm_color0_texture_view != nullptr)
+    {
+        clear_command_info.rendertargets[1].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
+        clear_command_info.rendertargets[1].clear_value.color.f32[0] = 1.0f;
+        clear_command_info.rendertargets[1].clear_value.color.f32[1] = 1.0f;
+        clear_command_info.rendertargets[1].clear_value.color.f32[2] = 1.0f;
+        clear_command_info.rendertargets[1].clear_value.color.f32[3] = 1.0f;
+        clear_command_info.rendertargets[1].rt_index                 = 0;
+    }
+
+    ral_command_buffer_record_clear_rendertarget_binding(handler_ptr->current_command_buffer,
+                                                         1, /* n_clear_ops */
+                                                        &clear_command_info);
+
+    handler_ptr->is_enabled = true;
+
+    return handler_ptr->current_command_buffer;
 }
 
+/** TODO
+ *
+ *  NOTE: Exposes either 1 or 2 unique texture view outputs, depending on SM algorithm type:
+ *
+ *        - VSM outputs a color & a depth texture view (in the described order)
+ *        - All other SM algorithms expose 1 color texture view.
+ **/
+PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           handler_ptr,
+                                                 scene_light                   light,
+                                                 scene_renderer_sm_target_face target_face = SCENE_RENDERER_SM_TARGET_FACE_2D)
+{
+    ral_present_task result_task          = nullptr;
+    ral_present_task sm_blur_present_task = nullptr;
+
+    /* Blur the SM if it makes sense */
+    scene_light_shadow_map_algorithm light_shadow_map_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                            &light_shadow_map_algorithm);
+
+    if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+    {
+        float                                   sm_blur_n_iterations;
+        unsigned int                            sm_blur_n_taps;
+        postprocessing_blur_gaussian_resolution sm_blur_resolution;
+        ral_texture_view                        sm_color_texture_view = nullptr;
+
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION,
+                                &sm_blur_resolution);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES,
+                                &sm_blur_n_iterations);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS,
+                                &sm_blur_n_taps);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
+                                &sm_color_texture_view);
+
+        if (sm_blur_n_taps < N_MIN_BLUR_TAPS)
+        {
+            LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to lower boundary!");
+
+            sm_blur_n_taps = N_MIN_BLUR_TAPS;
+        }
+        else
+        if (sm_blur_n_taps > N_MAX_BLUR_TAPS)
+        {
+            LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to upper boundary!");
+
+            sm_blur_n_taps = N_MAX_BLUR_TAPS;
+        }
+
+        sm_blur_present_task = postprocessing_blur_gaussian_create_present_task(handler_ptr->blur_handler,
+                                                                                sm_blur_n_taps,
+                                                                                sm_blur_n_iterations,
+                                                                                sm_color_texture_view,
+                                                                                sm_blur_resolution);
+    }
+
+    /* If necessary, also generate mipmaps for the color texture */
+    if (handler_ptr->current_sm_color0_texture_view != nullptr)
+    {
+        uint32_t n_mips = 0;
+
+        ral_texture_view_get_property(handler_ptr->current_sm_color0_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                     &n_mips);
+
+        if (n_mips > 1)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "TODO");
+
+            #if 0
+            {
+                /* TODO: Must be implemented as a GPU task */
+                ral_texture_generate_mipmaps(handler_ptr->current_sm_color0_texture,
+                                             false /* async */);
+            }
+            #endif
+        }
+    }
+
+    /* Form the result present task */
+    if (sm_blur_present_task == nullptr)
+    {
+        /* This is the easy case, where we only need to execute the command buffer and expose
+         * the result texture view(s) as present task's output(s). */
+        ral_present_task_gpu_create_info result_task_create_info;
+        ral_present_task_io              result_task_unique_outputs[2];
+
+        result_task_unique_outputs[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        result_task_unique_outputs[0].texture_view = handler_ptr->current_sm_color0_texture_view;
+
+        result_task_unique_outputs[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        result_task_unique_outputs[1].texture_view = handler_ptr->current_sm_depth_texture_view;
+
+        result_task_create_info.command_buffer   = handler_ptr->current_command_buffer;
+        result_task_create_info.n_unique_inputs  = 0;
+        result_task_create_info.n_unique_outputs = (handler_ptr->current_sm_color0_texture_view != nullptr) ? 2 : 1;
+        result_task_create_info.unique_inputs    = nullptr;
+        result_task_create_info.unique_outputs   = result_task_unique_outputs;
+
+        result_task = ral_present_task_create_gpu(system_hashed_ansi_string_create("Shadow map renderer: rasterization"),
+                                                 &result_task_create_info);
+    }
+    else
+    {
+        /* This one is a bit more complex. Need a group present task here */
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO: Implement");
+    }
+
+    /* "Unbind" the SM texture from the scene_renderer_sm instance */
+    ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture_view != nullptr,
+                      "scene_renderer_sm_toggle() called to disable SM rendering without an active SM");
+
+    handler_ptr->current_sm_color0_texture_view = nullptr;
+    handler_ptr->current_sm_depth_texture_view  = nullptr;
+
+    /* "Specialized" views are not shared with external objects, and therefore need to be
+     * released explicitly */
+    ral_texture_view tvs_to_release[] =
+    {
+        handler_ptr->current_sm_color0_l0_texture_view,
+        handler_ptr->current_sm_color0_l1_texture_view,
+        handler_ptr->current_sm_depth_l0_texture_view,
+        handler_ptr->current_sm_depth_l1_texture_view,
+    };
+    const uint32_t n_tvs_to_release = sizeof(tvs_to_release) / sizeof(tvs_to_release[0]);
+
+    ral_context_delete_objects(handler_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                               n_tvs_to_release,
+                               (const void**) tvs_to_release);
+
+    handler_ptr->current_sm_color0_l0_texture_view = nullptr;
+    handler_ptr->current_sm_color0_l1_texture_view = nullptr;
+    handler_ptr->current_sm_depth_l0_texture_view  = nullptr;
+    handler_ptr->current_sm_depth_l1_texture_view  = nullptr;
+
+    /* Release the command buffer as well */
+    ral_context_delete_objects(handler_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               1, /* n_objects */
+                               (const void**) &handler_ptr->current_command_buffer);
+
+    handler_ptr->current_command_buffer = nullptr;
+    handler_ptr->is_enabled             = false;
+
+    return result_task;
+}
 
 /** Please see header for spec */
 PUBLIC void scene_renderer_sm_adjust_fragment_uber_code(glsl_shader_constructor                  shader_constructor_fs,
@@ -3321,13 +3404,17 @@ PUBLIC void scene_renderer_sm_release(scene_renderer_sm handler)
 }
 
 /** TODO */
-PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_mapping,
-                                                       scene_renderer    renderer,
-                                                       scene             scene,
-                                                       system_time       frame_time)
+PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm                shadow_mapping,
+                                                                   scene_renderer                   renderer,
+                                                                   scene                            scene,
+                                                                   system_time                      frame_time,
+                                                                   const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr)
 {
     scene_renderer_materials materials          = nullptr;
+    ral_present_task         result_task        = nullptr;
     _scene_renderer_sm*      shadow_mapping_ptr = reinterpret_cast<_scene_renderer_sm*>(shadow_mapping);
+    mesh_material            sm_material        = nullptr;
+    scene_renderer_uber      sm_material_uber   = nullptr;
 
     demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
                          &materials);
@@ -3372,12 +3459,12 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
         }
     }
 
-    mesh_material       sm_material      = scene_renderer_materials_get_special_material(materials,
-                                                                                         shadow_mapping_ptr->context,
-                                                                                         sm_special_material);
-    scene_renderer_uber sm_material_uber = mesh_material_get_uber                       (sm_material,
-                                                                                         scene,
-                                                                                         false); /* use_shadow_maps */
+    sm_material      = scene_renderer_materials_get_special_material(materials,
+                                                                     shadow_mapping_ptr->context,
+                                                                     sm_special_material);
+    sm_material_uber = mesh_material_get_uber                       (sm_material,
+                                                                     scene,
+                                                                     false); /* use_shadow_maps */
 
     /* Configure the uber.
      *
@@ -3461,13 +3548,22 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
                                                     vp);
 
     /* Kick off the rendering */
-    uint32_t n_meshes = 0;
+    uint32_t                       n_meshes = 0;
+    scene_renderer_uber_start_info uber_rendering_start_info;
 
     system_resizable_vector_get_property(shadow_mapping_ptr->meshes_to_render,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_meshes);
 
-    scene_renderer_uber_rendering_start(sm_material_uber);
+    ASSERT_DEBUG_SYNC(shadow_mapping_ptr->current_sm_color0_texture_view != nullptr ||
+                      shadow_mapping_ptr->current_sm_depth_texture_view  != nullptr,
+                      "About to start rendering shadow map meshes without render-targets assigned");
+
+    uber_rendering_start_info.color_rt = shadow_mapping_ptr->current_sm_color0_texture_view;
+    uber_rendering_start_info.depth_rt = shadow_mapping_ptr->current_sm_depth_texture_view;
+
+    scene_renderer_uber_rendering_start(sm_material_uber,
+                                       &uber_rendering_start_info);
     {
         for (uint32_t n_mesh = 0;
                       n_mesh < n_meshes;
@@ -3491,10 +3587,11 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
                                             nullptr,                    /* normal_matrix */
                                             sm_material_uber,
                                             nullptr,                    /* material */
-                                            frame_time);
+                                            frame_time,
+                                            ref_gfx_state_create_info_ptr);
         }
     }
-    scene_renderer_uber_rendering_stop(sm_material_uber);
+    result_task = scene_renderer_uber_rendering_stop(sm_material_uber);
 
     /* Clean up */
     _scene_renderer_sm_mesh_item* item_ptr = nullptr;
@@ -3510,18 +3607,24 @@ PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_
         system_resource_pool_return_to_pool(shadow_mapping_ptr->mesh_item_pool,
                                             (system_resource_pool_block) item_ptr);
     }
+
+    return result_task;
 }
 
-/** TODO */
-PUBLIC void scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mapping,
-                                                 scene_renderer    renderer,
-                                                 scene             current_scene,
-                                                 scene_camera      target_camera,
-                                                 system_time       frame_time)
+/** Please see header for spec */
+PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mapping,
+                                                             scene_renderer    renderer,
+                                                             scene             current_scene,
+                                                             scene_camera      target_camera,
+                                                             system_time       frame_time)
 {
-    scene_graph         graph               = nullptr;
-    uint32_t            n_lights            = 0;
-    _scene_renderer_sm* shadow_mapping_ptr  = reinterpret_cast<_scene_renderer_sm*>(shadow_mapping);
+    scene_graph                     graph                          = nullptr;
+    uint32_t                        n_lights                       = 0;
+    uint32_t                        n_result_present_task_mappings = 0;
+    ral_present_task*               render_present_tasks           = nullptr;
+    ral_present_task                result_present_task            = nullptr;
+    ral_present_task_group_mapping* result_present_task_mappings   = nullptr;
+    _scene_renderer_sm*             shadow_mapping_ptr             = reinterpret_cast<_scene_renderer_sm*>(shadow_mapping);
 
     scene_get_property(current_scene,
                        SCENE_PROPERTY_GRAPH,
@@ -3529,6 +3632,16 @@ PUBLIC void scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mappin
     scene_get_property(current_scene,
                        SCENE_PROPERTY_N_LIGHTS,
                       &n_lights);
+
+    ASSERT_DEBUG_SYNC(n_lights > 0,
+                      "Can't render shadow maps if there's no lights in the scene");
+
+    const uint32_t n_max_render_present_tasks  = n_lights                   * 6; /* all CM faces     - worst-case complexity */
+    const uint32_t n_max_result_mappings       = n_max_render_present_tasks * 2; /* color + depth RT - worst-case scenario   */
+    uint32_t       n_render_present_tasks_used = 0;
+
+    render_present_tasks         = reinterpret_cast<ral_present_task*>              (_malloca(sizeof(ral_present_task)               * n_max_render_present_tasks));
+    result_present_task_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_max_result_mappings));
 
     /* Stash target camera before continuing */
     shadow_mapping_ptr->current_camera = target_camera;
@@ -3616,6 +3729,8 @@ PUBLIC void scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mappin
         bool                             current_light_is_shadow_caster = false;
         scene_light_shadow_map_algorithm current_light_sm_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
         scene_light_type                 current_light_type             = SCENE_LIGHT_TYPE_UNKNOWN;
+        bool                             current_light_uses_color_rt    = false;
+        bool                             current_light_uses_depth_rt    = false;
 
         ASSERT_DEBUG_SYNC(current_light != nullptr,
                           "Scene light is nullptr");
@@ -3661,142 +3776,205 @@ PUBLIC void scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mappin
                     current_target_face = _scene_renderer_sm_get_target_face_for_nonpoint_light(n_sm_pass);
                 }
 
-                /* Configure the GL for depth map rendering */
+                /* Record a command buffer which is going to render the depth textures */
                 system_matrix4x4 light_projection_matrix = nullptr;
                 system_matrix4x4 light_view_matrix       = nullptr;
                 system_matrix4x4 light_vp_matrix         = nullptr;
                 system_matrix4x4 sm_projection_matrix    = nullptr;
                 system_matrix4x4 sm_view_matrix          = nullptr;
 
-                _scene_renderer_sm_toggle(shadow_mapping_ptr,
-                                          current_light,
-                                          true,                 /* should_enable */
-                                          current_target_face);
+                ASSERT_DEBUG_SYNC(shadow_mapping_ptr->current_command_buffer == nullptr,
+                                  "Another command buffer is already being recorded.");
 
-                if (current_aabb_min_setting[0] != current_aabb_max_setting[0] ||
-                    current_aabb_min_setting[1] != current_aabb_max_setting[1] ||
-                    current_aabb_min_setting[2] != current_aabb_max_setting[2])
+                shadow_mapping_ptr->current_command_buffer = _scene_renderer_sm_start(shadow_mapping_ptr,
+                                                                                      current_light,
+                                                                                      current_target_face);
                 {
-                    switch (current_light_type)
+                    if (n_sm_pass == 0)
                     {
-                        case SCENE_LIGHT_TYPE_DIRECTIONAL:
-                        case SCENE_LIGHT_TYPE_POINT:
-                        case SCENE_LIGHT_TYPE_SPOT:
-                        {
-                            /* NOTE: sm_projeciton_matrix may still be nullptr after this function leaves
-                             *       for some cases!
-                             */
-                            scene_renderer_sm_get_matrices_for_light(shadow_mapping,
-                                                                     current_light,
-                                                                     current_target_face,
-                                                                     target_camera,
-                                                                     frame_time,
-                                                                     current_aabb_min_setting,
-                                                                     current_aabb_max_setting,
-                                                                    &sm_view_matrix,
-                                                                    &sm_projection_matrix);
+                        ral_texture_view sm_color_texture_view = nullptr;
+                        ral_texture_view sm_depth_texture_view = nullptr;
 
-                            break;
-                        }
-
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Unsupported light type encountered.");
-                        }
-                    }
-
-                    /* Update light's shadow VP matrix */
-                    ASSERT_DEBUG_SYNC(sm_view_matrix != nullptr,
-                                      "View matrix for shadow map rendering is nullptr");
-
-                    if (current_target_face != SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT &&
-                        current_target_face != SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR)
-                    {
-                        ASSERT_DEBUG_SYNC(sm_projection_matrix != nullptr,
-                                          "Projection matrix for shadow map rendering is nullptr");
-                    }
-                    else
-                    {
-                        sm_projection_matrix = system_matrix4x4_create();
-
-                        system_matrix4x4_set_to_identity(sm_projection_matrix);
-                    }
-
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
-                                            &light_view_matrix);
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
-                                            &light_vp_matrix);
-
-                    system_matrix4x4_set_from_matrix4x4(light_view_matrix,
-                                                        sm_view_matrix);
-
-                    if (sm_projection_matrix != nullptr)
-                    {
                         scene_light_get_property(current_light,
-                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION,
-                                                &light_projection_matrix);
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
+                                                &sm_color_texture_view);
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
+                                                &sm_depth_texture_view);
 
-                        /* Projection matrix */
-                        system_matrix4x4_set_from_matrix4x4   (light_projection_matrix,
-                                                               sm_projection_matrix);
-
-                        /* VP matrix */
-                        system_matrix4x4_set_from_matrix4x4   (light_vp_matrix,
-                                                               sm_projection_matrix);
-                        system_matrix4x4_multiply_by_matrix4x4(light_vp_matrix,
-                                                               sm_view_matrix);
+                        current_light_uses_color_rt = (sm_color_texture_view != nullptr);
+                        current_light_uses_depth_rt = (sm_depth_texture_view != nullptr);
                     }
-                    else
+
+                    if (current_aabb_min_setting[0] != current_aabb_max_setting[0] ||
+                        current_aabb_min_setting[1] != current_aabb_max_setting[1] ||
+                        current_aabb_min_setting[2] != current_aabb_max_setting[2])
                     {
-                        /* VP matrix is actually a view matrix in this case */
-                        system_matrix4x4_set_from_matrix4x4(light_vp_matrix,
+                        switch (current_light_type)
+                        {
+                            case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                            case SCENE_LIGHT_TYPE_POINT:
+                            case SCENE_LIGHT_TYPE_SPOT:
+                            {
+                                /* NOTE: sm_projeciton_matrix may still be nullptr after this function leaves
+                                 *       for some cases!
+                                 */
+                                scene_renderer_sm_get_matrices_for_light(shadow_mapping,
+                                                                         current_light,
+                                                                         current_target_face,
+                                                                         target_camera,
+                                                                         frame_time,
+                                                                         current_aabb_min_setting,
+                                                                         current_aabb_max_setting,
+                                                                        &sm_view_matrix,
+                                                                        &sm_projection_matrix);
+
+                                break;
+                            }
+
+                            default:
+                            {
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Unsupported light type encountered.");
+                            }
+                        }
+
+                        /* Update light's shadow VP matrix */
+                        ASSERT_DEBUG_SYNC(sm_view_matrix != nullptr,
+                                          "View matrix for shadow map rendering is nullptr");
+
+                        if (current_target_face != SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT &&
+                            current_target_face != SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR)
+                        {
+                            ASSERT_DEBUG_SYNC(sm_projection_matrix != nullptr,
+                                              "Projection matrix for shadow map rendering is nullptr");
+                        }
+                        else
+                        {
+                            sm_projection_matrix = system_matrix4x4_create();
+
+                            system_matrix4x4_set_to_identity(sm_projection_matrix);
+                        }
+
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
+                                                &light_view_matrix);
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
+                                                &light_vp_matrix);
+
+                        system_matrix4x4_set_from_matrix4x4(light_view_matrix,
                                                             sm_view_matrix);
-                    }
 
-                    /* NOTE: This call is recursive (this function is called by exactly the same function,
-                     *       but we're requesting no shadow maps this time AND the scene graph has already
-                     *       been traversed, so it should be fairly inexpensive and focus solely on drawing
-                     *       geometry.
-                     *
-                     * NOTE: This call will lead to a call back to scene_renderer_sm_render_shadow_map_meshes().
-                     *       Since there's no way we could include additional info which would be rerouted to
-                     *       that call-back, we store current target face in scene_renderer_sm instance.
-                     */
-                    shadow_mapping_ptr->current_light       = current_light;
-                    shadow_mapping_ptr->current_target_face = current_target_face;
+                        if (sm_projection_matrix != nullptr)
+                        {
+                            scene_light_get_property(current_light,
+                                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION,
+                                                    &light_projection_matrix);
 
-                    scene_renderer_render_scene_graph(renderer,
-                                                      sm_view_matrix,
-                                                      sm_projection_matrix,
-                                                      target_camera,
-                                                      RENDER_MODE_SHADOW_MAP,
-                                                      false, /* apply_shadow_mapping */
-                                                      HELPER_VISUALIZATION_NONE,
-                                                      frame_time);
-               }
+                            /* Projection matrix */
+                            system_matrix4x4_set_from_matrix4x4(light_projection_matrix,
+                                                                sm_projection_matrix);
 
-               /* Clean up */
-               if (sm_projection_matrix != nullptr)
-               {
-                    system_matrix4x4_release(sm_projection_matrix);
-                    sm_projection_matrix = nullptr;
-               }
+                            /* VP matrix */
+                            system_matrix4x4_set_from_matrix4x4   (light_vp_matrix,
+                                                                   sm_projection_matrix);
+                            system_matrix4x4_multiply_by_matrix4x4(light_vp_matrix,
+                                                                   sm_view_matrix);
+                        }
+                        else
+                        {
+                            /* VP matrix is actually a view matrix in this case */
+                            system_matrix4x4_set_from_matrix4x4(light_vp_matrix,
+                                                                sm_view_matrix);
+                        }
 
-               if (sm_view_matrix != nullptr)
-               {
-                    system_matrix4x4_release(sm_view_matrix);
-                    sm_view_matrix = nullptr;
-               }
+                        /* NOTE: This call is recursive (this function is called by exactly the same function,
+                         *       but we're requesting no shadow maps this time AND the scene graph has already
+                         *       been traversed, so it should be fairly inexpensive and focus solely on drawing
+                         *       geometry.
+                         *
+                         * NOTE: This call will lead to a call back to scene_renderer_sm_render_shadow_map_meshes().
+                         *       Since there's no way we could include additional info which would be rerouted to
+                         *       that call-back, we store current target face in scene_renderer_sm instance.
+                         */
+                        shadow_mapping_ptr->current_light       = current_light;
+                        shadow_mapping_ptr->current_target_face = current_target_face;
+
+                        scene_renderer_render_scene_graph(renderer,
+                                                          sm_view_matrix,
+                                                          sm_projection_matrix,
+                                                          target_camera,
+                                                          RENDER_MODE_SHADOW_MAP,
+                                                          false, /* apply_shadow_mapping */
+                                                          HELPER_VISUALIZATION_NONE,
+                                                          frame_time);
+                   }
+
+                   /* Clean up */
+                   if (sm_projection_matrix != nullptr)
+                   {
+                        system_matrix4x4_release(sm_projection_matrix);
+                        sm_projection_matrix = nullptr;
+                   }
+
+                   if (sm_view_matrix != nullptr)
+                   {
+                        system_matrix4x4_release(sm_view_matrix);
+                        sm_view_matrix = nullptr;
+                   }
+                }
+
+                if (current_light_uses_color_rt)
+                {
+                    ral_present_task_group_mapping& current_mapping = result_present_task_mappings[n_result_present_task_mappings];
+
+                    current_mapping.n_present_task        = n_render_present_tasks_used;
+                    current_mapping.present_task_io_index = 0;
+                    current_mapping.unique_output_index   = n_light * 2 + 0;
+
+                    n_result_present_task_mappings++;
+                }
+
+                if (current_light_uses_depth_rt)
+                {
+                    ral_present_task_group_mapping& current_mapping = result_present_task_mappings[n_result_present_task_mappings];
+
+                    current_mapping.n_present_task        = n_render_present_tasks_used;
+                    current_mapping.present_task_io_index = current_light_uses_color_rt ? 1 : 0;
+                    current_mapping.unique_output_index   = n_light * 2 + 1;
+
+                    n_result_present_task_mappings++;
+                }
+
+                render_present_tasks[n_render_present_tasks_used++] = _scene_renderer_sm_stop(shadow_mapping_ptr,
+                                                                                              current_light);
+
+                ASSERT_DEBUG_SYNC(n_render_present_tasks_used != n_max_render_present_tasks,
+                                  "Bump up the n_max_render_present_tasks constant.");
+                ASSERT_DEBUG_SYNC(n_result_present_task_mappings != n_max_result_mappings,
+                                  "Bump up the n_max_result_mappings constant.");
             }
-
-            _scene_renderer_sm_toggle(shadow_mapping_ptr,
-                                      current_light,
-                                      false); /* should_enable */
         }
     }
 
+    /* Form the final present task */
+    ral_present_task_group_create_info result_present_task_create_info;
+
+    result_present_task_create_info.ingroup_connections                      = nullptr;
+    result_present_task_create_info.n_ingroup_connections                    = 0;
+    result_present_task_create_info.n_present_tasks                          = n_render_present_tasks_used;
+    result_present_task_create_info.n_total_unique_inputs                    = 0;
+    result_present_task_create_info.n_total_unique_outputs                   = n_lights * 2;
+    result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 0;
+    result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = n_result_present_task_mappings;
+    result_present_task_create_info.present_tasks                            = render_present_tasks;
+    result_present_task_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
+    result_present_task_create_info.unique_output_to_ingroup_task_mapping    = result_present_task_mappings;
+
+    result_present_task = ral_present_task_create_group(&result_present_task_create_info);
+
     shadow_mapping_ptr->current_camera = nullptr;
+
+    return result_present_task;
 }

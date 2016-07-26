@@ -167,6 +167,9 @@ typedef struct _scene_renderer_uber_mesh_data_material
     system_time                     mesh_modification_timestamp;
     struct _scene_renderer_uber*    uber_ptr;
 
+    ral_texture_view color_rt;
+    ral_texture_view depth_rt;
+
     explicit _scene_renderer_uber_mesh_data_material(ral_context                     in_context,
                                                      mesh_material                   in_material,
                                                      _scene_renderer_uber_mesh_data* in_mesh_data_ptr,
@@ -180,8 +183,10 @@ typedef struct _scene_renderer_uber_mesh_data_material
         command_buffer_create_info.is_resettable                           = true;
         command_buffer_create_info.is_transient                            = false;
 
+        color_rt                    = nullptr;
         command_buffer              = ral_command_buffer_create(in_context,
                                                                &command_buffer_create_info);
+        depth_rt                    = nullptr;
         material                    = in_material;
         mesh_data_ptr               = in_mesh_data_ptr;
         mesh_modification_timestamp = 0;
@@ -2132,12 +2137,18 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
         ASSERT_DEBUG_SYNC(mesh_data_material_ptr != nullptr,
                           "Mesh material data instance is null");
 
-        if (mesh_data_material_ptr->mesh_modification_timestamp == mesh_modification_timestamp)
+        if (mesh_data_material_ptr->mesh_modification_timestamp == mesh_modification_timestamp &&
+            mesh_data_material_ptr->color_rt                    == uber_ptr->active_color_rt   &&
+            mesh_data_material_ptr->depth_rt                    == uber_ptr->active_depth_rt)
         {
             /* No need to re-record commands */
             goto end;
         }
     }
+
+    mesh_data_material_ptr->mesh_modification_timestamp = mesh_modification_timestamp;
+    mesh_data_material_ptr->color_rt                    = uber_ptr->active_color_rt;
+    mesh_data_material_ptr->depth_rt                    = uber_ptr->active_depth_rt;
 
     /* Start recording the command buffer and append the preamble */
     ral_command_buffer_start_recording(mesh_data_material_ptr->command_buffer);

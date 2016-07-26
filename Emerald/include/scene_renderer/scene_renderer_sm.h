@@ -143,17 +143,29 @@ PUBLIC void scene_renderer_sm_process_mesh_for_shadow_map_rendering(scene_mesh s
 /** TODO. **/
 PUBLIC void scene_renderer_sm_release(scene_renderer_sm handler);
 
-/** TODO */
-PUBLIC void scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm shadow_mapping,
-                                                       scene_renderer    renderer,
-                                                       scene             scene,
-                                                       system_time       frame_time);
+/** TODO
+ *
+ *  NOTE: Internal use only. This function should only be used by scene_renderer and scene_renderer_sm.
+ **/
+PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm                shadow_mapping,
+                                                                   scene_renderer                   renderer,
+                                                                   scene                            scene,
+                                                                   system_time                      frame_time,
+                                                                   const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr);
 
-/** TODO */
-PUBLIC void scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mapping,
-                                                 scene_renderer    renderer,
-                                                 scene             current_scene,
-                                                 scene_camera      target_camera,
-                                                 system_time       frame_time);
+/** TODO.
+ *
+ *  The result present task exposes one or more texture views, each holding a result shadow map.
+ *  Exact number of outputs and texture view properties depend on:
+ *
+ *  1) Number of shadow-casting lights.
+ *  2) Type of shadow mapping algorithm, selected for each light.
+ *
+ */
+PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm shadow_mapping,
+                                                             scene_renderer    renderer,
+                                                             scene             current_scene,
+                                                             scene_camera      target_camera,
+                                                             system_time       frame_time);
 
-/#endif /* SCENE_RENDERER_SM_H */
+#endif /* SCENE_RENDERER_SM_H */

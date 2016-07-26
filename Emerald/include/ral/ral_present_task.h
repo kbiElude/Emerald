@@ -60,8 +60,9 @@ typedef struct
 
 typedef struct
 {
-    uint32_t io_index;
     uint32_t n_present_task;
+    uint32_t present_task_io_index;
+    uint32_t unique_output_index;
 
 } ral_present_task_group_mapping;
 
@@ -82,13 +83,21 @@ typedef struct
     uint32_t                                   n_ingroup_connections;
     const ral_present_task_ingroup_connection* ingroup_connections;
 
-    /* NOTE: One unique input can map to multiple present task inputs */
+    /* NOTE: One unique input can map to multiple present task inputs
+     *
+     *       If more than one source is specified, all such inputs need to be assigned
+     *       (directly or indirectly) the same ral_texture instance.
+     */
     uint32_t                              n_total_unique_inputs;
     uint32_t                              n_unique_input_to_ingroup_task_mappings;
     const ral_present_task_group_mapping* unique_input_to_ingroup_task_mapping;
 
     /* NOTE: One unique output can take multiple present task outputs, if more than one
-     *       present task contributes to the result  */
+     *       present task contributes to the result.
+     *
+     *       If more than one output is specified, all such outputs need to refer (directly
+     *       or indirectly) to the same ral_texture instance.
+     */
     uint32_t                              n_total_unique_outputs;
     uint32_t                              n_unique_output_to_ingroup_task_mappings;
     const ral_present_task_group_mapping* unique_output_to_ingroup_task_mapping;

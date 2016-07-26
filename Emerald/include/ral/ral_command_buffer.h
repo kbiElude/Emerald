@@ -208,6 +208,8 @@ typedef struct ral_command_buffer_clear_rt_binding_rendertarget
 {
     ral_texture_aspect aspect;
     ral_clear_value    clear_value;
+
+    /* Only relevant for color aspects */
     uint32_t           rt_index;
 } ral_command_buffer_clear_rt_binding_rendertarget;
 
@@ -328,6 +330,7 @@ typedef struct
 
 typedef struct
 {
+    /* NOTE: If -1, the binding is assumed to have no rendertarget assigned */
     uint32_t rt_index;
 
 } ral_command_buffer_rendertarget_binding_info;
