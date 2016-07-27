@@ -60,9 +60,9 @@ typedef struct
 
 typedef struct
 {
+    uint32_t group_task_io_index;
     uint32_t n_present_task;
     uint32_t present_task_io_index;
-    uint32_t unique_output_index;
 
 } ral_present_task_group_mapping;
 

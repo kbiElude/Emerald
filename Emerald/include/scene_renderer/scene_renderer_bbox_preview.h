@@ -6,7 +6,6 @@
 #ifndef SCENE_RENDERER_BBOX_PREVIEW_H
 #define SCENE_RENDERER_BBOX_PREVIEW_H
 
-#include "ogl/ogl_types.h"
 #include "ral/ral_types.h"
 #include "scene/scene_types.h"
 #include "scene_renderer/scene_renderer_types.h"
