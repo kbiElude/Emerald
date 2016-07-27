@@ -126,6 +126,6 @@ PUBLIC void raGL_backend_set_private_property(raGL_backend                  back
                                               const void*                   data_ptr);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void raGL_backend_sync();
+PUBLIC void raGL_backend_sync();
 
 #endif /* RAGL_BACKEND_H */

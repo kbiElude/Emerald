@@ -38,16 +38,21 @@ PUBLIC scene_renderer_lights_preview scene_renderer_lights_preview_create(ral_co
  *                                  The vector needs not be normalized.
  *                                  May be NULL (eg. for lights that do not have direction).
  **/
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_lights_preview_render(scene_renderer_lights_preview preview,
-                                                                        float*                        light_position,
-                                                                        float*                        light_color,
-                                                                        float*                        light_pos_plus_direction);
+PUBLIC void scene_renderer_lights_preview_render(scene_renderer_lights_preview preview,
+                                                 float*                        light_position,
+                                                 float*                        light_color,
+                                                 float*                        light_pos_plus_direction);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_lights_preview_start(scene_renderer_lights_preview preview);
+PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview preview,
+                                                ral_texture_view              color_rt);
 
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_lights_preview_stop(scene_renderer_lights_preview preview);
+/** TODO
+ *
+ *  Result present task takes 1 texture view (as specified at _start() time) and outputs exactly 1 texture view
+ *  with the lights rendered.
+ **/
+PUBLIC ral_present_task scene_renderer_lights_preview_stop(scene_renderer_lights_preview preview);
 
 /** TODO. **/
 PUBLIC void scene_renderer_lights_preview_release(scene_renderer_lights_preview preview);

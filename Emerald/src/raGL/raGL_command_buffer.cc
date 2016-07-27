@@ -1320,6 +1320,7 @@ void _raGL_command_buffer::bake_gfx_state()
         {GL_DEPTH_TEST,               depth_test_enabled},
         {GL_COLOR_LOGIC_OP,           logic_op_enabled},
         {GL_PRIMITIVE_RESTART,        primitive_restart_enabled},
+        {GL_PROGRAM_POINT_SIZE,       true},
         {GL_RASTERIZER_DISCARD,       rasterizer_discard_enabled},
         {GL_SAMPLE_SHADING,           sample_shading_enabled},
         {GL_SCISSOR_TEST,             scissor_test_enabled},
