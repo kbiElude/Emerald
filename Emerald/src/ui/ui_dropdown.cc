@@ -4,7 +4,6 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
@@ -1746,9 +1745,10 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     gpu_present_task_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
     gpu_present_task_unique_output.texture_view = target_texture_view;
 
-    group_present_task_input_mapping.io_index        = 7; /* texture_view */
-    group_present_task_input_mapping.n_present_task  = 1;
-    group_present_task_output_mapping                = group_present_task_input_mapping;
+    group_present_task_input_mapping.group_task_io_index   = 7; /* texture_view */
+    group_present_task_input_mapping.n_present_task        = 1;
+    group_present_task_input_mapping.present_task_io_index = 0;
+    group_present_task_output_mapping                      = group_present_task_input_mapping;
 
     gpu_present_task_create_info.command_buffer   = draw_command_buffer;
     gpu_present_task_create_info.n_unique_inputs  = sizeof(gpu_present_task_unique_inputs) / sizeof(gpu_present_task_unique_inputs[0]);
@@ -1773,14 +1773,16 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
         group_present_task_ingroup_connections[n_connection].output_present_task_io_index = n_connection;
     }
 
-    group_present_task_create_info.ingroup_connections                   = group_present_task_ingroup_connections;
-    group_present_task_create_info.n_ingroup_connections                 = sizeof(group_present_task_ingroup_connections) / sizeof(group_present_task_ingroup_connections[0]);
-    group_present_task_create_info.n_present_tasks                       = sizeof(group_present_task_present_tasks)       / sizeof(group_present_task_present_tasks      [0]);
-    group_present_task_create_info.n_unique_inputs                       = 1;
-    group_present_task_create_info.n_unique_outputs                      = 1;
-    group_present_task_create_info.present_tasks                         = group_present_task_present_tasks;
-    group_present_task_create_info.unique_input_to_ingroup_task_mapping  = &group_present_task_input_mapping;
-    group_present_task_create_info.unique_output_to_ingroup_task_mapping = &group_present_task_output_mapping;
+    group_present_task_create_info.ingroup_connections                      = group_present_task_ingroup_connections;
+    group_present_task_create_info.n_ingroup_connections                    = sizeof(group_present_task_ingroup_connections) / sizeof(group_present_task_ingroup_connections[0]);
+    group_present_task_create_info.n_present_tasks                          = sizeof(group_present_task_present_tasks)       / sizeof(group_present_task_present_tasks      [0]);
+    group_present_task_create_info.n_total_unique_inputs                    = 1;
+    group_present_task_create_info.n_total_unique_outputs                   = 1;
+    group_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
+    group_present_task_create_info.n_unique_output_to_ingroup_task_mappings = 1;
+    group_present_task_create_info.present_tasks                            = group_present_task_present_tasks;
+    group_present_task_create_info.unique_input_to_ingroup_task_mapping     = &group_present_task_input_mapping;
+    group_present_task_create_info.unique_output_to_ingroup_task_mapping    = &group_present_task_output_mapping;
 
     group_present_task                     = ral_present_task_create_group(&group_present_task_create_info);
     dropdown_ptr->last_cached_present_task = group_present_task;

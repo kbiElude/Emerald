@@ -1035,8 +1035,8 @@ PRIVATE void _scene_renderer_uber_start_rendering_cpu_task_callback(void* uber_r
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_renderer_uber_item_id scene_renderer_uber_add_input_fragment_attribute_item(scene_renderer_uber                          uber,
-                                                                                                     scene_renderer_uber_input_fragment_attribute input_attribute)
+PUBLIC scene_renderer_uber_item_id scene_renderer_uber_add_input_fragment_attribute_item(scene_renderer_uber                          uber,
+                                                                                         scene_renderer_uber_input_fragment_attribute input_attribute)
 {
     shaders_fragment_uber_input_attribute_type fs_input_attribute = UBER_INPUT_ATTRIBUTE_UNKNOWN;
     shaders_fragment_uber_item_id              fs_item_id         = -1;
@@ -1103,12 +1103,12 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_renderer_uber_item_id scene_renderer_uber_add_light_item(scene_renderer_uber              uber,
-                                                                                  scene_light                      light_instance,
-                                                                                  shaders_fragment_uber_light_type light_type,
-                                                                                  bool                             is_shadow_caster,
-                                                                                  unsigned int                     n_light_properties,
-                                                                                  void*                            light_property_values)
+PUBLIC scene_renderer_uber_item_id scene_renderer_uber_add_light_item(scene_renderer_uber              uber,
+                                                                      scene_light                      light_instance,
+                                                                      shaders_fragment_uber_light_type light_type,
+                                                                      bool                             is_shadow_caster,
+                                                                      unsigned int                     n_light_properties,
+                                                                      void*                            light_property_values)
 {
     _scene_renderer_uber*       uber_ptr     = reinterpret_cast<_scene_renderer_uber*>(uber);
     _scene_renderer_uber_item*  new_item_ptr = nullptr;
@@ -1230,8 +1230,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create(ral_context                context,
-                                                                  system_hashed_ansi_string  name)
+PUBLIC scene_renderer_uber scene_renderer_uber_create(ral_context                context,
+                                                      system_hashed_ansi_string  name)
 {
     _scene_renderer_uber* result_ptr = new (std::nothrow) _scene_renderer_uber(context,
                                                                                name,
@@ -1288,9 +1288,9 @@ PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create(ral_context   
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create_from_ral_program(ral_context               context,
-                                                                                   system_hashed_ansi_string name,
-                                                                                   ral_program               program)
+PUBLIC scene_renderer_uber scene_renderer_uber_create_from_ral_program(ral_context               context,
+                                                                       system_hashed_ansi_string name,
+                                                                       ral_program               program)
 {
     _scene_renderer_uber* result_ptr = new (std::nothrow) _scene_renderer_uber(context,
                                                                                name,
@@ -1323,9 +1323,9 @@ PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create_from_ral_progr
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_uber_get_shader_general_property(const scene_renderer_uber            uber,
-                                                                        scene_renderer_uber_general_property property,
-                                                                        void*                                out_result_ptr)
+PUBLIC void scene_renderer_uber_get_shader_general_property(const scene_renderer_uber            uber,
+                                                            scene_renderer_uber_general_property property,
+                                                            void*                                out_result_ptr)
 {
     const _scene_renderer_uber* uber_ptr = reinterpret_cast<const _scene_renderer_uber*>(uber);
 
@@ -1359,10 +1359,10 @@ PUBLIC EMERALD_API void scene_renderer_uber_get_shader_general_property(const sc
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_uber_get_shader_item_property(const scene_renderer_uber         uber,
-                                                                     scene_renderer_uber_item_id       item_id,
-                                                                     scene_renderer_uber_item_property property,
-                                                                     void*                             out_result_ptr)
+PUBLIC void scene_renderer_uber_get_shader_item_property(const scene_renderer_uber         uber,
+                                                         scene_renderer_uber_item_id       item_id,
+                                                         scene_renderer_uber_item_property property,
+                                                         void*                             out_result_ptr)
 {
     _scene_renderer_uber_item*  item_ptr = nullptr;
     const _scene_renderer_uber* uber_ptr = reinterpret_cast<const _scene_renderer_uber*>(uber);
@@ -1461,7 +1461,7 @@ PUBLIC EMERALD_API void scene_renderer_uber_get_shader_item_property(const scene
 }
 
 /** TODO */
-PUBLIC EMERALD_API void scene_renderer_uber_link(scene_renderer_uber uber)
+PUBLIC void scene_renderer_uber_link(scene_renderer_uber uber)
 {
     const ral_program_variable* ambient_material_uniform_ral_ptr     = nullptr;
     const ral_program_variable* diffuse_material_uniform_ral_ptr     = nullptr;
@@ -2621,9 +2621,9 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_uber_set_shader_general_property(scene_renderer_uber                  uber,
-                                                                        scene_renderer_uber_general_property property,
-                                                                        const void*                          data)
+PUBLIC void scene_renderer_uber_set_shader_general_property(scene_renderer_uber                  uber,
+                                                            scene_renderer_uber_general_property property,
+                                                            const void*                          data)
 {
     _scene_renderer_uber* uber_ptr = reinterpret_cast<_scene_renderer_uber*>(uber);
 
@@ -2718,10 +2718,10 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_uber_set_shader_item_property(scene_renderer_uber               uber,
-                                                                     unsigned int                      item_index,
-                                                                     scene_renderer_uber_item_property property,
-                                                                     const void*                       data)
+PUBLIC void scene_renderer_uber_set_shader_item_property(scene_renderer_uber               uber,
+                                                         unsigned int                      item_index,
+                                                         scene_renderer_uber_item_property property,
+                                                         const void*                       data)
 {
     _scene_renderer_uber* uber_ptr = reinterpret_cast<_scene_renderer_uber*>(uber);
 
@@ -3265,8 +3265,8 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     ral_present_task_cpu_create_info     global_cpu_update_task_info;
     ral_present_task_io                  global_cpu_update_task_output;
     uint32_t                             n_render_command_buffers = 0;
-    uint32_t                             n_render_unique_outputs   = 0;
-    ral_present_task*                    render_gpu_tasks = nullptr;
+    uint32_t                             n_render_unique_outputs  = 0;
+    ral_present_task*                    render_gpu_tasks         = nullptr;
     ral_present_task_io                  render_gpu_task_unique_outputs[2];
     ral_present_task*                    result_present_tasks = nullptr;
     ral_present_task_group_create_info   result_task_create_info;
@@ -3373,9 +3373,9 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                   n_mapping < result_task_create_info.n_unique_input_to_ingroup_task_mappings;
                 ++n_mapping)
     {
+        result_task_unique_mappings[n_mapping].group_task_io_index   = n_mapping % n_render_unique_outputs;
         result_task_unique_mappings[n_mapping].present_task_io_index = n_mapping % n_render_unique_outputs;
         result_task_unique_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_outputs;
-        result_task_unique_mappings[n_mapping].unique_output_index   = result_task_unique_mappings[n_mapping].present_task_io_index;
     }
 
     result_task = ral_present_task_create_group(&result_task_create_info);

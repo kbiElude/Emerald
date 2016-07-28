@@ -1313,18 +1313,20 @@ void _raGL_command_buffer::bake_gfx_state()
     {
         /* NOTE: Depth bias is handled separately */
 
-        {GL_SAMPLE_ALPHA_TO_COVERAGE, alpha_to_coverage_enabled},
-        {GL_SAMPLE_ALPHA_TO_ONE,      alpha_to_one_enabled},
-        {GL_CULL_FACE,                culling_enabled},
-        {GL_DEPTH_CLAMP,              depth_clamp_enabled},
-        {GL_DEPTH_TEST,               depth_test_enabled},
-        {GL_COLOR_LOGIC_OP,           logic_op_enabled},
-        {GL_PRIMITIVE_RESTART,        primitive_restart_enabled},
-        {GL_PROGRAM_POINT_SIZE,       true},
-        {GL_RASTERIZER_DISCARD,       rasterizer_discard_enabled},
-        {GL_SAMPLE_SHADING,           sample_shading_enabled},
-        {GL_SCISSOR_TEST,             scissor_test_enabled},
-        {GL_STENCIL_TEST,             stencil_test_enabled}
+        {GL_SAMPLE_ALPHA_TO_COVERAGE,  alpha_to_coverage_enabled},
+        {GL_SAMPLE_ALPHA_TO_ONE,       alpha_to_one_enabled},
+        {GL_CULL_FACE,                 culling_enabled},
+        {GL_DEPTH_CLAMP,               depth_clamp_enabled},
+        {GL_DEPTH_TEST,                depth_test_enabled},
+        {GL_FRAMEBUFFER_SRGB,          false}, /* TODO: This should be enabled if there's at least one sRGB color attachment !! */
+        {GL_COLOR_LOGIC_OP,            logic_op_enabled},
+        {GL_PRIMITIVE_RESTART,         primitive_restart_enabled},
+        {GL_PROGRAM_POINT_SIZE,        true},
+        {GL_RASTERIZER_DISCARD,        rasterizer_discard_enabled},
+        {GL_SAMPLE_SHADING,            sample_shading_enabled},
+        {GL_SCISSOR_TEST,              scissor_test_enabled},
+        {GL_STENCIL_TEST,              stencil_test_enabled},
+        {GL_TEXTURE_CUBE_MAP_SEAMLESS, true}
     };
     const uint32_t n_mode_states = sizeof(mode_states) / sizeof(mode_states[0]);
 

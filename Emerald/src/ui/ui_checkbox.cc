@@ -754,20 +754,24 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
     present_task_ingroup_connections[1].output_present_task_index    = 1; /* ub_vs */
     present_task_ingroup_connections[1].output_present_task_io_index = 1;
 
-    present_task_unique_input_mapping.io_index       = 2; /* texture_view */
-    present_task_unique_input_mapping.n_present_task = 1;
+    present_task_unique_input_mapping.group_task_io_index   = 0;
+    present_task_unique_input_mapping.present_task_io_index = 2; /* texture_view */
+    present_task_unique_input_mapping.n_present_task        = 1;
 
-    present_task_unique_output_mapping.io_index       = 0; /* texture_view */
-    present_task_unique_output_mapping.n_present_task = 1;
+    present_task_unique_output_mapping.group_task_io_index   = 0;
+    present_task_unique_output_mapping.present_task_io_index = 0; /* texture_view */
+    present_task_unique_output_mapping.n_present_task        = 1;
 
-    present_task_group_create_info.ingroup_connections                   = present_task_ingroup_connections;
-    present_task_group_create_info.n_ingroup_connections                 = sizeof(present_task_ingroup_connections) / sizeof(present_task_ingroup_connections[0]);
-    present_task_group_create_info.n_present_tasks                       = sizeof(present_task_group_tasks)         / sizeof(present_task_group_tasks        [0]);
-    present_task_group_create_info.n_unique_inputs                       = 1;
-    present_task_group_create_info.n_unique_outputs                      = 1;
-    present_task_group_create_info.present_tasks                         = present_task_group_tasks;
-    present_task_group_create_info.unique_input_to_ingroup_task_mapping  = &present_task_unique_input_mapping;
-    present_task_group_create_info.unique_output_to_ingroup_task_mapping = &present_task_unique_output_mapping;
+    present_task_group_create_info.ingroup_connections                      = present_task_ingroup_connections;
+    present_task_group_create_info.n_ingroup_connections                    = sizeof(present_task_ingroup_connections) / sizeof(present_task_ingroup_connections[0]);
+    present_task_group_create_info.n_present_tasks                          = sizeof(present_task_group_tasks)         / sizeof(present_task_group_tasks        [0]);
+    present_task_group_create_info.n_total_unique_inputs                    = 1;
+    present_task_group_create_info.n_total_unique_outputs                   = 1;
+    present_task_group_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
+    present_task_group_create_info.n_unique_output_to_ingroup_task_mappings = 1;
+    present_task_group_create_info.present_tasks                            = present_task_group_tasks;
+    present_task_group_create_info.unique_input_to_ingroup_task_mapping     = &present_task_unique_input_mapping;
+    present_task_group_create_info.unique_output_to_ingroup_task_mapping    = &present_task_unique_output_mapping;
 
     checkbox_ptr->cached_present_task = ral_present_task_create_group(&present_task_group_create_info);
     result                            = checkbox_ptr->cached_present_task;

@@ -875,20 +875,24 @@ PUBLIC EMERALD_API ral_present_task postprocessing_motion_blur_get_present_task(
         result_task_ingroup_connection.output_present_task_index    = 0;
         result_task_ingroup_connection.output_present_task_io_index = 0; /* props UB */
 
-        result_task_input_mappings[0].io_index       = 1; /* color_texture_view */
-        result_task_input_mappings[0].n_present_task = 1;
+        result_task_input_mappings[0].group_task_io_index   = 0;
+        result_task_input_mappings[0].n_present_task        = 1;
+        result_task_input_mappings[0].present_task_io_index = 1; /* color_texture_view */
 
-        result_task_input_mappings[1].io_index       = 2; /* velocity_texture_view */
-        result_task_input_mappings[1].n_present_task = 1;
+        result_task_input_mappings[1].group_task_io_index   = 1;
+        result_task_input_mappings[1].n_present_task        = 1;
+        result_task_input_mappings[1].present_task_io_index = 2; /* velocity_texture_view */
 
-        result_task_create_info.ingroup_connections                   = &result_task_ingroup_connection;
-        result_task_create_info.n_ingroup_connections                 = 1;
-        result_task_create_info.n_present_tasks                       = sizeof(result_task_present_tasks)  / sizeof(result_task_present_tasks[0]);
-        result_task_create_info.n_unique_inputs                       = sizeof(result_task_input_mappings) / sizeof(result_task_input_mappings[0]);
-        result_task_create_info.n_unique_outputs                      = 1;
-        result_task_create_info.present_tasks                         = result_task_present_tasks;
-        result_task_create_info.unique_input_to_ingroup_task_mapping  = result_task_input_mappings;
-        result_task_create_info.unique_output_to_ingroup_task_mapping = &result_task_output_mapping;
+        result_task_create_info.ingroup_connections                      = &result_task_ingroup_connection;
+        result_task_create_info.n_ingroup_connections                    = 1;
+        result_task_create_info.n_present_tasks                          = sizeof(result_task_present_tasks)  / sizeof(result_task_present_tasks[0]);
+        result_task_create_info.n_total_unique_inputs                    = sizeof(result_task_input_mappings) / sizeof(result_task_input_mappings[0]);
+        result_task_create_info.n_total_unique_outputs                   = 1;
+        result_task_create_info.n_unique_input_to_ingroup_task_mappings  = result_task_create_info.n_total_unique_inputs;
+        result_task_create_info.n_unique_output_to_ingroup_task_mappings = result_task_create_info.n_total_unique_outputs;
+        result_task_create_info.present_tasks                            = result_task_present_tasks;
+        result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_input_mappings;
+        result_task_create_info.unique_output_to_ingroup_task_mapping    = &result_task_output_mapping;
 
         result = ral_present_task_create_group(&result_task_create_info);
     }

@@ -94,11 +94,6 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(const raGL_program     
                                                          system_hashed_ansi_string      name,
                                                          const _raGL_program_variable** out_uniform_ptr);
 
-/** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(const raGL_program              program,
-                                                                  system_hashed_ansi_string       index,
-                                                                  const _raGL_program_attribute** out_vertex_attribute_ptr);
-
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *
  *  @param ogl_program Program to link.

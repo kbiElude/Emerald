@@ -1194,20 +1194,24 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
     result_present_task_present_tasks[0] = present_task_cpu;
     result_present_task_present_tasks[1] = present_task_gpu;
 
-    result_present_task_unique_input.io_index       = 1; /* target_texture_view */
-    result_present_task_unique_input.n_present_task = 1;
+    result_present_task_unique_input.group_task_io_index   = 0;
+    result_present_task_unique_input.n_present_task        = 1;
+    result_present_task_unique_input.present_task_io_index = 1; /* target_texture_view */
 
-    result_present_task_unique_output.io_index      = 0; /* target_texture_view */
-    result_present_task_unique_input.n_present_task = 1;
+    result_present_task_unique_output.group_task_io_index   = 0;
+    result_present_task_unique_output.present_task_io_index = 0; /* target_texture_view */
+    result_present_task_unique_output.n_present_task        = 1;
 
-    result_present_task_create_info.ingroup_connections                   = &result_present_task_ingroup_connection;
-    result_present_task_create_info.n_ingroup_connections                 = 1;
-    result_present_task_create_info.n_present_tasks                       = sizeof(result_present_task_present_tasks) / sizeof(result_present_task_present_tasks[0]);
-    result_present_task_create_info.n_unique_inputs                       = 1;
-    result_present_task_create_info.n_unique_outputs                      = 1;
-    result_present_task_create_info.present_tasks                         =  result_present_task_present_tasks;
-    result_present_task_create_info.unique_input_to_ingroup_task_mapping  = &result_present_task_unique_input;
-    result_present_task_create_info.unique_output_to_ingroup_task_mapping = &result_present_task_unique_output;
+    result_present_task_create_info.ingroup_connections                      = &result_present_task_ingroup_connection;
+    result_present_task_create_info.n_ingroup_connections                    = 1;
+    result_present_task_create_info.n_present_tasks                          = sizeof(result_present_task_present_tasks) / sizeof(result_present_task_present_tasks[0]);
+    result_present_task_create_info.n_total_unique_inputs                    = 1;
+    result_present_task_create_info.n_total_unique_outputs                   = 1;
+    result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
+    result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = 1;
+    result_present_task_create_info.present_tasks                            =  result_present_task_present_tasks;
+    result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &result_present_task_unique_input;
+    result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_unique_output;
 
     text_ptr->last_cached_present_task = ral_present_task_create_group(&result_present_task_create_info);
     result                             = text_ptr->last_cached_present_task;

@@ -174,44 +174,41 @@ typedef struct scene_renderer_uber_start_info
 typedef unsigned int scene_renderer_uber_item_id;
 
 /** TODO */
-PUBLIC EMERALD_API scene_renderer_uber_item_id scene_renderer_uber_add_input_fragment_attribute_item(scene_renderer_uber                          uber,
-                                                                                                     scene_renderer_uber_input_fragment_attribute input_attribute);
+PUBLIC scene_renderer_uber_item_id scene_renderer_uber_add_input_fragment_attribute_item(scene_renderer_uber                          uber,
+                                                                                         scene_renderer_uber_input_fragment_attribute input_attribute);
 
 /** TODO */
-PUBLIC EMERALD_API scene_renderer_uber_item_id scene_renderer_uber_add_light_item(scene_renderer_uber              uber,
-                                                                                  scene_light                      light_instance,
-                                                                                  shaders_fragment_uber_light_type light_type,
-                                                                                  bool                             is_shadow_caster,
-                                                                                  unsigned int                     n_light_properties,
-                                                                                  void*                            light_property_values);
+PUBLIC scene_renderer_uber_item_id scene_renderer_uber_add_light_item(scene_renderer_uber              uber,
+                                                                      scene_light                      light_instance,
+                                                                      shaders_fragment_uber_light_type light_type,
+                                                                      bool                             is_shadow_caster,
+                                                                      unsigned int                     n_light_properties,
+                                                                      void*                            light_property_values);
 
 /** TODO */
-PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create(ral_context                context,
-                                                                  system_hashed_ansi_string  name);
+PUBLIC scene_renderer_uber scene_renderer_uber_create(ral_context                context,
+                                                      system_hashed_ansi_string  name);
 
 /** TODO */
-PUBLIC EMERALD_API scene_renderer_uber scene_renderer_uber_create_from_ral_program(ral_context               context,
-                                                                                   system_hashed_ansi_string name,
-                                                                                   ral_program               program);
+PUBLIC scene_renderer_uber scene_renderer_uber_create_from_ral_program(ral_context               context,
+                                                                       system_hashed_ansi_string name,
+                                                                       ral_program               program);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_renderer_uber_get_shader_general_property(const scene_renderer_uber            uber,
-                                                                        scene_renderer_uber_general_property property,
-                                                                        void*                                out_result_ptr);
+PUBLIC void scene_renderer_uber_get_shader_general_property(const scene_renderer_uber            uber,
+                                                            scene_renderer_uber_general_property property,
+                                                            void*                                out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_renderer_uber_get_shader_item_property(const scene_renderer_uber         uber,
-                                                                     scene_renderer_uber_item_id       item_id,
-                                                                     scene_renderer_uber_item_property property,
-                                                                     void*                             out_result_ptr);
+PUBLIC void scene_renderer_uber_get_shader_item_property(const scene_renderer_uber         uber,
+                                                         scene_renderer_uber_item_id       item_id,
+                                                         scene_renderer_uber_item_property property,
+                                                         void*                             out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_renderer_uber_link(scene_renderer_uber uber);
+PUBLIC void scene_renderer_uber_link(scene_renderer_uber uber);
 
 /** TODO.
- *
- *  Returns a secondary command buffer holding commands which render the specified mesh.
- *  The caller is required to release the command buffer when no longer needed.
  *
  **/
 PUBLIC void scene_renderer_uber_render_mesh(mesh                             mesh_gpu,
@@ -227,17 +224,24 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                                                 const scene_renderer_uber_start_info* start_info_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_renderer_uber_set_shader_general_property(scene_renderer_uber                  uber,
-                                                                        scene_renderer_uber_general_property property,
-                                                                        const void*                          data);
+PUBLIC void scene_renderer_uber_set_shader_general_property(scene_renderer_uber                  uber,
+                                                            scene_renderer_uber_general_property property,
+                                                            const void*                          data);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_renderer_uber_set_shader_item_property(scene_renderer_uber               uber,
-                                                                     unsigned int                      item_index,
-                                                                     scene_renderer_uber_item_property property,
-                                                                     const void*                       data);
+PUBLIC void scene_renderer_uber_set_shader_item_property(scene_renderer_uber               uber,
+                                                         unsigned int                      item_index,
+                                                         scene_renderer_uber_item_property property,
+                                                         const void*                       data);
 
-/** TODO */
+/** TODO
+ *
+ *  The result present task:
+ *
+ *  - takes 2 unique inputs    (color rt, depth rt)
+ *  - exposes 2 unique outputs (color rt, depth rt)
+ *
+ **/
 PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber uber);
 
 

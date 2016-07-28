@@ -7,7 +7,6 @@
 #define SCENE_RENDERER_SM_H
 
 #include "glsl/glsl_types.h"
-#include "ogl/ogl_types.h"
 #include "scene/scene_types.h"
 #include "scene_renderer/scene_renderer_types.h"
 #include "shaders/shaders_fragment_uber.h"
@@ -112,7 +111,7 @@ PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(glsl_shader_constructor   
  *
  *  NOTE: MUST be called from within an active GL context.
  */
-PUBLIC RENDERING_CONTEXT_CALL scene_renderer_sm scene_renderer_sm_create(ral_context context);
+PUBLIC scene_renderer_sm scene_renderer_sm_create(ral_context context);
 
 /** TODO */
 PUBLIC void scene_renderer_sm_get_matrices_for_light(scene_renderer_sm             shadow_mapping,

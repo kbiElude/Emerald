@@ -18,11 +18,17 @@ REFCOUNT_INSERT_DECLARATIONS(mesh_material,
 
 typedef enum
 {
-    MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED, /* material property change resulted in an ogl_uber update.
-                                                 *
-                                                 * callback_proc_data: source mesh_material instance
-                                                 */
-    MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,      /* vertex smoothing angle changed; callback_proc_data: source mesh_material instance */
+    /* material property change resulted in a scene_renderer_uber update.
+     *
+     * callback_proc_data: source mesh_material instance
+     */
+    MESH_MATERIAL_CALLBACK_ID_UBER_UPDATED,
+
+    /* vertex smoothing angle changed;
+     *
+     * callback_proc_data: source mesh_material instance
+     */
+    MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
 
     /* Always last */
     MESH_MATERIAL_CALLBACK_ID_COUNT

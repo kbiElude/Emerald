@@ -4,7 +4,6 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
 #include "ral/ral_context.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"

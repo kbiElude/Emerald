@@ -290,14 +290,17 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
                                                                                  float                       blur_strength,
                                                                                  ral_texture_view            result_texture_view)
 {
-    ral_command_buffer             cmd_buffer             = nullptr;
-    ral_command_buffer_create_info cmd_buffer_create_info;
-    _postprocessing_blur_poisson*  poisson_ptr            = reinterpret_cast<_postprocessing_blur_poisson*>(blur_poisson);
-    ral_present_task               result                 = nullptr;
-    unsigned int                   texture_height         = 0;
-    unsigned int                   texture_width          = 0;
-    system_window                  window                 = nullptr;
-    int                            window_size[2]         = {0};
+    ral_command_buffer                              cmd_buffer             = nullptr;
+    ral_command_buffer_create_info                  cmd_buffer_create_info;
+    ral_gfx_state_create_info                       gfx_state_create_info;
+    ral_command_buffer_set_scissor_box_command_info gfx_state_scissor_box;
+    ral_command_buffer_set_viewport_command_info    gfx_state_viewport;
+    _postprocessing_blur_poisson*                   poisson_ptr            = reinterpret_cast<_postprocessing_blur_poisson*>(blur_poisson);
+    ral_present_task                                result                 = nullptr;
+    unsigned int                                    texture_height         = 0;
+    unsigned int                                    texture_width          = 0;
+    system_window                                   window                 = nullptr;
+    int                                             window_size[2]         = {0};
 
     ral_context_get_property(poisson_ptr->context,
                              RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
@@ -337,10 +340,6 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
                                         &texture_width);
 
     /* Instantiate a new gfx state */
-    ral_gfx_state_create_info                       gfx_state_create_info;
-    ral_command_buffer_set_scissor_box_command_info gfx_state_scissor_box;
-    ral_command_buffer_set_viewport_command_info    gfx_state_viewport;
-
     gfx_state_scissor_box.index   = 0;
     gfx_state_scissor_box.size[0] = texture_width;
     gfx_state_scissor_box.size[1] = texture_height;
@@ -350,8 +349,8 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     gfx_state_viewport.depth_range[0] = 0.0f;
     gfx_state_viewport.depth_range[1] = 1.0f;
     gfx_state_viewport.index          = 0;
-    gfx_state_viewport.size[0]        = texture_width;
-    gfx_state_viewport.size[1]        = texture_height;
+    gfx_state_viewport.size[0]        = static_cast<float>(texture_width);
+    gfx_state_viewport.size[1]        = static_cast<float>(texture_height);
     gfx_state_viewport.xy  [0]        = 0;
     gfx_state_viewport.xy  [1]        = 0;
 
@@ -511,25 +510,29 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     group_task_present_tasks[0] = ub_update_task;
     group_task_present_tasks[1] = pp_task;
 
-    group_task_input_to_ingroup_in_mapping.io_index       = 1; /* pp_inputs[1] */
-    group_task_input_to_ingroup_in_mapping.n_present_task = 1;
+    group_task_input_to_ingroup_in_mapping.group_task_io_index   = 0;
+    group_task_input_to_ingroup_in_mapping.present_task_io_index = 1; /* pp_inputs[1] */
+    group_task_input_to_ingroup_in_mapping.n_present_task        = 1;
 
-    group_task_output_to_ingroup_out_mapping.io_index       = 0;
-    group_task_output_to_ingroup_out_mapping.n_present_task = 1; /* pp_output */
+    group_task_output_to_ingroup_out_mapping.group_task_io_index   = 0;
+    group_task_output_to_ingroup_out_mapping.present_task_io_index = 0;
+    group_task_output_to_ingroup_out_mapping.n_present_task        = 1; /* pp_output */
 
     group_task_ub_update_to_pp_connection.input_present_task_index     = 1;
     group_task_ub_update_to_pp_connection.input_present_task_io_index  = 0; /* pp_inputs[0] */
     group_task_ub_update_to_pp_connection.output_present_task_index    = 0;
     group_task_ub_update_to_pp_connection.output_present_task_io_index = 0; /* ub_update_task_output */
 
-    group_task_create_info.ingroup_connections                   = &group_task_ub_update_to_pp_connection;
-    group_task_create_info.n_ingroup_connections                 = 1;
-    group_task_create_info.n_present_tasks                       = sizeof(group_task_present_tasks) / sizeof(group_task_present_tasks[0]);
-    group_task_create_info.n_unique_inputs                       = 1;
-    group_task_create_info.n_unique_outputs                      = 1;
-    group_task_create_info.present_tasks                         = group_task_present_tasks;
-    group_task_create_info.unique_input_to_ingroup_task_mapping  = &group_task_input_to_ingroup_in_mapping;
-    group_task_create_info.unique_output_to_ingroup_task_mapping = &group_task_output_to_ingroup_out_mapping;
+    group_task_create_info.ingroup_connections                      = &group_task_ub_update_to_pp_connection;
+    group_task_create_info.n_ingroup_connections                    = 1;
+    group_task_create_info.n_present_tasks                          = sizeof(group_task_present_tasks) / sizeof(group_task_present_tasks[0]);
+    group_task_create_info.n_total_unique_inputs                    = 1;
+    group_task_create_info.n_total_unique_outputs                   = 1;
+    group_task_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
+    group_task_create_info.n_unique_output_to_ingroup_task_mappings = 1;
+    group_task_create_info.present_tasks                            = group_task_present_tasks;
+    group_task_create_info.unique_input_to_ingroup_task_mapping     = &group_task_input_to_ingroup_in_mapping;
+    group_task_create_info.unique_output_to_ingroup_task_mapping    = &group_task_output_to_ingroup_out_mapping;
 
     group_task = ral_present_task_create_group(&group_task_create_info);
 

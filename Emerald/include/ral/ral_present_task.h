@@ -87,6 +87,7 @@ typedef struct
      *
      *       If more than one source is specified, all such inputs need to be assigned
      *       (directly or indirectly) the same ral_texture instance.
+     *
      */
     uint32_t                              n_total_unique_inputs;
     uint32_t                              n_unique_input_to_ingroup_task_mappings;
@@ -97,6 +98,7 @@ typedef struct
      *
      *       If more than one output is specified, all such outputs need to refer (directly
      *       or indirectly) to the same ral_texture instance.
+     *
      */
     uint32_t                              n_total_unique_outputs;
     uint32_t                              n_unique_output_to_ingroup_task_mappings;

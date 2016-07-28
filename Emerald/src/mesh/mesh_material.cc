@@ -1360,7 +1360,7 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
 
         /* Call back any subscribers & inform them about the event */
         system_callback_manager_call_back(material_ptr->callback_manager,
-                                          MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
+                                          MESH_MATERIAL_CALLBACK_ID_UBER_UPDATED,
                                           material_ptr);
     }
 
@@ -1574,9 +1574,9 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture_view(me
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE,
                       "Requested shading property is not using a texture attachment");
 
-    if (out_texture_ptr != nullptr)
+    if (out_texture_view_ptr != nullptr)
     {
-        *out_texture_ptr = texture_data_ptr->texture;
+        *out_texture_view_ptr = texture_data_ptr->texture_view;
     }
 
     if (out_mipmap_level_ptr != nullptr)

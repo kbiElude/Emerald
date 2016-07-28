@@ -1237,7 +1237,7 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
     /* Allocate a couple of helper arrays using stack memory. Note that these allocations do not
      * need to be released explicitly.
      **/
-    present_tasks = reinterpret_cast<ral_present_task*>(_alloca(sizeof(ral_present_task) * n_controls));
+    present_tasks = reinterpret_cast<ral_present_task*>(_malloca(sizeof(ral_present_task) * n_controls));
 
     /* It is assumed UI controls can be drawn in any order. We will therefore first retrieve
      * the latest present task from each instantiated UI control, and then create a group task
@@ -1341,28 +1341,32 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
          *       to render in correct order. For now this must do.
          **/
         ral_present_task_group_create_info result_present_task_create_info;
-        ral_present_task_group_mapping*    input_to_ingroup_task_mappings   = reinterpret_cast<ral_present_task_group_mapping*>(_alloca(sizeof(ral_present_task_group_mapping) * n_present_tasks));
-        ral_present_task_group_mapping*    output_to_ingroup_task_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_alloca(sizeof(ral_present_task_group_mapping) * n_present_tasks));
+        ral_present_task_group_mapping*    input_to_ingroup_task_mappings   = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_present_tasks));
+        ral_present_task_group_mapping*    output_to_ingroup_task_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_present_tasks));
 
         for (uint32_t n_mapping = 0;
                       n_mapping < n_present_tasks;
                     ++n_mapping)
         {
-            input_to_ingroup_task_mappings[n_mapping].io_index       = 0;
-            input_to_ingroup_task_mappings[n_mapping].n_present_task = n_mapping;
+            input_to_ingroup_task_mappings[n_mapping].group_task_io_index   = n_mapping;
+            input_to_ingroup_task_mappings[n_mapping].n_present_task        = n_mapping;
+            input_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
 
-            output_to_ingroup_task_mappings[n_mapping].io_index       = 0;
-            output_to_ingroup_task_mappings[n_mapping].n_present_task = n_mapping;
+            output_to_ingroup_task_mappings[n_mapping].group_task_io_index   = n_mapping;
+            output_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
+            output_to_ingroup_task_mappings[n_mapping].n_present_task        = n_mapping;
         }
 
-        result_present_task_create_info.ingroup_connections                   = nullptr;
-        result_present_task_create_info.n_ingroup_connections                 = 0;
-        result_present_task_create_info.n_present_tasks                       = n_present_tasks;
-        result_present_task_create_info.n_unique_inputs                       = n_present_tasks;
-        result_present_task_create_info.n_unique_outputs                      = n_present_tasks;
-        result_present_task_create_info.present_tasks                         = present_tasks;
-        result_present_task_create_info.unique_input_to_ingroup_task_mapping  = input_to_ingroup_task_mappings;
-        result_present_task_create_info.unique_output_to_ingroup_task_mapping = output_to_ingroup_task_mappings;
+        result_present_task_create_info.ingroup_connections                      = nullptr;
+        result_present_task_create_info.n_ingroup_connections                    = 0;
+        result_present_task_create_info.n_present_tasks                          = n_present_tasks;
+        result_present_task_create_info.n_total_unique_inputs                    = n_present_tasks;
+        result_present_task_create_info.n_total_unique_outputs                   = n_present_tasks;
+        result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_present_tasks;
+        result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = n_present_tasks;
+        result_present_task_create_info.present_tasks                            = present_tasks;
+        result_present_task_create_info.unique_input_to_ingroup_task_mapping     = input_to_ingroup_task_mappings;
+        result_present_task_create_info.unique_output_to_ingroup_task_mapping    = output_to_ingroup_task_mappings;
 
         if (ui_ptr->last_present_task != nullptr)
         {

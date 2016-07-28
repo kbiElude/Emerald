@@ -1125,7 +1125,7 @@ PRIVATE void _mesh_marchingcubes_init_mesh_instance(_mesh_marchingcubes* mesh_pt
     new_layer_pass_id = mesh_add_layer_pass_for_gpu_stream_mesh(mesh_ptr->mesh_instance,
                                                                 new_layer_id,
                                                                 mesh_ptr->material_gpu,
-                                                                MESH_DRAW_CALL_TYPE_ARRAYS_INDIRECT,
+                                                                MESH_DRAW_CALL_TYPE_NONINDEXED_INDIRECT,
                                                                &draw_call_arguments);
 
     /* Create new normals & vertices subregion buffers */
@@ -1548,16 +1548,19 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
         task_result_ingroup_connection.output_present_task_index    = 0;
         task_result_ingroup_connection.output_present_task_io_index = 0;
 
-        task_result_output_mapping.io_index       = 0;
-        task_result_output_mapping.n_present_task = 1;
+        task_result_output_mapping.group_task_io_index   = 0;
+        task_result_output_mapping.n_present_task        = 1;
+        task_result_output_mapping.present_task_io_index = 0;
 
-        task_result_create_info.ingroup_connections                   = &task_result_ingroup_connection;
-        task_result_create_info.n_ingroup_connections                 = 1;
-        task_result_create_info.n_present_tasks                       = sizeof(task_result_present_tasks) / sizeof(task_result_present_tasks[0]);
-        task_result_create_info.n_unique_inputs                       = 0;
-        task_result_create_info.n_unique_outputs                      = 1;
-        task_result_create_info.unique_input_to_ingroup_task_mapping  = nullptr;
-        task_result_create_info.unique_output_to_ingroup_task_mapping = &task_result_output_mapping;
+        task_result_create_info.ingroup_connections                      = &task_result_ingroup_connection;
+        task_result_create_info.n_ingroup_connections                    = 1;
+        task_result_create_info.n_present_tasks                          = sizeof(task_result_present_tasks) / sizeof(task_result_present_tasks[0]);
+        task_result_create_info.n_total_unique_inputs                    = 0;
+        task_result_create_info.n_total_unique_outputs                   = 1;
+        task_result_create_info.n_unique_input_to_ingroup_task_mappings  = 0;
+        task_result_create_info.n_unique_output_to_ingroup_task_mappings = 1;
+        task_result_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
+        task_result_create_info.unique_output_to_ingroup_task_mapping    = &task_result_output_mapping;
 
         mesh_ptr->present_task_with_compute = ral_present_task_create_group(&task_result_create_info);
 

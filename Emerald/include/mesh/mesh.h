@@ -51,15 +51,17 @@ typedef enum
     MESH_INDEX_TYPE_UNKNOWN
 } _mesh_index_type;
 
-typedef void (*PFNGETMESHAABBPROC)     (const void*            user_arg,
-                                        float*                 out_aabb_model_vec3_min,
-                                        float*                 out_aabb_model_vec3_max);
-typedef void (*PFNRENDERCUSTOMMESHPROC)(ral_context            context_ral,
-                                        const void*            user_arg,
-                                        const system_matrix4x4 model_matrix,
-                                        const system_matrix4x4 vp_matrix,
-                                        const system_matrix4x4 normal_matrix,
-                                        bool                   is_depth_prepass);
+typedef void             (*PFNGETMESHAABBPROC)     (const void*            user_arg,
+                                                    float*                 out_aabb_model_vec3_min,
+                                                    float*                 out_aabb_model_vec3_max);
+typedef ral_present_task (*PFNRENDERCUSTOMMESHPROC)(ral_context            context_ral,
+                                                    const void*            user_arg,
+                                                    const system_matrix4x4 model_matrix,
+                                                    const system_matrix4x4 vp_matrix,
+                                                    const system_matrix4x4 normal_matrix,
+                                                    bool                   is_depth_prepass,
+                                                    ral_texture_view       color_rt,
+                                                    ral_texture_view       opt_depth_rt);
 
 
 /** TODO

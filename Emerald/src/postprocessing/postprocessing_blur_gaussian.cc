@@ -4,8 +4,6 @@
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_context_state_cache.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "ral/ral_buffer.h"
 #include "ral/ral_command_buffer.h"
@@ -840,10 +838,10 @@ PRIVATE void _postprocessing_blur_gaussian_release(void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ral_context               context,
-                                                                                               system_hashed_ansi_string name,
-                                                                                               unsigned int              n_min_taps,
-                                                                                               unsigned int              n_max_taps)
+PUBLIC postprocessing_blur_gaussian postprocessing_blur_gaussian_create(ral_context               context,
+                                                                        system_hashed_ansi_string name,
+                                                                        unsigned int              n_min_taps,
+                                                                        unsigned int              n_max_taps)
 {
     /* Instantiate the object */
     _postprocessing_blur_gaussian* result_ptr = new (std::nothrow) _postprocessing_blur_gaussian(context,

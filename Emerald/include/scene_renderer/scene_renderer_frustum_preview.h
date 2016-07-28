@@ -28,7 +28,13 @@ PUBLIC void scene_renderer_frustum_preview_assign_cameras(scene_renderer_frustum
 /** TODO. **/
 PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_preview preview);
 
-/** TODO */
+/** TODO
+ *
+ *  Returns a presene task which:
+ *
+ *  - takes 1 or 2 unique inputs    (depending if color RT AND depth RT was specified at call time)
+ *  - exposes 1 or 2 unique outputs (as above)
+ */
 PUBLIC ral_present_task scene_renderer_frustum_preview_render(scene_renderer_frustum_preview preview,
                                                               system_time                    time,
                                                               system_matrix4x4               vp,

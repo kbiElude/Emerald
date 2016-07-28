@@ -2525,7 +2525,7 @@ PUBLIC void scene_renderer_sm_adjust_vertex_uber_code(glsl_shader_constructor   
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL scene_renderer_sm scene_renderer_sm_create(ral_context context)
+PUBLIC scene_renderer_sm scene_renderer_sm_create(ral_context context)
 {
     _scene_renderer_sm* new_instance_ptr = new (std::nothrow) _scene_renderer_sm;
 
@@ -3780,6 +3780,8 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                 system_matrix4x4 light_projection_matrix = nullptr;
                 system_matrix4x4 light_view_matrix       = nullptr;
                 system_matrix4x4 light_vp_matrix         = nullptr;
+                ral_texture_view sm_color_texture_view   = nullptr;
+                ral_texture_view sm_depth_texture_view   = nullptr;
                 system_matrix4x4 sm_projection_matrix    = nullptr;
                 system_matrix4x4 sm_view_matrix          = nullptr;
 
@@ -3792,9 +3794,6 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                 {
                     if (n_sm_pass == 0)
                     {
-                        ral_texture_view sm_color_texture_view = nullptr;
-                        ral_texture_view sm_depth_texture_view = nullptr;
-
                         scene_light_get_property(current_light,
                                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
                                                 &sm_color_texture_view);
@@ -3908,7 +3907,9 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                                                           RENDER_MODE_SHADOW_MAP,
                                                           false, /* apply_shadow_mapping */
                                                           HELPER_VISUALIZATION_NONE,
-                                                          frame_time);
+                                                          frame_time,
+                                                          sm_color_texture_view,
+                                                          sm_depth_texture_view);
                    }
 
                    /* Clean up */
@@ -3929,9 +3930,9 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                 {
                     ral_present_task_group_mapping& current_mapping = result_present_task_mappings[n_result_present_task_mappings];
 
+                    current_mapping.group_task_io_index   = n_light * 2 + 0;
                     current_mapping.n_present_task        = n_render_present_tasks_used;
                     current_mapping.present_task_io_index = 0;
-                    current_mapping.unique_output_index   = n_light * 2 + 0;
 
                     n_result_present_task_mappings++;
                 }
@@ -3940,9 +3941,9 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                 {
                     ral_present_task_group_mapping& current_mapping = result_present_task_mappings[n_result_present_task_mappings];
 
+                    current_mapping.group_task_io_index   = n_light * 2 + 1;
                     current_mapping.n_present_task        = n_render_present_tasks_used;
                     current_mapping.present_task_io_index = current_light_uses_color_rt ? 1 : 0;
-                    current_mapping.unique_output_index   = n_light * 2 + 1;
 
                     n_result_present_task_mappings++;
                 }

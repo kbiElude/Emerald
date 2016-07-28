@@ -501,17 +501,20 @@ PRIVATE void _scalar_field_metaballs_init_present_tasks(_scalar_field_metaballs*
         result_present_task_ingroup_connection.output_present_task_index    = 0; /* po_props_ub_bo_ral */
         result_present_task_ingroup_connection.output_present_task_io_index = 0;
 
-        result_present_task_unique_output_mapping.io_index       = 0;
-        result_present_task_unique_output_mapping.n_present_task = 1; /* scalar_field_bo */
+        result_present_task_unique_output_mapping.group_task_io_index   = 0;
+        result_present_task_unique_output_mapping.n_present_task        = 1; /* scalar_field_bo */
+        result_present_task_unique_output_mapping.present_task_io_index = 0;
 
-        result_present_task_create_info.ingroup_connections                   = &result_present_task_ingroup_connection;
-        result_present_task_create_info.n_ingroup_connections                 = 1;
-        result_present_task_create_info.n_present_tasks                       = sizeof(result_present_task_present_tasks) / sizeof(result_present_task_present_tasks[0]);
-        result_present_task_create_info.n_unique_inputs                       = 0;
-        result_present_task_create_info.n_unique_outputs                      = 1;
-        result_present_task_create_info.present_tasks                         = result_present_task_present_tasks;
-        result_present_task_create_info.unique_input_to_ingroup_task_mapping  = nullptr;
-        result_present_task_create_info.unique_output_to_ingroup_task_mapping = &result_present_task_unique_output_mapping;
+        result_present_task_create_info.ingroup_connections                      = &result_present_task_ingroup_connection;
+        result_present_task_create_info.n_ingroup_connections                    = 1;
+        result_present_task_create_info.n_present_tasks                          = sizeof(result_present_task_present_tasks) / sizeof(result_present_task_present_tasks[0]);
+        result_present_task_create_info.n_total_unique_inputs                    = 0;
+        result_present_task_create_info.n_total_unique_outputs                   = 1;
+        result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 0;
+        result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = 1;
+        result_present_task_create_info.present_tasks                            = result_present_task_present_tasks;
+        result_present_task_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
+        result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_unique_output_mapping;
 
         metaballs_ptr->present_task_with_compute = ral_present_task_create_group(&result_present_task_create_info);
 

@@ -8,9 +8,11 @@
 #include "demo/demo_app.h"
 #include "mesh/mesh_material.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -70,31 +72,31 @@ typedef struct _scene_renderer_mesh_uber_item
 
     _scene_renderer_mesh_uber_item()
     {
-        material      = NULL;
+        material      = nullptr;
         mesh_id       = -1;
-        mesh_instance = NULL;
-        model_matrix  = NULL;
-        normal_matrix = NULL;
+        mesh_instance = nullptr;
+        model_matrix  = nullptr;
+        normal_matrix = nullptr;
         type          = MESH_TYPE_UNKNOWN;
     }
 
     ~_scene_renderer_mesh_uber_item()
     {
-        if (model_matrix != NULL)
+        if (model_matrix != nullptr)
         {
             /* This is not expensive, since matrices are stored in a global
              * resource pool.
              */
             system_matrix4x4_release(model_matrix);
 
-            model_matrix = NULL;
+            model_matrix = nullptr;
         }
 
-        if (normal_matrix != NULL)
+        if (normal_matrix != nullptr)
         {
             system_matrix4x4_release(normal_matrix);
 
-            normal_matrix = NULL;
+            normal_matrix = nullptr;
         }
     }
 
@@ -113,16 +115,16 @@ typedef struct _scene_renderer_uber
 
     _scene_renderer_uber()
     {
-        regular_mesh_items = NULL;
+        regular_mesh_items = nullptr;
     }
 
     ~_scene_renderer_uber()
     {
-        if (regular_mesh_items != NULL)
+        if (regular_mesh_items != nullptr)
         {
             system_resizable_vector_release(regular_mesh_items);
 
-            regular_mesh_items = NULL;
+            regular_mesh_items = nullptr;
         }
     }
 } _scene_renderer_uber;
@@ -144,6 +146,8 @@ typedef struct _scene_renderer
     float                               current_camera_visible_world_aabb_max[3];
     float                               current_camera_visible_world_aabb_min[3];
     scene_camera                        current_camera;
+    ral_texture_view                    current_color_rt;
+    ral_texture_view                    current_depth_rt;
     scene_renderer_helper_visualization current_helper_visualization;
     bool                                current_is_shadow_mapping_enabled;
     system_matrix4x4                    current_model_matrix;
@@ -188,72 +192,66 @@ typedef struct _scene_renderer
 } _scene_renderer;
 
 /* Forward declarations */
-PRIVATE void _scene_renderer_create_model_normal_matrices             (_scene_renderer*            renderer_ptr,
-                                                                       system_matrix4x4*           out_model_matrix_ptr,
-                                                                       system_matrix4x4*           out_normal_matrix_ptr);
-PRIVATE void _scene_renderer_deinit_cached_ubers_map_contents         (system_hash64map            cached_materials_map);
-PRIVATE void _scene_renderer_deinit_resizable_vector_for_resource_pool(system_resource_pool_block  block);
-PRIVATE void _scene_renderer_get_light_color                          (scene_light                 light,
-                                                                       system_time                 time,
-                                                                       system_variant              temp_float_variant,
-                                                                       float*                      out_color);
-PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode             (_scene_renderer*            renderer_ptr,
-                                                                       scene_renderer_render_mode  render_mode,
-                                                                       scene_renderer_materials    context_materials,
-                                                                       scene                       scene,
-                                                                       scene_renderer_uber*        result_uber_ptr);
-PRIVATE void _scene_renderer_init_resizable_vector_for_resource_pool  (system_resource_pool_block  block);
-PRIVATE void _scene_renderer_on_camera_show_frustum_setting_changed   (const void*                 unused,
-                                                                             void*                 scene_renderer);
-PRIVATE void _scene_renderer_on_ubers_map_invalidated                 (const void*                 unused,
-                                                                             void*                 scene_renderer);
-PRIVATE void _scene_renderer_process_mesh_for_forward_rendering       (scene_mesh                  scene_mesh_instance,
-                                                                       void*                       renderer);
-PRIVATE void _scene_renderer_process_mesh_for_shadow_map_rendering    (scene_mesh                  scene_mesh_instance,
-                                                                       void*                       renderer);
-PRIVATE void _scene_renderer_process_mesh_for_shadow_map_pre_pass     (scene_mesh                  scene_mesh_instance,
-                                                                       void*                       renderer);
-PRIVATE void _scene_renderer_release_mesh_matrices                    (void*                       mesh_entry);
-PRIVATE void _scene_renderer_render_helper_visualization              (_scene_renderer*            renderer_ptr,
-                                                                       system_time                 frame_time);
-PRIVATE void _scene_renderer_render_mesh_helper_visualization         (_scene_renderer*            renderer_ptr,
-                                                                       _scene_renderer_uber*       uber_details_ptr);
-PRIVATE void _scene_renderer_return_shadow_maps_to_pool               (scene_renderer              renderer);
-PRIVATE void _scene_renderer_subscribe_for_general_notifications      (_scene_renderer*            scene_renderer_ptr,
-                                                                       bool                        should_subscribe);
-PRIVATE void _scene_renderer_subscribe_for_mesh_material_notifications(_scene_renderer*            scene_renderer_ptr,
-                                                                       mesh_material               material,
-                                                                       bool                        should_subscribe);
-PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras  (_scene_renderer*            renderer_ptr);
-PRIVATE void _scene_renderer_update_ogl_uber_light_properties         (scene_renderer_uber         material_uber,
-                                                                       scene                       scene,
-                                                                       system_matrix4x4            current_camera_view_matrix,
-                                                                       system_time                 frame_time,
-                                                                       system_variant              temp_variant_float);
+PRIVATE void _scene_renderer_create_model_normal_matrices             (_scene_renderer*           renderer_ptr,
+                                                                       system_matrix4x4*          out_model_matrix_ptr,
+                                                                       system_matrix4x4*          out_normal_matrix_ptr);
+PRIVATE void _scene_renderer_deinit_cached_ubers_map_contents         (system_hash64map           cached_materials_map);
+PRIVATE void _scene_renderer_deinit_resizable_vector_for_resource_pool(system_resource_pool_block block);
+PRIVATE void _scene_renderer_get_light_color                          (scene_light                light,
+                                                                       system_time                time,
+                                                                       system_variant             temp_float_variant,
+                                                                       float*                     out_color);
+PRIVATE void _scene_renderer_get_uber_for_render_mode                 (_scene_renderer*           renderer_ptr,
+                                                                       scene_renderer_render_mode render_mode,
+                                                                       scene_renderer_materials   context_materials,
+                                                                       scene                      scene,
+                                                                       scene_renderer_uber*       result_uber_ptr);
+PRIVATE void _scene_renderer_init_resizable_vector_for_resource_pool  (system_resource_pool_block block);
+PRIVATE void _scene_renderer_on_camera_show_frustum_setting_changed   (const void*                unused,
+                                                                             void*                scene_renderer);
+PRIVATE void _scene_renderer_on_ubers_map_invalidated                 (const void*                unused,
+                                                                             void*                scene_renderer);
+PRIVATE void _scene_renderer_process_mesh_for_forward_rendering       (scene_mesh                 scene_mesh_instance,
+                                                                       void*                      renderer);
+PRIVATE void _scene_renderer_release_mesh_matrices                    (void*                      mesh_entry);
+PRIVATE void _scene_renderer_return_shadow_maps_to_pool               (scene_renderer             renderer);
+PRIVATE void _scene_renderer_subscribe_for_general_notifications      (_scene_renderer*           scene_renderer_ptr,
+                                                                       bool                       should_subscribe);
+PRIVATE void _scene_renderer_subscribe_for_mesh_material_notifications(_scene_renderer*           scene_renderer_ptr,
+                                                                       mesh_material              material,
+                                                                       bool                       should_subscribe);
+PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras  (_scene_renderer*           renderer_ptr);
+PRIVATE void _scene_renderer_update_uber_light_properties             (scene_renderer_uber        material_uber,
+                                                                       scene                      scene,
+                                                                       system_matrix4x4           current_camera_view_matrix,
+                                                                       system_time                frame_time,
+                                                                       system_variant             temp_variant_float);
 
 
 /** TODO */
 _scene_renderer::_scene_renderer(ral_context in_context,
                                  scene       in_scene)
 {
-    bbox_preview                    = NULL;
+    bbox_preview                    = nullptr;
     context                         = in_context;
-    current_camera                  = NULL;
+    current_camera                  = nullptr;
+    current_color_rt                = nullptr;
     current_custom_meshes_to_render = system_resizable_vector_create(sizeof(_scene_renderer_mesh*) );
+    current_depth_rt                = nullptr;
     current_mesh_id_to_mesh_map     = system_hash64map_create       (sizeof(_scene_renderer_mesh*) );
     current_model_matrix            = system_matrix4x4_create       ();
-    frustum_preview                 = NULL;    /* can be instantiated at draw time */
-    lights_preview                  = NULL;    /* can be instantiated at draw time */
-    material_manager                = NULL;
+    frustum_preview                 = nullptr;    /* can be instantiated at draw time */
+    lights_preview                  = nullptr;    /* can be instantiated at draw time */
+    material_manager                = nullptr;
     mesh_pool                       = system_resource_pool_create(sizeof(_scene_renderer_mesh),
                                                                   4,     /* n_elements_to_preallocate */
-                                                                  NULL,  /* init_fn */
-                                                                  NULL); /* deinit_fn */
+                                                                  nullptr,  /* init_fn */
+                                                                  nullptr); /* deinit_fn */
     mesh_uber_items_pool            = system_resource_pool_create(sizeof(_scene_renderer_mesh_uber_item),
                                                                   4,     /* n_elements_to_preallocate */
-                                                                  NULL,  /* init_fn */
-                                                                  NULL); /* deinit_fn */
-    normals_preview                 = NULL;
+                                                                  nullptr,  /* init_fn */
+                                                                  nullptr); /* deinit_fn */
+    normals_preview                 = nullptr;
     owned_scene                     = in_scene;
     regular_mesh_ubers_map          = system_hash64map_create    (sizeof(_scene_renderer_uber*) );
     shadow_mapping                  = scene_renderer_sm_create   (in_context);
@@ -286,10 +284,10 @@ _scene_renderer::~_scene_renderer()
     {
         mesh                    current_mesh             = scene_get_unique_mesh_by_index(owned_scene,
                                                                                           n_scene_unique_mesh);
-        system_resizable_vector current_mesh_materials   = NULL;
+        system_resizable_vector current_mesh_materials   = nullptr;
         uint32_t                n_current_mesh_materials = 0;
 
-        ASSERT_DEBUG_SYNC(current_mesh != NULL,
+        ASSERT_DEBUG_SYNC(current_mesh != nullptr,
                           "Could not retrieve unique mesh at index [%d]",
                           n_scene_unique_mesh);
 
@@ -297,7 +295,7 @@ _scene_renderer::~_scene_renderer()
                           MESH_PROPERTY_MATERIALS,
                          &current_mesh_materials);
 
-        ASSERT_DEBUG_SYNC(current_mesh_materials != NULL,
+        ASSERT_DEBUG_SYNC(current_mesh_materials != nullptr,
                           "Could not retrieve unique mesh materials.");
 
         system_resizable_vector_get_property(current_mesh_materials,
@@ -308,7 +306,7 @@ _scene_renderer::~_scene_renderer()
                       n_current_mesh_material < n_current_mesh_materials;
                     ++n_current_mesh_material)
         {
-            mesh_material current_mesh_material = NULL;
+            mesh_material current_mesh_material = nullptr;
 
             system_resizable_vector_get_element_at(current_mesh_materials,
                                                    n_current_mesh_material,
@@ -317,99 +315,99 @@ _scene_renderer::~_scene_renderer()
             _scene_renderer_subscribe_for_mesh_material_notifications(this,
                                                                       current_mesh_material,
                                                                       false /* should_subscribe */);
-        } /* for (all current mesh materials) */
-    } /* for (all unique meshes) */
+        }
+    }
 
-    if (bbox_preview != NULL)
+    if (bbox_preview != nullptr)
     {
         scene_renderer_bbox_preview_release(bbox_preview);
 
-        bbox_preview = NULL;
+        bbox_preview = nullptr;
     }
 
-    if (current_model_matrix != NULL)
+    if (current_model_matrix != nullptr)
     {
         system_matrix4x4_release(current_model_matrix);
 
-        current_model_matrix = NULL;
+        current_model_matrix = nullptr;
     }
 
-    if (current_custom_meshes_to_render != NULL)
+    if (current_custom_meshes_to_render != nullptr)
     {
         system_resizable_vector_release(current_custom_meshes_to_render);
 
-        current_custom_meshes_to_render = NULL;
+        current_custom_meshes_to_render = nullptr;
     }
 
-    if (lights_preview != NULL)
+    if (lights_preview != nullptr)
     {
         scene_renderer_lights_preview_release(lights_preview);
 
-        lights_preview = NULL;
+        lights_preview = nullptr;
     }
 
-    if (current_mesh_id_to_mesh_map != NULL)
+    if (current_mesh_id_to_mesh_map != nullptr)
     {
         system_hash64map_release(current_mesh_id_to_mesh_map);
 
-        current_mesh_id_to_mesh_map = NULL;
+        current_mesh_id_to_mesh_map = nullptr;
     }
 
-    if (mesh_pool != NULL)
+    if (mesh_pool != nullptr)
     {
         system_resource_pool_release(mesh_pool);
 
-        mesh_pool = NULL;
+        mesh_pool = nullptr;
     }
 
-    if (mesh_uber_items_pool != NULL)
+    if (mesh_uber_items_pool != nullptr)
     {
         system_resource_pool_release(mesh_uber_items_pool);
 
-        mesh_uber_items_pool = NULL;
+        mesh_uber_items_pool = nullptr;
     }
 
-    if (normals_preview != NULL)
+    if (normals_preview != nullptr)
     {
         scene_renderer_normals_preview_release(normals_preview);
 
-        normals_preview = NULL;
+        normals_preview = nullptr;
     }
 
-    if (regular_mesh_ubers_map != NULL)
+    if (regular_mesh_ubers_map != nullptr)
     {
         _scene_renderer_deinit_cached_ubers_map_contents(regular_mesh_ubers_map);
 
         system_hash64map_release(regular_mesh_ubers_map);
-        regular_mesh_ubers_map = NULL;
+        regular_mesh_ubers_map = nullptr;
     }
 
-    if (owned_scene != NULL)
+    if (owned_scene != nullptr)
     {
         scene_release(owned_scene);
 
-        owned_scene = NULL;
+        owned_scene = nullptr;
     }
 
-    if (shadow_mapping != NULL)
+    if (shadow_mapping != nullptr)
     {
         scene_renderer_sm_release(shadow_mapping);
 
-        shadow_mapping = NULL;
+        shadow_mapping = nullptr;
     }
 
-    if (temp_variant_float != NULL)
+    if (temp_variant_float != nullptr)
     {
        system_variant_release(temp_variant_float);
 
-       temp_variant_float = NULL;
+       temp_variant_float = nullptr;
     }
 
-    if (vector_pool != NULL)
+    if (vector_pool != nullptr)
     {
         system_resource_pool_release(vector_pool);
 
-        vector_pool = NULL;
+        vector_pool = nullptr;
     }
 }
 
@@ -442,19 +440,19 @@ PRIVATE void _scene_renderer_create_model_normal_matrices(_scene_renderer*  rend
 /* TODO */
 PRIVATE void _scene_renderer_deinit_cached_ubers_map_contents(system_hash64map ubers_map)
 {
-    system_hash64         ogl_uber_hash = 0;
-    _scene_renderer_uber* uber_ptr     = NULL;
+    system_hash64         uber_hash = 0;
+    _scene_renderer_uber* uber_ptr  = nullptr;
 
     while (system_hash64map_get_element_at(ubers_map,
                                            0,
                                           &uber_ptr,
-                                          &ogl_uber_hash) )
+                                          &uber_hash) )
     {
         delete uber_ptr;
-        uber_ptr = NULL;
+        uber_ptr = nullptr;
 
         if (!system_hash64map_remove(ubers_map,
-                                     ogl_uber_hash) )
+                                     uber_hash) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "system_hash64map_remove() call failed.");
@@ -465,7 +463,7 @@ PRIVATE void _scene_renderer_deinit_cached_ubers_map_contents(system_hash64map u
 /* TODO */
 PRIVATE void _scene_renderer_deinit_resizable_vector_for_resource_pool(system_resource_pool_block block)
 {
-    system_resizable_vector* vector_ptr = (system_resizable_vector*) block;
+    system_resizable_vector* vector_ptr = reinterpret_cast<system_resizable_vector*>(block);
 
     system_resizable_vector_release(*vector_ptr);
 }
@@ -515,11 +513,11 @@ PRIVATE void _scene_renderer_get_light_color(scene_light    light,
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(_scene_renderer*           renderer_ptr,
-                                                          scene_renderer_render_mode render_mode,
-                                                          scene_renderer_materials   context_materials,
-                                                          scene                      scene,
-                                                          scene_renderer_uber*       result_uber_ptr)
+PRIVATE void _scene_renderer_get_uber_for_render_mode(_scene_renderer*           renderer_ptr,
+                                                      scene_renderer_render_mode render_mode,
+                                                      scene_renderer_materials   context_materials,
+                                                      scene                      scene,
+                                                      scene_renderer_uber*       result_uber_ptr)
 {
     switch (render_mode)
     {
@@ -561,13 +559,13 @@ PRIVATE void _scene_renderer_get_ogl_uber_for_render_mode(_scene_renderer*      
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized render mode");
         }
-    } /* switch (render_mode) */
+    }
 }
 
 /** TODO */
 PRIVATE void _scene_renderer_init_resizable_vector_for_resource_pool(system_resource_pool_block block)
 {
-    system_resizable_vector* vector_ptr = (system_resizable_vector*) block;
+    system_resizable_vector* vector_ptr = reinterpret_cast<system_resizable_vector*>(block);
 
     *vector_ptr = system_resizable_vector_create(64 /* capacity */);
 }
@@ -576,18 +574,18 @@ PRIVATE void _scene_renderer_init_resizable_vector_for_resource_pool(system_reso
 PRIVATE void _scene_renderer_on_camera_show_frustum_setting_changed(const void* unused,
                                                                           void* scene_renderer)
 {
-    _scene_renderer* renderer_ptr = (_scene_renderer*) scene_renderer;
+    _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(scene_renderer);
 
     /* Use a shared handler to re-create the frustum assignments for the frustum preview renderer */
     _scene_renderer_update_frustum_preview_assigned_cameras(renderer_ptr);
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_on_mesh_material_ogl_uber_invalidated(const void* callback_data,
-                                                                         void* scene_renderer)
+PRIVATE void _scene_renderer_on_mesh_material_uber_invalidated(const void* callback_data,
+                                                                     void* scene_renderer)
 {
-    mesh_material    source_material    = (mesh_material)    callback_data;
-    _scene_renderer* scene_renderer_ptr = (_scene_renderer*) scene_renderer;
+    const mesh_material source_material    = (mesh_material)                   (callback_data);
+    _scene_renderer*    scene_renderer_ptr = reinterpret_cast<_scene_renderer*>(scene_renderer);
 
     _scene_renderer_deinit_cached_ubers_map_contents(scene_renderer_ptr->regular_mesh_ubers_map);
 }
@@ -596,7 +594,7 @@ PRIVATE void _scene_renderer_on_mesh_material_ogl_uber_invalidated(const void* c
 PRIVATE void _scene_renderer_on_ubers_map_invalidated(const void* unused,
                                                             void* scene_renderer)
 {
-    _scene_renderer* renderer_ptr = (_scene_renderer*) scene_renderer;
+    _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(scene_renderer);
 
     /* TODO: Subscribe for "show frustum changed" setting! */
     ASSERT_DEBUG_SYNC(false,
@@ -611,15 +609,15 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                                                                 void*      renderer)
 {
     bool                    is_shadow_receiver            = false;
-    mesh_material           material                      = NULL;
-    mesh                    mesh_gpu                      = NULL;
+    mesh_material           material                      = nullptr;
+    mesh                    mesh_gpu                      = nullptr;
     mesh_type               mesh_instance_type;
-    mesh                    mesh_instantiation_parent_gpu = NULL;
+    mesh                    mesh_instantiation_parent_gpu = nullptr;
     uint32_t                mesh_id                       = -1;
-    system_resizable_vector mesh_materials                = NULL;
-    scene_renderer_uber     mesh_uber                     = NULL;
+    system_resizable_vector mesh_materials                = nullptr;
+    scene_renderer_uber     mesh_uber                     = nullptr;
     unsigned int            n_mesh_materials              = 0;
-    _scene_renderer*        renderer_ptr                  = (_scene_renderer*) renderer;
+    _scene_renderer*        renderer_ptr                  = reinterpret_cast<_scene_renderer*>(renderer);
 
     scene_mesh_get_property(scene_mesh_instance,
                             SCENE_MESH_PROPERTY_MESH,
@@ -642,7 +640,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                           MESH_PROPERTY_INSTANTIATION_PARENT,
                          &mesh_instantiation_parent_gpu);
 
-        if (mesh_instantiation_parent_gpu == NULL)
+        if (mesh_instantiation_parent_gpu == nullptr)
         {
             mesh_instantiation_parent_gpu = mesh_gpu;
         }
@@ -676,7 +674,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
     if (!scene_renderer_cull_against_frustum( (scene_renderer) renderer,
                                               mesh_instantiation_parent_gpu,
                                               SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
-                                              NULL) ) /* behavior_data */
+                                              nullptr) ) /* behavior_data */
     {
         goto end;
     }
@@ -684,7 +682,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
     /* If any helper visualization is needed, we need to store a _mesh instance */
     if (renderer_ptr->current_helper_visualization != 0)
     {
-        _scene_renderer_mesh* new_entry_ptr = (_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
+        _scene_renderer_mesh* new_entry_ptr = reinterpret_cast<_scene_renderer_mesh*>(system_resource_pool_get_from_pool(renderer_ptr->mesh_pool));
 
         new_entry_ptr->mesh_id       = mesh_id;
         new_entry_ptr->mesh_instance = mesh_gpu;
@@ -709,7 +707,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                           n_mesh_material < n_mesh_materials;
                         ++n_mesh_material)
         {
-            _scene_renderer_uber* uber_ptr = NULL;
+            _scene_renderer_uber* uber_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(mesh_materials,
                                                         n_mesh_material,
@@ -741,7 +739,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                  */
                 uber_ptr = new (std::nothrow) _scene_renderer_uber;
 
-                ASSERT_ALWAYS_SYNC(uber_ptr != NULL,
+                ASSERT_ALWAYS_SYNC(uber_ptr != nullptr,
                                    "Out of memory");
 
                 uber_ptr->regular_mesh_items = system_resizable_vector_create(64 /* capacity */);
@@ -749,14 +747,14 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                 system_hash64map_insert(renderer_ptr->regular_mesh_ubers_map,
                                         (system_hash64) mesh_uber,
                                         uber_ptr,
-                                        NULL,  /* on_remove_callback */
-                                        NULL); /* on_remove_callback_argument */
+                                        nullptr,  /* on_remove_callback */
+                                        nullptr); /* on_remove_callback_argument */
             }
 
             /* This is a new user of the material. Store it in the vector */
-            _scene_renderer_mesh_uber_item* new_mesh_item_ptr = (_scene_renderer_mesh_uber_item*) system_resource_pool_get_from_pool(renderer_ptr->mesh_uber_items_pool);
+            _scene_renderer_mesh_uber_item* new_mesh_item_ptr = reinterpret_cast<_scene_renderer_mesh_uber_item*>(system_resource_pool_get_from_pool(renderer_ptr->mesh_uber_items_pool) );
 
-            ASSERT_ALWAYS_SYNC(new_mesh_item_ptr != NULL,
+            ASSERT_ALWAYS_SYNC(new_mesh_item_ptr != nullptr,
                                "Out of memory");
 
             new_mesh_item_ptr->material      = material;
@@ -771,7 +769,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
             /* Store the data */
             system_resizable_vector_push(uber_ptr->regular_mesh_items,
                                          new_mesh_item_ptr);
-        } /* for (all mesh materials) */
+        }
     }
     else
     {
@@ -779,9 +777,9 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                           "Unrecognized mesh type.");
 
         /* This mesh is rendered by the user. */
-        void*                   custom_mesh_render_proc_user_arg = NULL;
-        _scene_renderer_mesh*   new_entry_ptr                    = (_scene_renderer_mesh*) system_resource_pool_get_from_pool(renderer_ptr->mesh_pool);
-        PFNRENDERCUSTOMMESHPROC pfn_custom_mesh_render_proc      = NULL;
+        void*                   custom_mesh_render_proc_user_arg = nullptr;
+        _scene_renderer_mesh*   new_entry_ptr                    = reinterpret_cast<_scene_renderer_mesh*>(system_resource_pool_get_from_pool(renderer_ptr->mesh_pool) );
+        PFNRENDERCUSTOMMESHPROC pfn_custom_mesh_render_proc      = nullptr;
 
         mesh_get_property(mesh_gpu,
                           MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR,
@@ -810,58 +808,86 @@ end:
 /** TODO */
 PRIVATE void _scene_renderer_release_mesh_matrices(void* mesh_entry)
 {
-    _scene_renderer_mesh* mesh_entry_ptr = (_scene_renderer_mesh*) mesh_entry;
+    _scene_renderer_mesh* mesh_entry_ptr = reinterpret_cast<_scene_renderer_mesh*>(mesh_entry);
 
-    if (mesh_entry_ptr->model_matrix != NULL)
+    if (mesh_entry_ptr->model_matrix != nullptr)
     {
         system_matrix4x4_release(mesh_entry_ptr->model_matrix);
 
-        mesh_entry_ptr->model_matrix = NULL;
+        mesh_entry_ptr->model_matrix = nullptr;
     }
 
-    if (mesh_entry_ptr->normal_matrix != NULL)
+    if (mesh_entry_ptr->normal_matrix != nullptr)
     {
         system_matrix4x4_release(mesh_entry_ptr->normal_matrix);
 
-        mesh_entry_ptr->normal_matrix = NULL;
+        mesh_entry_ptr->normal_matrix = nullptr;
     }
 }
 
-/** TODO */
-PRIVATE void _scene_renderer_render_helper_visualizations(_scene_renderer* renderer_ptr,
-                                                          system_time      frame_time)
+/** TODO
+ *
+ *  @return Result present task. May be NULL.
+ **/
+PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_renderer* renderer_ptr,
+                                                                      system_time      frame_time)
 {
+    ral_present_task frustum_preview_render_present_task = nullptr;
+    ral_present_task light_preview_render_present_task   = nullptr;
+    ral_present_task result_present_task                 = nullptr;
+
+    ASSERT_DEBUG_SYNC(renderer_ptr->current_color_rt != nullptr,
+                      "No color rendertarget assigned.");
+
     if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_FRUSTUMS)
     {
-        if (renderer_ptr->frustum_preview == NULL)
+        if (renderer_ptr->frustum_preview == nullptr)
         {
+            /* TODO: This is wrong - we shouldn't need to pass viewport size at creation time. */
+            uint32_t rt_size[2];
+
+            ral_texture_view_get_mipmap_property(renderer_ptr->current_color_rt,
+                                                 0, /* n_layer  */
+                                                 0, /* n_mipmap */
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                                 rt_size + 0);
+            ral_texture_view_get_mipmap_property(renderer_ptr->current_color_rt,
+                                                 0, /* n_layer  */
+                                                 0, /* n_mipmap */
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                                 rt_size + 1);
+
             renderer_ptr->frustum_preview = scene_renderer_frustum_preview_create(renderer_ptr->context,
-                                                                                  renderer_ptr->owned_scene);
+                                                                                  renderer_ptr->owned_scene,
+                                                                                  rt_size);
 
             /* Assign existing cameras to the call-back */
             _scene_renderer_update_frustum_preview_assigned_cameras(renderer_ptr);
-        } /* if (renderer_ptr->frustum_preview == NULL) */
+        }
 
-        scene_renderer_frustum_preview_render(renderer_ptr->frustum_preview,
-                                              frame_time,
-                                              renderer_ptr->current_vp);
+        frustum_preview_render_present_task = scene_renderer_frustum_preview_render(renderer_ptr->frustum_preview,
+                                                                                    frame_time,
+                                                                                    renderer_ptr->current_vp,
+                                                                                    renderer_ptr->current_color_rt,
+                                                                                    renderer_ptr->current_depth_rt);
     }
 
     if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_LIGHTS)
     {
-        unsigned int  n_scene_lights = 0;
+        unsigned int n_scene_lights = 0;
 
         scene_get_property(renderer_ptr->owned_scene,
                            SCENE_PROPERTY_N_LIGHTS,
                           &n_scene_lights);
 
-        if (renderer_ptr->lights_preview == NULL)
+        if (renderer_ptr->lights_preview == nullptr)
         {
             renderer_ptr->lights_preview = scene_renderer_lights_preview_create(renderer_ptr->context,
                                                                                 renderer_ptr->owned_scene);
-        } /* if (renderer_ptr->lights_preview == NULL) */
+        }
 
-        scene_renderer_lights_preview_start(renderer_ptr->lights_preview);
+        scene_renderer_lights_preview_start(renderer_ptr->lights_preview,
+                                            renderer_ptr->current_color_rt);
         {
             for (unsigned int n_light = 0;
                               n_light < n_scene_lights;
@@ -892,9 +918,9 @@ PRIVATE void _scene_renderer_render_helper_visualizations(_scene_renderer* rende
                         1.0f
                     };
 
-                    scene_light_get_property           (current_light,
-                                                        SCENE_LIGHT_PROPERTY_POSITION,
-                                                       &current_light_position);
+                    scene_light_get_property       (current_light,
+                                                    SCENE_LIGHT_PROPERTY_POSITION,
+                                                   &current_light_position);
                     _scene_renderer_get_light_color(current_light,
                                                     frame_time,
                                                     renderer_ptr->temp_variant_float,
@@ -908,55 +934,132 @@ PRIVATE void _scene_renderer_render_helper_visualizations(_scene_renderer* rende
                         current_light_position[2],
                         1.0f
                     };
-                    float current_light_position_mvp      [4];
-#if 0
-                    float current_light_position_w_dir[4] =
-                    {
-                        current_light_position[0] + current_light_direction[0],
-                        current_light_position[1] + current_light_direction[1],
-                        current_light_position[2] + current_light_direction[2],
-                        1.0f
-                    };
-                    float current_light_position_w_dir_mvp[4];
-#endif
+                    float current_light_position_mvp[4];
 
                     system_matrix4x4_multiply_by_vector4(renderer_ptr->current_vp,
                                                          current_light_position_m,
                                                          current_light_position_mvp);
-#if 0
-                    system_matrix4x4_multiply_by_vector4(renderer_ptr->current_vp,
-                                                         current_light_position_w_dir,
-                                                         current_light_position_w_dir_mvp);
-#endif
 
                     scene_renderer_lights_preview_render(renderer_ptr->lights_preview,
                                                          current_light_position_mvp,
                                                          current_light_color,
-#if 0
-                                                         current_light_position_w_dir_mvp);
-#else
-                                                         NULL);
-#endif
+                                                         nullptr); /* light_pos_plus_direction */
                 }
             }
         }
-        scene_renderer_lights_preview_stop(renderer_ptr->lights_preview);
+        light_preview_render_present_task = scene_renderer_lights_preview_stop(renderer_ptr->lights_preview);
     }
+
+    if (frustum_preview_render_present_task != nullptr ||
+        light_preview_render_present_task   != nullptr)
+    {
+        uint32_t                            color_consumer_task_indices[2];
+        uint32_t                            depth_consumer_task_indices[1];
+        uint32_t                            n_color_consumer_task_indices = 0;
+        uint32_t                            n_depth_consumer_task_indices = 0;
+        uint32_t                            n_result_task_subtasks        = 0;
+        uint32_t                            n_input_mappings              = 0;
+        uint32_t                            n_output_mappings             = 0;
+        uint32_t                            n_unique_ios                  = (renderer_ptr->current_depth_rt != nullptr) ? 2 : 1;
+        ral_present_task                    result_task_subtasks[2];
+        ral_present_task_group_create_info  result_task_create_info;
+        ral_present_task_group_mapping      result_task_input_mappings[3];
+        ral_present_task_group_mapping      result_task_output_mappings[3];
+
+        /* Fill consumer index arrays */
+        if (frustum_preview_render_present_task != nullptr)
+        {
+            color_consumer_task_indices[n_color_consumer_task_indices++] = n_result_task_subtasks;
+
+            if (renderer_ptr->current_depth_rt != nullptr)
+            {
+                depth_consumer_task_indices[n_depth_consumer_task_indices++] = n_result_task_subtasks;
+            }
+
+            result_task_subtasks[n_result_task_subtasks++] = frustum_preview_render_present_task;
+        }
+
+        if (light_preview_render_present_task != nullptr)
+        {
+            color_consumer_task_indices[n_color_consumer_task_indices++] = n_result_task_subtasks;
+
+            result_task_subtasks[n_result_task_subtasks++] = light_preview_render_present_task;
+        }
+
+        /* Configure IOs. Given rendering order is irrelevant, we don't need any ingroup connections */
+        for (uint32_t n_color_consumer_task = 0;
+                      n_color_consumer_task < n_color_consumer_task_indices;
+                    ++n_color_consumer_task)
+        {
+            result_task_input_mappings[n_input_mappings].group_task_io_index   = 0;
+            result_task_input_mappings[n_input_mappings].n_present_task        = color_consumer_task_indices[n_color_consumer_task];
+            result_task_input_mappings[n_input_mappings].present_task_io_index = 0; /* color_rt */
+
+            result_task_output_mappings[n_output_mappings] = result_task_input_mappings[n_input_mappings];
+
+            ++n_input_mappings;
+            ++n_output_mappings;
+        }
+
+        for (uint32_t n_depth_consumer_task = 0;
+                      n_depth_consumer_task < n_depth_consumer_task_indices;
+                    ++n_depth_consumer_task)
+        {
+            result_task_input_mappings[n_input_mappings].group_task_io_index   = 1;
+            result_task_input_mappings[n_input_mappings].n_present_task        = depth_consumer_task_indices[n_depth_consumer_task];
+            result_task_input_mappings[n_input_mappings].present_task_io_index = 1;
+
+            result_task_output_mappings[n_output_mappings] = result_task_output_mappings[n_output_mappings];
+
+            ++n_input_mappings;
+            ++n_output_mappings;
+        }
+
+        result_task_create_info.ingroup_connections                      = nullptr;
+        result_task_create_info.n_ingroup_connections                    = 0;
+        result_task_create_info.n_present_tasks                          = n_result_task_subtasks;
+        result_task_create_info.n_total_unique_inputs                    = n_unique_ios;
+        result_task_create_info.n_total_unique_outputs                   = n_unique_ios;
+        result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_input_mappings;
+        result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_output_mappings;
+        result_task_create_info.present_tasks                            = result_task_subtasks;
+        result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_input_mappings;
+        result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_output_mappings;
+
+        result_present_task = ral_present_task_create_group(&result_task_create_info);
+    }
+
+    if (frustum_preview_render_present_task != nullptr)
+    {
+        ral_present_task_release(frustum_preview_render_present_task);
+    }
+
+    if (light_preview_render_present_task != nullptr)
+    {
+        ral_present_task_release(light_preview_render_present_task);
+    }
+
+    return result_present_task;
 }
 
 /** TODO.
  *
  *  @param renderer_ptr     TODO
- *  @param uber_details_ptr TODO. May be NULL, in which case the helper visualizations will be rendered
+ *  @param uber_details_ptr TODO. May be nullptr, in which case the helper visualizations will be rendered
  *                          for custom meshes.
+ *
+ *  @return TODO. May be NULL.
  **/
-PRIVATE void _scene_renderer_render_mesh_helper_visualizations(_scene_renderer*      renderer_ptr,
-                                                               _scene_renderer_uber* uber_details_ptr)
+PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scene_renderer*      renderer_ptr,
+                                                                           _scene_renderer_uber* uber_details_ptr)
 {
-    unsigned int n_custom_meshes = 0;
-    unsigned int n_uber_items    = 0;
+    ral_present_task bbox_preview_present_task    = nullptr;
+    unsigned int     n_custom_meshes              = 0;
+    unsigned int     n_uber_items                 = 0;
+    ral_present_task normals_preview_present_task = nullptr;
+    ral_present_task result_present_task          = nullptr;
 
-    if (uber_details_ptr != NULL)
+    if (uber_details_ptr != nullptr)
     {
         system_resizable_vector_get_property(uber_details_ptr->regular_mesh_items,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -971,19 +1074,20 @@ PRIVATE void _scene_renderer_render_mesh_helper_visualizations(_scene_renderer* 
 
     if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES)
     {
-        if (renderer_ptr->bbox_preview == NULL)
+        if (renderer_ptr->bbox_preview == nullptr)
         {
             renderer_ptr->bbox_preview = scene_renderer_bbox_preview_create(renderer_ptr->context,
                                                                             renderer_ptr->owned_scene,
                                                                             (scene_renderer) renderer_ptr);
-        } /* if (renderer_ptr->bbox_preview == NULL) */
+        }
 
         scene_renderer_bbox_preview_start(renderer_ptr->bbox_preview,
+                                          renderer_ptr->current_color_rt,
                                           renderer_ptr->current_vp);
         {
-            if (uber_details_ptr != NULL)
+            if (uber_details_ptr != nullptr)
             {
-                _scene_renderer_mesh_uber_item* mesh_uber_item_ptr = NULL;
+                _scene_renderer_mesh_uber_item* mesh_uber_item_ptr = nullptr;
 
                 for (uint32_t n_vector_item = 0;
                               n_vector_item < n_uber_items;
@@ -996,10 +1100,10 @@ PRIVATE void _scene_renderer_render_mesh_helper_visualizations(_scene_renderer* 
                     scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
                                                        mesh_uber_item_ptr->mesh_id);
                 }
-            } /* if (uber_details_ptr != NULL) */
+            }
             else
             {
-                _scene_renderer_mesh* mesh_ptr = NULL;
+                _scene_renderer_mesh* mesh_ptr = nullptr;
 
                 for (unsigned int n_custom_mesh = 0;
                                   n_custom_mesh < n_custom_meshes;
@@ -1011,27 +1115,29 @@ PRIVATE void _scene_renderer_render_mesh_helper_visualizations(_scene_renderer* 
 
                     scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
                                                        mesh_ptr->mesh_id);
-                } /* for (all custom meshes) */
+                }
             }
         }
-        scene_renderer_bbox_preview_stop(renderer_ptr->bbox_preview);
-    } /* if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES && n_iteration_items > 0) */
+        bbox_preview_present_task = scene_renderer_bbox_preview_stop(renderer_ptr->bbox_preview);
+    }
 
     /* Normals visualization is only supported for regular meshes */
     if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_NORMALS &&
-        uber_details_ptr != NULL)
+        uber_details_ptr != nullptr)
     {
-        if (renderer_ptr->normals_preview == NULL)
+        if (renderer_ptr->normals_preview == nullptr)
         {
             renderer_ptr->normals_preview = scene_renderer_normals_preview_create(renderer_ptr->context,
                                                                                   renderer_ptr->owned_scene,
                                                                                   (scene_renderer) renderer_ptr);
-        } /* if (renderer_ptr->normals_preview == NULL) */
+        }
 
         scene_renderer_normals_preview_start(renderer_ptr->normals_preview,
-                                             renderer_ptr->current_vp);
+                                             renderer_ptr->current_vp,
+                                             renderer_ptr->current_color_rt,
+                                             renderer_ptr->current_depth_rt);
         {
-            _scene_renderer_mesh_uber_item* mesh_uber_item_ptr = NULL;
+            _scene_renderer_mesh_uber_item* mesh_uber_item_ptr = nullptr;
 
             for (uint32_t n_vector_item = 0;
                           n_vector_item < n_uber_items;
@@ -1045,21 +1151,117 @@ PRIVATE void _scene_renderer_render_mesh_helper_visualizations(_scene_renderer* 
                                                       mesh_uber_item_ptr->mesh_id);
             }
         }
-        scene_renderer_normals_preview_stop(renderer_ptr->normals_preview);
-    } /* if (helper_visualization & HELPER_VISUALIZATION_NORMALS && n_iteration_items > 0) */
+        normals_preview_present_task = scene_renderer_normals_preview_stop(renderer_ptr->normals_preview);
+    }
+
+    if (bbox_preview_present_task    != nullptr ||
+        normals_preview_present_task != nullptr)
+    {
+        /* TODO TODO TODO: This is a modified copy-paste version of the code doing a similar thing in
+         *                 _scene_renderer_render_helper_visualizations. Consider implementing a generic
+         *                 utility which parallelizes subtask execution for a predefined set of inputs.
+         */
+        uint32_t                            color_consumer_task_indices[2];
+        uint32_t                            depth_consumer_task_indices[1];
+        uint32_t                            n_color_consumer_task_indices = 0;
+        uint32_t                            n_depth_consumer_task_indices = 0;
+        uint32_t                            n_result_task_subtasks        = 0;
+        uint32_t                            n_input_mappings              = 0;
+        uint32_t                            n_output_mappings             = 0;
+        uint32_t                            n_unique_ios                  = (renderer_ptr->current_depth_rt != nullptr) ? 2 : 1;
+        ral_present_task                    result_task_subtasks[2];
+        ral_present_task_group_create_info  result_task_create_info;
+        ral_present_task_group_mapping      result_task_input_mappings[3];
+        ral_present_task_group_mapping      result_task_output_mappings[3];
+
+        /* Fill consumer index arrays */
+        if (normals_preview_present_task != nullptr)
+        {
+            color_consumer_task_indices[n_color_consumer_task_indices++] = n_result_task_subtasks;
+
+            if (renderer_ptr->current_depth_rt != nullptr)
+            {
+                depth_consumer_task_indices[n_depth_consumer_task_indices++] = n_result_task_subtasks;
+            }
+
+            result_task_subtasks[n_result_task_subtasks++] = normals_preview_present_task;
+        }
+
+        if (bbox_preview_present_task != nullptr)
+        {
+            color_consumer_task_indices[n_color_consumer_task_indices++] = n_result_task_subtasks;
+
+            result_task_subtasks[n_result_task_subtasks++] = bbox_preview_present_task;
+        }
+
+        /* Configure IOs. Given rendering order is irrelevant, we don't need any ingroup connections */
+        for (uint32_t n_color_consumer_task = 0;
+                      n_color_consumer_task < n_color_consumer_task_indices;
+                    ++n_color_consumer_task)
+        {
+            result_task_input_mappings[n_input_mappings].group_task_io_index   = 0;
+            result_task_input_mappings[n_input_mappings].n_present_task        = color_consumer_task_indices[n_color_consumer_task];
+            result_task_input_mappings[n_input_mappings].present_task_io_index = 0; /* color_rt */
+
+            result_task_output_mappings[n_output_mappings] = result_task_input_mappings[n_input_mappings];
+
+            ++n_input_mappings;
+            ++n_output_mappings;
+        }
+
+        for (uint32_t n_depth_consumer_task = 0;
+                      n_depth_consumer_task < n_depth_consumer_task_indices;
+                    ++n_depth_consumer_task)
+        {
+            result_task_input_mappings[n_input_mappings].group_task_io_index   = 1;
+            result_task_input_mappings[n_input_mappings].n_present_task        = depth_consumer_task_indices[n_depth_consumer_task];
+            result_task_input_mappings[n_input_mappings].present_task_io_index = 1;
+
+            result_task_output_mappings[n_output_mappings] = result_task_output_mappings[n_output_mappings];
+
+            ++n_input_mappings;
+            ++n_output_mappings;
+        }
+
+        result_task_create_info.ingroup_connections                      = nullptr;
+        result_task_create_info.n_ingroup_connections                    = 0;
+        result_task_create_info.n_present_tasks                          = n_result_task_subtasks;
+        result_task_create_info.n_total_unique_inputs                    = n_unique_ios;
+        result_task_create_info.n_total_unique_outputs                   = n_unique_ios;
+        result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_input_mappings;
+        result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_output_mappings;
+        result_task_create_info.present_tasks                            = result_task_subtasks;
+        result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_input_mappings;
+        result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_output_mappings;
+
+        result_present_task = ral_present_task_create_group(&result_task_create_info);
+    }
+
+    if (bbox_preview_present_task != nullptr)
+    {
+        ral_present_task_release(bbox_preview_present_task);
+    }
+
+    if (normals_preview_present_task != nullptr)
+    {
+        ral_present_task_release(normals_preview_present_task);
+    }
+
+    return result_present_task;
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*                  renderer_ptr,
-                                                          const scene_renderer_render_mode& render_mode,
-                                                          const ogl_context_gl_entrypoints* entry_points_ptr,
-                                                          system_time                       frame_time)
+PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_renderer*                  renderer_ptr,
+                                                                      const scene_renderer_render_mode& render_mode,
+                                                                      system_time                       frame_time,
+                                                                      ral_gfx_state_create_info         ref_gfx_state_create_info)
 {
     float                    camera_location[4];
-    system_hash64            material_hash             = 0;
-    scene_renderer_uber      material_uber             = NULL;
-    scene_renderer_materials materials                 = NULL;
-    uint32_t                 n_custom_meshes_to_render = 0;
+    system_hash64            material_hash              = 0;
+    scene_renderer_uber      material_uber              = nullptr;
+    scene_renderer_materials materials                  = nullptr;
+    uint32_t                 n_custom_meshes_to_render  = 0;
+    system_resizable_vector  pass_level_present_tasks   = system_resizable_vector_create(128); /* TODO: We should avoid vector creation at frame render time */
 
     demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
                          &materials);
@@ -1072,7 +1274,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
          * let's just go with the inversed matrix for now. (TODO?)
          */
         system_matrix4x4 view_inverted      = system_matrix4x4_create();
-        const float*     view_inverted_data = NULL;
+        const float*     view_inverted_data = nullptr;
 
         system_matrix4x4_set_from_matrix4x4(view_inverted,
                                             renderer_ptr->current_view);
@@ -1093,17 +1295,23 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
      *    For the first pass, we only render the depth information. For the other one,
      *    we re-use that depth information to perform actual shading.
      * 2) Without a depth pre-pass. In this case, the meshes need to be rendered once.
+     *
+     * Rasterization order within a single pass is irrelevant. THIS IMPLIES LACK OF
+     * SUPPORT FOR RENDERING OF SEMI-TRANSPARENT MESHES. Passes should be executed by the GPU
+     * one after another, never in parallel.
      */
-    const uint32_t n_passes = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS) ? 2 : 1;
+    const uint32_t   n_passes                        = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS) ? 2 : 1;
+    ral_present_task result_present_task_subtasks[2] = {nullptr, nullptr};
 
     for (uint32_t n_pass = 0;
                   n_pass < n_passes;
                 ++n_pass)
     {
-        const bool is_depth_prepass  = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 0);
-        uint32_t   n_iterations      = 0;
-        const bool use_material_uber = (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS                ||
-                                        render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 1);
+        bool       are_color_writes_enabled = true;
+        const bool is_depth_prepass         = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 0);
+        uint32_t   n_iterations             = 0;
+        const bool use_material_uber        = (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS                ||
+                                               render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 1);
 
         if (is_depth_prepass)
         {
@@ -1121,35 +1329,33 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
         {
             if (n_pass == 0)
             {
-                entry_points_ptr->pGLColorMask(GL_FALSE,  /* red   */
-                                               GL_FALSE,  /* green */
-                                               GL_FALSE,  /* blue  */
-                                               GL_FALSE); /* alpha */
-                entry_points_ptr->pGLDepthFunc(GL_LESS);  /* func  */
-                entry_points_ptr->pGLDepthMask(GL_TRUE);  /* flag  */
+                are_color_writes_enabled                        = false;
+                ref_gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_LESS;
+                ref_gfx_state_create_info.depth_writes          = true;
             }
             else
             {
                 ASSERT_DEBUG_SYNC(n_pass == 1,
                                   "Sanity check failed");
 
-                entry_points_ptr->pGLColorMask(GL_TRUE,  /* red   */
-                                               GL_TRUE,  /* green */
-                                               GL_TRUE,  /* blue  */
-                                               GL_TRUE); /* alpha */
-                entry_points_ptr->pGLDepthFunc(GL_EQUAL);
-                entry_points_ptr->pGLDepthMask(GL_FALSE);
+                are_color_writes_enabled                        = true;
+                ref_gfx_state_create_info.depth_writes          = false;
+                ref_gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_EQUAL;
             }
-        } /* if (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS) */
+        }
+        else
+        {
+            ref_gfx_state_create_info.depth_writes = true;
+        }
 
         for (uint32_t n_iteration = 0;
-                      n_iteration < n_iterations; /* n_iterations = no of separate ogl_ubers needed to render the scene */
+                      n_iteration < n_iterations; /* n_iterations = no of separate scene_renderer_ubers needed to render the scene */
                     ++n_iteration)
         {
             uint32_t              n_iteration_items = 0;
-            _scene_renderer_uber* uber_details_ptr  = NULL;
+            _scene_renderer_uber* uber_details_ptr  = nullptr;
 
-            /* Depending on the pass, we may either need to use render mode-specific ogl_uber instance,
+            /* Depending on the pass, we may either need to use render mode-specific scene_renderer_uber instance,
              * or one that corresponds to the current material. */
             system_hash64map_get_element_at(renderer_ptr->regular_mesh_ubers_map,
                                             n_iteration,
@@ -1157,7 +1363,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                            &material_hash);
 
             ASSERT_DEBUG_SYNC(material_hash != 0,
-                              "No ogl_uber instance available!");
+                              "No scene_renderer_uber instance available!");
 
             if (use_material_uber)
             {
@@ -1168,27 +1374,27 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                &material_hash);
 
                 ASSERT_DEBUG_SYNC(material_hash != 0,
-                                  "No ogl_uber instance available!");
+                                  "No scene_renderer_uber instance available!");
 
                 material_uber = (scene_renderer_uber) material_hash;
 
                 /* Make sure its configuration takes the frame-specific light configuration into account. */
-                _scene_renderer_update_ogl_uber_light_properties(material_uber,
-                                                                 renderer_ptr->owned_scene,
-                                                                 renderer_ptr->current_view,
-                                                                 frame_time,
-                                                                 renderer_ptr->temp_variant_float);
-            } /* if (use_material_uber) */
+                _scene_renderer_update_uber_light_properties(material_uber,
+                                                             renderer_ptr->owned_scene,
+                                                             renderer_ptr->current_view,
+                                                             frame_time,
+                                                             renderer_ptr->temp_variant_float);
+            }
             else
             {
                 /* If this is not a "depth pre-pass" pass .. */
                 if (!is_depth_prepass)
                 {
-                    _scene_renderer_get_ogl_uber_for_render_mode(renderer_ptr,
-                                                                 render_mode,
-                                                                 materials,
-                                                                 renderer_ptr->owned_scene,
-                                                                &material_uber);
+                    _scene_renderer_get_uber_for_render_mode(renderer_ptr,
+                                                             render_mode,
+                                                             materials,
+                                                             renderer_ptr->owned_scene,
+                                                            &material_uber);
                 }
                 else
                 {
@@ -1200,7 +1406,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                            false); /* use_shadow_maps */
                 }
 
-                ASSERT_DEBUG_SYNC(material_uber != NULL,
+                ASSERT_DEBUG_SYNC(material_uber != nullptr,
                                   "No ogl_uber instance available!");
             }
 
@@ -1219,7 +1425,18 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                             renderer_ptr->current_vp);
 
             /* Okay. Go on with the rendering. Start from the regular meshes. These are stored in helper maps */
-            scene_renderer_uber_rendering_start(material_uber);
+            scene_renderer_uber_start_info uber_start_info;
+
+            ASSERT_DEBUG_SYNC(renderer_ptr->current_color_rt != nullptr,
+                              "No color render-target specified.");
+
+            uber_start_info.color_rt = (are_color_writes_enabled)               ? renderer_ptr->current_color_rt
+                                                                                : nullptr;
+            uber_start_info.depth_rt = (ref_gfx_state_create_info.depth_writes) ? renderer_ptr->current_depth_rt
+                                                                                : nullptr;
+
+            scene_renderer_uber_rendering_start(material_uber,
+                                               &uber_start_info);
             {
                 if (is_depth_prepass)
                 {
@@ -1234,12 +1451,12 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                 ++n_uber_map_item)
                     {
                         uint32_t              n_meshes      = 0;
-                        _scene_renderer_uber* uber_item_ptr = NULL;
+                        _scene_renderer_uber* uber_item_ptr = nullptr;
 
                         if (!system_hash64map_get_element_at(renderer_ptr->regular_mesh_ubers_map,
                                                              n_uber_map_item,
                                                             &uber_item_ptr,
-                                                             NULL) ) /* result_hash */
+                                                             nullptr) ) /* result_hash */
                         {
                             continue;
                         }
@@ -1252,7 +1469,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                       n_mesh < n_meshes;
                                     ++n_mesh)
                         {
-                            _scene_renderer_mesh_uber_item* mesh_ptr = NULL;
+                            _scene_renderer_mesh_uber_item* mesh_ptr = nullptr;
 
                             if (!system_resizable_vector_get_element_at(uber_item_ptr->regular_mesh_items,
                                                                         n_mesh,
@@ -1266,13 +1483,14 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                             mesh_ptr->normal_matrix,
                                                             material_uber,
                                                             mesh_ptr->material,
-                                                            frame_time);
-                        } /* for (all meshes) */
-                    } /* for (all uber items) */
-                } /* if (is_depth_prepass) */
+                                                            frame_time,
+                                                           &ref_gfx_state_create_info);
+                        }
+                    }
+                }
                 else
                 {
-                    _scene_renderer_mesh_uber_item* item_ptr = NULL;
+                    _scene_renderer_mesh_uber_item* item_ptr = nullptr;
 
                     for (uint32_t n_iteration_item = 0;
                                   n_iteration_item < n_iteration_items;
@@ -1287,46 +1505,181 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                                                         item_ptr->normal_matrix,
                                                         material_uber,
                                                         item_ptr->material,
-                                                        frame_time);
-                    } /* for (all meshes to be rendered with the material uber instance) */
+                                                        frame_time,
+                                                       &ref_gfx_state_create_info);
+                    }
                 }
 
                 /* Any mesh helper visualization needed? */
                 if (n_iteration_items > 0 &&
-                    uber_details_ptr  != NULL)
+                    uber_details_ptr  != nullptr)
                 {
-                    _scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
-                                                                      uber_details_ptr);
+                    ral_present_task helper_vis_task = _scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
+                                                                                                         uber_details_ptr);
+
+                    if (helper_vis_task != nullptr)
+                    {
+                        system_resizable_vector_push(pass_level_present_tasks,
+                                                     helper_vis_task);
+                    }
                 }
             }
-            scene_renderer_uber_rendering_stop(material_uber);
+            system_resizable_vector_push(pass_level_present_tasks,
+                                         scene_renderer_uber_rendering_stop(material_uber) );
 
             /* Clean up */
-            _scene_renderer_mesh_uber_item* mesh_ptr = NULL;
+            _scene_renderer_mesh_uber_item* mesh_ptr = nullptr;
 
             while (system_resizable_vector_pop(uber_details_ptr->regular_mesh_items,
                                               &mesh_ptr) )
             {
-                if (mesh_ptr->model_matrix != NULL)
+                if (mesh_ptr->model_matrix != nullptr)
                 {
                     system_matrix4x4_release(mesh_ptr->model_matrix);
 
-                    mesh_ptr->model_matrix = NULL;
+                    mesh_ptr->model_matrix = nullptr;
                 }
 
-                if (mesh_ptr->normal_matrix != NULL)
+                if (mesh_ptr->normal_matrix != nullptr)
                 {
                     system_matrix4x4_release(mesh_ptr->normal_matrix);
 
-                    mesh_ptr->normal_matrix = NULL;
+                    mesh_ptr->normal_matrix = nullptr;
                 }
 
                 system_resource_pool_return_to_pool(renderer_ptr->mesh_uber_items_pool,
                                                     (system_resource_pool_block) mesh_ptr);
             }
-        } /* for (all required rendering passes <depth pre-pass, rendering pass>) */
-    } /* for (all uber instances) */
+        }
 
+        /* Form a group present task which is going to run all cached pass-level present sub-tasks
+         * in parallel.
+         */
+        ral_present_task                   current_subtask              = nullptr;
+        uint32_t                           n_pass_input_mappings        = 0;
+        uint32_t                           n_pass_output_mappings       = 0;
+        uint32_t                           n_pass_level_present_tasks   = 0;
+        ral_present_task_group_mapping*    pass_input_mappings          = nullptr;
+        ral_present_task_group_mapping*    pass_output_mappings         = nullptr;
+        ral_present_task*                  pass_level_present_tasks_raw = nullptr;
+        ral_present_task_group_create_info subtask_create_info;
+
+        system_resizable_vector_get_property(pass_level_present_tasks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                            &pass_level_present_tasks_raw);
+        system_resizable_vector_get_property(pass_level_present_tasks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_pass_level_present_tasks);
+
+        pass_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_pass_level_present_tasks) );
+        pass_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_pass_level_present_tasks) );
+
+        for (uint32_t n_pass_level_present_task = 0;
+                      n_pass_level_present_task < n_pass_level_present_tasks;
+                    ++n_pass_level_present_task)
+        {
+            uint32_t n_task_inputs   = 0;
+            uint32_t n_task_outputs  = 0;
+
+            ral_present_task_get_property(pass_level_present_tasks_raw[n_pass_level_present_task],
+                                          RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
+                                         &n_task_inputs);
+            ral_present_task_get_property(pass_level_present_tasks_raw[n_pass_level_present_task],
+                                          RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
+                                         &n_task_outputs);
+
+            ASSERT_DEBUG_SYNC(n_task_inputs == 1 || n_task_inputs == 2 || n_task_outputs == 1 || n_task_outputs == 2,
+                              "Invalid number of task IOs");
+
+            for (uint32_t n_io_type = 0;
+                          n_io_type < 2;
+                        ++n_io_type)
+            {
+                const ral_present_task_io_type io_type    = (n_io_type == 0) ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                             : RAL_PRESENT_TASK_IO_TYPE_OUTPUT;
+                const uint32_t                 n_ios      = (n_io_type == 0) ? n_task_inputs
+                                                                             : n_task_outputs;
+                uint32_t&                      n_mappings = (n_io_type == 0) ? n_pass_input_mappings
+                                                                             : n_pass_output_mappings;
+
+                for (uint32_t n_io = 0;
+                              n_io < n_ios;
+                            ++n_io)
+                {
+                    ral_present_task_group_mapping& current_pass_io_mapping = (n_io_type == 0) ? pass_input_mappings [n_mappings++]
+                                                                                               : pass_output_mappings[n_mappings++];
+                    ral_texture_view                io_object               = nullptr;
+
+                    ral_present_task_get_io_property(pass_level_present_tasks_raw[n_pass_level_present_task],
+                                                     io_type,
+                                                     n_io,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                     (void**) &io_object);
+
+                    ASSERT_DEBUG_SYNC(io_object != nullptr,
+                                      "Null task IO was specified.");
+
+                    if (io_object == renderer_ptr->current_color_rt)
+                    {
+                        current_pass_io_mapping.group_task_io_index   = 0;
+                        current_pass_io_mapping.n_present_task        = n_pass_level_present_task;
+                        current_pass_io_mapping.present_task_io_index = 0;
+                    }
+                    else
+                    if (io_object == renderer_ptr->current_depth_rt)
+                    {
+                        current_pass_io_mapping.group_task_io_index   = 1;
+                        current_pass_io_mapping.n_present_task        = n_pass_level_present_task;
+                        current_pass_io_mapping.present_task_io_index = 1;
+                    }
+                    else
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unrecognized IO object was specified.");
+                    }
+                }
+            }
+        }
+
+        const uint32_t n_ios = ((are_color_writes_enabled)               ? 1 : 0) +
+                               ((ref_gfx_state_create_info.depth_writes) ? 1 : 0);
+
+        subtask_create_info.ingroup_connections                      = nullptr;
+        subtask_create_info.n_ingroup_connections                    = 0;
+        subtask_create_info.n_present_tasks                          = n_pass_level_present_tasks;
+        subtask_create_info.n_total_unique_inputs                    = n_ios;
+        subtask_create_info.n_total_unique_outputs                   = n_ios;
+        subtask_create_info.n_unique_input_to_ingroup_task_mappings  = n_pass_input_mappings;
+        subtask_create_info.n_unique_output_to_ingroup_task_mappings = n_pass_output_mappings;
+        subtask_create_info.present_tasks                            = pass_level_present_tasks_raw;
+        subtask_create_info.unique_input_to_ingroup_task_mapping     = pass_input_mappings;
+        subtask_create_info.unique_output_to_ingroup_task_mapping    = pass_output_mappings;
+
+        current_subtask = ral_present_task_create_group(&subtask_create_info);
+
+        ASSERT_DEBUG_SYNC(result_present_task_subtasks[n_pass] == nullptr,
+                          "Subtask already defined for pass [%d]",
+                          n_pass);
+
+        result_present_task_subtasks[n_pass] = current_subtask;
+
+        /* Clean up */
+        ral_present_task temp;
+
+        while (system_resizable_vector_pop(pass_level_present_tasks,
+                                          &temp) )
+        {
+            ral_present_task_release(temp);
+        }
+    }
+
+    /* This code is going to require a working RAL for debugging purposes. Deferring implementation till
+     * we have it.
+     */
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO TODO TODO");
+
+#if 0
     /* Continue with custom meshes. */
     system_resizable_vector_get_property(renderer_ptr->current_custom_meshes_to_render,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1334,8 +1687,14 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
 
     if (n_custom_meshes_to_render > 0)
     {
-        _scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
-                                                          NULL); /* uber_details_ptr */
+        ral_present_task helper_vis_task = _scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
+                                                                                             nullptr); /* uber_details_ptr */
+
+        if (helper_vis_task != nullptr)
+        {
+            system_resizable_vector_push(scene_render_present_tasks,
+                                         helper_vis_task); 
+        }
     }
 
     for (uint32_t n_pass = 0;
@@ -1348,7 +1707,7 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                       n_custom_mesh < n_custom_meshes_to_render;
                     ++n_custom_mesh)
         {
-            _scene_renderer_mesh* custom_mesh_ptr = NULL;
+            _scene_renderer_mesh* custom_mesh_ptr = nullptr;
 
             if (!system_resizable_vector_get_element_at(renderer_ptr->current_custom_meshes_to_render,
                                                         n_custom_mesh,
@@ -1361,12 +1720,15 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                 continue;
             }
 
-            custom_mesh_ptr->pfn_render_custom_mesh_proc(renderer_ptr->context,
-                                                         custom_mesh_ptr->custom_mesh_render_proc_user_arg,
-                                                         custom_mesh_ptr->model_matrix,
-                                                         renderer_ptr->current_vp,
-                                                         custom_mesh_ptr->normal_matrix,
-                                                         is_depth_prepass);
+            system_resizable_vector_push(scene_render_present_tasks,
+                                         custom_mesh_ptr->pfn_render_custom_mesh_proc(renderer_ptr->context,
+                                                                                      custom_mesh_ptr->custom_mesh_render_proc_user_arg,
+                                                                                      custom_mesh_ptr->model_matrix,
+                                                                                      renderer_ptr->current_vp,
+                                                                                      custom_mesh_ptr->normal_matrix,
+                                                                                      is_depth_prepass,
+                                                                                      renderer_ptr->current_color_rt,
+                                                                                      renderer_ptr->current_depth_rt) );
 
             if (n_pass == (n_passes - 1) )
             {
@@ -1375,14 +1737,28 @@ PRIVATE void _scene_renderer_render_traversed_scene_graph(_scene_renderer*      
                 system_resource_pool_return_to_pool(renderer_ptr->mesh_pool,
                                                     (system_resource_pool_block) custom_mesh_ptr);
             }
-        } /* for (all custom meshes to render) */
+        }
     }
 
     system_resizable_vector_clear(renderer_ptr->current_custom_meshes_to_render);
 
     /* Any helper visualization, handle it at this point */
-    _scene_renderer_render_helper_visualizations(renderer_ptr,
-                                                 frame_time);
+    {
+        ral_present_task helper_vis_task = _scene_renderer_render_helper_visualizations(renderer_ptr,
+                                                                                        frame_time);
+
+        if (helper_vis_task != nullptr)
+        {
+            system_resizable_vector_push(scene_render_present_tasks,
+                                         helper_vis_task);
+        }
+    }
+
+    /* Form the final present task */
+    todo;
+#endif
+
+    return nullptr;
 }
 
 /** TODO */
@@ -1400,37 +1776,25 @@ PRIVATE void _scene_renderer_return_shadow_maps_to_pool(scene_renderer renderer)
                   n_light < n_lights;
                 ++n_light)
     {
-        scene_light current_light                  = scene_get_light_by_index(renderer_ptr->owned_scene,
-                                                                              n_light);
-        ral_texture current_light_sm_texture_color = NULL;
-        ral_texture current_light_sm_texture_depth = NULL;
+        scene_light      current_light                     = scene_get_light_by_index(renderer_ptr->owned_scene,
+                                                                                      n_light);
+        ral_texture_view current_light_sm_texture_views[2] = {nullptr, nullptr};
 
-        ASSERT_DEBUG_SYNC(current_light != NULL,
-                          "Scene light is NULL");
+        ASSERT_DEBUG_SYNC(current_light != nullptr,
+                          "Scene light is nullptr");
 
         scene_light_get_property(current_light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
-                                &current_light_sm_texture_color);
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
+                                &current_light_sm_texture_views + 0);
         scene_light_get_property(current_light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL,
-                                &current_light_sm_texture_depth);
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
+                                &current_light_sm_texture_views + 1);
 
-        if (current_light_sm_texture_color != NULL)
-        {
-            ral_context_delete_objects(renderer_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                       1, /* n_objects */
-                                       (const void**) &current_light_sm_texture_color);
-        } /* if (current_light_sm_texture_color != NULL) */
-
-        if (current_light_sm_texture_depth != NULL)
-        {
-            ral_context_delete_objects(renderer_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                       1, /* n_objects */
-                                       (const void**) &current_light_sm_texture_depth);
-        } /* if (current_light_sm_texture_depth != NULL) */
-    } /* for (all scene lights) */
+        ral_context_delete_objects(renderer_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   sizeof(current_light_sm_texture_views) / sizeof(current_light_sm_texture_views[0]),
+                                   (const void**) current_light_sm_texture_views);
+    }
 }
 
 /** TODO */
@@ -1438,7 +1802,7 @@ PRIVATE void _scene_renderer_subscribe_for_general_notifications(_scene_renderer
                                                                  bool             should_subscribe)
 {
     uint32_t                n_scene_cameras        = 0;
-    system_callback_manager scene_callback_manager = NULL;
+    system_callback_manager scene_callback_manager = nullptr;
 
     scene_get_property(scene_renderer_ptr->owned_scene,
                        SCENE_PROPERTY_CALLBACK_MANAGER,
@@ -1455,7 +1819,7 @@ PRIVATE void _scene_renderer_subscribe_for_general_notifications(_scene_renderer
                       n_scene_camera < n_scene_cameras;
                     ++n_scene_camera)
         {
-            system_callback_manager current_camera_callback_manager = NULL;
+            system_callback_manager current_camera_callback_manager = nullptr;
             scene_camera            current_camera                  = scene_get_camera_by_index(scene_renderer_ptr->owned_scene,
                                                                                                 n_scene_camera);
 
@@ -1469,7 +1833,7 @@ PRIVATE void _scene_renderer_subscribe_for_general_notifications(_scene_renderer
                                                             CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                             _scene_renderer_on_camera_show_frustum_setting_changed,
                                                             scene_renderer_ptr);
-        } /* for (all scene cameras) */
+        }
 
         /* Since scene_renderer caches ogl_uber instances, given current scene configuration,
          * we need to register for various scene call-backs in order to ensure these instances
@@ -1487,7 +1851,7 @@ PRIVATE void _scene_renderer_subscribe_for_general_notifications(_scene_renderer
                       n_scene_camera < n_scene_cameras;
                     ++n_scene_camera)
         {
-            system_callback_manager current_camera_callback_manager = NULL;
+            system_callback_manager current_camera_callback_manager = nullptr;
             scene_camera            current_camera                  = scene_get_camera_by_index(scene_renderer_ptr->owned_scene,
                                                                                                 n_scene_camera);
 
@@ -1500,7 +1864,7 @@ PRIVATE void _scene_renderer_subscribe_for_general_notifications(_scene_renderer
                                                                SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
                                                                _scene_renderer_on_camera_show_frustum_setting_changed,
                                                                scene_renderer_ptr);
-        } /* for (all scene cameras) */
+        }
 
         system_callback_manager_unsubscribe_from_callbacks(scene_callback_manager,
                                                            SCENE_CALLBACK_ID_LIGHT_ADDED,
@@ -1514,28 +1878,28 @@ PRIVATE void _scene_renderer_subscribe_for_mesh_material_notifications(_scene_re
                                                                        mesh_material    material,
                                                                        bool             should_subscribe)
 {
-    system_callback_manager material_callback_manager = NULL;
+    system_callback_manager material_callback_manager = nullptr;
 
     mesh_material_get_property(material,
                                MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
                               &material_callback_manager);
 
-    ASSERT_DEBUG_SYNC(material_callback_manager != NULL,
+    ASSERT_DEBUG_SYNC(material_callback_manager != nullptr,
                       "Could not retrieve callback manager from a mesh_material instance.");
 
     if (should_subscribe)
     {
         system_callback_manager_subscribe_for_callbacks(material_callback_manager,
-                                                        MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
+                                                        MESH_MATERIAL_CALLBACK_ID_UBER_UPDATED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _scene_renderer_on_mesh_material_ogl_uber_invalidated,
+                                                        _scene_renderer_on_mesh_material_uber_invalidated,
                                                         scene_renderer_ptr);
     }
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(material_callback_manager,
-                                                           MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
-                                                           _scene_renderer_on_mesh_material_ogl_uber_invalidated,
+                                                           MESH_MATERIAL_CALLBACK_ID_UBER_UPDATED,
+                                                           _scene_renderer_on_mesh_material_uber_invalidated,
                                                            scene_renderer_ptr);
     }
 }
@@ -1545,14 +1909,32 @@ PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras(_scene_rend
     /* This function may be called via a call-back. Make sure the frustum preview handler is instantiated
      * before carrying on.
      */
-    if (renderer_ptr->frustum_preview == NULL)
+    if (renderer_ptr->frustum_preview == nullptr)
     {
+        /* TODO: This is wrong. We shouldn't need to be passing viewport size at creation time */
+        uint32_t viewport_size[2];
+
+        ASSERT_DEBUG_SYNC(renderer_ptr->current_color_rt != nullptr,
+                          "No color RT assigned at the time of the call");
+
+        ral_texture_view_get_mipmap_property(renderer_ptr->current_color_rt,
+                                             0, /* n_layer  */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                             viewport_size + 0);
+        ral_texture_view_get_mipmap_property(renderer_ptr->current_color_rt,
+                                             0, /* n_layer  */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                             viewport_size + 1);
+
         renderer_ptr->frustum_preview = scene_renderer_frustum_preview_create(renderer_ptr->context,
-                                                                              renderer_ptr->owned_scene);
+                                                                              renderer_ptr->owned_scene,
+                                                                              viewport_size);
     }
 
     /* Prepare a buffer that can hold up to the number of cameras added to the scene */
-    scene_camera* assigned_cameras   = NULL;
+    scene_camera* assigned_cameras   = nullptr;
     uint32_t      n_assigned_cameras = 0;
     uint32_t      n_scene_cameras    = 0;
 
@@ -1564,7 +1946,7 @@ PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras(_scene_rend
     {
         assigned_cameras = new (std::nothrow) scene_camera[n_scene_cameras];
 
-        ASSERT_DEBUG_SYNC(assigned_cameras != NULL,
+        ASSERT_DEBUG_SYNC(assigned_cameras != nullptr,
                           "Out of memory");
 
         for (uint32_t n_scene_camera = 0;
@@ -1585,8 +1967,8 @@ PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras(_scene_rend
                 assigned_cameras[n_assigned_cameras] = current_camera;
                 n_assigned_cameras++;
             }
-        } /* for (all scene cameras) */
-    } /* if (n_scene_cameras != 0) */
+        }
+    }
 
     /* Feed the data to the frustum preview renderer */
     scene_renderer_frustum_preview_assign_cameras(renderer_ptr->frustum_preview,
@@ -1594,20 +1976,20 @@ PRIVATE void _scene_renderer_update_frustum_preview_assigned_cameras(_scene_rend
                                                   assigned_cameras);
 
     /* Clean up */
-    if (assigned_cameras != NULL)
+    if (assigned_cameras != nullptr)
     {
         delete [] assigned_cameras;
 
-        assigned_cameras = NULL;
+        assigned_cameras = nullptr;
     }
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_uber material_uber,
-                                                              scene               scene,
-                                                              system_matrix4x4    current_camera_view_matrix,
-                                                              system_time         frame_time,
-                                                              system_variant      temp_variant_float)
+PRIVATE void _scene_renderer_update_uber_light_properties(scene_renderer_uber material_uber,
+                                                          scene               scene,
+                                                          system_matrix4x4    current_camera_view_matrix,
+                                                          system_time         frame_time,
+                                                          system_variant      temp_variant_float)
 {
     unsigned int n_scene_lights = 0;
     unsigned int n_uber_items   = 0;
@@ -1652,25 +2034,25 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
 
         if (current_light_shadow_caster)
         {
-            system_matrix4x4                 current_light_depth_view                  = NULL;
-            const float*                     current_light_depth_view_row_major        = NULL;
-            const float*                     current_light_depth_vp_row_major          = NULL;
-            system_matrix4x4                 current_light_depth_vp                    = NULL;
-            ral_texture                      current_light_shadow_map_texture_color    = NULL;
-            ral_texture                      current_light_shadow_map_texture_depth    = NULL;
-            float                            current_light_shadow_map_vsm_cutoff       = 0;
-            float                            current_light_shadow_map_vsm_min_variance = 0;
+            system_matrix4x4                 current_light_depth_view                    = nullptr;
+            const float*                     current_light_depth_view_row_major          = nullptr;
+            const float*                     current_light_depth_vp_row_major            = nullptr;
+            system_matrix4x4                 current_light_depth_vp                      = nullptr;
+            ral_texture_view                 current_light_shadow_map_texture_view_color = nullptr;
+            ral_texture_view                 current_light_shadow_map_texture_view_depth = nullptr;
+            float                            current_light_shadow_map_vsm_cutoff         = 0;
+            float                            current_light_shadow_map_vsm_min_variance   = 0;
             scene_light_shadow_map_algorithm current_light_sm_algo;
 
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
                                     &current_light_sm_algo);
             scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR_RAL,
-                                    &current_light_shadow_map_texture_color);
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
+                                    &current_light_shadow_map_texture_view_color);
             scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH_RAL,
-                                    &current_light_shadow_map_texture_depth);
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
+                                    &current_light_shadow_map_texture_view_depth);
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
                                     &current_light_depth_view);
@@ -1703,12 +2085,12 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
             /* Shadow map textures */
             scene_renderer_uber_set_shader_item_property(material_uber,
                                                          n_light,
-                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_COLOR,
-                                                        &current_light_shadow_map_texture_color);
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_VIEW_COLOR,
+                                                        &current_light_shadow_map_texture_view_color);
             scene_renderer_uber_set_shader_item_property(material_uber,
                                                          n_light,
-                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_RAL_DEPTH,
-                                                        &current_light_shadow_map_texture_depth);
+                                                         SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_VIEW_DEPTH,
+                                                        &current_light_shadow_map_texture_view_depth);
 
             /* VSM cut-off (if VSM is enabled) */
             if (current_light_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
@@ -1721,7 +2103,7 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
                                                              n_light,
                                                              SCENE_RENDERER_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE,
                                                             &current_light_shadow_map_vsm_min_variance);
-            } /* if (current_light_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM) */
+            }
         }
 
         _scene_renderer_get_light_color(current_light,
@@ -1791,7 +2173,7 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
                                                   temp_variant_float);
                         system_variant_get_float (temp_variant_float,
                                                   dst_float_ptr);
-                    } /* for (all curves) */
+                    }
 
                     scene_renderer_uber_set_shader_item_property(material_uber,
                                                                  n_light,
@@ -1799,7 +2181,7 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
                                                                  current_light_attenuation_floats);
 
                     break;
-                } /* case SCENE_LIGHT_FALLOFF_CUSTOM: */
+                }
 
                 case SCENE_LIGHT_FALLOFF_LINEAR:
                 case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE:
@@ -1821,7 +2203,7 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
                                                                 &current_light_range_float);
 
                     break;
-                } /* case SCENE_LIGHT_FALLOFF_LINEAR: */
+                }
 
                 case SCENE_LIGHT_FALLOFF_OFF:
                 {
@@ -1834,7 +2216,7 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
                     ASSERT_DEBUG_SYNC(false,
                                       "Unrecognized light falloff type");
                 }
-            } /* switch (current_light_falloff) */
+            }
         }
 
         if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
@@ -1854,10 +2236,10 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
             float            current_light_far_plane;
             float            current_light_near_plane;
             float            current_light_plane_diff;
-            const float*     current_light_projection_matrix_data = NULL;
-            system_matrix4x4 current_light_projection_matrix      = NULL;
-            const float*     current_light_view_matrix_data       = NULL;
-            system_matrix4x4 current_light_view_matrix            = NULL;
+            const float*     current_light_projection_matrix_data = nullptr;
+            system_matrix4x4 current_light_projection_matrix      = nullptr;
+            const float*     current_light_view_matrix_data       = nullptr;
+            system_matrix4x4 current_light_view_matrix            = nullptr;
 
             /* Update ogl_uber with point light-specific data */
             scene_light_get_property(current_light,
@@ -1931,15 +2313,15 @@ PRIVATE void _scene_renderer_update_ogl_uber_light_properties(scene_renderer_ube
                                                          SCENE_RENDERER_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,
                                                         &current_light_edge_angle_float);
         }
-    } /* for (all lights) */
+    }
 }
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
+PUBLIC void scene_renderer_bake_gpu_assets(scene_renderer renderer)
 {
-    scene_renderer_materials context_materials = NULL;
-    _scene_renderer*         renderer_ptr      = (_scene_renderer*) renderer;
+    scene_renderer_materials context_materials = nullptr;
+    _scene_renderer*         renderer_ptr      = reinterpret_cast<_scene_renderer*>(renderer);
 
     demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
                          &context_materials);
@@ -1961,16 +2343,16 @@ PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
     {
         mesh                    current_mesh           = scene_get_unique_mesh_by_index(renderer_ptr->owned_scene,
                                                                                         n_mesh);
-        system_resizable_vector current_mesh_materials = NULL;
+        system_resizable_vector current_mesh_materials = nullptr;
 
-        ASSERT_DEBUG_SYNC(current_mesh != NULL,
+        ASSERT_DEBUG_SYNC(current_mesh != nullptr,
                           "Could not retrieve mesh instance");
 
         mesh_get_property(current_mesh,
                           MESH_PROPERTY_MATERIALS,
                          &current_mesh_materials);
 
-        ASSERT_DEBUG_SYNC(current_mesh_materials != NULL,
+        ASSERT_DEBUG_SYNC(current_mesh_materials != nullptr,
                           "Could not retrieve material vector for current mesh instance");
 
         /* Iterate over all materials defined for the current mesh */
@@ -1987,14 +2369,14 @@ PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
                           n_mesh_material < n_mesh_materials;
                         ++n_mesh_material)
         {
-            mesh_material current_mesh_material = NULL;
+            mesh_material current_mesh_material = nullptr;
 
             system_resizable_vector_get_element_at(current_mesh_materials,
                                                    n_mesh_material,
                                                   &current_mesh_material);
 
-            ASSERT_DEBUG_SYNC(current_mesh_material != NULL,
-                              "mesh_material instance is NULL");
+            ASSERT_DEBUG_SYNC(current_mesh_material != nullptr,
+                              "mesh_material instance is nullptr");
 
             /* Ensure there's an ogl_uber instance prepared for both SM and non-SM cases */
             scene_renderer_uber uber_w_sm  = mesh_material_get_uber(current_mesh_material,
@@ -2006,21 +2388,21 @@ PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
 
             scene_renderer_uber_link(uber_w_sm);
             scene_renderer_uber_link(uber_wo_sm);
-        } /* for (all mesh materials) */
-    } /* for (all GPU meshes) */
+        }
+    }
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_renderer scene_renderer_create(ral_context context,
-                                                        scene       scene)
+PUBLIC scene_renderer scene_renderer_create(ral_context context,
+                                            scene       scene)
 {
     _scene_renderer* scene_renderer_ptr = new (std::nothrow) _scene_renderer(context,
                                                                              scene);
 
-    ASSERT_ALWAYS_SYNC(scene_renderer_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(scene_renderer_ptr != nullptr,
                        "Out of memory");
 
-    if (scene_renderer_ptr != NULL)
+    if (scene_renderer_ptr != nullptr)
     {
         demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
                              &scene_renderer_ptr->material_manager);
@@ -2043,10 +2425,10 @@ PUBLIC EMERALD_API scene_renderer scene_renderer_create(ral_context context,
         {
             mesh                    current_mesh             = scene_get_unique_mesh_by_index(scene,
                                                                                               n_scene_unique_mesh);
-            system_resizable_vector current_mesh_materials   = NULL;
+            system_resizable_vector current_mesh_materials   = nullptr;
             uint32_t                n_current_mesh_materials = 0;
 
-            ASSERT_DEBUG_SYNC(current_mesh != NULL,
+            ASSERT_DEBUG_SYNC(current_mesh != nullptr,
                               "Could not retrieve unique mesh at index [%d]",
                               n_scene_unique_mesh);
 
@@ -2054,7 +2436,7 @@ PUBLIC EMERALD_API scene_renderer scene_renderer_create(ral_context context,
                               MESH_PROPERTY_MATERIALS,
                              &current_mesh_materials);
 
-            ASSERT_DEBUG_SYNC(current_mesh_materials != NULL,
+            ASSERT_DEBUG_SYNC(current_mesh_materials != nullptr,
                               "Could not retrieve unique mesh materials.");
 
             system_resizable_vector_get_property(current_mesh_materials,
@@ -2065,22 +2447,22 @@ PUBLIC EMERALD_API scene_renderer scene_renderer_create(ral_context context,
                           n_current_mesh_material < n_current_mesh_materials;
                         ++n_current_mesh_material)
             {
-                mesh_material current_mesh_material = NULL;
+                mesh_material current_mesh_material = nullptr;
 
                 system_resizable_vector_get_element_at(current_mesh_materials,
                                                        n_current_mesh_material,
                                                       &current_mesh_material);
 
-                ASSERT_DEBUG_SYNC(current_mesh_material != NULL,
+                ASSERT_DEBUG_SYNC(current_mesh_material != nullptr,
                                   "Could not retrieve mesh_material instance.");
 
                 /* Finally, time to sign up! */
                 _scene_renderer_subscribe_for_mesh_material_notifications(scene_renderer_ptr,
                                                                           current_mesh_material,
                                                                           true /* should_subscribe */);
-            } /* for (all current mesh materials) */
-        } /* for (all unique meshes) */
-    } /* if (scene_renderer_ptr != NULL) */
+            }
+        }
+    }
 
     return (scene_renderer) scene_renderer_ptr;
 }
@@ -2091,12 +2473,12 @@ PUBLIC bool scene_renderer_cull_against_frustum(scene_renderer                  
                                                 scene_renderer_frustum_culling_behavior behavior,
                                                 const void*                             behavior_data)
 {
-    _scene_renderer* renderer_ptr = (_scene_renderer*) renderer;
+    _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(renderer);
     bool             result       = true;
 
     /* Retrieve AABB for the mesh */
-    const float* aabb_max_ptr = NULL;
-    const float* aabb_min_ptr = NULL;
+    const float* aabb_max_ptr = nullptr;
+    const float* aabb_min_ptr = nullptr;
 
     mesh_get_property(mesh_gpu,
                       MESH_PROPERTY_MODEL_AABB_MAX,
@@ -2156,8 +2538,8 @@ PUBLIC bool scene_renderer_cull_against_frustum(scene_renderer                  
     {
         case SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA:
         {
-            const float* camera_location_world_vec3 = ((const float*) behavior_data);
-            const float* camera_view_direction_vec3 = ((const float*) behavior_data) + 3;
+            const float* camera_location_world_vec3 = (reinterpret_cast<const float*>(behavior_data));
+            const float* camera_view_direction_vec3 = (reinterpret_cast<const float*>(behavior_data)) + 3;
 
             /* Is any of the mesh's AABB vertices in front of the camera? */
             result = false;
@@ -2205,7 +2587,7 @@ PUBLIC bool scene_renderer_cull_against_frustum(scene_renderer                  
                 {
                     result = true;
                 }
-            } /* for (all AABB vertices) */
+            }
 
             if (result)
             {
@@ -2213,7 +2595,7 @@ PUBLIC bool scene_renderer_cull_against_frustum(scene_renderer                  
             }
 
             break;
-        } /* case SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA: */
+        }
 
         case SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES:
         {
@@ -2303,7 +2685,7 @@ PUBLIC bool scene_renderer_cull_against_frustum(scene_renderer                  
                     {
                         counter_inside++;
                     }
-                } /* for (all bbox vertices) */
+                }
 
                 if (counter_inside == 0)
                 {
@@ -2317,17 +2699,17 @@ PUBLIC bool scene_renderer_cull_against_frustum(scene_renderer                  
                 {
                     /* Intersection, need to keep iterating */
                 }
-            } /* for (all clipping planes) */
+            }
 
             break;
-        } /* case SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES: */
+        }
 
         default:
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized frustum culling behavior requested");
         }
-    } /* switch (behavior) */
+    }
 
 end:
 
@@ -2365,21 +2747,21 @@ end:
 PUBLIC void scene_renderer_get_indexed_property(const scene_renderer    renderer,
                                                 scene_renderer_property property,
                                                 uint32_t                index,
-                                                void*                   out_result)
+                                                void*                   out_result_ptr)
 {
-    const _scene_renderer* renderer_ptr = (const _scene_renderer*) renderer;
+    const _scene_renderer* renderer_ptr = reinterpret_cast<const _scene_renderer*>(renderer);
 
     switch (property)
     {
         case SCENE_RENDERER_PROPERTY_MESH_INSTANCE:
         {
-            const _scene_renderer_mesh* mesh_ptr = NULL;
+            const _scene_renderer_mesh* mesh_ptr = nullptr;
 
             if (system_hash64map_get(renderer_ptr->current_mesh_id_to_mesh_map,
                                      index,
                                     &mesh_ptr) )
             {
-                *((mesh*) out_result) = mesh_ptr->mesh_instance;
+                *(reinterpret_cast<mesh*>(out_result_ptr)) = mesh_ptr->mesh_instance;
             }
             else
             {
@@ -2393,13 +2775,13 @@ PUBLIC void scene_renderer_get_indexed_property(const scene_renderer    renderer
 
         case SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX:
         {
-            const _scene_renderer_mesh* mesh_ptr = NULL;
+            const _scene_renderer_mesh* mesh_ptr = nullptr;
 
             if (system_hash64map_get(renderer_ptr->current_mesh_id_to_mesh_map,
                                      index,
                                     &mesh_ptr) )
             {
-                *((system_matrix4x4*) out_result) = mesh_ptr->model_matrix;
+                *(reinterpret_cast<system_matrix4x4*>(out_result_ptr)) = mesh_ptr->model_matrix;
             }
             else
             {
@@ -2413,13 +2795,13 @@ PUBLIC void scene_renderer_get_indexed_property(const scene_renderer    renderer
 
         case SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX:
         {
-            const _scene_renderer_mesh* mesh_ptr = NULL;
+            const _scene_renderer_mesh* mesh_ptr = nullptr;
 
             if (system_hash64map_get(renderer_ptr->current_mesh_id_to_mesh_map,
                                      index,
                                     &mesh_ptr) )
             {
-                *((system_matrix4x4*) out_result) = mesh_ptr->normal_matrix;
+                *(reinterpret_cast<system_matrix4x4*>(out_result_ptr) ) = mesh_ptr->normal_matrix;
             }
             else
             {
@@ -2436,21 +2818,21 @@ PUBLIC void scene_renderer_get_indexed_property(const scene_renderer    renderer
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized indexed scene_renderer_property");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_get_property(scene_renderer          renderer,
-                                                    scene_renderer_property property,
-                                                    void*                   out_result)
+PUBLIC void scene_renderer_get_property(const scene_renderer    renderer,
+                                        scene_renderer_property property,
+                                        void*                   out_result_ptr)
 {
-    _scene_renderer* renderer_ptr = (_scene_renderer*) renderer;
+    const _scene_renderer* renderer_ptr = reinterpret_cast<const _scene_renderer*>(renderer);
 
     switch (property)
     {
         case SCENE_RENDERER_PROPERTY_CONTEXT_RAL:
         {
-            *(ral_context *) out_result = renderer_ptr->context;
+            *reinterpret_cast<ral_context *>(out_result_ptr) = renderer_ptr->context;
 
             break;
         }
@@ -2459,28 +2841,28 @@ PUBLIC EMERALD_API void scene_renderer_get_property(scene_renderer          rend
         {
             scene_get_property(renderer_ptr->owned_scene,
                                SCENE_PROPERTY_GRAPH,
-                               out_result);
+                               out_result_ptr);
 
             break;
         }
 
         case SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX:
         {
-            *(system_matrix4x4*) out_result = renderer_ptr->current_model_matrix;
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = renderer_ptr->current_model_matrix;
 
             break;
         }
 
         case SCENE_RENDERER_PROPERTY_SHADOW_MAPPING_MANAGER:
         {
-            *(scene_renderer_sm*) out_result = renderer_ptr->shadow_mapping;
+            *reinterpret_cast<scene_renderer_sm*>(out_result_ptr) = renderer_ptr->shadow_mapping;
 
             break;
         }
 
         case SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    renderer_ptr->current_camera_visible_world_aabb_max,
                    sizeof(renderer_ptr->current_camera_visible_world_aabb_max) );
 
@@ -2489,7 +2871,7 @@ PUBLIC EMERALD_API void scene_renderer_get_property(scene_renderer          rend
 
         case SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN:
         {
-            memcpy(out_result,
+            memcpy(out_result_ptr,
                    renderer_ptr->current_camera_visible_world_aabb_min,
                    sizeof(renderer_ptr->current_camera_visible_world_aabb_min) );
 
@@ -2498,7 +2880,7 @@ PUBLIC EMERALD_API void scene_renderer_get_property(scene_renderer          rend
 
         case SCENE_RENDERER_PROPERTY_VP:
         {
-            *(system_matrix4x4*) out_result = renderer_ptr->current_vp;
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = renderer_ptr->current_vp;
 
             break;
         }
@@ -2508,35 +2890,35 @@ PUBLIC EMERALD_API void scene_renderer_get_property(scene_renderer          rend
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_graph property");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_renderer                      renderer,
-                                                                     system_matrix4x4                    view,
-                                                                     system_matrix4x4                    projection,
-                                                                     scene_camera                        camera,
-                                                                     const scene_renderer_render_mode&   render_mode,
-                                                                     bool                                apply_shadow_mapping,
-                                                                     scene_renderer_helper_visualization helper_visualization,
-                                                                     system_time                         frame_time)
+PUBLIC ral_present_task scene_renderer_render_scene_graph(scene_renderer                      renderer,
+                                                          system_matrix4x4                    view,
+                                                          system_matrix4x4                    projection,
+                                                          scene_camera                        camera,
+                                                          const scene_renderer_render_mode&   render_mode,
+                                                          bool                                apply_shadow_mapping,
+                                                          scene_renderer_helper_visualization helper_visualization,
+                                                          system_time                         frame_time,
+                                                          ral_texture_view                    color_rt,
+                                                          ral_texture_view                    depth_rt)
 {
-    const ogl_context_gl_entrypoints* entry_points   = NULL;
-    scene_graph                       graph          = NULL;
-    _scene_renderer*                  renderer_ptr   = (_scene_renderer*) renderer;
+    scene_graph      graph               = nullptr;
+    _scene_renderer* renderer_ptr        = reinterpret_cast<_scene_renderer*>(renderer);
+    ral_present_task result_present_task = nullptr;
 
     scene_get_property(renderer_ptr->owned_scene,
                        SCENE_PROPERTY_GRAPH,
                       &graph);
 
-    ogl_context_get_property(ral_context_get_gl_context(renderer_ptr->context),
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
-
     /* Prepare graph traversal parameters */
     system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,
                                                          view);
 
+    renderer_ptr->current_color_rt                  = color_rt;
+    renderer_ptr->current_depth_rt                  = depth_rt;
     renderer_ptr->current_camera                    = camera;
     renderer_ptr->current_helper_visualization      = helper_visualization;
     renderer_ptr->current_is_shadow_mapping_enabled = apply_shadow_mapping;
@@ -2571,12 +2953,14 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
          * projection, view & vp matrices we set up.
          *
          * Revert the original settings */
+        renderer_ptr->current_color_rt                  = color_rt;
+        renderer_ptr->current_depth_rt                  = depth_rt;
         renderer_ptr->current_helper_visualization      = helper_visualization;
         renderer_ptr->current_is_shadow_mapping_enabled = apply_shadow_mapping;
         renderer_ptr->current_projection                = projection;
         renderer_ptr->current_view                      = view;
         renderer_ptr->current_vp                        = vp;
-    } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
+    }
 
     /* 1. Traverse the scene graph and:
      *
@@ -2588,42 +2972,36 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
      */
     scene_graph_traverse(graph,
                          scene_renderer_update_current_model_matrix,
-                         NULL, /* insert_camera_proc */
+                         nullptr, /* insert_camera_proc */
                          scene_renderer_update_light_properties,
                          (render_mode == RENDER_MODE_SHADOW_MAP) ? scene_renderer_sm_process_mesh_for_shadow_map_rendering
                                                                  : _scene_renderer_process_mesh_for_forward_rendering,
                          renderer,
                          frame_time);
 
-    /* Set up GL before we continue */
-    entry_points->pGLDepthFunc(GL_LESS);
-    entry_points->pGLEnable   (GL_CULL_FACE);
-    entry_points->pGLEnable   (GL_DEPTH_TEST);
+    /* Prepare a reference gfx state create info configuration */
+    ral_gfx_state_create_info ref_gfx_state_create_info;
 
-    if (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS ||
-        render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    ||
-        render_mode == RENDER_MODE_NORMALS_ONLY                  ||
-        render_mode == RENDER_MODE_TEXCOORDS_ONLY)
-    {
-        entry_points->pGLEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-        entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
-    }
+    ref_gfx_state_create_info.culling               = true;
+    ref_gfx_state_create_info.depth_test            = true;
+    ref_gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_LESS;
 
     /* 2. Start uber rendering. Issue as many render requests as there are materials. */
     if (render_mode == RENDER_MODE_SHADOW_MAP)
     {
-        scene_renderer_sm_render_shadow_map_meshes(renderer_ptr->shadow_mapping,
-                                                   renderer,
-                                                   renderer_ptr->owned_scene,
-                                                   frame_time);
-    } /* if (render_mode == RENDER_MODE_SHADOW_MAP) */
+        result_present_task = scene_renderer_sm_render_shadow_map_meshes(renderer_ptr->shadow_mapping,
+                                                                         renderer,
+                                                                         renderer_ptr->owned_scene,
+                                                                         frame_time,
+                                                                        &ref_gfx_state_create_info);
+    }
     else
     {
-        _scene_renderer_render_traversed_scene_graph(renderer_ptr,
-                                                     render_mode,
-                                                     entry_points,
-                                                     frame_time);
-    } /* if (render_mode != RENDER_MODE_SHADOW_MAP) */
+        result_present_task = _scene_renderer_render_traversed_scene_graph(renderer_ptr,
+                                                                           render_mode,
+                                                                           frame_time,
+                                                                           ref_gfx_state_create_info);
+    }
 
     /* 3. Clean up in anticipation for the next call. We specifically do not cache any of the
      *    data because of the frustum culling which needs to be performed, every time model matrix
@@ -2643,43 +3021,34 @@ PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_render_scene_graph(scene_rende
         _scene_renderer_return_shadow_maps_to_pool(renderer);
     }
 
-    /* All done! Good to shut down the show */
-    if (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS ||
-        render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS)
-    {
-        entry_points->pGLDisable(GL_FRAMEBUFFER_SRGB);
-        entry_points->pGLDisable(GL_RASTERIZER_DISCARD);
-        entry_points->pGLDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-
-        entry_points->pGLDepthFunc(GL_LEQUAL);
-        entry_points->pGLDepthMask(GL_TRUE);
-    }
-
-    if (vp != NULL)
+    /* Good to shut down the show */
+    if (vp != nullptr)
     {
         system_matrix4x4_release(vp);
 
-        vp = NULL;
+        vp = nullptr;
     }
+
+    return result_present_task;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_release(scene_renderer scene_renderer_instance)
+PUBLIC void scene_renderer_release(scene_renderer scene_renderer_instance)
 {
-    if (scene_renderer_instance != NULL)
+    if (scene_renderer_instance != nullptr)
     {
-        delete (_scene_renderer*) scene_renderer_instance;
+        delete reinterpret_cast<_scene_renderer*>(scene_renderer_instance);
 
-        scene_renderer_instance = NULL;
+        scene_renderer_instance = nullptr;
     }
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_set_property(scene_renderer          renderer,
-                                                    scene_renderer_property property,
-                                                    const void*             data)
+PUBLIC void scene_renderer_set_property(scene_renderer          renderer,
+                                        scene_renderer_property property,
+                                        const void*             data)
 {
-    _scene_renderer* renderer_ptr = (_scene_renderer*) renderer;
+    _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(renderer);
 
     switch (property)
     {
@@ -2706,14 +3075,14 @@ PUBLIC EMERALD_API void scene_renderer_set_property(scene_renderer          rend
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized scene_renderer_property value");
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for specification */
 PUBLIC void scene_renderer_update_current_model_matrix(system_matrix4x4 transformation_matrix,
                                                        void*            renderer)
 {
-    _scene_renderer* renderer_ptr = (_scene_renderer*) renderer;
+    _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(renderer);
 
     system_matrix4x4_set_from_matrix4x4(renderer_ptr->current_model_matrix,
                                         transformation_matrix);
@@ -2723,7 +3092,7 @@ PUBLIC void scene_renderer_update_current_model_matrix(system_matrix4x4 transfor
 PUBLIC void scene_renderer_update_light_properties(scene_light light,
                                                    void*       renderer)
 {
-    _scene_renderer* renderer_ptr = (_scene_renderer*) renderer;
+    _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(renderer);
 
     /* Directional vector needs to be only updated for directional lights */
     scene_light_type light_type = SCENE_LIGHT_TYPE_UNKNOWN;
