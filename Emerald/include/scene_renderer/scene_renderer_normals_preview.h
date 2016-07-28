@@ -20,18 +20,20 @@ PUBLIC scene_renderer_normals_preview scene_renderer_normals_preview_create(ral_
                                                                             scene          scene,
                                                                             scene_renderer owner);
 
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_normals_preview_render(scene_renderer_normals_preview preview,
-                                                                         uint32_t                       mesh_id);
-
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_normals_preview_start(scene_renderer_normals_preview preview,
-                                                                        system_matrix4x4               vp);
-
-/** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void scene_renderer_normals_preview_stop(scene_renderer_normals_preview preview);
-
 /** TODO. **/
 PUBLIC void scene_renderer_normals_preview_release(scene_renderer_normals_preview preview);
+
+/** TODO */
+PUBLIC void scene_renderer_normals_preview_render(scene_renderer_normals_preview preview,
+                                                  uint32_t                       mesh_id);
+
+/** TODO */
+PUBLIC void scene_renderer_normals_preview_start(scene_renderer_normals_preview preview,
+                                                 system_matrix4x4               vp,
+                                                 ral_texture_view               color_rt,
+                                                 ral_texture_view               depth_rt);
+
+/** TODO */
+PUBLIC ral_present_task scene_renderer_normals_preview_stop(scene_renderer_normals_preview preview);
 
 #endif /* SCENE_RENDERER_NORMALS_PREVIEW_H */
