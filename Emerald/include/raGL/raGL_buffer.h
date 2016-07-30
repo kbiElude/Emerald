@@ -50,9 +50,9 @@ PUBLIC raGL_buffer raGL_buffer_create_raGL_buffer_subregion(raGL_buffer parent_b
                                                             uint32_t    size);
 
 /** TODO */
-PUBLIC EMERALD_API void raGL_buffer_get_property(raGL_buffer          buffer,
-                                                 raGL_buffer_property property,
-                                                 void*                out_result_ptr);
+PUBLIC void raGL_buffer_get_property(raGL_buffer          buffer,
+                                     raGL_buffer_property property,
+                                     void*                out_result_ptr);
 
 /** TODO */
 PUBLIC void raGL_buffer_release(raGL_buffer buffer);

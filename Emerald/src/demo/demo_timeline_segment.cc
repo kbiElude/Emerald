@@ -3002,10 +3002,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo_timeline_segment segment,
-                                                                            uint32_t              frame_index,
-                                                                            system_time           rendering_pipeline_time,
-                                                                            const int*            rendering_area_px_topdown)
+PUBLIC EMERALD_API bool demo_timeline_segment_render(demo_timeline_segment segment,
+                                                     uint32_t              frame_index,
+                                                     system_time           rendering_pipeline_time,
+                                                     const int*            rendering_area_px_topdown)
 {
     uint32_t                n_sorted_nodes = 0;
     bool                    result         = false;

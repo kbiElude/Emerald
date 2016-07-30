@@ -108,6 +108,18 @@ typedef struct
 
 typedef enum
 {
+    /* not settable; uint32_t */
+    RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_GROUP_TASK_IO_INDEX,
+
+    /* not settable; uint32_t */
+    RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_IO_INDEX,
+
+    /* not settable; uint32_t */
+    RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_SUBTASK_INDEX,
+} ral_present_task_io_mapping_property;
+
+typedef enum
+{
     /* not settable; void* (depends on the reported OBJECT_TYPE value) */
     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
 
@@ -123,10 +135,32 @@ typedef enum
      **/
     RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER,
 
-    /* not settable; uint32_t */
+    /* not settable; uint32_t
+     *
+     * Query is only valid for group tasks. Will result in an assertion failure if invoked for
+     * other types of present tasks.
+     */
+    RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS,
+
+    /* not settable; uint32_t.
+     *
+     * Query is only valid for non-group tasks. Will result in an assertion failure if invoked
+     * for group present tasks.
+     **/
     RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
 
-    /* not settable; uint32_t */
+    /* not settable; uint32_t
+     *
+     * Query is only valid for group tasks. Will result in an assertion failure if invoked for
+     * other types of present tasks.
+     */
+    RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS,
+
+    /* not settable; uint32_t
+     *
+     * Query is only valid for non-group tasks. Will result in an assertion failure if invoked
+     * for group present tasks.
+     */
     RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
 
     /* not settable; system_hashed_ansi_string */
@@ -146,8 +180,8 @@ typedef enum
      *
      * - present tasks
      * - description of IO connection between these tasks.
-     *
-     * plus the usual unique input/output connections.
+     * - a set of connections binding task's inputs/outputs to
+     *   corresponding IOs of embedded sub-tasks.
      *
      */
     RAL_PRESENT_TASK_TYPE_GROUP,
@@ -161,7 +195,8 @@ PUBLIC ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string   
  *
  *  Specified ral_present_tasks are retained.
  */
-PUBLIC ral_present_task ral_present_task_create_group(const ral_present_task_group_create_info* create_info_ptr);
+PUBLIC ral_present_task ral_present_task_create_group(system_hashed_ansi_string                 name,
+                                                      const ral_present_task_group_create_info* create_info_ptr);
 
 /** Wraps a RAL command buffer inside a RAL present task. The command buffer is processed
  *  and information about read & modified RAL objects is extracted & cached.
@@ -172,7 +207,20 @@ PUBLIC ral_present_task ral_present_task_create_group(const ral_present_task_gro
 PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
                                                     const ral_present_task_gpu_create_info* create_info_ptr);
 
-/** TODO */
+/** TODO
+ *
+ *  NOTE: Only valid for group present tasks.
+ **/
+PUBLIC bool ral_present_task_get_io_mapping_property(ral_present_task                     task,
+                                                     ral_present_task_io_type             io_type,
+                                                     uint32_t                             n_io_mapping,
+                                                     ral_present_task_io_mapping_property property,
+                                                     void**                               out_result_ptr);
+
+/** TODO
+ *
+ *  NOTE: Group tasks do not have inputs & outputs defined! You need to query individual mappings instead.
+ **/
 PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
                                              ral_present_task_io_type     io_type,
                                              uint32_t                     n_io,

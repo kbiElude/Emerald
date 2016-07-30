@@ -538,10 +538,10 @@ PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(og
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(const ogl_context_texture_compression              texture_compression,
-                                                                               uint32_t                                           index,
-                                                                               ogl_context_texture_compression_algorithm_property property,
-                                                                               void*                                              out_result_ptr)
+PUBLIC void ogl_context_texture_compression_get_algorithm_property(const ogl_context_texture_compression              texture_compression,
+                                                                   uint32_t                                           index,
+                                                                   ogl_context_texture_compression_algorithm_property property,
+                                                                   void*                                              out_result_ptr)
 {
     _ogl_context_texture_compression_algorithm* algorithm_ptr           = nullptr;
     _ogl_context_texture_compression*           texture_compression_ptr = reinterpret_cast<_ogl_context_texture_compression*>(texture_compression);
@@ -589,9 +589,9 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(c
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(const ogl_context_texture_compression    texture_compression,
-                                                                     ogl_context_texture_compression_property property,
-                                                                     void*                                    out_result_ptr)
+PUBLIC void ogl_context_texture_compression_get_property(const ogl_context_texture_compression    texture_compression,
+                                                         ogl_context_texture_compression_property property,
+                                                         void*                                    out_result_ptr)
 {
     _ogl_context_texture_compression* texture_compression_ptr = reinterpret_cast<_ogl_context_texture_compression*>(texture_compression);
 

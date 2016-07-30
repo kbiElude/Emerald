@@ -3378,7 +3378,8 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
         result_task_unique_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_outputs;
     }
 
-    result_task = ral_present_task_create_group(&result_task_create_info);
+    result_task = ral_present_task_create_group(system_hashed_ansi_string_create("Uber: rasterization"),
+                                                &result_task_create_info);
 
     /* Mark as no longer rendered */
     uber_ptr->is_rendering = false;

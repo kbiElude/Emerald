@@ -37,8 +37,8 @@ typedef enum
  *
  *  @return A new raGL_texture instance, or NULL if the function failed.
  **/
-PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context context,
-                                                               ral_texture texture);
+PUBLIC raGL_texture raGL_texture_create(ogl_context context,
+                                        ral_texture texture);
 
 /** TODO */
 PUBLIC raGL_texture raGL_texture_create_view(ogl_context      context,
@@ -50,9 +50,9 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
                                           bool         async);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_texture_get_property(const raGL_texture    texture,
-                                                  raGL_texture_property property,
-                                                  void**                out_result_ptr);
+PUBLIC bool raGL_texture_get_property(const raGL_texture    texture,
+                                      raGL_texture_property property,
+                                      void**                out_result_ptr);
 
 /** TODO */
 PUBLIC void raGL_texture_release(raGL_texture texture);

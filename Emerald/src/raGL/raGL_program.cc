@@ -122,8 +122,6 @@ PRIVATE void _raGL_program_clear_bindings_metadata  (_raGL_program*          pro
                                                      bool                    should_release);
 PRIVATE void _raGL_program_create_callback          (ogl_context             context,
                                                     void*                    in_arg);
-PRIVATE void _raGL_program_detach_shader_callback   (ogl_context             context,
-                                                     void*                   in_arg);
 PRIVATE char*_raGL_program_get_binary_blob_file_name(_raGL_program*          program_ptr);
 PRIVATE char*_raGL_program_get_source_code_file_name(_raGL_program*          program_ptr);
 PRIVATE void _raGL_program_link_callback            (ogl_context             context,
@@ -1929,9 +1927,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void raGL_program_get_property(const raGL_program    program,
-                                                  raGL_program_property property,
-                                                  void*                 out_result_ptr)
+PUBLIC void raGL_program_get_property(const raGL_program    program,
+                                      raGL_program_property property,
+                                      void*                 out_result_ptr)
 {
     const _raGL_program* program_ptr = reinterpret_cast<const _raGL_program*>(program);
 
@@ -1990,10 +1988,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(const raGL_program          program,
-                                                                system_hashed_ansi_string   block_name,
-                                                                raGL_program_block_property property,
-                                                                void*                       out_result_ptr)
+PUBLIC void raGL_program_get_block_property_by_name(const raGL_program          program,
+                                                    system_hashed_ansi_string   block_name,
+                                                    raGL_program_block_property property,
+                                                    void*                       out_result_ptr)
 {
     _raGL_program_block_binding* binding_ptr = nullptr;
     const _raGL_program*         program_ptr = reinterpret_cast<const _raGL_program*>(program);
@@ -2050,9 +2048,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(const raGL_program             program,
-                                                         system_hashed_ansi_string      name,
-                                                         const _raGL_program_variable** out_uniform_ptr)
+PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program             program,
+                                             system_hashed_ansi_string      name,
+                                             const _raGL_program_variable** out_uniform_ptr)
 {
     _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
     bool           result      = false;
@@ -2100,9 +2098,9 @@ PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(const raGL_program     
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(const raGL_program              program,
-                                                                  system_hashed_ansi_string       name,
-                                                                  const _raGL_program_attribute** out_attribute_ptr)
+PUBLIC bool raGL_program_get_vertex_attribute_by_name(const raGL_program              program,
+                                                      system_hashed_ansi_string       name,
+                                                      const _raGL_program_attribute** out_attribute_ptr)
 {
     _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
     bool           result      = false;
@@ -2148,7 +2146,6 @@ PUBLIC EMERALD_API bool raGL_program_get_vertex_attribute_by_name(const raGL_pro
 
     return result;
 }
-
 
 /** Please see header for specification */
 PUBLIC bool raGL_program_link(raGL_program program)
@@ -2364,13 +2361,13 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void raGL_program_set_block_property_by_name(raGL_program                program,
-                                                                           system_hashed_ansi_string   block_name,
-                                                                           raGL_program_block_property property,
-                                                                           const void*                 value_ptr)
+PUBLIC void raGL_program_set_block_property_by_name(raGL_program                program,
+                                                    system_hashed_ansi_string   block_name,
+                                                    raGL_program_block_property property,
+                                                    const void*                 value_ptr)
 {
     _raGL_program_block_binding* binding_ptr = nullptr;
-    _raGL_program*               program_ptr = reinterpret_cast<_raGL_program*(program);
+    _raGL_program*               program_ptr = reinterpret_cast<_raGL_program*>(program);
 
     if (program == nullptr)
     {

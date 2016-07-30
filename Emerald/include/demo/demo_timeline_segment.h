@@ -345,10 +345,10 @@ PUBLIC EMERALD_API bool demo_timeline_segment_get_video_segment_node_id_for_ps_a
                                                                                                demo_timeline_segment_node_id* out_node_id_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL bool demo_timeline_segment_render(demo_timeline_segment segment,
-                                                                            uint32_t              frame_index,
-                                                                            system_time           rendering_pipeline_time,
-                                                                            const int*            rendering_area_px_topdown);
+PUBLIC EMERALD_API bool demo_timeline_segment_render(demo_timeline_segment segment,
+                                                     uint32_t              frame_index,
+                                                     system_time           rendering_pipeline_time,
+                                                     const int*            rendering_area_px_topdown);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_timeline_segment_set_node_io_property(demo_timeline_segment_node             node,

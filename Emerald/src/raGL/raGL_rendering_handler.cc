@@ -325,8 +325,8 @@ PUBLIC void raGL_rendering_handler_enumerate_custom_wait_event_handlers(void*   
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void raGL_rendering_handler_execute_present_job(void*           rendering_handler_raGL,
-                                                                              ral_present_job present_job)
+PUBLIC void raGL_rendering_handler_execute_present_job(void*           rendering_handler_raGL,
+                                                       ral_present_job present_job)
 {
     uint32_t                 n_present_job_tasks   = 0;
     ral_present_task*        present_job_tasks     = nullptr;

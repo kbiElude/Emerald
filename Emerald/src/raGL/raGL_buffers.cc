@@ -990,9 +990,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
-                                                                                                  const ral_buffer_create_info* buffer_create_info_ptr,
-                                                                                                  raGL_buffer*                  out_buffer_ptr)
+PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
+                                                                           const ral_buffer_create_info* buffer_create_info_ptr,
+                                                                           raGL_buffer*                  out_buffer_ptr)
 {
     _raGL_buffers* buffers_ptr = reinterpret_cast<_raGL_buffers*>(buffers);
     bool           result      = false;

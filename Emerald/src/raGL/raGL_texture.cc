@@ -80,21 +80,21 @@ typedef struct _raGL_texture
 } _raGL_texture;
 
 /* Forward declarations */
-PRIVATE                        void _raGL_texture_client_memory_sourced_update_renderer_callback (ogl_context    context,
-                                                                                                  void*          user_arg);
-PRIVATE                        void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*          user_arg);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callback              (ogl_context    context,
-                                                                                                  void*          user_arg);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_renderer_callback             (ogl_context    context,
-                                                                                                  void*          texture);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_scheduler_callback            (void*          texture);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_renderer_callback                 (ogl_context    context,
-                                                                                                  void*          texture);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage                      (_raGL_texture* texture_ptr);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage                           (_raGL_texture* texture_ptr);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback                    (ogl_context    context,
-                                                                                                  void*          texture);
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_texture              (_raGL_texture* texture_ptr);
+PRIVATE void _raGL_texture_client_memory_sourced_update_renderer_callback (ogl_context    context,
+                                                                           void*          user_arg);
+PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*          user_arg);
+PRIVATE void _raGL_texture_deinit_storage_rendering_callback              (ogl_context    context,
+                                                                           void*          user_arg);
+PRIVATE void _raGL_texture_generate_mipmaps_renderer_callback             (ogl_context    context,
+                                                                           void*          texture);
+PRIVATE void _raGL_texture_generate_mipmaps_scheduler_callback            (void*          texture);
+PRIVATE void _raGL_texture_init_storage_renderer_callback                 (ogl_context    context,
+                                                                           void*          texture);
+PRIVATE void _raGL_texture_init_renderbuffer_storage                      (_raGL_texture* texture_ptr);
+PRIVATE void _raGL_texture_init_texture_storage                           (_raGL_texture* texture_ptr);
+PRIVATE void _raGL_texture_init_view_renderer_callback                    (ogl_context    context,
+                                                                           void*          texture);
+PRIVATE void _raGL_texture_verify_conformance_to_ral_texture              (_raGL_texture* texture_ptr);
 
 
 /** TODO */
@@ -353,8 +353,8 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callback(ogl_context    context,
-                                                                                    void*          user_arg)
+PRIVATE void _raGL_texture_deinit_storage_rendering_callback(ogl_context    context,
+                                                             void*          user_arg)
 {
     const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     _raGL_texture*                    texture_ptr     = reinterpret_cast<_raGL_texture*>(user_arg);
@@ -386,14 +386,14 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_deinit_storage_rendering_callb
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_renderer_callback(ogl_context context,
-                                                                                     void*       texture)
+PRIVATE void _raGL_texture_generate_mipmaps_renderer_callback(ogl_context context,
+                                                              void*       texture)
 {
     _raGL_texture_generate_mipmaps_scheduler_callback(texture);
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_scheduler_callback(void* texture)
+PRIVATE void _raGL_texture_generate_mipmaps_scheduler_callback(void* texture)
 {
     const ogl_context                                         current_context     = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
@@ -423,8 +423,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_generate_mipmaps_scheduler_cal
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_renderer_callback(ogl_context context,
-                                                                                 void*       texture)
+PRIVATE void _raGL_texture_init_storage_renderer_callback(ogl_context context,
+                                                          void*       texture)
 {
     uint32_t               texture_n_mipmaps = 0;
     _raGL_texture*         texture_ptr       = reinterpret_cast<_raGL_texture*>(texture);
@@ -469,7 +469,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_storage_renderer_callback
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raGL_texture* texture_ptr)
+PRIVATE void _raGL_texture_init_renderbuffer_storage(_raGL_texture* texture_ptr)
 {
     ogl_context                                               current_context     = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
@@ -535,7 +535,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_renderbuffer_storage(_raG
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_texture* texture_ptr)
+PRIVATE void _raGL_texture_init_texture_storage(_raGL_texture* texture_ptr)
 {
     const ogl_context                                         current_context                = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr            = nullptr;
@@ -735,8 +735,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_texture_storage(_raGL_tex
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(ogl_context context,
-                                                                              void*       texture)
+PRIVATE void _raGL_texture_init_view_renderer_callback(ogl_context context,
+                                                       void*       texture)
 {
     raGL_backend                                              backend                   = nullptr;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr       = nullptr;
@@ -817,7 +817,7 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_init_view_renderer_callback(og
 }
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* texture_ptr)
+PRIVATE void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* texture_ptr)
 {
     const ogl_context                                         current_context     = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
@@ -1013,8 +1013,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _raGL_texture_verify_conformance_to_ral_text
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL raGL_texture raGL_texture_create(ogl_context context,
-                                                               ral_texture texture)
+PUBLIC raGL_texture raGL_texture_create(ogl_context context,
+                                        ral_texture texture)
 {
     _raGL_texture* result_ptr = nullptr;
 
@@ -1147,9 +1147,9 @@ PUBLIC void raGL_texture_generate_mipmaps(raGL_texture texture,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool raGL_texture_get_property(const raGL_texture    texture,
-                                                  raGL_texture_property property,
-                                                  void**                out_result_ptr)
+PUBLIC bool raGL_texture_get_property(const raGL_texture    texture,
+                                      raGL_texture_property property,
+                                      void**                out_result_ptr)
 {
     bool                 result      = false;
     const _raGL_texture* texture_ptr = reinterpret_cast<const _raGL_texture*>(texture);

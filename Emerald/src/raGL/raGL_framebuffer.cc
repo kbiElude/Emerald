@@ -64,8 +64,8 @@ typedef struct _raGL_framebuffer_init_rendering_thread_callback_data
 
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context,
-                                                                                    void*       user_arg)
+PRIVATE void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context,
+                                                             void*       user_arg)
 {
     _raGL_framebuffer_init_rendering_thread_callback_data*    args_ptr            = reinterpret_cast<_raGL_framebuffer_init_rendering_thread_callback_data*>(user_arg);
     raGL_backend                                              backend_gl          = nullptr;
@@ -261,9 +261,9 @@ PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void raGL_framebuffer_get_property(const raGL_framebuffer    fb,
-                                                      raGL_framebuffer_property property,
-                                                      void*                     out_result_ptr)
+PUBLIC void raGL_framebuffer_get_property(const raGL_framebuffer    fb,
+                                          raGL_framebuffer_property property,
+                                          void*                     out_result_ptr)
 {
     const _raGL_framebuffer* fb_ptr = reinterpret_cast<const _raGL_framebuffer*>(fb);
 

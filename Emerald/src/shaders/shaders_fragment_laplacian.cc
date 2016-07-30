@@ -84,7 +84,7 @@ PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(
         goto end;
     }
 
-    result_object_ptr >shader = shader;
+    result_object_ptr->shader = shader;
 
     /* Return the object */
     return reinterpret_cast<shaders_fragment_laplacian>(result_object_ptr);
@@ -101,7 +101,7 @@ end:
     {
         delete result_object_ptr;
 
-        result_object = nullptr;
+        result_object_ptr = nullptr;
     }
 
     return nullptr;

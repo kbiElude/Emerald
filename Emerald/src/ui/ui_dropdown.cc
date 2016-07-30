@@ -1784,7 +1784,8 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     group_present_task_create_info.unique_input_to_ingroup_task_mapping     = &group_present_task_input_mapping;
     group_present_task_create_info.unique_output_to_ingroup_task_mapping    = &group_present_task_output_mapping;
 
-    group_present_task                     = ral_present_task_create_group(&group_present_task_create_info);
+    group_present_task                     = ral_present_task_create_group(system_hashed_ansi_string_create("UI dropdown control: rasterization"),
+                                                                           &group_present_task_create_info);
     dropdown_ptr->last_cached_present_task = group_present_task;
 
 

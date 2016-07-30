@@ -79,20 +79,24 @@ PUBLIC void raGL_program_get_block_property(const raGL_program          program,
                                             void*                       out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void raGL_program_get_block_property_by_name(const raGL_program          program,
-                                                                system_hashed_ansi_string   block_name,
-                                                                raGL_program_block_property property,
-                                                                void*                       out_result_ptr);
+PUBLIC void raGL_program_get_block_property_by_name(const raGL_program          program,
+                                                    system_hashed_ansi_string   block_name,
+                                                    raGL_program_block_property property,
+                                                    void*                       out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void raGL_program_get_property(const raGL_program    program,
-                                                  raGL_program_property property,
-                                                  void*                 out_result_ptr);
+PUBLIC void raGL_program_get_property(const raGL_program    program,
+                                      raGL_program_property property,
+                                      void*                 out_result_ptr);
+
+PUBLIC void raGL_program_get_uniform_by_location(const raGL_program             program,
+                                                 uint32_t                       location,
+                                                 const _raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool raGL_program_get_uniform_by_name(const raGL_program             program,
-                                                         system_hashed_ansi_string      name,
-                                                         const _raGL_program_variable** out_uniform_ptr);
+PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program             program,
+                                             system_hashed_ansi_string      name,
+                                             const _raGL_program_variable** out_uniform_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *

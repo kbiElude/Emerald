@@ -1373,7 +1373,8 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
             ral_present_task_release(ui_ptr->last_present_task);
         }
 
-        ui_ptr->last_present_task = ral_present_task_create_group(&result_present_task_create_info);
+        ui_ptr->last_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("UI: rasterization"),
+                                                                  &result_present_task_create_info);
         result                    = ui_ptr->last_present_task;
     }
     else

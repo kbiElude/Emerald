@@ -384,9 +384,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void raGL_buffer_get_property(raGL_buffer          buffer,
-                                                 raGL_buffer_property property,
-                                                 void*                out_result_ptr)
+PUBLIC void raGL_buffer_get_property(raGL_buffer          buffer,
+                                     raGL_buffer_property property,
+                                     void*                out_result_ptr)
 {
     _raGL_buffer* buffer_ptr = reinterpret_cast<_raGL_buffer*>(buffer);
 
@@ -432,6 +432,7 @@ PUBLIC EMERALD_API void raGL_buffer_get_property(raGL_buffer          buffer,
 end:
     ;
 }
+
 /** Please see header for specification */
 PUBLIC void raGL_buffer_release(raGL_buffer buffer)
 {

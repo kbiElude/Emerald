@@ -31,22 +31,22 @@ typedef struct
 
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(ogl_pipeline instance);
+PUBLIC uint32_t ogl_pipeline_add_stage(ogl_pipeline instance);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(ogl_pipeline                               instance,
-                                                        uint32_t                                   n_stage,
-                                                        const ogl_pipeline_stage_step_declaration* step_ptr);
+PUBLIC uint32_t ogl_pipeline_add_stage_step(ogl_pipeline                               instance,
+                                            uint32_t                                   n_stage,
+                                            const ogl_pipeline_stage_step_declaration* step_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline                               pipeline,
-                                                              unsigned int                               n_steps,
-                                                              const ogl_pipeline_stage_step_declaration* steps);
+PUBLIC uint32_t ogl_pipeline_add_stage_with_steps(ogl_pipeline                               pipeline,
+                                                  unsigned int                               n_steps,
+                                                  const ogl_pipeline_stage_step_declaration* steps);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ral_context               context,
-                                                                           bool                      should_overlay_performance_info,
-                                                                           system_hashed_ansi_string name);
+PUBLIC ogl_pipeline ogl_pipeline_create(ral_context               context,
+                                        bool                      should_overlay_performance_info,
+                                        system_hashed_ansi_string name);
 
 /** TODO
  *
@@ -60,19 +60,19 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(ral_c
  *
  *  @return TODO
  */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(ogl_pipeline instance,
-                                                                       uint32_t     n_stage,
-                                                                       uint32_t     frame_index,
-                                                                       system_time  time,
-                                                                       const int*   rendering_area_px_topdown);
+PUBLIC bool ogl_pipeline_draw_stage(ogl_pipeline instance,
+                                    uint32_t     n_stage,
+                                    uint32_t     frame_index,
+                                    system_time  time,
+                                    const int*   rendering_area_px_topdown);
 
 /** TODO */
-PUBLIC EMERALD_API ral_context ogl_pipeline_get_context(ogl_pipeline instance);
+PUBLIC ral_context ogl_pipeline_get_context(ogl_pipeline instance);
 
 /** INTERNAL USE ONLY. TODO. */
 PUBLIC varia_text_renderer ogl_pipeline_get_text_renderer(ogl_pipeline instance);
 
 /** TODO */
-PUBLIC EMERALD_API ui ogl_pipeline_get_ui(ogl_pipeline instance);
+PUBLIC ui ogl_pipeline_get_ui(ogl_pipeline instance);
 
 #endif /* OGL_PIPELINE_H */

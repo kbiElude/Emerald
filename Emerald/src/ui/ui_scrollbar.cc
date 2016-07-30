@@ -725,7 +725,8 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
     result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &result_present_task_input_mapping;
     result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_output_mapping;
 
-    scrollbar_ptr->last_cached_present_task = ral_present_task_create_group(&result_present_task_create_info);
+    scrollbar_ptr->last_cached_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("UI scroll-bar: rasterization"),
+                                                                            &result_present_task_create_info);
 
     ral_present_task_release(cpu_present_task);
     ral_present_task_release(draw_present_task);

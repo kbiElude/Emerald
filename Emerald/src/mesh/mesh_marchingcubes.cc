@@ -1562,7 +1562,8 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
         task_result_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
         task_result_create_info.unique_output_to_ingroup_task_mapping    = &task_result_output_mapping;
 
-        mesh_ptr->present_task_with_compute = ral_present_task_create_group(&task_result_create_info);
+        mesh_ptr->present_task_with_compute = ral_present_task_create_group(system_hashed_ansi_string_create("Marching cubes: Data generation"),
+                                                                            &task_result_create_info);
 
         ral_present_task_release(task_cpu);
         ral_present_task_release(task_gpu);

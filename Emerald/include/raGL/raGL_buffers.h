@@ -44,18 +44,18 @@ REFCOUNT_INSERT_DECLARATIONS(raGL_buffers,
  *
  *  TODO
  */
-PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers buffers,
-                                                                                      ral_buffer   buffer,
-                                                                                      raGL_buffer* out_buffer_ptr);
+PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers buffers,
+                                                               ral_buffer   buffer,
+                                                               raGL_buffer* out_buffer_ptr);
 
 /** TODO.
  *
  *  NOTE: This is a temporary function that will be removed after RAL integration is finished.
  *        DO NOT use.
  **/
-PUBLIC RENDERING_CONTEXT_CALL bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
-                                                                                                  const ral_buffer_create_info* buffer_create_info_ptr,
-                                                                                                  raGL_buffer*                  out_buffer_ptr);
+PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_buffers                  buffers,
+                                                                           const ral_buffer_create_info* buffer_create_info_ptr,
+                                                                           raGL_buffer*                  out_buffer_ptr);
 
 /** TODO.
  *

@@ -817,7 +817,8 @@ PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            int
     result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &result_present_task_input_mapping;
     result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_output_mapping;
 
-    texture_preview_ptr->last_cached_present_task         = ral_present_task_create_group(&result_present_task_create_info);
+    texture_preview_ptr->last_cached_present_task         = ral_present_task_create_group(system_hashed_ansi_string_create("Texture preview: rasterization"),
+                                                                                          &result_present_task_create_info);
     texture_preview_ptr->last_cached_sampled_texture_view = texture_preview_ptr->texture_view;
     texture_preview_ptr->last_cached_target_texture_view  = target_texture_view;
 

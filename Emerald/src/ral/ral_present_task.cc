@@ -9,116 +9,162 @@
 #include "ral/ral_present_task.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
-#include "system/system_resizable_vector.h"
 
 
 typedef struct _ral_present_task
 {
     ral_command_buffer        command_buffer;
     ral_context               context;
-    system_resizable_vector   inputs;  /* holds ral_present_task_io instances  */
+    ral_present_task_io*      inputs;
+    uint32_t                  n_inputs;
+    uint32_t                  n_outputs;
     system_hashed_ansi_string name;
-    system_resizable_vector   outputs; /* holds ral_present_task_io instances  */
+    ral_present_task_io*      outputs;
     ral_present_task_type     type;
+
+    ral_present_task_ingroup_connection* group_task_connections;
+    ral_present_task_group_mapping*      group_task_input_mappings;
+    ral_present_task_group_mapping*      group_task_output_mappings;
+    ral_present_task*                    group_task_subtasks;
+    uint32_t                             n_group_task_connections;
+    uint32_t                             n_group_task_input_mappings;
+    uint32_t                             n_group_task_output_mappings;
+    uint32_t                             n_group_task_subtasks;
 
     volatile uint32_t ref_counter;
 
 
-    void set_io       (ral_present_task_io_type   type,
-                       const ral_present_task_io* src_io_ptr,
-                       ral_present_task_io*       dst_io_ptr);
-    void update_ios   ();
+    void set_io(ral_present_task_io_type   type,
+                const ral_present_task_io* src_io_ptr,
+                ral_present_task_io*       dst_io_ptr);
 
-    /** TODO */
+    /** TODO. CPU tasks only */
     explicit _ral_present_task(system_hashed_ansi_string               in_name,
                                const ral_present_task_cpu_create_info* in_create_info_ptr)
     {
-        command_buffer = nullptr;
-        context        = nullptr;
-        inputs         = (in_create_info_ptr->n_unique_inputs  != 0) ? system_resizable_vector_create(in_create_info_ptr->n_unique_inputs)
-                                                                     : nullptr;
-        outputs        = (in_create_info_ptr->n_unique_outputs != 0) ? system_resizable_vector_create(in_create_info_ptr->n_unique_outputs)
-                                                                     : nullptr;
-        ref_counter    = 1;
-        type           = RAL_PRESENT_TASK_TYPE_CPU_TASK;
+        command_buffer               = nullptr;
+        context                      = nullptr;
+        group_task_connections       = nullptr;
+        group_task_input_mappings    = nullptr;
+        group_task_output_mappings   = nullptr;
+        group_task_subtasks          = nullptr;
+        inputs                       = nullptr;
+        n_group_task_connections     = 0;
+        n_group_task_input_mappings  = 0;
+        n_group_task_output_mappings = 0;
+        n_group_task_subtasks        = 0;
+        n_inputs                     = 0;
+        n_outputs                    = 0;
+        outputs                      = nullptr;
+        ref_counter                  = 1;
+        type                         = RAL_PRESENT_TASK_TYPE_CPU_TASK;
 
-        for (ral_present_task_io_type io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
-                                      io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
-                             ++((int&)io_type) )
-        {
-            const uint32_t             n_ios   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->n_unique_inputs
-                                                                                             : in_create_info_ptr->n_unique_outputs;
-            const ral_present_task_io* src_ios = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->unique_inputs
-                                                                                             : in_create_info_ptr->unique_outputs;
-            system_resizable_vector    dst_ios = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs
-                                                                                             : outputs;
-
-            for (uint32_t n_io = 0;
-                          n_io < n_ios;
-                        ++n_io)
-            {
-                ral_present_task_io* new_io_ptr = new ral_present_task_io;
-
-                ASSERT_ALWAYS_SYNC(new_io_ptr != nullptr,
-                                   "Out of memory");
-
-                set_io(RAL_PRESENT_TASK_IO_TYPE_INPUT,
-                       src_ios + n_io,
-                       new_io_ptr);
-
-                system_resizable_vector_push(dst_ios,
-                                             new_io_ptr);
-            }
-        }
+        init_ios(in_create_info_ptr->n_unique_inputs,
+                 in_create_info_ptr->unique_inputs,
+                 in_create_info_ptr->n_unique_outputs,
+                 in_create_info_ptr->unique_outputs);
     }
 
     /** TODO. GPU tasks only */
-    explicit _ral_present_task(system_hashed_ansi_string in_name,
-                               ral_command_buffer        in_command_buffer)
+    explicit _ral_present_task(system_hashed_ansi_string               in_name,
+                               const ral_present_task_gpu_create_info* in_create_info_ptr)
     {
-        ral_command_buffer_get_property(in_command_buffer,
+        ral_command_buffer_get_property(in_create_info_ptr->command_buffer,
                                         RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
                                        &context);
 
-        command_buffer = in_command_buffer;
-        inputs         = system_resizable_vector_create(4 /* capacity */);
-        name           = in_name;
-        outputs        = system_resizable_vector_create(4 /* capacity */);
-        type           = RAL_PRESENT_TASK_TYPE_GPU_TASK;
+        command_buffer               = in_create_info_ptr->command_buffer;
+        group_task_connections       = nullptr;
+        group_task_input_mappings    = nullptr;
+        group_task_output_mappings   = nullptr;
+        group_task_subtasks          = nullptr;
+        inputs                       = nullptr;
+        n_group_task_connections     = 0;
+        n_group_task_input_mappings  = 0;
+        n_group_task_output_mappings = 0;
+        n_group_task_subtasks        = 0;
+        n_inputs                     = 0;
+        n_outputs                    = 0;
+        name                         = in_name;
+        outputs                      = nullptr;
+        ref_counter                  = 1;
+        type                         = RAL_PRESENT_TASK_TYPE_GPU_TASK;
+
+        init_ios(in_create_info_ptr->n_unique_inputs,
+                 in_create_info_ptr->unique_inputs,
+                 in_create_info_ptr->n_unique_outputs,
+                 in_create_info_ptr->unique_outputs);
 
         ral_context_retain_object(context,
                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                   command_buffer);
+    }
 
-        update_ios();
+    /** TODO. Group tasks only */
+    explicit _ral_present_task(system_hashed_ansi_string                 in_name,
+                               const ral_present_task_group_create_info* in_create_info_ptr)
+    {
+        command_buffer               = nullptr;
+        group_task_connections       = nullptr;
+        group_task_input_mappings    = nullptr;
+        group_task_output_mappings   = nullptr;
+        group_task_subtasks          = nullptr;
+        inputs                       = nullptr;
+        n_group_task_connections     = 0;
+        n_group_task_input_mappings  = 0;
+        n_group_task_output_mappings = 0;
+        n_group_task_subtasks        = 0;
+        n_inputs                     = 0;
+        n_outputs                    = 0;
+        name                         = in_name;
+        outputs                      = nullptr;
+        ref_counter                  = 1;
+        type                         = RAL_PRESENT_TASK_TYPE_GROUP;
+
+        init_group_task(in_create_info_ptr);
     }
 
     /** TODO */
     ~_ral_present_task()
     {
-        system_resizable_vector* vectors_to_release[] =
+        struct
         {
-            &inputs,
-            &outputs
+            ral_present_task_io* array;
+            uint32_t             n_items;
+        } io_arrays_to_release[] =
+        {
+            {inputs,  n_inputs},
+            {outputs, n_outputs}
         };
-        const uint32_t n_vectors_to_release = sizeof(vectors_to_release) / sizeof(vectors_to_release[0]);
+        const uint32_t n_io_arrays_to_release = sizeof(io_arrays_to_release) / sizeof(io_arrays_to_release[0]);
 
         ASSERT_DEBUG_SYNC(ref_counter == 0,
                           "Destructor called for a ral_present_task instance whose ref counter == %d",
                           ref_counter);
 
-        for (uint32_t n_vector = 0;
-                      n_vector < n_vectors_to_release;
-                    ++n_vector)
+        for (uint32_t n_io_array = 0;
+                      n_io_array < n_io_arrays_to_release;
+                    ++n_io_array)
         {
-            system_resizable_vector* current_vector_ptr = vectors_to_release[n_vector];
+            const ral_present_task_io* current_io_array_ptr = io_arrays_to_release[n_io_array].array;
+            const uint32_t             n_items              = io_arrays_to_release[n_io_array].n_items;
 
-            if (*current_vector_ptr != nullptr)
+            if (current_io_array_ptr == nullptr)
             {
-                system_resizable_vector_release(*current_vector_ptr);
-
-                *current_vector_ptr = nullptr;
+                continue;
             }
+
+            for (uint32_t n_item = 0;
+                          n_item < n_items;
+                        ++n_item)
+            {
+                ral_context_delete_objects(context,
+                                           current_io_array_ptr[n_item].object_type,
+                                           1, /* n_objects */
+                                           (const void**) &current_io_array_ptr[n_item].object);
+            }
+
+            delete [] current_io_array_ptr;
         }
 
         if (command_buffer != nullptr)
@@ -130,100 +176,266 @@ typedef struct _ral_present_task
 
             command_buffer = nullptr;
         }
-    }
 
-    void add_io(ral_present_task_io_type io_type,
-                ral_buffer               buffer)
-    {
-        add_io<RAL_CONTEXT_OBJECT_TYPE_BUFFER>(io_type,
-                                               buffer); 
-    }
+        if (group_task_connections != nullptr)
+        {
+            delete [] group_task_connections;
 
-    void add_io(ral_present_task_io_type io_type,
-                ral_texture              buffer)
-    {
-        add_io<RAL_CONTEXT_OBJECT_TYPE_TEXTURE>(io_type,
-                                                buffer); 
-    }
+            group_task_connections = nullptr;
+        }
 
-    bool is_io_defined(ral_present_task_io_type io_type,
-                       ral_buffer               object)
-    {
-        return is_io_defined<RAL_CONTEXT_OBJECT_TYPE_BUFFER>(io_type,
-                                                             object);
-    }
+        if (group_task_input_mappings != nullptr)
+        {
+            delete [] group_task_input_mappings;
 
-    bool is_io_defined(ral_present_task_io_type io_type,
-                       ral_texture              object)
-    {
-        return is_io_defined<RAL_CONTEXT_OBJECT_TYPE_TEXTURE>(io_type,
-                                                              object);
+            group_task_input_mappings = nullptr;
+        }
+
+        if (group_task_output_mappings != nullptr)
+        {
+            delete [] group_task_output_mappings;
+
+            group_task_output_mappings = nullptr;
+        }
+
+        if (group_task_subtasks != nullptr)
+        {
+            for (uint32_t n_subtask = 0;
+                          n_subtask < n_group_task_subtasks;
+                        ++n_subtask)
+            {
+                ral_present_task_release(group_task_subtasks[n_subtask]);
+            }
+
+            delete [] group_task_subtasks;
+            group_task_subtasks = nullptr;
+        }
     }
 
 private:
-    template<ral_context_object_type object_type,
-             typename                ral_object_type>
-    void add_io(ral_present_task_io_type io_type,
-                ral_object_type          object)
+    void init_group_task(const ral_present_task_group_create_info* in_create_info_ptr)
     {
-        system_resizable_vector ios         = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs
-                                                                                          : outputs;
-        ral_present_task_io*    new_io_ptr;
+        group_task_connections = new ral_present_task_ingroup_connection[in_create_info_ptr->n_ingroup_connections];
+        group_task_subtasks    = new ral_present_task                   [in_create_info_ptr->n_present_tasks];
+
+        if (in_create_info_ptr->n_unique_input_to_ingroup_task_mappings > 0)
+        {
+            group_task_input_mappings = new ral_present_task_group_mapping[in_create_info_ptr->n_unique_input_to_ingroup_task_mappings];
+
+            memcpy(group_task_input_mappings,
+                   in_create_info_ptr->unique_input_to_ingroup_task_mapping,
+                   sizeof(ral_present_task_group_mapping) * in_create_info_ptr->n_unique_input_to_ingroup_task_mappings);
+
+            n_group_task_input_mappings = in_create_info_ptr->n_unique_input_to_ingroup_task_mappings;
+        }
+
+        if (in_create_info_ptr->n_unique_output_to_ingroup_task_mappings > 0)
+        {
+            group_task_output_mappings = new ral_present_task_group_mapping[in_create_info_ptr->n_unique_output_to_ingroup_task_mappings];
+
+            memcpy(group_task_output_mappings,
+                   in_create_info_ptr->unique_output_to_ingroup_task_mapping,
+                   sizeof(ral_present_task_group_mapping) * in_create_info_ptr->n_unique_output_to_ingroup_task_mappings);
+
+            n_group_task_output_mappings = in_create_info_ptr->n_unique_output_to_ingroup_task_mappings;
+        }
+
+        n_group_task_connections     = in_create_info_ptr->n_ingroup_connections;
+        n_group_task_output_mappings = in_create_info_ptr->n_unique_output_to_ingroup_task_mappings;
+        n_group_task_subtasks        = in_create_info_ptr->n_present_tasks;
+
+        memcpy(group_task_connections,
+               in_create_info_ptr->ingroup_connections,
+               sizeof(ral_present_task_ingroup_connection) * n_group_task_connections);
+
+        for (uint32_t n_subtask = 0;
+                      n_subtask < n_group_task_subtasks;
+                    ++n_subtask)
+        {
+            group_task_subtasks[n_subtask] = in_create_info_ptr->present_tasks[n_subtask];
+
+            ral_present_task_retain(group_task_subtasks[n_subtask]);
+        }
 
         #ifdef _DEBUG
         {
-            /* Sanity checks */
-            ASSERT_DEBUG_SYNC(!is_io_defined(io_type, object),
-                              "add_io() called for an IO which is already defined.");
-        }
-        #endif
+            /* Perform more advanced validation */
+            uint32_t*      inputs_last_mapping_id_ptr  = nullptr;
+            const uint32_t unused_mapping_id           = 0xFFFFFFFF;
+            uint32_t*      outputs_last_mapping_id_ptr = nullptr;
 
-        new_io_ptr = new ral_present_task_io;
-
-        ASSERT_ALWAYS_SYNC(new_io_ptr != nullptr,
-                           "Out of memory");
-
-        new_io_ptr->object      = object;
-        new_io_ptr->object_type = object_type;
-    }
-
-    template<ral_context_object_type object_type,
-             typename                ral_object_type>
-
-    bool is_io_defined(ral_present_task_io_type io_type,
-                       ral_object_type          object)
-    {
-        bool                    result = false;
-        system_resizable_vector ios    = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs
-                                                                                     : outputs;
-        uint32_t                n_ios  = 0;
-
-        system_resizable_vector_get_property(ios,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_ios);
-
-        for (uint32_t n_io = 0;
-                      n_io < n_ios;
-                    ++n_io)
-        {
-            ral_present_task_io* current_io_ptr = nullptr;
-
-            system_resizable_vector_get_element_at(ios,
-                                                   n_io,
-                                                  &current_io_ptr);
-
-            if (current_io_ptr->object == object)
+            if (in_create_info_ptr->n_total_unique_inputs > 0)
             {
-                result = true;
+                inputs_last_mapping_id_ptr = reinterpret_cast<uint32_t*>(_malloca(sizeof(uint32_t) * in_create_info_ptr->n_total_unique_inputs));
 
-                break;
+                memset(inputs_last_mapping_id_ptr,
+                       unused_mapping_id,
+                       sizeof(uint32_t) * in_create_info_ptr->n_total_unique_inputs);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(in_create_info_ptr->n_unique_input_to_ingroup_task_mappings == 0,
+                                  "No input->ingroup task input mapping can be defined if zero unique inputs are requested");
+            }
+
+            if (in_create_info_ptr->n_total_unique_outputs > 0)
+            {
+                outputs_last_mapping_id_ptr = reinterpret_cast<uint32_t*>(_malloca(sizeof(uint32_t) * in_create_info_ptr->n_total_unique_outputs));
+
+                memset(outputs_last_mapping_id_ptr,
+                       unused_mapping_id,
+                       sizeof(uint32_t) * in_create_info_ptr->n_total_unique_outputs);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(in_create_info_ptr->n_unique_output_to_ingroup_task_mappings == 0,
+                                  "No ingroup task output->output mapping can be defined if zero unique outputs are requested");
+            }
+
+            for (ral_present_task_io_type io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
+                                          io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
+                                 ++((int&)io_type) )
+            {
+                uint32_t*                             io_last_mapping_id_ptr = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs_last_mapping_id_ptr
+                                                                                                                           : outputs_last_mapping_id_ptr;
+                const uint32_t                        n_max_ios              = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->n_total_unique_inputs
+                                                                                                                           : in_create_info_ptr->n_total_unique_outputs;
+                const ral_present_task_group_mapping* mappings               = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->unique_input_to_ingroup_task_mapping :
+                                                                                                                             in_create_info_ptr->unique_output_to_ingroup_task_mapping;
+                const uint32_t                        n_mappings             = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->n_unique_input_to_ingroup_task_mappings
+                                                                                                                           : in_create_info_ptr->n_unique_output_to_ingroup_task_mappings;
+
+                for (uint32_t n_mapping = 0;
+                              n_mapping < n_mappings;
+                            ++n_mapping)
+                {
+                    const ral_present_task_group_mapping& mapping                = mappings[n_mapping];
+                    ral_present_task                      current_io_user        = nullptr;
+                    void*                                 current_io_object      = nullptr;
+                    ral_context_object_type               current_io_object_type = RAL_CONTEXT_OBJECT_TYPE_UNKNOWN;
+         
+                    ral_present_task                      last_io_user           = nullptr;
+                    void*                                 last_io_object         = nullptr;
+                    ral_context_object_type               last_io_object_type    = RAL_CONTEXT_OBJECT_TYPE_UNKNOWN;
+
+                    ASSERT_DEBUG_SYNC(mapping.group_task_io_index < n_max_ios,
+                                      "Invalid group task IO index specified");
+                    ASSERT_DEBUG_SYNC(mapping.n_present_task < in_create_info_ptr->n_present_tasks,
+                                      "Invalid present task index specified for a group present task mapping");
+
+                    if (io_last_mapping_id_ptr[mapping.group_task_io_index] == unused_mapping_id)
+                    {
+                        io_last_mapping_id_ptr[mapping.group_task_io_index] = n_mapping;
+
+                        continue;
+                    }
+
+                    /* Group IOs may be assigned data coming from multiple present task IOs. For validation, we need
+                     * to ensure that all such IOs use the same underlying ral_buffer or ral_texture instance, and are
+                     * assigned the same type of object. */
+                    current_io_user = in_create_info_ptr->present_tasks[mapping.n_present_task];
+                    last_io_user    = in_create_info_ptr->present_tasks[io_last_mapping_id_ptr[mapping.group_task_io_index] ];
+
+                    ASSERT_DEBUG_SYNC(current_io_user != nullptr,
+                                      "Null present task specified");
+
+                    ral_present_task_get_io_property(current_io_user,
+                                                     io_type,
+                                                     mapping.present_task_io_index,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                     (void**) &current_io_object_type);
+                    ral_present_task_get_io_property(last_io_user,
+                                                     io_type,
+                                                     mapping.present_task_io_index,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                     (void**) &last_io_object_type);
+
+                    ASSERT_DEBUG_SYNC(current_io_object_type != last_io_object_type,
+                                      "A group IO maps to present task IOs of different object types");
+
+                    switch (current_io_object_type)
+                    {
+                        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+                        {
+                            ASSERT_DEBUG_SYNC(current_io_object == last_io_object,
+                                              "A group IO maps to present task IOs which make use of different RAL buffer objects");
+
+                            break;
+                        }
+
+                        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
+                        {
+                            ral_texture      current_io_user_parent_texture = nullptr;
+                            ral_texture_view current_io_user_texture_view   = reinterpret_cast<ral_texture_view>(current_io_object);
+                            ral_texture      last_io_user_parent_texture    = nullptr;
+                            ral_texture_view last_io_user_texture_view      = reinterpret_cast<ral_texture_view>(last_io_object);
+
+                            ral_texture_view_get_property(current_io_user_texture_view,
+                                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                         &current_io_user_parent_texture);
+                            ral_texture_view_get_property(last_io_user_texture_view,
+                                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                         &last_io_user_parent_texture);
+
+                            ASSERT_DEBUG_SYNC(current_io_user_parent_texture == last_io_user_parent_texture,
+                                              "A group IO maps to present task IOs which make use of different RAL texture objects");
+
+                            break;
+                        }
+
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "TODO: Unsupported IO object type");
+                        }
+                    }
+                }
+
+                /* Make sure all IOs of this type have present subtask IOs assigned */
+                for (uint32_t n_io = 0;
+                              n_io < n_max_ios;
+                           ++n_io)
+                {
+                    ASSERT_DEBUG_SYNC(io_last_mapping_id_ptr[n_io] != unused_mapping_id,
+                                      "Group present task IO [%d] has no sub-task IO assigned",
+                                      n_io);
+                }
             }
         }
-
-        return result;
+        #endif
     }
 
-    void update_ios_internal(ral_command_buffer in_command_buffer);
+    void init_ios(uint32_t                   n_input_ios,
+                  const ral_present_task_io* input_ios,
+                  uint32_t                   n_output_ios,
+                  const ral_present_task_io* output_ios)
+    {
+        inputs  = (n_input_ios != 0)  ? new ral_present_task_io[n_input_ios]
+                                      : nullptr;
+        outputs = (n_output_ios != 0) ? new ral_present_task_io[n_output_ios]
+                                      : nullptr;
+
+        for (ral_present_task_io_type io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
+                                      io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
+                             ++((int&)io_type) )
+        {
+            const uint32_t             n_ios   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? n_input_ios
+                                                                                             : n_output_ios;
+            const ral_present_task_io* src_ios = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? input_ios
+                                                                                             : output_ios;
+            ral_present_task_io*       dst_ios = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? inputs
+                                                                                             : outputs;
+
+            for (uint32_t n_io = 0;
+                          n_io < n_ios;
+                        ++n_io)
+            {
+                set_io(io_type,
+                       src_ios + n_io,
+                       dst_ios + n_io);
+            }
+        }
+    }
 } _ral_present_task;
 
 
@@ -235,34 +447,14 @@ void _ral_present_task::set_io(ral_present_task_io_type   type,
     dst_io_ptr->object      = src_io_ptr->object;
     dst_io_ptr->object_type = src_io_ptr->object_type;
 
-    /* TODO: Retain/release mechanism? */
+    ral_context_retain_object(context,
+                              dst_io_ptr->object_type,
+                              dst_io_ptr->object);
 }
 
-/** TODO */
-void _ral_present_task::update_ios()
-{
-    /* Sanity checks */
-    {
-        uint32_t n_recorded_read_accesses   = 0;
-        uint32_t n_recorded_write_accesses  = 0;
+#if 0
 
-        ASSERT_DEBUG_SYNC(type == RAL_PRESENT_TASK_TYPE_GPU_TASK,
-                          "update_ios() should only be invoked for a GPU task.");
-
-        system_resizable_vector_get_property(inputs,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_recorded_read_accesses);
-        system_resizable_vector_get_property(outputs,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_recorded_write_accesses);
-
-        ASSERT_DEBUG_SYNC(n_recorded_read_accesses  == 0 &&
-                          n_recorded_write_accesses == 0,
-                          "Invalid _ral_present_task::update_ios() request.");
-    }
-
-    update_ios_internal(command_buffer);
-}
+IOs need to be specified explicitly at the moment. We may want to change that in the future.
 
 /** TODO */
 void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer)
@@ -568,6 +760,7 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
         }
     }
 }
+#endif
 
 /** Please see header for specification */
 PUBLIC ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
@@ -633,8 +826,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string name,
-                                                    ral_command_buffer        command_buffer)
+PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
+                                                    const ral_present_task_gpu_create_info* create_info_ptr)
 {
     ral_command_buffer_status command_buffer_status        = RAL_COMMAND_BUFFER_STATUS_UNDEFINED;
     bool                      is_command_buffer_resettable = false;
@@ -649,56 +842,120 @@ PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string na
         goto end;
     }
 
-    if (command_buffer == nullptr)
+    if (create_info_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(command_buffer != nullptr,
-                          "RAL command buffer, specified for RAL present task, is NULL");
+        ASSERT_DEBUG_SYNC(create_info_ptr != nullptr,
+                          "Create info structure for RAL present task is NULL");
 
         goto end;
     }
 
-    ral_command_buffer_get_property(command_buffer,
-                                    RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE,
-                                   &is_command_buffer_resettable);
-    ral_command_buffer_get_property(command_buffer,
-                                    RAL_COMMAND_BUFFER_PROPERTY_STATUS,
-                                   &command_buffer_status);
-
-    if (command_buffer_status != RAL_COMMAND_BUFFER_STATUS_RECORDED)
+    if (create_info_ptr->command_buffer != nullptr)
     {
-        ASSERT_DEBUG_SYNC(command_buffer_status == RAL_COMMAND_BUFFER_STATUS_RECORDED,
-                          "RAL present task can only be created for a recorded RAL command buffer");
+        ral_command_buffer_get_property(create_info_ptr->command_buffer,
+                                        RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE,
+                                       &is_command_buffer_resettable);
+        ral_command_buffer_get_property(create_info_ptr->command_buffer,
+                                        RAL_COMMAND_BUFFER_PROPERTY_STATUS,
+                                       &command_buffer_status);
 
-        goto end;
+        if (command_buffer_status != RAL_COMMAND_BUFFER_STATUS_RECORDED)
+        {
+            ASSERT_DEBUG_SYNC(command_buffer_status == RAL_COMMAND_BUFFER_STATUS_RECORDED,
+                              "RAL present task can only be created for a recorded RAL command buffer");
+
+            goto end;
+        }
+
+        if (is_command_buffer_resettable)
+        {
+            ASSERT_DEBUG_SYNC(!is_command_buffer_resettable,
+                              "RAL present task does not support resettable command buffers at the moment.");
+
+            goto end;
+        }
     }
 
-    if (is_command_buffer_resettable)
-    {
-        ASSERT_DEBUG_SYNC(!is_command_buffer_resettable,
-                          "RAL present task does not support resettable command buffers at the moment.");
-
-        goto end;
-    }
-
-    /* Should be fine to create a present task from this command buffer */
+    /* Should be fine to create a present task for this GPU task */
     result_ptr = new _ral_present_task(name,
-                                       command_buffer);
+                                       create_info_ptr);
 
 end:
     return (ral_present_task) result_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
-                                             ral_present_task_io_type     io_type,
-                                             uint32_t                     n_io,
-                                             ral_present_task_io_property property,
-                                             void**                       out_result_ptr)
+PUBLIC ral_present_task ral_present_task_create_group(system_hashed_ansi_string                 name,
+                                                      const ral_present_task_group_create_info* create_info_ptr)
 {
-    ral_present_task_io*    io_ptr   = nullptr;
-    system_resizable_vector ios      = nullptr;
-    bool                    result   = false;
-    _ral_present_task*      task_ptr = (_ral_present_task*) task;
+    _ral_present_task* result_ptr = nullptr;
+
+    /* Sanity checks */
+    if (create_info_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(create_info_ptr != nullptr,
+                          "Input ral_present_task_group_create_info instance is null");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_ingroup_connections != 0        &&
+        create_info_ptr->ingroup_connections   == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_ingroup_connections != 0        &&
+                            create_info_ptr->ingroup_connections   == nullptr),
+                          "Ingroup connection array is null even though a non-zero number of ingroup connections was specified");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_present_tasks != 0       &&
+        create_info_ptr->present_tasks   == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_present_tasks != 0       &&
+                            create_info_ptr->present_tasks   == nullptr),
+                          "Present task array is null even though a non-zero number of present tasks was specified");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_total_unique_inputs                != 0       &&
+        create_info_ptr->unique_input_to_ingroup_task_mapping == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_total_unique_inputs                != 0       &&
+                            create_info_ptr->unique_input_to_ingroup_task_mapping == nullptr),
+                          "Unique input->ingroup task mapping array is null even though a non-zero number of input mappings was specified");
+
+        goto end;
+    }
+
+    if (create_info_ptr->n_total_unique_outputs                != 0 &&
+        create_info_ptr->unique_output_to_ingroup_task_mapping == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr->n_total_unique_outputs != 0 &&
+                            create_info_ptr->unique_output_to_ingroup_task_mapping == nullptr),
+                          "Unique output->ingroup task mapping array is null even though a non-zero number of output mappings was specified");
+
+        goto end;
+    }
+
+    /* Should be fine to create a present task for this group task */
+    result_ptr = new _ral_present_task(name,
+                                       create_info_ptr);
+end:
+    return reinterpret_cast<ral_present_task>(result_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC bool ral_present_task_get_io_mapping_property(ral_present_task                     task,
+                                                     ral_present_task_io_type             io_type,
+                                                     uint32_t                             n_io_mapping,
+                                                     ral_present_task_io_mapping_property property,
+                                                     void**                               out_result_ptr)
+{
+    const ral_present_task_group_mapping* mappings_ptr = nullptr;
+    bool                                  result       = false;
+    _ral_present_task*                    task_ptr     = reinterpret_cast<_ral_present_task*>(task);
 
     /* Sanity checks */
     if (task == nullptr)
@@ -709,18 +966,44 @@ PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
         goto end;
     }
 
+    if (task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP)
+    {
+        ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP,
+                          "IO mapping properties only available for group present tasks.");
+
+        goto end;
+    }
+
     switch (io_type)
     {
         case RAL_PRESENT_TASK_IO_TYPE_INPUT:
         {
-            ios = task_ptr->inputs;
+            if (task_ptr->n_group_task_input_mappings < n_io_mapping)
+            {
+                ASSERT_DEBUG_SYNC(!(task_ptr->n_group_task_input_mappings < n_io_mapping),
+                                  "Invalid input mapping index [%d] requested.",
+                                 n_io_mapping);
+
+                goto end;
+            }
+
+            mappings_ptr = task_ptr->group_task_input_mappings;
 
             break;
         }
 
-        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+        case RAL_PRESENT_TASK_IO_TYPE_OUTPUT:
         {
-            ios = task_ptr->outputs;
+            if (task_ptr->n_group_task_output_mappings < n_io_mapping)
+            {
+                ASSERT_DEBUG_SYNC(!(task_ptr->n_group_task_output_mappings < n_io_mapping),
+                                  "Invalid output mapping index [%d] requested.",
+                                 n_io_mapping);
+
+                goto end;
+            }
+
+            mappings_ptr = task_ptr->group_task_output_mappings;
 
             break;
         }
@@ -735,22 +1018,129 @@ PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
     }
 
 
-    if (ios == nullptr)
+    if (mappings_ptr == nullptr)
     {
-        ASSERT_DEBUG_SYNC(ios != nullptr,
-                          "Retrieved IO vector is null.");
+        ASSERT_DEBUG_SYNC(mappings_ptr != nullptr,
+                          "No mappings of specified type have been defined.");
 
         goto end;
     }
 
-    if (!system_resizable_vector_get_element_at(ios,
-                                                n_io,
-                                                io_ptr) ||
-        io_ptr == nullptr)
+    switch (property)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not retrieve IO at index [%d]",
-                          n_io);
+        case RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_GROUP_TASK_IO_INDEX:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = mappings_ptr[n_io_mapping].group_task_io_index;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_IO_INDEX:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = mappings_ptr[n_io_mapping].present_task_io_index;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_SUBTASK_INDEX:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = mappings_ptr[n_io_mapping].n_present_task;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Invalid ral_present_task_io_mapping_property value specified.");
+
+            goto end;
+        }
+    }
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
+                                             ral_present_task_io_type     io_type,
+                                             uint32_t                     n_io,
+                                             ral_present_task_io_property property,
+                                             void**                       out_result_ptr)
+{
+    const ral_present_task_io* ios_ptr  = nullptr;
+    bool                       result   = false;
+    _ral_present_task*         task_ptr = reinterpret_cast<_ral_present_task*>(task);
+
+    /* Sanity checks */
+    if (task == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(task != nullptr,
+                          "Input ral_present_task instance is null");
+
+        goto end;
+    }
+
+    if (task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP)
+    {
+        ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
+                          "IO properties unavailable for a group present task.");
+
+        goto end;
+    }
+
+    switch (io_type)
+    {
+        case RAL_PRESENT_TASK_IO_TYPE_INPUT:
+        {
+            if (task_ptr->n_inputs < n_io)
+            {
+                ASSERT_DEBUG_SYNC(!(task_ptr->n_inputs < n_io),
+                                  "Invalid input index [%d] requested.",
+                                  n_io);
+
+                goto end;
+            }
+
+            ios_ptr = task_ptr->inputs;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_IO_TYPE_OUTPUT:
+        {
+            if (task_ptr->n_outputs < n_io)
+            {
+                ASSERT_DEBUG_SYNC(!(task_ptr->n_outputs < n_io),
+                                  "Invalid output index [%d] requested.",
+                                  n_io);
+
+                goto end;
+            }
+
+            ios_ptr = task_ptr->outputs;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Invalid IO type requested.");
+
+            goto end;
+        }
+    }
+
+
+    if (ios_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(ios_ptr != nullptr,
+                          "No IOs of specified type have been defined.");
 
         goto end;
     }
@@ -759,14 +1149,14 @@ PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
     {
         case RAL_PRESENT_TASK_IO_PROPERTY_OBJECT:
         {
-            *((void**) out_result_ptr) = io_ptr->object;
+            *reinterpret_cast<void**>(out_result_ptr) = ios_ptr[n_io].object;
 
             break;
         }
 
         case RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE:
         {
-            *((ral_context_object_type*) out_result_ptr) = io_ptr->object_type;
+            *reinterpret_cast<ral_context_object_type*>(out_result_ptr) = ios_ptr[n_io].object_type;
 
             break;
         }
@@ -810,39 +1200,61 @@ PUBLIC void ral_present_task_get_property(ral_present_task          task,
             ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GPU_TASK,
                               "RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER property is only available for RAL present GPU tasks");
 
-            *(ral_command_buffer*) out_result_ptr = task_ptr->command_buffer;
+            *reinterpret_cast<ral_command_buffer*>(out_result_ptr) = task_ptr->command_buffer;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS query can only be used against group present tasks.");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_group_task_input_mappings;
 
             break;
         }
 
         case RAL_PRESENT_TASK_PROPERTY_N_INPUTS:
         {
-            system_resizable_vector_get_property(task_ptr->inputs,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                 out_result_ptr);
+            ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_INPUTS query cannot be used against group present tasks.");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_inputs;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS query can only be used against group present tasks.");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_group_task_output_mappings;
 
             break;
         }
 
         case RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS:
         {
-            system_resizable_vector_get_property(task_ptr->outputs,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                 out_result_ptr);
+            ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS query cannot be used against group present tasks.");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_outputs;
 
             break;
         }
 
         case RAL_PRESENT_TASK_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = task_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = task_ptr->name;
 
             break;
         }
 
         case RAL_PRESENT_TASK_PROPERTY_TYPE:
         {
-            *(ral_present_task_type*) out_result_ptr = task_ptr->type;
+            *reinterpret_cast<ral_present_task_type*>(out_result_ptr) = task_ptr->type;
 
             break;
         }
@@ -861,16 +1273,16 @@ end:
 /** Please see header for specification */
 PUBLIC void ral_present_task_release(ral_present_task task)
 {
-    volatile uint32_t& ref_counter = ((_ral_present_task*)task)->ref_counter;
+    volatile uint32_t& ref_counter = reinterpret_cast<_ral_present_task*>(task)->ref_counter;
 
     if (--ref_counter == 0)
     {
-        delete (_ral_present_task*) task;
+        delete reinterpret_cast<_ral_present_task*>(task);
     }
 }
 
 /** Please see header for specification */
 PUBLIC void ral_present_task_retain(ral_present_task task)
 {
-    ++(( (_ral_present_task*) task)->ref_counter);
+    ++(reinterpret_cast<_ral_present_task*>(task)->ref_counter);
 }

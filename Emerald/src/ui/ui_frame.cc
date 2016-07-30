@@ -413,7 +413,8 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
     result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &result_present_task_input_mapping;
     result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_output_mapping;
 
-    result_present_task = ral_present_task_create_group(&result_present_task_create_info);
+    result_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("UI frame: rasterization"),
+                                                        &result_present_task_create_info);
 
 
     frame_ptr->last_cached_present_task                     = result_present_task;

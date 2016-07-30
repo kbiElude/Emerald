@@ -1221,36 +1221,37 @@ void _raGL_command_buffer::bake_commands()
 /** TODO */
 void _raGL_command_buffer::bake_gfx_state()
 {
-    bool                 alpha_to_coverage_enabled                  = false;
-    bool                 alpha_to_one_enabled                       = false;
-    bool                 culling_enabled                            = false;
-    ral_cull_mode        cull_mode                                  = RAL_CULL_MODE_NONE;
-    float                depth_bias_constant_factor                 = 0.0f;
-    bool                 depth_bias_enabled                         = false;
-    float                depth_bias_slope_factor                    = 0.0f;
-    float                depth_bounds_max                           = 0.0f;
-    float                depth_bounds_min                           = 0.0f;
-    bool                 depth_bounds_test_enabled                  = false;
-    bool                 depth_clamp_enabled                        = false;
-    ral_compare_op       depth_compare_func                         = RAL_COMPARE_OP_UNKNOWN;
-    bool                 depth_test_enabled                         = false;
-    bool                 depth_writes_enabled                       = false;
-    ral_front_face       front_face                                 = RAL_FRONT_FACE_UNKNOWN;
-    float                line_width                                 = 0.0f;
-    ral_logic_op         logic_op                                   = RAL_LOGIC_OP_UNKNOWN;
-    bool                 logic_op_enabled                           = false;
-    uint32_t             n_patch_control_points                     = 0;
-    ral_polygon_mode     polygon_mode_back                          = RAL_POLYGON_MODE_UNKNOWN;
-    ral_polygon_mode     polygon_mode_front                         = RAL_POLYGON_MODE_UNKNOWN;
-    bool                 primitive_restart_enabled                  = false;
-    ral_primitive_type   primitive_type                             = RAL_PRIMITIVE_TYPE_UNKNOWN;
-    bool                 rasterizer_discard_enabled                 = false;
-    bool                 sample_shading_enabled                     = false;
-    float                sample_shading_min                         = 0.0f;
-    bool                 scissor_test_enabled                       = false;
-    bool                 static_scissor_boxes_and_viewports_enabled = false;
+    bool                 alpha_to_coverage_enabled    = false;
+    bool                 alpha_to_one_enabled         = false;
+    bool                 culling_enabled              = false;
+    ral_cull_mode        cull_mode                    = RAL_CULL_MODE_NONE;
+    float                depth_bias_constant_factor   = 0.0f;
+    bool                 depth_bias_enabled           = false;
+    float                depth_bias_slope_factor      = 0.0f;
+    float                depth_bounds_max             = 0.0f;
+    float                depth_bounds_min             = 0.0f;
+    bool                 depth_bounds_test_enabled    = false;
+    bool                 depth_clamp_enabled          = false;
+    ral_compare_op       depth_compare_func           = RAL_COMPARE_OP_UNKNOWN;
+    bool                 depth_test_enabled           = false;
+    bool                 depth_writes_enabled         = false;
+    ral_front_face       front_face                   = RAL_FRONT_FACE_UNKNOWN;
+    float                line_width                   = 0.0f;
+    ral_logic_op         logic_op                     = RAL_LOGIC_OP_UNKNOWN;
+    bool                 logic_op_enabled             = false;
+    uint32_t             n_patch_control_points       = 0;
+    ral_polygon_mode     polygon_mode_back            = RAL_POLYGON_MODE_UNKNOWN;
+    ral_polygon_mode     polygon_mode_front           = RAL_POLYGON_MODE_UNKNOWN;
+    bool                 primitive_restart_enabled    = false;
+    ral_primitive_type   primitive_type               = RAL_PRIMITIVE_TYPE_UNKNOWN;
+    bool                 rasterizer_discard_enabled   = false;
+    bool                 sample_shading_enabled       = false;
+    float                sample_shading_min           = 0.0f;
+    bool                 scissor_test_enabled         = false;
+    bool                 static_scissor_boxes_enabled = false;
+    bool                 static_viewports_enabled     = false;
     ral_stencil_op_state stencil_test_back;
-    bool                 stencil_test_enabled                       = false;
+    bool                 stencil_test_enabled         = false;
     ral_stencil_op_state stencil_test_front;
 
     struct
@@ -1286,7 +1287,8 @@ void _raGL_command_buffer::bake_gfx_state()
         {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_ENABLED,                     &sample_shading_enabled},
         {RAL_GFX_STATE_PROPERTY_SAMPLE_SHADING_MIN,                         &sample_shading_min},
         {RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,                       &scissor_test_enabled},
-        {RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED, &static_scissor_boxes_and_viewports_enabled},
+        {RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_ENABLED,               &static_scissor_boxes_enabled},
+        {RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS_ENABLED,                   &static_viewports_enabled},
         {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_BACK,                          &stencil_test_back},
         {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_ENABLED,                       &stencil_test_enabled},
         {RAL_GFX_STATE_PROPERTY_STENCIL_TEST_FRONT,                         &stencil_test_front}
@@ -1651,28 +1653,62 @@ void _raGL_command_buffer::bake_gfx_state()
      * This is not supported in core GL, so we need to emulate this by adjusting scissor box &
      * viewport states with GL calls.
      */
-    if (static_scissor_boxes_and_viewports_enabled)
+    if (static_scissor_boxes_enabled)
     {
-        uint32_t                                         n_viewports                  = 0;
+        uint32_t                                         n_scissor_boxes              = 0;
         bool                                             scissor_test_enabled         = false;
         ral_command_buffer_set_scissor_box_command_info* set_scissor_box_commands_ral = nullptr;
-        ral_command_buffer_set_viewport_command_info*    set_viewport_commands_ral    = nullptr;
 
         ral_gfx_state_get_property(bake_state.active_gfx_state,
                                    RAL_GFX_STATE_PROPERTY_N_STATIC_SCISSOR_BOXES_AND_VIEWPORTS,
-                                  &n_viewports);
+                                  &n_scissor_boxes);
         ral_gfx_state_get_property(bake_state.active_gfx_state,
                                    RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,
                                   &scissor_test_enabled);
         ral_gfx_state_get_property(bake_state.active_gfx_state,
                                    RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES,
                                   &set_scissor_box_commands_ral);
+
+        /* TODO: We could use glScissorArrayv() here instead. */
+        if (scissor_test_enabled)
+        {
+            for (uint32_t n_scissor_box = 0;
+                          n_scissor_box < n_scissor_boxes;
+                        ++n_scissor_box)
+            {
+                _raGL_command* scissor_indexedv_command_raGL_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.index = set_scissor_box_commands_ral[n_scissor_box].index;
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[0]  = set_scissor_box_commands_ral[n_scissor_box].xy[0];
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[1]  = set_scissor_box_commands_ral[n_scissor_box].xy[1];
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[2]  = set_scissor_box_commands_ral[n_scissor_box].size[0];
+                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[3]  = set_scissor_box_commands_ral[n_scissor_box].size[1];
+                scissor_indexedv_command_raGL_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
+
+                system_resizable_vector_push(commands,
+                                             scissor_indexedv_command_raGL_ptr);
+            }
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Static scissor boxes have been redundantly defined - scissor test is disabled.");
+        }
+    }
+
+    if (static_viewports_enabled)
+    {
+        uint32_t                                      n_viewports               = 0;
+        ral_command_buffer_set_viewport_command_info* set_viewport_commands_ral = nullptr;
+
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_N_STATIC_SCISSOR_BOXES_AND_VIEWPORTS,
+                                  &n_viewports);
         ral_gfx_state_get_property(bake_state.active_gfx_state,
                                    RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
                                   &set_viewport_commands_ral);
 
         /* TODO: We could use glDepthRangeArrayv() here instead. */
-        /* TODO: We could use glScissorArrayv() here instead.    */
         /* TODO: We could use glViewportArrayv() here instead.   */
         for (uint32_t n_viewport = 0;
                       n_viewport < n_viewports;
@@ -1695,24 +1731,8 @@ void _raGL_command_buffer::bake_gfx_state()
 
             system_resizable_vector_push(commands,
                                          depth_range_indexed_command_raGL_ptr);
-
             system_resizable_vector_push(commands,
                                          set_viewport_command_raGL_ptr);
-
-            if (scissor_test_enabled)
-            {
-                _raGL_command* scissor_indexedv_command_raGL_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-
-                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.index = set_scissor_box_commands_ral[n_viewport].index;
-                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[0]  = set_scissor_box_commands_ral[n_viewport].xy[0];
-                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[1]  = set_scissor_box_commands_ral[n_viewport].xy[1];
-                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[2]  = set_scissor_box_commands_ral[n_viewport].size[0];
-                scissor_indexedv_command_raGL_ptr->scissor_indexedv_command_info.v[3]  = set_scissor_box_commands_ral[n_viewport].size[1];
-                scissor_indexedv_command_raGL_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
-
-                system_resizable_vector_push(commands,
-                                             scissor_indexedv_command_raGL_ptr);
-            }
         }
     }
 
@@ -2635,10 +2655,10 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
         /* Issue the command */
         command_args.dst_level     = command_ral_ptr->n_dst_texture_mipmap;
         command_args.dst_object_id = dst_texture_id;
-        command_args.dst_target    = (dst_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_texture_target_for_ral_texture_type(dst_texture_type);
+        command_args.dst_target    = (dst_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_enum_for_ral_texture_type(dst_texture_type);
         command_args.src_level     = command_ral_ptr->n_src_texture_mipmap;
         command_args.src_object_id = src_texture_id;
-        command_args.src_target    = (src_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_texture_target_for_ral_texture_type(src_texture_type);
+        command_args.src_target    = (src_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_enum_for_ral_texture_type(src_texture_type);
 
         static_assert(sizeof(command_args.dst_xyz) == sizeof(command_ral_ptr->dst_start_xyz), "");
         static_assert(sizeof(command_args.size)    == sizeof(command_ral_ptr->dst_size),      "");
@@ -3396,7 +3416,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
              *       Hence, at binding time, we need to ensure LOD bias is kept up-to-date.
              **/
             GLfloat      sampler_lod_bias;
-            const GLenum texture_target_gl = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_ral_type);
+            const GLenum texture_target_gl = raGL_utils_get_ogl_enum_for_ral_texture_type(texture_ral_type);
 
             ral_sampler_get_property(command_ral_ptr->sampled_image_binding.sampler,
                                      RAL_SAMPLER_PROPERTY_LOD_BIAS,
@@ -3573,7 +3593,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             bind_command_ptr->bind_image_texture_command_info.access     = ((command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_READ) != 0 && (command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_WRITE) == 0) ? GL_READ_ONLY
                                                                          : ((command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_READ) != 0 && (command_ral_ptr->storage_image_binding.access_bits & RAL_IMAGE_ACCESS_WRITE) != 0) ? GL_READ_WRITE
                                                                                                                                                                                                                                                      : GL_WRITE_ONLY;
-            bind_command_ptr->bind_image_texture_command_info.format     = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_view_format);
+            bind_command_ptr->bind_image_texture_command_info.format     = raGL_utils_get_ogl_enum_for_ral_format(texture_view_format);
             bind_command_ptr->bind_image_texture_command_info.is_layered = (texture_view_n_layers > 1) ? GL_TRUE : GL_FALSE;
             bind_command_ptr->bind_image_texture_command_info.layer      = texture_view_n_base_layer;
             bind_command_ptr->bind_image_texture_command_info.level      = texture_view_n_base_level;
@@ -3659,6 +3679,18 @@ void _raGL_command_buffer::process_set_scissor_box_command(const ral_command_buf
     ASSERT_DEBUG_SYNC(command_ral_ptr->index < static_cast<uint32_t>(limits_ptr->max_viewports),
                       "Invalid scissor box index");
 
+    if (bake_state.active_gfx_state != nullptr)
+    {
+        bool static_scissor_boxes_enabled;
+
+        ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_ENABLED,
+                                  &static_scissor_boxes_enabled);
+
+        ASSERT_DEBUG_SYNC(!static_scissor_boxes_enabled,
+                          "Illegal \"set scissor box\" command request - bound gfx_state has the \"static scissor boxes\" mode enabled.");
+    }
+
     /* Enqueue the GL command */
     _raGL_command* gl_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
@@ -3725,14 +3757,14 @@ void _raGL_command_buffer::process_set_viewport_command(const ral_command_buffer
 
     if (bake_state.active_gfx_state != nullptr)
     {
-        bool static_scissor_boxes_and_viewports_enabled;
+        bool static_viewports_enabled;
 
         ral_gfx_state_get_property(bake_state.active_gfx_state,
-                                   RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES_AND_VIEWPORTS_ENABLED,
-                                  &static_scissor_boxes_and_viewports_enabled);
+                                   RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS_ENABLED,
+                                  &static_viewports_enabled);
 
-        ASSERT_DEBUG_SYNC(!static_scissor_boxes_and_viewports_enabled,
-                          "Illegal \"set viewport\" command request - bound gfx_state has the \"static scissor boxes and viewports\" mode enabled.");
+        ASSERT_DEBUG_SYNC(!static_viewports_enabled,
+                          "Illegal \"set viewport\" command request - bound gfx_state has the \"static viewports\" mode enabled.");
     }
 
     /* Enqueue the GL command */

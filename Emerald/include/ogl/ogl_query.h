@@ -15,7 +15,7 @@
 DECLARE_HANDLE(ogl_query);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_query_begin(ogl_query query);
+PUBLIC void ogl_query_begin(ogl_query query);
 
 /** TODO */
 PUBLIC ogl_query ogl_query_create(ral_context  context,
@@ -23,7 +23,7 @@ PUBLIC ogl_query ogl_query_create(ral_context  context,
                                   GLenum       gl_query_target);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_query_end(ogl_query query);
+PUBLIC void ogl_query_end(ogl_query query);
 
 /** TODO.
  *
@@ -34,8 +34,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_query_end(ogl_query query);
  *  results become available.
  *
  **/
-PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(ogl_query query,
-                                                         GLuint64* out_result);
+PUBLIC bool ogl_query_peek_result(ogl_query query,
+                                  GLuint64* out_result);
 
 /** TODO */
 PUBLIC void ogl_query_release(ogl_query query);

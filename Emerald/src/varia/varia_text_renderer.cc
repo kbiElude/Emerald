@@ -1213,7 +1213,8 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
     result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &result_present_task_unique_input;
     result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_unique_output;
 
-    text_ptr->last_cached_present_task = ral_present_task_create_group(&result_present_task_create_info);
+    text_ptr->last_cached_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("Text renderer: rasterization"),
+                                                                       &result_present_task_create_info);
     result                             = text_ptr->last_cached_present_task;
 
 

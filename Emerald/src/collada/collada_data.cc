@@ -1765,10 +1765,10 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                                                    &stride);
 
                         mesh_set_property(result,
-                                          MESH_PROPERTY_GL_TOTAL_ELEMENTS,
+                                          MESH_PROPERTY_BO_TOTAL_ELEMENTS,
                                          &n_total_elements);
                         mesh_set_property(result,
-                                          MESH_PROPERTY_GL_STRIDE,
+                                          MESH_PROPERTY_BO_STRIDE,
                                          &stride);
 
                         /* Finally, read GL BO index offset data */
@@ -1842,17 +1842,17 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                                 mesh_set_layer_property(result,
                                                         n_layer,
                                                         n_layer_pass,
-                                                        MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,
+                                                        MESH_LAYER_PROPERTY_BO_ELEMENTS_OFFSET,
                                                        &index_offset);
                                 mesh_set_layer_property(result,
                                                         n_layer,
                                                         n_layer_pass,
-                                                        MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX,
+                                                        MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MAX_INDEX,
                                                        &index_max_value);
                                 mesh_set_layer_property(result,
                                                         n_layer,
                                                         n_layer_pass,
-                                                        MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX,
+                                                        MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MIN_INDEX,
                                                        &index_min_value);
                             }
                         }
@@ -1889,15 +1889,15 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                     _mesh_index_type       gl_index_type          = MESH_INDEX_TYPE_UNKNOWN;
                     system_file_serializer serializer             = system_file_serializer_create_for_writing(blob_file_name);
 
-                    mesh_get_property(result, MESH_PROPERTY_GL_INDEX_TYPE,
+                    mesh_get_property(result, MESH_PROPERTY_BO_INDEX_TYPE,
                                      &gl_index_type);
-                    mesh_get_property(result, MESH_PROPERTY_GL_PROCESSED_DATA,
+                    mesh_get_property(result, MESH_PROPERTY_BO_PROCESSED_DATA,
                                      &gl_data);
-                    mesh_get_property(result, MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
+                    mesh_get_property(result, MESH_PROPERTY_BO_PROCESSED_DATA_SIZE,
                                      &gl_data_size);
-                    mesh_get_property(result, MESH_PROPERTY_GL_STRIDE,
+                    mesh_get_property(result, MESH_PROPERTY_BO_STRIDE,
                                      &gl_data_stride);
-                    mesh_get_property(result, MESH_PROPERTY_GL_TOTAL_ELEMENTS,
+                    mesh_get_property(result, MESH_PROPERTY_BO_TOTAL_ELEMENTS,
                                      &gl_data_total_elements);
 
                     system_file_serializer_write(serializer,
@@ -1996,17 +1996,17 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                             mesh_get_layer_pass_property(result,
                                                          n_layer,
                                                          n_layer_pass,
-                                                         MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,
+                                                         MESH_LAYER_PROPERTY_BO_ELEMENTS_OFFSET,
                                                         &index_offset);
                             mesh_get_layer_pass_property(result,
                                                          n_layer,
                                                          n_layer_pass,
-                                                         MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX,
+                                                         MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MAX_INDEX,
                                                         &index_max_value);
                             mesh_get_layer_pass_property(result,
                                                          n_layer,
                                                          n_layer_pass,
-                                                         MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX,
+                                                         MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MIN_INDEX,
                                                         &index_min_value);
 
                             system_file_serializer_write(serializer,
@@ -2026,9 +2026,9 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                 }
 
                 /* Fill mesh's GL buffer with data */
-                mesh_fill_gl_buffers(result,
-                                     context,
-                                     false /* async */);
+                mesh_fill_ral_buffers(result,
+                                      context,
+                                      false /* async */);
             }
         }
         else

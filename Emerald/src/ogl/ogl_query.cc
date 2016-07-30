@@ -198,7 +198,7 @@ PRIVATE void _ogl_query_init_renderer_callback(ogl_context context,
 
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_query_begin(ogl_query query)
+PUBLIC void ogl_query_begin(ogl_query query)
 {
     _ogl_query* query_ptr = reinterpret_cast<_ogl_query*>(query);
 
@@ -238,7 +238,7 @@ PUBLIC ogl_query ogl_query_create(ral_context  context,
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_query_end(ogl_query query)
+PUBLIC void ogl_query_end(ogl_query query)
 {
     _ogl_query*        query_ptr = reinterpret_cast<_ogl_query*>(query);
     const unsigned int qo_id     = query_ptr->index_current;
@@ -253,8 +253,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_query_end(ogl_query query)
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(ogl_query query,
-                                                         GLuint64* out_result)
+PUBLIC bool ogl_query_peek_result(ogl_query query,
+                                  GLuint64* out_result)
 {
     _ogl_query* query_ptr = reinterpret_cast<_ogl_query*>(query);
     bool        result    = false;

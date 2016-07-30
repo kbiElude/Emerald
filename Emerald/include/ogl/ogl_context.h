@@ -231,18 +231,18 @@ PUBLIC void ogl_context_deinit_global();
  *  @param out_supported_samples   TODO.
  *
  */
-PUBLIC EMERALD_API void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
-                                                           system_pixel_format pf,
-                                                           unsigned int*       out_n_supported_samples,
-                                                           unsigned int**      out_supported_samples);
+PUBLIC void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
+                                               system_pixel_format pf,
+                                               unsigned int*       out_n_supported_samples,
+                                               unsigned int**      out_supported_samples);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_context ogl_context_get_current_context();
+PUBLIC ogl_context ogl_context_get_current_context();
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_get_property(const ogl_context    context,
-                                                 ogl_context_property property,
-                                                 void*                out_result_ptr);
+PUBLIC void ogl_context_get_property(const ogl_context    context,
+                                     ogl_context_property property,
+                                     void*                out_result_ptr);
 
 /** TODO
  *
@@ -251,8 +251,8 @@ PUBLIC EMERALD_API void ogl_context_get_property(const ogl_context    context,
 PUBLIC void ogl_context_init_global();
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_context_is_extension_supported(ogl_context,
-                                                           system_hashed_ansi_string);
+PUBLIC bool ogl_context_is_extension_supported(ogl_context,
+                                               system_hashed_ansi_string);
 
 /** TODO */
 PUBLIC bool ogl_context_release_managers(ogl_context);
@@ -266,11 +266,11 @@ PUBLIC bool ogl_context_release_managers(ogl_context);
  *
  *  @return true if successful, false otherwise
  **/
-PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(ogl_context                                 context,
-                                                                         PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
-                                                                         void*                                       user_arg,
-                                                                         bool                                        swap_buffers_afterward = false,
-                                                                         raGL_rendering_handler_execution_mode       execution_mode         = RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
+PUBLIC bool ogl_context_request_callback_from_context_thread(ogl_context                                 context,
+                                                             PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
+                                                             void*                                       user_arg,
+                                                             bool                                        swap_buffers_afterward = false,
+                                                             raGL_rendering_handler_execution_mode       execution_mode         = RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
 
 /** TODO.
  *

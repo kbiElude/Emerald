@@ -1155,7 +1155,8 @@ PUBLIC ral_present_task scene_renderer_frustum_preview_render(scene_renderer_fru
     result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_input_mappings;
     result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_output_mappings;
 
-    result_task = ral_present_task_create_group(&result_task_create_info);
+    result_task = ral_present_task_create_group(system_hashed_ansi_string_create("Frustum preview: rasterization"),
+                                                &result_task_create_info);
 
     /* Cache important data for subsequent calls & CPU present task's handler */
     preview_ptr->render_color_rt = color_rt;

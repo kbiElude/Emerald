@@ -24,8 +24,8 @@ PUBLIC void raGL_rendering_handler_enumerate_custom_wait_event_handlers(void*   
                                                                         const ral_rendering_handler_custom_wait_event_handler** opt_out_custom_wait_event_handlers_ptr);
 
 /** TODO. Should only be used by ral_rendering_handler */
-PUBLIC RENDERING_CONTEXT_CALL void raGL_rendering_handler_execute_present_job(void*           rendering_handler_raGL,
-                                                                              ral_present_job present_job);
+PUBLIC void raGL_rendering_handler_execute_present_job(void*           rendering_handler_raGL,
+                                                       ral_present_job present_job);
 
 /** TODO */
 PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context           context_ral,

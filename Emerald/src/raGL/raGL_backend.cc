@@ -942,10 +942,10 @@ PRIVATE void _raGL_backend_link_program_handler(void* job_arg_raw_ptr)
 PRIVATE void _raGL_backend_on_buffer_to_buffer_copy_request(const void* callback_arg_data,
                                                             void*       backend)
 {
-    _raGL_backend*                          backend_ptr      = reinterpret_cast<_raGL_backend*>                         (backend);
-    ral_buffer_copy_to_buffer_callback_arg* callback_arg_ptr = reinterpret_cast<ral_buffer_copy_to_buffer_callback_arg*>(callback_arg_data);
-    raGL_buffer                             dst_buffer_raGL  = nullptr;
-    raGL_buffer                             src_buffer_raGL  = nullptr;
+    _raGL_backend*                                backend_ptr      = reinterpret_cast<_raGL_backend*>                               (backend);
+    const ral_buffer_copy_to_buffer_callback_arg* callback_arg_ptr = reinterpret_cast<const ral_buffer_copy_to_buffer_callback_arg*>(callback_arg_data);
+    raGL_buffer                                   dst_buffer_raGL  = nullptr;
+    raGL_buffer                                   src_buffer_raGL  = nullptr;
 
     /* Identify the raGL_buffer instances for the dst & src ral_buffer objects and forward
      * the request. */
@@ -981,9 +981,9 @@ PRIVATE void _raGL_backend_on_buffer_to_buffer_copy_request(const void* callback
 PRIVATE void _raGL_backend_on_buffer_clear_region_request(const void* callback_arg_data,
                                                           void*       backend)
 {
-    _raGL_backend*                        backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
-    raGL_buffer                           buffer_raGL      = nullptr;
-    ral_buffer_clear_region_callback_arg* callback_arg_ptr = reinterpret_cast<ral_buffer_clear_region_callback_arg*>(callback_arg_data);
+    _raGL_backend*                              backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
+    raGL_buffer                                 buffer_raGL      = nullptr;
+    const ral_buffer_clear_region_callback_arg* callback_arg_ptr = reinterpret_cast<const ral_buffer_clear_region_callback_arg*>(callback_arg_data);
 
     system_read_write_mutex_lock(backend_ptr->buffers_map_rw_mutex,
                                  ACCESS_READ);
@@ -1012,9 +1012,9 @@ PRIVATE void _raGL_backend_on_buffer_clear_region_request(const void* callback_a
 PRIVATE void _raGL_backend_on_buffer_client_memory_sourced_update_request(const void* callback_arg_data,
                                                                           void*       backend)
 {
-    _raGL_backend*                                      backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
-    raGL_buffer                                         buffer_raGL      = nullptr;
-    ral_buffer_client_sourced_update_info_callback_arg* callback_arg_ptr = reinterpret_cast<ral_buffer_client_sourced_update_info_callback_arg*>(callback_arg_data);
+    _raGL_backend*                                            backend_ptr      = reinterpret_cast<_raGL_backend*>(backend);
+    raGL_buffer                                               buffer_raGL      = nullptr;
+    const ral_buffer_client_sourced_update_info_callback_arg* callback_arg_ptr = reinterpret_cast<const ral_buffer_client_sourced_update_info_callback_arg*>(callback_arg_data);
 
     /* Identify the raGL_buffer instance for the source ral_buffer object and forward
      * the request. */
@@ -3098,7 +3098,7 @@ PUBLIC void raGL_backend_set_private_property(raGL_backend                  back
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void raGL_backend_sync()
+PUBLIC void raGL_backend_sync()
 {
     ogl_context    current_context             = ogl_context_get_current_context();
     _raGL_backend* current_context_backend_ptr = nullptr;

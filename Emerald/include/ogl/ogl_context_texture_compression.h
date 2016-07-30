@@ -62,15 +62,15 @@ DECLARE_HANDLE(ogl_context_texture_compression);
 PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_algorithm_property(const ogl_context_texture_compression              texture_compression,
-                                                                               uint32_t                                           index,
-                                                                               ogl_context_texture_compression_algorithm_property property,
-                                                                               void*                                              out_result_ptr);
+PUBLIC void ogl_context_texture_compression_get_algorithm_property(const ogl_context_texture_compression              texture_compression,
+                                                                   uint32_t                                           index,
+                                                                   ogl_context_texture_compression_algorithm_property property,
+                                                                   void*                                              out_result_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(const ogl_context_texture_compression    texture_compression,
-                                                                     ogl_context_texture_compression_property property,
-                                                                     void*                                    out_result_ptr);
+PUBLIC void ogl_context_texture_compression_get_property(const ogl_context_texture_compression    texture_compression,
+                                                         ogl_context_texture_compression_property property,
+                                                         void*                                    out_result_ptr);
 
 /** TODO */
 PUBLIC void ogl_context_texture_compression_init(ogl_context_texture_compression           texture_compression,

@@ -69,8 +69,8 @@ typedef struct _raGL_sampler
 
 
 /** TODO */
-PRIVATE RENDERING_CONTEXT_CALL void _raGL_sampler_init_rendering_thread_callback(ogl_context context,
-                                                                                 void*       sampler)
+PRIVATE void _raGL_sampler_init_rendering_thread_callback(ogl_context context,
+                                                          void*       sampler)
 {
     ral_color               border_color;
     GLenum                  compare_op_gl           = GL_NONE;

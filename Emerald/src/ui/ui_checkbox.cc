@@ -773,7 +773,8 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
     present_task_group_create_info.unique_input_to_ingroup_task_mapping     = &present_task_unique_input_mapping;
     present_task_group_create_info.unique_output_to_ingroup_task_mapping    = &present_task_unique_output_mapping;
 
-    checkbox_ptr->cached_present_task = ral_present_task_create_group(&present_task_group_create_info);
+    checkbox_ptr->cached_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("UI check-box: rasterization"),
+                                                                      &present_task_group_create_info);
     result                            = checkbox_ptr->cached_present_task;
 
     ral_present_task_release(present_task_cpu);

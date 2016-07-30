@@ -556,97 +556,97 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_shader_type(ral_shader_type in_sha
 }
 
 /** Please see header for specification */
-PUBLIC ogl_texture_internalformat raGL_utils_get_ogl_texture_internalformat_for_ral_format(ral_format in_format)
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_format(ral_format in_format)
 {
-    static const ogl_texture_internalformat result_array[] =
+    static const GLenum result_array[] =
     {
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_R11_EAC,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RED_RGTC1,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RG11_EAC,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RG_RGTC2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB8_ETC2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGBA8_ETC2_EAC,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGBA_BPTC_UNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_R11_EAC,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RED_RGTC1,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RG11_EAC,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RG_RGTC2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_ETC2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16,
-        OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24,
-        OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32,
-        OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH24_STENCIL8,
-        OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH32F_STENCIL8,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R11F_G11F_B10F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R16F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R16I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R16_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R16UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R16,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R3_G3_B2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R32F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R32I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R32UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R8I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R8_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R8UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_R8,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG16F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG16I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG16_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG16UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG16,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG32F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG32I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG32UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG8,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG8I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG8_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RG8UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB10,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB10_A2UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB10_A2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB12,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB16F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB16I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB16_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB16UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB16,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB32F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB32I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB32UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB4,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB5,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB5_A1,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB8I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB8_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB8UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB8,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGB9_E5,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA12,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA2,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA32F,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA32I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA32UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA4,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8I,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8_SNORM,
-        OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8UI,
-        OGL_TEXTURE_INTERNALFORMAT_GL_SRGB8,
-        OGL_TEXTURE_INTERNALFORMAT_GL_SRGB8_ALPHA8,
+        GL_COMPRESSED_R11_EAC,
+        GL_COMPRESSED_RED_RGTC1,
+        GL_COMPRESSED_RG11_EAC,
+        GL_COMPRESSED_RG_RGTC2,
+        GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT_ARB,
+        GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT_ARB,
+        GL_COMPRESSED_RGB8_ETC2,
+        GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2,
+        GL_COMPRESSED_RGBA8_ETC2_EAC,
+        GL_COMPRESSED_RGBA_BPTC_UNORM_ARB,
+        GL_COMPRESSED_SIGNED_R11_EAC,
+        GL_COMPRESSED_SIGNED_RED_RGTC1,
+        GL_COMPRESSED_SIGNED_RG11_EAC,
+        GL_COMPRESSED_SIGNED_RG_RGTC2,
+        GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC,
+        GL_COMPRESSED_SRGB8_ETC2,
+        GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2,
+        GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB,
+        GL_DEPTH_COMPONENT16,
+        GL_DEPTH_COMPONENT24,
+        GL_DEPTH_COMPONENT32F,
+        GL_DEPTH_COMPONENT32,
+        GL_DEPTH24_STENCIL8,
+        GL_DEPTH32F_STENCIL8,
+        GL_R11F_G11F_B10F,
+        GL_R16F,
+        GL_R16I,
+        GL_R16_SNORM,
+        GL_R16UI,
+        GL_R16,
+        GL_R3_G3_B2,
+        GL_R32F,
+        GL_R32I,
+        GL_R32UI,
+        GL_R8I,
+        GL_R8_SNORM,
+        GL_R8UI,
+        GL_R8,
+        GL_RG16F,
+        GL_RG16I,
+        GL_RG16_SNORM,
+        GL_RG16UI,
+        GL_RG16,
+        GL_RG32F,
+        GL_RG32I,
+        GL_RG32UI,
+        GL_RG8,
+        GL_RG8I,
+        GL_RG8_SNORM,
+        GL_RG8UI,
+        GL_RGB10,
+        GL_RGB10_A2UI,
+        GL_RGB10_A2,
+        GL_RGB12,
+        GL_RGB16F,
+        GL_RGB16I,
+        GL_RGB16_SNORM,
+        GL_RGB16UI,
+        GL_RGB16,
+        GL_RGB32F,
+        GL_RGB32I,
+        GL_RGB32UI,
+        GL_RGB4,
+        GL_RGB5,
+        GL_RGB5_A1,
+        GL_RGB8I,
+        GL_RGB8_SNORM,
+        GL_RGB8UI,
+        GL_RGB8,
+        GL_RGB9_E5,
+        GL_RGBA12,
+        GL_RGBA16F,
+        GL_RGBA16I,
+        GL_RGBA16_SNORM,
+        GL_RGBA16UI,
+        GL_RGBA16,
+        GL_RGBA2,
+        GL_RGBA32F,
+        GL_RGBA32I,
+        GL_RGBA32UI,
+        GL_RGBA4,
+        GL_RGBA8,
+        GL_RGBA8I,
+        GL_RGBA8_SNORM,
+        GL_RGBA8UI,
+        GL_SRGB8,
+        GL_SRGB8_ALPHA8,
     };
 
     ASSERT_DEBUG_SYNC(in_format < RAL_FORMAT_COUNT,
@@ -656,22 +656,22 @@ PUBLIC ogl_texture_internalformat raGL_utils_get_ogl_texture_internalformat_for_
 }
 
 /* Please see header for specification */
-PUBLIC ogl_texture_target raGL_utils_get_ogl_texture_target_for_ral_texture_type(ral_texture_type in_texture_type)
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_type(ral_texture_type in_texture_type)
 {
-    static const ogl_texture_target result_array[] =
+    static const GLenum result_array[] =
     {
-        OGL_TEXTURE_TARGET_GL_TEXTURE_1D,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_1D_ARRAY,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_2D,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_2D_ARRAY,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_3D,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_BUFFER,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP_ARRAY,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_RECTANGLE,
+        GL_TEXTURE_1D,
+        GL_TEXTURE_1D_ARRAY,
+        GL_TEXTURE_2D,
+        GL_TEXTURE_2D_ARRAY,
+        GL_TEXTURE_3D,
+        GL_TEXTURE_BUFFER,
+        GL_TEXTURE_CUBE_MAP,
+        GL_TEXTURE_CUBE_MAP_ARRAY,
+        GL_TEXTURE_RECTANGLE,
 
-        OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE,
-        OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
+        GL_TEXTURE_2D_MULTISAMPLE,
+        GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
     };
 
     ASSERT_DEBUG_SYNC(in_texture_type < RAL_TEXTURE_TYPE_COUNT,
@@ -681,15 +681,15 @@ PUBLIC ogl_texture_target raGL_utils_get_ogl_texture_target_for_ral_texture_type
 }
 
 /* Please see header for specification */
-PUBLIC ogl_texture_wrap_mode raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(ral_texture_wrap_mode in_texture_wrap_mode)
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_wrap_mode(ral_texture_wrap_mode in_texture_wrap_mode)
 {
-    static const ogl_texture_wrap_mode result_array[] =
+    static const GLenum result_array[] =
     {
-        OGL_TEXTURE_WRAP_MODE_CLAMP_TO_BORDER,
-        OGL_TEXTURE_WRAP_MODE_CLAMP_TO_EDGE,
-        OGL_TEXTURE_WRAP_MODE_MIRROR_CLAMP_TO_EDGE,
-        OGL_TEXTURE_WRAP_MODE_MIRRORED_REPEAT,
-        OGL_TEXTURE_WRAP_MODE_REPEAT,
+        GL_CLAMP_TO_BORDER,
+        GL_CLAMP_TO_EDGE,
+        GL_MIRROR_CLAMP_TO_EDGE,
+        GL_MIRRORED_REPEAT,
+        GL_REPEAT,
     };
 
     ASSERT_DEBUG_SYNC(in_texture_wrap_mode < RAL_TEXTURE_WRAP_MODE_COUNT,
@@ -816,108 +816,102 @@ PUBLIC ral_program_variable_type raGL_utils_get_ral_program_variable_type_for_og
 /* Please see header for specification */
 PUBLIC ral_format raGL_utils_get_ral_format_for_ogl_enum(GLenum internalformat)
 {
-    return raGL_utils_get_ral_format_for_ogl_texture_internalformat( (ogl_texture_internalformat) internalformat);
-}
-
-/* Please see header for specification */
-PUBLIC ral_format raGL_utils_get_ral_format_for_ogl_texture_internalformat(ogl_texture_internalformat internalformat)
-{
     ral_format result = RAL_FORMAT_UNKNOWN;
 
     switch (internalformat)
     {
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_R11_EAC:                        result = RAL_FORMAT_COMPRESSED_R11_EAC_UNORM;                        break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RED_RGTC1:                      result = RAL_FORMAT_COMPRESSED_BC4_UNORM;                            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RG11_EAC:                       result = RAL_FORMAT_COMPRESSED_RG11_EAC_UNORM;                       break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RG_RGTC2:                       result = RAL_FORMAT_COMPRESSED_BC5_UNORM;                            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT:          result = RAL_FORMAT_COMPRESSED_BC6_SFLOAT;                           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT:        result = RAL_FORMAT_COMPRESSED_BC6_UFLOAT;                           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB8_ETC2:                      result = RAL_FORMAT_COMPRESSED_RGB8_ETC2_UNORM;                      break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:  result = RAL_FORMAT_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM;  break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGBA8_ETC2_EAC:                 result = RAL_FORMAT_COMPRESSED_RGBA8_ETC2_EAC_UNORM;                 break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_RGBA_BPTC_UNORM:                result = RAL_FORMAT_COMPRESSED_BC7_UNORM;                            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_R11_EAC:                 result = RAL_FORMAT_COMPRESSED_R11_EAC_SNORM;                        break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RED_RGTC1:               result = RAL_FORMAT_COMPRESSED_BC4_SNORM;                            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RG11_EAC:                result = RAL_FORMAT_COMPRESSED_RG11_EAC_SNORM;                       break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SIGNED_RG_RGTC2:                result = RAL_FORMAT_COMPRESSED_BC5_SNORM;                            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:          result = RAL_FORMAT_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC_UNORM;          break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_ETC2:                     result = RAL_FORMAT_COMPRESSED_SRGB8_ETC2_UNORM;                     break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: result = RAL_FORMAT_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM; break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM:          result = RAL_FORMAT_COMPRESSED_BC7_SRGB_UNORM;                       break;
+        case GL_COMPRESSED_R11_EAC:                        result = RAL_FORMAT_COMPRESSED_R11_EAC_UNORM;                        break;
+        case GL_COMPRESSED_RED_RGTC1:                      result = RAL_FORMAT_COMPRESSED_BC4_UNORM;                            break;
+        case GL_COMPRESSED_RG11_EAC:                       result = RAL_FORMAT_COMPRESSED_RG11_EAC_UNORM;                       break;
+        case GL_COMPRESSED_RG_RGTC2:                       result = RAL_FORMAT_COMPRESSED_BC5_UNORM;                            break;
+        case GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT_ARB:      result = RAL_FORMAT_COMPRESSED_BC6_SFLOAT;                           break;
+        case GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT_ARB:    result = RAL_FORMAT_COMPRESSED_BC6_UFLOAT;                           break;
+        case GL_COMPRESSED_RGB8_ETC2:                      result = RAL_FORMAT_COMPRESSED_RGB8_ETC2_UNORM;                      break;
+        case GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2:  result = RAL_FORMAT_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM;  break;
+        case GL_COMPRESSED_RGBA8_ETC2_EAC:                 result = RAL_FORMAT_COMPRESSED_RGBA8_ETC2_EAC_UNORM;                 break;
+        case GL_COMPRESSED_RGBA_BPTC_UNORM_ARB:            result = RAL_FORMAT_COMPRESSED_BC7_UNORM;                            break;
+        case GL_COMPRESSED_SIGNED_R11_EAC:                 result = RAL_FORMAT_COMPRESSED_R11_EAC_SNORM;                        break;
+        case GL_COMPRESSED_SIGNED_RED_RGTC1:               result = RAL_FORMAT_COMPRESSED_BC4_SNORM;                            break;
+        case GL_COMPRESSED_SIGNED_RG11_EAC:                result = RAL_FORMAT_COMPRESSED_RG11_EAC_SNORM;                       break;
+        case GL_COMPRESSED_SIGNED_RG_RGTC2:                result = RAL_FORMAT_COMPRESSED_BC5_SNORM;                            break;
+        case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:          result = RAL_FORMAT_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC_UNORM;          break;
+        case GL_COMPRESSED_SRGB8_ETC2:                     result = RAL_FORMAT_COMPRESSED_SRGB8_ETC2_UNORM;                     break;
+        case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: result = RAL_FORMAT_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2_UNORM; break;
+        case GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM_ARB:      result = RAL_FORMAT_COMPRESSED_BC7_SRGB_UNORM;                       break;
 
-        case OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16:           result = RAL_FORMAT_DEPTH16_SNORM;          break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24:           result = RAL_FORMAT_DEPTH24_SNORM;          break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32F:          result = RAL_FORMAT_DEPTH32_FLOAT;          break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32:           result = RAL_FORMAT_DEPTH32_SNORM;          break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH24_STENCIL8:            result = RAL_FORMAT_DEPTH24_STENCIL8;       break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH32F_STENCIL8:           result = RAL_FORMAT_DEPTH32F_STENCIL8;      break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R11F_G11F_B10F:              result = RAL_FORMAT_R11FG11FB10F;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R16F:                        result = RAL_FORMAT_R16_FLOAT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R16I:                        result = RAL_FORMAT_R16_SINT;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R16_SNORM:                   result = RAL_FORMAT_R16_SNORM;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R16UI:                       result = RAL_FORMAT_R16_UINT;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R16:                         result = RAL_FORMAT_R16_UNORM;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R3_G3_B2:                    result = RAL_FORMAT_R3G3B2_UNORM;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R32F:                        result = RAL_FORMAT_R32_FLOAT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R32I:                        result = RAL_FORMAT_R32_SINT;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R32UI:                       result = RAL_FORMAT_R32_UINT;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R8I:                         result = RAL_FORMAT_R8_SINT;                break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R8_SNORM:                    result = RAL_FORMAT_R8_SNORM;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R8UI:                        result = RAL_FORMAT_R8_UINT;                break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_R8:                          result = RAL_FORMAT_R8_UNORM;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG16F:                       result = RAL_FORMAT_RG16_FLOAT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG16I:                       result = RAL_FORMAT_RG16_SINT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG16_SNORM:                  result = RAL_FORMAT_RG16_SNORM;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG16UI:                      result = RAL_FORMAT_RG16_UINT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG16:                        result = RAL_FORMAT_RG16_UNORM;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG32F:                       result = RAL_FORMAT_RG32_FLOAT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG32I:                       result = RAL_FORMAT_RG32_SINT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG32UI:                      result = RAL_FORMAT_RG32_UINT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG8:                         result = RAL_FORMAT_RG8_UNORM;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG8I:                        result = RAL_FORMAT_RG8_SINT;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG8_SNORM:                   result = RAL_FORMAT_RG8_SNORM;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RG8UI:                       result = RAL_FORMAT_RG8_UINT;               break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB10:                       result = RAL_FORMAT_RGB10_UNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB10_A2UI:                  result = RAL_FORMAT_RGB10A2_UINT;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB10_A2:                    result = RAL_FORMAT_RGB10A2_UNORM;          break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB12:                       result = RAL_FORMAT_RGB12_UNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB16F:                      result = RAL_FORMAT_RGB16_FLOAT;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB16I:                      result = RAL_FORMAT_RGB16_SINT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB16_SNORM:                 result = RAL_FORMAT_RGB16_SNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB16UI:                     result = RAL_FORMAT_RGB16_UINT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB16:                       result = RAL_FORMAT_RGB16_UNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB32F:                      result = RAL_FORMAT_RGB32_FLOAT;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB32I:                      result = RAL_FORMAT_RGB32_SINT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB32UI:                     result = RAL_FORMAT_RGB32_UINT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB4:                        result = RAL_FORMAT_RGB4_UNORM;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB5:                        result = RAL_FORMAT_RGB5_UNORM;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB5_A1:                     result = RAL_FORMAT_RGB5A1_UNORM;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB8I:                       result = RAL_FORMAT_RGB8_SINT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB8_SNORM:                  result = RAL_FORMAT_RGB8_SNORM;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB8UI:                      result = RAL_FORMAT_RGB8_UINT;              break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB8:                        result = RAL_FORMAT_RGB8_UNORM;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGB9_E5:                     result = RAL_FORMAT_RGB9E5_FLOAT;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA12:                      result = RAL_FORMAT_RGBA12_UNORM;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16F:                     result = RAL_FORMAT_RGBA16_FLOAT;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16I:                     result = RAL_FORMAT_RGBA16_SINT;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16_SNORM:                result = RAL_FORMAT_RGBA16_SNORM;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16UI:                    result = RAL_FORMAT_RGBA16_UINT;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA16:                      result = RAL_FORMAT_RGBA16_UNORM;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA2:                       result = RAL_FORMAT_RGBA2_UNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA32F:                     result = RAL_FORMAT_RGBA32_FLOAT;           break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA32I:                     result = RAL_FORMAT_RGBA32_SINT;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA32UI:                    result = RAL_FORMAT_RGBA32_UINT;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA4:                       result = RAL_FORMAT_RGBA4_UNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8:                       result = RAL_FORMAT_RGBA8_UNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8I:                      result = RAL_FORMAT_RGBA8_SINT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8_SNORM:                 result = RAL_FORMAT_RGBA8_SNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_RGBA8UI:                     result = RAL_FORMAT_RGBA8_UINT;             break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_SRGB8:                       result = RAL_FORMAT_SRGB8_UNORM;            break;
-        case OGL_TEXTURE_INTERNALFORMAT_GL_SRGB8_ALPHA8:                result = RAL_FORMAT_SRGBA8_UNORM;           break;
+        case GL_DEPTH_COMPONENT16:           result = RAL_FORMAT_DEPTH16_SNORM;          break;
+        case GL_DEPTH_COMPONENT24:           result = RAL_FORMAT_DEPTH24_SNORM;          break;
+        case GL_DEPTH_COMPONENT32F:          result = RAL_FORMAT_DEPTH32_FLOAT;          break;
+        case GL_DEPTH_COMPONENT32:           result = RAL_FORMAT_DEPTH32_SNORM;          break;
+        case GL_DEPTH24_STENCIL8:            result = RAL_FORMAT_DEPTH24_STENCIL8;       break;
+        case GL_DEPTH32F_STENCIL8:           result = RAL_FORMAT_DEPTH32F_STENCIL8;      break;
+        case GL_R11F_G11F_B10F:              result = RAL_FORMAT_R11FG11FB10F;           break;
+        case GL_R16F:                        result = RAL_FORMAT_R16_FLOAT;              break;
+        case GL_R16I:                        result = RAL_FORMAT_R16_SINT;               break;
+        case GL_R16_SNORM:                   result = RAL_FORMAT_R16_SNORM;              break;
+        case GL_R16UI:                       result = RAL_FORMAT_R16_UINT;               break;
+        case GL_R16:                         result = RAL_FORMAT_R16_UNORM;              break;
+        case GL_R3_G3_B2:                    result = RAL_FORMAT_R3G3B2_UNORM;           break;
+        case GL_R32F:                        result = RAL_FORMAT_R32_FLOAT;              break;
+        case GL_R32I:                        result = RAL_FORMAT_R32_SINT;               break;
+        case GL_R32UI:                       result = RAL_FORMAT_R32_UINT;               break;
+        case GL_R8I:                         result = RAL_FORMAT_R8_SINT;                break;
+        case GL_R8_SNORM:                    result = RAL_FORMAT_R8_SNORM;               break;
+        case GL_R8UI:                        result = RAL_FORMAT_R8_UINT;                break;
+        case GL_R8:                          result = RAL_FORMAT_R8_UNORM;               break;
+        case GL_RG16F:                       result = RAL_FORMAT_RG16_FLOAT;             break;
+        case GL_RG16I:                       result = RAL_FORMAT_RG16_SINT;              break;
+        case GL_RG16_SNORM:                  result = RAL_FORMAT_RG16_SNORM;             break;
+        case GL_RG16UI:                      result = RAL_FORMAT_RG16_UINT;              break;
+        case GL_RG16:                        result = RAL_FORMAT_RG16_UNORM;             break;
+        case GL_RG32F:                       result = RAL_FORMAT_RG32_FLOAT;             break;
+        case GL_RG32I:                       result = RAL_FORMAT_RG32_SINT;              break;
+        case GL_RG32UI:                      result = RAL_FORMAT_RG32_UINT;              break;
+        case GL_RG8:                         result = RAL_FORMAT_RG8_UNORM;              break;
+        case GL_RG8I:                        result = RAL_FORMAT_RG8_SINT;               break;
+        case GL_RG8_SNORM:                   result = RAL_FORMAT_RG8_SNORM;              break;
+        case GL_RG8UI:                       result = RAL_FORMAT_RG8_UINT;               break;
+        case GL_RGB10:                       result = RAL_FORMAT_RGB10_UNORM;            break;
+        case GL_RGB10_A2UI:                  result = RAL_FORMAT_RGB10A2_UINT;           break;
+        case GL_RGB10_A2:                    result = RAL_FORMAT_RGB10A2_UNORM;          break;
+        case GL_RGB12:                       result = RAL_FORMAT_RGB12_UNORM;            break;
+        case GL_RGB16F:                      result = RAL_FORMAT_RGB16_FLOAT;            break;
+        case GL_RGB16I:                      result = RAL_FORMAT_RGB16_SINT;             break;
+        case GL_RGB16_SNORM:                 result = RAL_FORMAT_RGB16_SNORM;            break;
+        case GL_RGB16UI:                     result = RAL_FORMAT_RGB16_UINT;             break;
+        case GL_RGB16:                       result = RAL_FORMAT_RGB16_UNORM;            break;
+        case GL_RGB32F:                      result = RAL_FORMAT_RGB32_FLOAT;            break;
+        case GL_RGB32I:                      result = RAL_FORMAT_RGB32_SINT;             break;
+        case GL_RGB32UI:                     result = RAL_FORMAT_RGB32_UINT;             break;
+        case GL_RGB4:                        result = RAL_FORMAT_RGB4_UNORM;             break;
+        case GL_RGB5:                        result = RAL_FORMAT_RGB5_UNORM;             break;
+        case GL_RGB5_A1:                     result = RAL_FORMAT_RGB5A1_UNORM;           break;
+        case GL_RGB8I:                       result = RAL_FORMAT_RGB8_SINT;              break;
+        case GL_RGB8_SNORM:                  result = RAL_FORMAT_RGB8_SNORM;             break;
+        case GL_RGB8UI:                      result = RAL_FORMAT_RGB8_UINT;              break;
+        case GL_RGB8:                        result = RAL_FORMAT_RGB8_UNORM;             break;
+        case GL_RGB9_E5:                     result = RAL_FORMAT_RGB9E5_FLOAT;           break;
+        case GL_RGBA12:                      result = RAL_FORMAT_RGBA12_UNORM;           break;
+        case GL_RGBA16F:                     result = RAL_FORMAT_RGBA16_FLOAT;           break;
+        case GL_RGBA16I:                     result = RAL_FORMAT_RGBA16_SINT;            break;
+        case GL_RGBA16_SNORM:                result = RAL_FORMAT_RGBA16_SNORM;           break;
+        case GL_RGBA16UI:                    result = RAL_FORMAT_RGBA16_UINT;            break;
+        case GL_RGBA16:                      result = RAL_FORMAT_RGBA16_UNORM;           break;
+        case GL_RGBA2:                       result = RAL_FORMAT_RGBA2_UNORM;            break;
+        case GL_RGBA32F:                     result = RAL_FORMAT_RGBA32_FLOAT;           break;
+        case GL_RGBA32I:                     result = RAL_FORMAT_RGBA32_SINT;            break;
+        case GL_RGBA32UI:                    result = RAL_FORMAT_RGBA32_UINT;            break;
+        case GL_RGBA4:                       result = RAL_FORMAT_RGBA4_UNORM;            break;
+        case GL_RGBA8:                       result = RAL_FORMAT_RGBA8_UNORM;            break;
+        case GL_RGBA8I:                      result = RAL_FORMAT_RGBA8_SINT;             break;
+        case GL_RGBA8_SNORM:                 result = RAL_FORMAT_RGBA8_SNORM;            break;
+        case GL_RGBA8UI:                     result = RAL_FORMAT_RGBA8_UINT;             break;
+        case GL_SRGB8:                       result = RAL_FORMAT_SRGB8_UNORM;            break;
+        case GL_SRGB8_ALPHA8:                result = RAL_FORMAT_SRGBA8_UNORM;           break;
 
         default:
         {
-            LOG_FATAL("OGL texture internal format [%d] not supported by RAL",
+            LOG_FATAL("OGL texture internal format [%u] not supported by RAL",
                       internalformat);
         }
     }
@@ -926,27 +920,21 @@ PUBLIC ral_format raGL_utils_get_ral_format_for_ogl_texture_internalformat(ogl_t
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture_type raGL_utils_get_ral_texture_type_for_ogl_enum(GLenum in_texture_target_glenum)
-{
-    return raGL_utils_get_ral_texture_type_for_ogl_texture_target( (ogl_texture_target) in_texture_target_glenum);
-}
-
-/** Please see header for specification */
-PUBLIC ral_texture_type raGL_utils_get_ral_texture_type_for_ogl_texture_target(ogl_texture_target in_texture_target)
+PUBLIC ral_texture_type raGL_utils_get_ral_texture_type_for_ogl_enum(GLenum in_texture_target)
 {
     ral_texture_type result = RAL_TEXTURE_TYPE_UNKNOWN;
 
     switch (in_texture_target)
     {
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_1D:                   result = RAL_TEXTURE_TYPE_1D;                   break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_1D_ARRAY:             result = RAL_TEXTURE_TYPE_1D_ARRAY;             break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_2D:                   result = RAL_TEXTURE_TYPE_2D;                   break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_2D_ARRAY:             result = RAL_TEXTURE_TYPE_2D_ARRAY;             break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE:       result = RAL_TEXTURE_TYPE_MULTISAMPLE_2D;       break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_2D_MULTISAMPLE_ARRAY: result = RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY; break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_3D:                   result = RAL_TEXTURE_TYPE_3D;                   break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP:             result = RAL_TEXTURE_TYPE_CUBE_MAP;             break;
-        case OGL_TEXTURE_TARGET_GL_TEXTURE_CUBE_MAP_ARRAY:       result = RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY;       break;
+        case GL_TEXTURE_1D:                   result = RAL_TEXTURE_TYPE_1D;                   break;
+        case GL_TEXTURE_1D_ARRAY:             result = RAL_TEXTURE_TYPE_1D_ARRAY;             break;
+        case GL_TEXTURE_2D:                   result = RAL_TEXTURE_TYPE_2D;                   break;
+        case GL_TEXTURE_2D_ARRAY:             result = RAL_TEXTURE_TYPE_2D_ARRAY;             break;
+        case GL_TEXTURE_2D_MULTISAMPLE:       result = RAL_TEXTURE_TYPE_MULTISAMPLE_2D;       break;
+        case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: result = RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY; break;
+        case GL_TEXTURE_3D:                   result = RAL_TEXTURE_TYPE_3D;                   break;
+        case GL_TEXTURE_CUBE_MAP:             result = RAL_TEXTURE_TYPE_CUBE_MAP;             break;
+        case GL_TEXTURE_CUBE_MAP_ARRAY:       result = RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY;       break;
 
         default:
         {

@@ -1026,7 +1026,8 @@ PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_ren
         result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_input_mappings;
         result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_output_mappings;
 
-        result_present_task = ral_present_task_create_group(&result_task_create_info);
+        result_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("Helper visualization: rasterization"),
+                                                            &result_task_create_info);
     }
 
     if (frustum_preview_render_present_task != nullptr)
@@ -1234,7 +1235,8 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
         result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_input_mappings;
         result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_output_mappings;
 
-        result_present_task = ral_present_task_create_group(&result_task_create_info);
+        result_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("Mesh helper visualization: rasterization"),
+                                                            &result_task_create_info);
     }
 
     if (bbox_preview_present_task != nullptr)
@@ -1655,7 +1657,8 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
         subtask_create_info.unique_input_to_ingroup_task_mapping     = pass_input_mappings;
         subtask_create_info.unique_output_to_ingroup_task_mapping    = pass_output_mappings;
 
-        current_subtask = ral_present_task_create_group(&subtask_create_info);
+        current_subtask = ral_present_task_create_group(system_hashed_ansi_string_create("Forward scene renderer: rasterization"),
+                                                        &subtask_create_info);
 
         ASSERT_DEBUG_SYNC(result_present_task_subtasks[n_pass] == nullptr,
                           "Subtask already defined for pass [%d]",

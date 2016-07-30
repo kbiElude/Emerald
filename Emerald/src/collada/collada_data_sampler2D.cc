@@ -89,8 +89,8 @@ PUBLIC collada_data_sampler2D collada_data_sampler2D_create(system_hashed_ansi_s
         new_sampler->surface    = surface;
 
         /* If this sampler uses mipmap filtering, flag the requirement in the texture descriptor */
-        if (new_sampler->min_filter != GL_NEAREST &&
-            new_sampler->min_filter != GL_LINEAR)
+        if (new_sampler->min_filter != COLLADA_DATA_SAMPLER_FILTER_NEAREST &&
+            new_sampler->min_filter != COLLADA_DATA_SAMPLER_FILTER_LINEAR)
         {
             bool new_value = true;
 

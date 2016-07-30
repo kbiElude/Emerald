@@ -3973,7 +3973,8 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
     result_present_task_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
     result_present_task_create_info.unique_output_to_ingroup_task_mapping    = result_present_task_mappings;
 
-    result_present_task = ral_present_task_create_group(&result_present_task_create_info);
+    result_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("Shadow maps: rasterization"),
+                                                        &result_present_task_create_info);
 
     shadow_mapping_ptr->current_camera = nullptr;
 

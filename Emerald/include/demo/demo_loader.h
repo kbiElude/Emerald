@@ -229,7 +229,7 @@ PUBLIC EMERALD_API void demo_loader_get_property(demo_loader          loader,
                                                  void*                out_data_ptr);
 
 /** TODO */
-PUBLIC RENDERING_CONTEXT_CALL void demo_loader_release(demo_loader loader);
+PUBLIC void demo_loader_release(demo_loader loader);
 
 /** TODO */
 PUBLIC void demo_loader_release_object_by_index(demo_loader             loader,
