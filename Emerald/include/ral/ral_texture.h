@@ -46,21 +46,6 @@ enum
 
 typedef enum
 {
-    /* not settable, bool */
-    RAL_TEXTURE_MIPMAP_PROPERTY_CONTENTS_SET,
-
-    /* not settable, uint32_t int */
-    RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-
-    /* not settable, uint32_t */
-    RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-
-    /* not settable, uint32_t */
-    RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-} ral_texture_mipmap_property;
-
-typedef enum
-{
     /* not settable, system_callback_manager */
     RAL_TEXTURE_PROPERTY_CALLBACK_MANAGER,
 

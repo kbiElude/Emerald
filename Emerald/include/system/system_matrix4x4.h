@@ -1,10 +1,10 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
-#ifndef SYSTEM_MATRIX4X4_MUTEX
-#define SYSTEM_MATRIX4X4_MUTEX
+#ifndef SYSTEM_MATRIX4X4
+#define SYSTEM_MATRIX4X4
 
 #include "system/system_types.h"
 
@@ -31,9 +31,9 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create();
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_copy(system_matrix4x4 src_matrix);
 
 /** TODO */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(const float* camera_location,
-                                                                          const float* look_at_point,
-                                                                          const float* up_vector);
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(const float* camera_location_ptr,
+                                                                          const float* look_at_point_ptr,
+                                                                          const float* up_vector_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_matrix(float left,
@@ -58,17 +58,17 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
                                                                                           float z_far);
 
 /** TODO */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix_custom( float left,
-                                                                                                  float right,
-                                                                                                  float bottom,
-                                                                                                  float top,
-                                                                                                  float z_near,
-                                                                                                  float z_far);
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix_custom(float left,
+                                                                                                 float right,
+                                                                                                 float bottom,
+                                                                                                 float top,
+                                                                                                 float z_near,
+                                                                                                 float z_far);
 
 /** TODO */
 PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(system_matrix4x4                mvp,
                                                             system_matrix4x4_clipping_plane clipping_plane,
-                                                            float*                          out_plane_coeffs);
+                                                            float*                          out_plane_coeffs_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_matrix4x4_is_equal(const system_matrix4x4 a,
@@ -127,9 +127,9 @@ PUBLIC EMERALD_API bool system_matrix4x4_invert(system_matrix4x4 matrix);
  *  @param const float*     Up vector.
  */
 PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(system_matrix4x4 matrix,
-                                                            const float*     camera_position,
-                                                            const float*     look_at_point,
-                                                            const float*     up_vector);
+                                                            const float*     camera_position_ptr,
+                                                            const float*     look_at_point_ptr,
+                                                            const float*     up_vector_ptr);
 
 /** TODO
  *
@@ -147,7 +147,7 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(system_matrix4x4 
  */
 PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(system_matrix4x4 matrix,
                                                              const float*     vector,
-                                                             float*           result);
+                                                             float*           out_result_ptr);
 
 /** Multiples 4x4 matrix object by 3-dimensional user vector. 4th element is set to 0. 
  *  Result is stored in user-provided vector.
@@ -158,7 +158,7 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(system_matrix4x4 ma
  */
 PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(system_matrix4x4 matrix,
                                                              const float*     vector,
-                                                             float*           result);
+                                                             float*           out_result_ptr);
 
 /** Rotates 4x4 matrix object using user provided angle and 3-diemnsional rotation vector.
  *  Result is stored in the object.
@@ -169,7 +169,7 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(system_matrix4x4 ma
  */
 PUBLIC EMERALD_API void system_matrix4x4_rotate(system_matrix4x4 matrix,
                                                 float            angle,
-                                                const float*     xyz);
+                                                const float*     xyz_ptr);
 
 /** Scales 4x4 matrix object using user provided 3-diemnsional XYZ scale vector.
  *  Result is stored in the object.
@@ -178,7 +178,7 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(system_matrix4x4 matrix,
  *  @param const float*     3-dimensional scale vector.
  */
 PUBLIC EMERALD_API void system_matrix4x4_scale(system_matrix4x4 matrix,
-                                               const float*     xyz);
+                                               const float*     xyz_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void system_matrix4x4_set_to_float(system_matrix4x4 matrix,
@@ -207,7 +207,7 @@ PUBLIC EMERALD_API void system_matrix4x4_set_element(system_matrix4x4 matrix,
  *  @param const float*     Data to set, stored in column-,ajor order.
  */
 PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(system_matrix4x4 matrix,
-                                                                   const float*     data);
+                                                                   const float*     data_ptr);
 
 /** Sets a 4x4 matrix contents, using user-provided raw data stored in row-major order.
  *
@@ -215,7 +215,7 @@ PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(system_matrix
  *  @param const float*     Data to set, stored in row-major order.
  */
 PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(system_matrix4x4 matrix,
-                                                                const float*     data);
+                                                                const float*     data_ptr);
 
 /** Sets a 4x4 matrix contents by copying data from another 4x4 matrix.
  *
@@ -231,7 +231,7 @@ PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(system_matrix4x4 dst
  *  @param xyz              3-dimensional vector containing the translation vector.
  */
 PUBLIC EMERALD_API void system_matrix4x4_translate(system_matrix4x4 matrix,
-                                                   const float*     xyz);
+                                                   const float*     xyz_ptr);
 
 /** Transposes a 4x4 matrix object. Result is stored in the object.
  *
@@ -245,4 +245,4 @@ PUBLIC void _system_matrix4x4_init();
 /** Deinitializes matrix pool. Should only be called once from DLL entry ponit */
 PUBLIC void _system_matrix4x4_deinit();
 
-#endif /* SYSTEM_MATRIX4X4_MUTEX */
+#endif /* SYSTEM_MATRIX4X4 */

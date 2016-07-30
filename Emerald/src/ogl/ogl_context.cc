@@ -336,8 +336,8 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
                                                              const GLchar* message,
                                                              const void*   userParam)
 {
-    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(userParam);
-    static char   local_message[4096];
+    const _ogl_context* context_ptr = reinterpret_cast<const _ogl_context*>(userParam);
+    static char         local_message[4096];
 
     /* 1280: shader compilation failure. (Intel & NVIDIA)
      *
@@ -871,8 +871,8 @@ PRIVATE bool _ogl_context_get_function_pointers(_ogl_context*               cont
                   n_entry < n_entries;
                 ++n_entry)
     {
-        GLvoid** ptr_to_update = reinterpret_cast<GLvoid**>(entries[n_entry].func_ptr);
-        GLchar*  func_name     = reinterpret_cast<GLchar*> (entries[n_entry].func_name);
+        const GLchar* func_name     = reinterpret_cast<const GLchar*>(entries[n_entry].func_name);
+        GLvoid**      ptr_to_update = reinterpret_cast<GLvoid**>     (entries[n_entry].func_ptr);
 
         *ptr_to_update = context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
                                                        func_name);
@@ -1334,8 +1334,9 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                               "Could not create default FBO's color texture");
 
             /* Make sure this is actually a renderbuffer. */
-            color_to_raGL = ral_context_get_texture_gl(context_ptr->context,
-                                                       context_ptr->fbo_color_texture);
+            raGL_backend_get_texture(context_ptr->backend,
+                                     context_ptr->fbo_color_texture,
+                                     (void**) &color_to_raGL);
 
             raGL_texture_get_property(color_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
@@ -1373,8 +1374,9 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                               "Could not create default FBO's depth+stencil texture");
 
             /* Make sure this is actually a renderbuffer. */
-            depth_stencil_to_raGL = ral_context_get_texture_gl(context_ptr->context,
-                                                               context_ptr->fbo_ds_texture);
+            raGL_backend_get_texture(context_ptr->backend,
+                                     context_ptr->fbo_ds_texture,
+                                     (void**) &depth_stencil_to_raGL);
 
             raGL_texture_get_property(depth_stencil_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
@@ -3020,11 +3022,11 @@ PRIVATE void _ogl_context_retrieve_GL_limits(_ogl_context* context_ptr)
 }
 
 /** TODO */
-PRIVATE bool _ogl_context_sort_descending(void* in_int_1,
-                                          void* in_int_2)
+PRIVATE bool _ogl_context_sort_descending(const void* in_int_1,
+                                          const void* in_int_2)
 {
-    int int_1 = (int) in_int_1;
-    int int_2 = (int) in_int_2;
+    int int_1 = reinterpret_cast<int>(in_int_1);
+    int int_2 = reinterpret_cast<int>(in_int_2);
 
     return (int_1 > int_2);
 }
@@ -3158,11 +3160,14 @@ PUBLIC void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
         goto end;
     }
 
-    root_context_gl     = ral_context_get_gl_context(root_context);
+    ral_context_get_property(root_context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &root_context_gl);
+
     root_context_gl_ptr = reinterpret_cast<_ogl_context*>(root_context_gl);
 
-    root_context_gl_ptr->msaa_enumeration_color_internalformat         = raGL_utils_get_ogl_texture_internalformat_for_ral_format(format_color);
-    root_context_gl_ptr->msaa_enumeration_depth_stencil_internalformat = raGL_utils_get_ogl_texture_internalformat_for_ral_format(format_depth_stencil);
+    root_context_gl_ptr->msaa_enumeration_color_internalformat         = raGL_utils_get_ogl_enum_for_ral_format(format_color);
+    root_context_gl_ptr->msaa_enumeration_depth_stencil_internalformat = raGL_utils_get_ogl_enum_for_ral_format(format_depth_stencil);
 
     ogl_context_request_callback_from_context_thread(root_context_gl,
                                                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback,

@@ -309,6 +309,7 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
         _raGL_backend*                         backend_ptr  = nullptr;
         ral_context                            context      = nullptr;
         volatile _raGL_backend_global_context& context_data = _global.helper_contexts[n_helper_context];
+        ogl_context                            context_gl   = nullptr;
         static const bool                      true_value   = true;
         demo_window                            window       = _raGL_backend_create_helper_window(backend_type,
                                                                                                  n_helper_context);
@@ -354,7 +355,10 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
                                                          backend_ptr->context_gl);
         }
 
-        ogl_context_set_property(ral_context_get_gl_context(context),
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                &context_gl);
+        ogl_context_set_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT,
                                 &true_value);
 
@@ -375,7 +379,13 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
                   n_helper_context < N_HELPER_CONTEXTS;
                 ++n_helper_context)
     {
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(_global.helper_contexts[n_helper_context].helper_context),
+        ogl_context helper_context_gl = nullptr;
+
+        ral_context_get_property(_global.helper_contexts[n_helper_context].helper_context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                &helper_context_gl);
+
+        ogl_context_request_callback_from_context_thread(helper_context_gl,
                                                          _raGL_backend_helper_context_renderer_callback,
                                                          reinterpret_cast<void*>(n_helper_context),
                                                          false,  /* swap_buffers_afterward */
@@ -1763,11 +1773,16 @@ PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_dat
 {
     _raGL_backend*                                               backend_ptr      = reinterpret_cast<_raGL_backend*>                                              (backend);
     const _ral_program_callback_shader_attach_callback_argument* callback_arg_ptr = reinterpret_cast<const _ral_program_callback_shader_attach_callback_argument*>(callback_arg_data);
-    const raGL_program                                           program_raGL     = ral_context_get_program_gl(backend_ptr->context_ral,
-                                                                                                               callback_arg_ptr->program);
+    const raGL_program                                           program_raGL     = nullptr;
     bool                                                         result           = false;
-    const raGL_shader                                            shader_raGL      = ral_context_get_shader_gl (backend_ptr->context_ral,
-                                                                                                               callback_arg_ptr->shader);
+    const raGL_shader                                            shader_raGL      = nullptr;
+
+    raGL_backend_get_program(backend,
+                             callback_arg_ptr->program,
+                             (void**) &program_raGL);
+    raGL_backend_get_shader (backend,
+                             callback_arg_ptr->shader,
+                             (void**) &shader_raGL);
 
     if (!raGL_program_attach_shader(program_raGL,
                                     shader_raGL) )
@@ -1840,8 +1855,11 @@ PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callb
     _raGL_backend*    backend_ptr       = reinterpret_cast<_raGL_backend*>(backend);
     bool              result            = false;
     ral_shader        shader_to_compile = (ral_shader) callback_arg_data;
-    const raGL_shader shader_raGL       = ral_context_get_shader_gl(backend_ptr->context_ral,
-                                                                    shader_to_compile);
+    const raGL_shader shader_raGL       = nullptr;
+
+    raGL_backend_get_shader(backend,
+                            shader_to_compile,
+                            (void**) &shader_raGL);
 
     if (!raGL_shader_compile(shader_raGL) )
     {

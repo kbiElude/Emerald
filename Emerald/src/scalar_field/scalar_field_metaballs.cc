@@ -516,7 +516,8 @@ PRIVATE void _scalar_field_metaballs_init_present_tasks(_scalar_field_metaballs*
         result_present_task_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
         result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_unique_output_mapping;
 
-        metaballs_ptr->present_task_with_compute = ral_present_task_create_group(&result_present_task_create_info);
+        metaballs_ptr->present_task_with_compute = ral_present_task_create_group(system_hashed_ansi_string_create("Metaballs scalar field: generation"),
+                                                                                &result_present_task_create_info);
 
         /* Clean up */
         ral_command_buffer_release(command_buffer);

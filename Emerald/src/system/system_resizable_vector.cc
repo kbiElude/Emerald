@@ -609,7 +609,7 @@ PUBLIC EMERALD_API void system_resizable_vector_set_element_at(system_resizable_
  *  comparator_func_ptr() = operator<
  */
 PRIVATE void _system_resizable_vector_sort_recursive(system_resizable_vector resizable_vector,
-                                                     bool                  (*comparator_func_ptr)(void*, void*),
+                                                     bool                  (*comparator_func_ptr)(const void*, const void*),
                                                      int                     start_index,
                                                      int                     end_index)
 {
@@ -708,7 +708,7 @@ PRIVATE void _system_resizable_vector_sort_recursive(system_resizable_vector res
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_resizable_vector_sort(system_resizable_vector resizable_vector,
-                                                     bool                  (*comparator_func_ptr)(void*, void*) )
+                                                     bool                  (*comparator_func_ptr)(const void*, const void*) )
 {
     uint32_t                  n_vector_items = 0;
     _system_resizable_vector* vector_ptr     = (_system_resizable_vector*) resizable_vector;

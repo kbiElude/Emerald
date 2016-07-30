@@ -114,6 +114,7 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
     ogl_texture_data_format                                                   texture_data_format_gl    = OGL_TEXTURE_DATA_FORMAT_UNDEFINED;
     ral_format                                                                texture_format            = RAL_FORMAT_UNKNOWN;
     bool                                                                      texture_format_compressed = false;
+    GLenum                                                                    texture_format_gl;
     ral_texture_type                                                          texture_type              = RAL_TEXTURE_TYPE_UNKNOWN;
 
     ASSERT_DEBUG_SYNC(!callback_arg_ptr->texture_ptr->is_renderbuffer,
@@ -136,8 +137,8 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
                             RAL_TEXTURE_PROPERTY_TYPE,
                            &texture_type);
 
-    texture_data_format_gl = raGL_utils_get_ogl_data_format_for_ral_format           (texture_format);
-    texture_format_gl      = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_format);
+    texture_data_format_gl = raGL_utils_get_ogl_data_format_for_ral_format(texture_format);
+    texture_format_gl      = raGL_utils_get_ogl_enum_for_ral_format       (texture_format);
 
     ral_utils_get_format_property(texture_format,
                                   RAL_FORMAT_PROPERTY_IS_COMPRESSED,
@@ -190,7 +191,7 @@ PRIVATE void _raGL_texture_client_memory_sourced_update_scheduler_callback(void*
         }
         else
         {
-            texture_target_gl = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type);
+            texture_target_gl = raGL_utils_get_ogl_enum_for_ral_texture_type(texture_type);
         }
 
         /* Update the requested mip-map */
@@ -416,7 +417,7 @@ PRIVATE void _raGL_texture_generate_mipmaps_scheduler_callback(void* texture)
 
     /* Use the super-helpful ;) GL func to generate the mipmap data */
     entrypoints_dsa_ptr->pGLGenerateTextureMipmapEXT(texture_ptr->id,
-                                                     raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type) );
+                                                     raGL_utils_get_ogl_enum_for_ral_texture_type(texture_type) );
 
     /* Sync other contexts */
     raGL_backend_enqueue_sync();
@@ -477,7 +478,7 @@ PRIVATE void _raGL_texture_init_renderbuffer_storage(_raGL_texture* texture_ptr)
     uint32_t                                                  texture_base_height = 0;
     uint32_t                                                  texture_base_width  = 0;
     ral_format                                                texture_format      = RAL_FORMAT_UNKNOWN;
-    ogl_texture_internalformat                                texture_format_gl   = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
+    GLenum                                                    texture_format_gl;
     uint32_t                                                  texture_n_samples   = 0;
 
     ogl_context_get_property(current_context,
@@ -511,7 +512,7 @@ PRIVATE void _raGL_texture_init_renderbuffer_storage(_raGL_texture* texture_ptr)
     LOG_INFO("[GL back-end]: Allocating new renderbuffer storage for GL renderbuffer ID [%u]",
              texture_ptr->id);
 
-    texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_format);
+    texture_format_gl = raGL_utils_get_ogl_enum_for_ral_format(texture_format);
 
     if (texture_n_samples > 1)
     {
@@ -546,7 +547,7 @@ PRIVATE void _raGL_texture_init_texture_storage(_raGL_texture* texture_ptr)
     uint32_t                                                  texture_base_width             = 0;
     bool                                                      texture_fixed_sample_locations = false;
     ral_format                                                texture_format                 = RAL_FORMAT_UNKNOWN;
-    ogl_texture_internalformat                                texture_format_gl              = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
+    GLenum                                                    texture_format_gl;
     uint32_t                                                  texture_n_layers               = 0;
     uint32_t                                                  texture_n_mipmaps              = 0;
     uint32_t                                                  texture_n_samples              = 0;
@@ -598,7 +599,7 @@ PRIVATE void _raGL_texture_init_texture_storage(_raGL_texture* texture_ptr)
                                     RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_base_width);
 
-    texture_format_gl = raGL_utils_get_ogl_texture_internalformat_for_ral_format(texture_format);
+    texture_format_gl = raGL_utils_get_ogl_enum_for_ral_format(texture_format);
 
     entrypoints_ptr->pGLGenTextures(1,
                                    &texture_ptr->id);
@@ -797,7 +798,7 @@ PRIVATE void _raGL_texture_init_view_renderer_callback(ogl_context context,
                               reinterpret_cast<void**>(&parent_texture_raGL_id) );
 
     /* Assign a texture view to the ID */
-    const GLenum texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_view_type);
+    const GLenum texture_target = raGL_utils_get_ogl_enum_for_ral_texture_type(texture_view_type);
 
     entrypoints_ptr->pGLTextureView(texture_ptr->id,
                                     texture_target,
@@ -858,7 +859,7 @@ PRIVATE void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* text
                              RAL_TEXTURE_PROPERTY_TYPE,
                             &ral_general_type);
 
-    ral_general_type_gl = raGL_utils_get_ogl_texture_target_for_ral_texture_type(ral_general_type);
+    ral_general_type_gl = raGL_utils_get_ogl_enum_for_ral_texture_type(ral_general_type);
 
     /* TODO: Cube-map textures will need some more love. */
     ASSERT_DEBUG_SYNC(ral_general_type != RAL_TEXTURE_TYPE_CUBE_MAP &&
@@ -930,14 +931,14 @@ PRIVATE void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* text
                   n_mipmap < min( (uint32_t) gl_general_n_mipmaps, ral_general_n_mipmaps);
                 ++n_mipmap)
     {
-        GLint                      gl_mipmap_depth           = 0;
-        GLint                      gl_mipmap_height          = 0;
-        ogl_texture_internalformat gl_mipmap_internal_format = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
-        GLint                      gl_mipmap_width           = 0;
-        uint32_t                   ral_mipmap_depth          = 0;
-        uint32_t                   ral_mipmap_height         = 0;
-        ral_format                 ral_mipmap_format         = RAL_FORMAT_UNKNOWN;
-        uint32_t                   ral_mipmap_width          = 0;
+        GLint      gl_mipmap_depth           = 0;
+        GLint      gl_mipmap_height          = 0;
+        GLenum     gl_mipmap_internal_format;
+        GLint      gl_mipmap_width           = 0;
+        uint32_t   ral_mipmap_depth          = 0;
+        uint32_t   ral_mipmap_height         = 0;
+        ral_format ral_mipmap_format         = RAL_FORMAT_UNKNOWN;
+        uint32_t   ral_mipmap_width          = 0;
 
         if (texture_ptr->is_renderbuffer)
         {

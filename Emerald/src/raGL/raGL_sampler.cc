@@ -148,13 +148,13 @@ PRIVATE void _raGL_sampler_init_rendering_thread_callback(ogl_context context,
                              RAL_SAMPLER_PROPERTY_WRAP_T,
                             &wrap_t_ral);
 
-    compare_op_gl = raGL_utils_get_ogl_enum_for_ral_compare_op                    (compare_op_ral);
-    mag_filter_gl = raGL_utils_get_ogl_enum_for_ral_texture_filter_mag            (mag_filter_ral);
-    min_filter_gl = raGL_utils_get_ogl_enum_for_ral_texture_filter_min            (min_filter_ral,
-                                                                                   mipmap_mode_ral);
-    wrap_r_gl     = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_r_ral);
-    wrap_s_gl     = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_s_ral);
-    wrap_t_gl     = raGL_utils_get_ogl_texture_wrap_mode_for_ral_texture_wrap_mode(wrap_t_ral);
+    compare_op_gl = raGL_utils_get_ogl_enum_for_ral_compare_op        (compare_op_ral);
+    mag_filter_gl = raGL_utils_get_ogl_enum_for_ral_texture_filter_mag(mag_filter_ral);
+    min_filter_gl = raGL_utils_get_ogl_enum_for_ral_texture_filter_min(min_filter_ral,
+                                                                       mipmap_mode_ral);
+    wrap_r_gl     = raGL_utils_get_ogl_enum_for_ral_texture_wrap_mode (wrap_r_ral);
+    wrap_s_gl     = raGL_utils_get_ogl_enum_for_ral_texture_wrap_mode (wrap_s_ral);
+    wrap_t_gl     = raGL_utils_get_ogl_enum_for_ral_texture_wrap_mode (wrap_t_ral);
 
     if (max_anisotropy > sampler_ptr->max_anisotropy)
     {

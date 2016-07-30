@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -81,13 +81,13 @@ PRIVATE bool _system_context_menu_call_back_owner(_system_context_menu* menu_ptr
                       n < n_entries;
                     ++n)
     {
-        _system_context_menu_entry* entry_ptr = NULL;
+        _system_context_menu_entry* entry_ptr = nullptr;
 
         system_resizable_vector_get_element_at(menu_ptr->entries,
                                                n,
                                               &entry_ptr);
 
-        if (entry_ptr != NULL)
+        if (entry_ptr != nullptr)
         {
             if (entry_ptr->type == CONTEXT_MENU_ENTRY_ITEM &&
                 entry_ptr->id   == id)
@@ -100,7 +100,7 @@ PRIVATE bool _system_context_menu_call_back_owner(_system_context_menu* menu_ptr
             else
             if (entry_ptr->type == CONTEXT_MENU_ENTRY_MENU)
             {
-                result = _system_context_menu_call_back_owner((_system_context_menu*) entry_ptr->menu,
+                result = _system_context_menu_call_back_owner(reinterpret_cast<_system_context_menu*>(entry_ptr->menu),
                                                               id);
 
                 if (result)
@@ -111,7 +111,7 @@ PRIVATE bool _system_context_menu_call_back_owner(_system_context_menu* menu_ptr
         }
         else
         {
-            LOG_ERROR("Could not retrieve %dth context menu entry.",
+            LOG_ERROR("Could not retrieve %uth context menu entry.",
                       n);
         }
     }
@@ -130,8 +130,8 @@ PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation(_sys
            sizeof(MENUITEMINFO) );
 
     result.cbSize     = sizeof(MENUITEMINFO);
-    result.cch        =         system_hashed_ansi_string_get_length(entry_ptr->item_name);
-    result.dwTypeData = (char*) system_hashed_ansi_string_get_buffer(entry_ptr->item_name);
+    result.cch        = system_hashed_ansi_string_get_length(entry_ptr->item_name);
+    result.dwTypeData = const_cast<char*>(system_hashed_ansi_string_get_buffer(entry_ptr->item_name));
     result.fMask      = MIIM_ID | MIIM_TYPE;
     result.fType      = MFT_STRING;
     result.wID        = id;
@@ -168,7 +168,7 @@ PRIVATE void _system_context_menu_create_menu_system_representation(_system_cont
                       n < n_entries;
                     ++n)
     {
-        _system_context_menu_entry* entry_ptr = NULL;
+        _system_context_menu_entry* entry_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(menu_ptr->entries,
                                                    n,
@@ -234,11 +234,11 @@ PRIVATE void _system_context_menu_create_menu_system_representation(_system_cont
                     ASSERT_DEBUG_SYNC(false,
                                       "");
                 }
-            } /* switch (entry_ptr->type) */
-        } /* if (entry exists) */
+            }
+        }
         else
         {
-            LOG_ERROR("Could not retrieve %dth entry of context menu.",
+            LOG_ERROR("Could not retrieve %uth entry of context menu.",
                       n);
         }
     }
@@ -266,7 +266,7 @@ PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(_
                                                                                int                         id)
 {
     MENUITEMINFO          result;
-    _system_context_menu* submenu_ptr = (_system_context_menu*) entry_ptr->menu;
+    _system_context_menu* submenu_ptr = reinterpret_cast<_system_context_menu*>(entry_ptr->menu);
     
     _system_context_menu_create_menu_system_representation(submenu_ptr);
 
@@ -275,8 +275,8 @@ PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(_
            sizeof(MENUITEMINFO) );
 
     result.cbSize     = sizeof(MENUITEMINFO);
-    result.cch        =         system_hashed_ansi_string_get_length(entry_ptr->item_name);
-    result.dwTypeData = (char*) system_hashed_ansi_string_get_buffer(entry_ptr->item_name);
+    result.cch        = system_hashed_ansi_string_get_length(entry_ptr->item_name);
+    result.dwTypeData = const_cast<char*>(system_hashed_ansi_string_get_buffer(entry_ptr->item_name));
     result.fMask      = MIIM_ID | MIIM_SUBMENU | MIIM_TYPE;
     result.fType      = MFT_STRING;
     result.hSubMenu   = submenu_ptr->system_handle;
@@ -288,7 +288,7 @@ PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(_
 /** TODO */
 PUBLIC void _system_context_menu_release(void* menu)
 {
-    _system_context_menu* menu_ptr  = (_system_context_menu*) menu;
+    _system_context_menu* menu_ptr  = reinterpret_cast<_system_context_menu*>(menu);
     unsigned int          n_entries = 0;
 
     system_resizable_vector_get_property(menu_ptr->entries,
@@ -299,13 +299,13 @@ PUBLIC void _system_context_menu_release(void* menu)
                       n < n_entries;
                     ++n)
     {
-        _system_context_menu_entry* menu_entry_ptr = NULL;
+        _system_context_menu_entry* menu_entry_ptr = nullptr;
 
         system_resizable_vector_get_element_at(menu_ptr->entries,
                                                n,
                                               &menu_entry_ptr);
 
-        if (menu_entry_ptr != NULL)
+        if (menu_entry_ptr != nullptr)
         {
             /* Sub-menus need to be released, too */
             if (menu_entry_ptr->type == CONTEXT_MENU_ENTRY_MENU)
@@ -320,7 +320,7 @@ PUBLIC void _system_context_menu_release(void* menu)
 
     /* Release the vector */
     system_resizable_vector_release(menu_ptr->entries);
-    menu_ptr->entries = NULL;
+    menu_ptr->entries = nullptr;
 
     /* context_menu will be released automatically */
 }
@@ -333,13 +333,13 @@ PUBLIC EMERALD_API void system_context_menu_append_item(system_context_menu     
                                                         bool                                  is_checked,
                                                         bool                                  is_enabled)
 {
-    _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
+    _system_context_menu*       menu_ptr  = reinterpret_cast<_system_context_menu*>(menu);
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
 
-    ASSERT_DEBUG_SYNC(new_entry != NULL,
+    ASSERT_DEBUG_SYNC(new_entry != nullptr,
                       "Out of memory while allocating space for context menu entry.");
 
-    if (new_entry != NULL)
+    if (new_entry != nullptr)
     {
         new_entry->type                        = CONTEXT_MENU_ENTRY_ITEM;
         new_entry->item_callback_func          = callback_func;
@@ -357,13 +357,13 @@ PUBLIC EMERALD_API void system_context_menu_append_item(system_context_menu     
 PUBLIC EMERALD_API void context_menu_append_menu(system_context_menu menu,
                                                  system_context_menu menu_to_append)
 {
-    _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
+    _system_context_menu*       menu_ptr  = reinterpret_cast<_system_context_menu*>(menu);
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
 
-    ASSERT_DEBUG_SYNC(new_entry != NULL,
+    ASSERT_DEBUG_SYNC(new_entry != nullptr,
                       "Out of memory while allocating space for context menu entry.");
 
-    if (new_entry != NULL)
+    if (new_entry != nullptr)
     {
         new_entry->type = CONTEXT_MENU_ENTRY_MENU;
         new_entry->menu = menu_to_append;
@@ -376,13 +376,13 @@ PUBLIC EMERALD_API void context_menu_append_menu(system_context_menu menu,
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_context_menu_append_separator(system_context_menu menu)
 {
-    _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
+    _system_context_menu*       menu_ptr  = reinterpret_cast<_system_context_menu*>(menu);
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
 
-    ASSERT_DEBUG_SYNC(new_entry != NULL,
+    ASSERT_DEBUG_SYNC(new_entry != nullptr,
                       "Out of memory while allocating space for context menu entry.");
 
-    if (new_entry != NULL)
+    if (new_entry != nullptr)
     {
         new_entry->type = CONTEXT_MENU_ENTRY_SEPARATOR;
 
@@ -396,15 +396,15 @@ PUBLIC EMERALD_API system_context_menu system_context_menu_create(system_hashed_
 {
     _system_context_menu* instance = new (std::nothrow) _system_context_menu;
 
-    ASSERT_DEBUG_SYNC(instance != NULL,
+    ASSERT_DEBUG_SYNC(instance != nullptr,
                       "Out of memory while allocating space for context menu");
 
-    if (instance != NULL)
+    if (instance != nullptr)
     {
         instance->entries        = system_resizable_vector_create(N_BASE_ITEMS);
         instance->has_been_shown = false;
 
-        ASSERT_DEBUG_SYNC(instance->entries != NULL,
+        ASSERT_DEBUG_SYNC(instance->entries != nullptr,
                           "Out of memory while allocating space for context menu entries");
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(instance, 
@@ -425,7 +425,7 @@ PUBLIC void system_context_menu_show(system_context_menu  menu,
                                      int                  y)
 {
     int                   id_clicked = 0;
-    _system_context_menu* menu_ptr   = (_system_context_menu*) menu;
+    _system_context_menu* menu_ptr   = reinterpret_cast<_system_context_menu*>(menu);
 
     if (!menu_ptr->has_been_shown)
     {
@@ -437,7 +437,7 @@ PUBLIC void system_context_menu_show(system_context_menu  menu,
                                             y,
                                             0 /* reserved */,
                                             parent_window_handle,
-                                            NULL /* no specific rect */)) > 0)
+                                            nullptr /* no specific rect */)) > 0)
         {
             _system_context_menu_call_back_owner(menu_ptr,
                                                  id_clicked);

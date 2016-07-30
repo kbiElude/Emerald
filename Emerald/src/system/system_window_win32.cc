@@ -113,9 +113,7 @@ typedef struct _system_window_win32
 } _system_window_win32;
 
 /* Forward declarations */
-PRIVATE          void _system_window_window_closing_rendering_thread_entrypoint(ogl_context                          context,
-                                                                                void*                                user_arg);
-PRIVATE volatile void _system_window_teardown_thread_pool_callback             (system_thread_pool_callback_argument arg);
+PRIVATE volatile void _system_window_teardown_thread_pool_callback(system_thread_pool_callback_argument arg);
 
 
 /** TODO */
@@ -229,14 +227,30 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                     ral_rendering_handler_stop(rendering_handler);
                 }
 
-                /* For the "window closing" call-back, we need to work from the rendering thread, as the caller
-                 * may need to release GL stuff.
-                 *
-                 * This should work out of the box, since we've just stopped the play-back.
-                 */
-                ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
-                                                                 _system_window_window_closing_rendering_thread_entrypoint,
-                                                                 win32_ptr);
+                /* Follow with a "window closing" call-back */
+                {
+                    bool is_closing  = false;
+
+                    system_window_get_property(win32_ptr->window,
+                                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
+                                              &is_closing);
+
+                    ASSERT_DEBUG_SYNC(!is_closing,
+                                      "Sanity check failed");
+
+                    is_closing = true;
+                    system_window_set_property(win32_ptr->window,
+                                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
+                                              &is_closing);
+
+                    system_window_execute_callback_funcs(win32_ptr->window,
+                                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING);
+
+                    is_closing = false;
+                    system_window_set_property(win32_ptr->window,
+                                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
+                                              &is_closing);
+                }
             }
 
             /* OK, safe to destroy the system window at this point */
@@ -453,34 +467,6 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                             message_id,
                             wparam,
                             lparam);
-}
-
-/** TODO */
-PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_context context,
-                                                                       void*       user_arg)
-{
-    bool                  is_closing  = false;
-    _system_window_win32* window_ptr  = (_system_window_win32*) user_arg;
-
-    system_window_get_property(window_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
-                              &is_closing);
-
-    ASSERT_DEBUG_SYNC(!is_closing,
-                      "Sanity check failed");
-
-    is_closing = true;
-    system_window_set_property(window_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
-                              &is_closing);
-
-    system_window_execute_callback_funcs(window_ptr->window,
-                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING);
-
-    is_closing = false;
-    system_window_set_property(window_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
-                              &is_closing);
 }
 
 /** TODO */

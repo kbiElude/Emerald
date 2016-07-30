@@ -894,7 +894,8 @@ PUBLIC EMERALD_API ral_present_task postprocessing_motion_blur_get_present_task(
         result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_input_mappings;
         result_task_create_info.unique_output_to_ingroup_task_mapping    = &result_task_output_mapping;
 
-        result = ral_present_task_create_group(&result_task_create_info);
+        result = ral_present_task_create_group(system_hashed_ansi_string_create("Motion blur: processing"),
+                                               &result_task_create_info);
     }
 
     motion_blur_ptr->cached_present_task = result;

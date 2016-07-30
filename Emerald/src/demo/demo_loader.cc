@@ -372,7 +372,7 @@ PUBLIC EMERALD_API void demo_loader_get_property(demo_loader          loader,
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void demo_loader_release(demo_loader loader)
+PUBLIC void demo_loader_release(demo_loader loader)
 {
     delete reinterpret_cast<_demo_loader*>(loader);
 }

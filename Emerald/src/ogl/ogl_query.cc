@@ -103,15 +103,20 @@ _ogl_query::_ogl_query(ral_context  in_context,
                             &backend);
 
     /* Cache ES/GL entry-points */
-    ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                            &backend_type);
+    ogl_context context_gl = nullptr;
+
+    ral_context_get_property (context,
+                              RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                             &backend_type);
+     ral_context_get_property(in_context,
+                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                             &context_gl);
 
     if (backend_type == RAL_BACKEND_TYPE_GL)
     {
         const ogl_context_gl_entrypoints* entry_points_ptr = nullptr;
 
-        ogl_context_get_property(ral_context_get_gl_context(context),
+        ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points_ptr);
 
@@ -124,12 +129,12 @@ _ogl_query::_ogl_query(ral_context  in_context,
     }
     else
     {
+        const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
+
         ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_ES,
                           "Unrecognized rendering backend type");
 
-        const ogl_context_es_entrypoints* entry_points_ptr = nullptr;
-
-        ogl_context_get_property(ral_context_get_gl_context(context),
+        ogl_context_get_property(context_gl,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                 &entry_points_ptr);
 
@@ -142,7 +147,7 @@ _ogl_query::_ogl_query(ral_context  in_context,
     }
 
     /* Initialize the object */
-    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
+    ogl_context_request_callback_from_context_thread(context_gl,
                                                      _ogl_query_init_renderer_callback,
                                                      this);
 
@@ -151,7 +156,13 @@ _ogl_query::_ogl_query(ral_context  in_context,
 /** TODO */
 _ogl_query::~_ogl_query()
 {
-    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
+    ogl_context context_gl = nullptr;
+
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+
+    ogl_context_request_callback_from_context_thread(context_gl,
                                                      _ogl_query_deinit_renderer_callback,
                                                      this);
 

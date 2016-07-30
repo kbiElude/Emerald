@@ -562,7 +562,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
                                            RAL_TEXTURE_PROPERTY_TYPE,
                                           &texture_type_ral);
 
-            texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type_ral);
+            texture_target = raGL_utils_get_ogl_enum_for_ral_texture_type(texture_type_ral);
 
             ogl_context_to_bindings_set_binding(to_bindings,
                                                 first + n_texture, /* texture_unit */
@@ -3233,7 +3233,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum fb_ta
                                    RAL_TEXTURE_PROPERTY_TYPE,
                                   &texture_type_ral);
 
-    texture_target = raGL_utils_get_ogl_texture_target_for_ral_texture_type(texture_type_ral);
+    texture_target = raGL_utils_get_ogl_enum_for_ral_texture_type(texture_type_ral);
 
     switch (fb_target)
     {

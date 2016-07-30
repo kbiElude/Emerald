@@ -1044,9 +1044,9 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
         ral_texture  texture_instance = nullptr;
         raGL_texture texture_raGL     = nullptr;
 
-        scene_texture_get       (current_texture,
-                                 SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
-                                &texture_instance);
+        scene_texture_get(current_texture,
+                          SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
+                         &texture_instance);
 
         texture_raGL = ral_context_get_texture_gl(scene_ptr->loader_ptr->context_ral,
                                                   texture_instance);

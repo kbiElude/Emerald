@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #include "shared.h"
@@ -36,11 +36,11 @@ typedef struct _system_screen_mode
 
     ~_system_screen_mode()
     {
-        if (pfn_release_system_blob != NULL)
+        if (pfn_release_system_blob != nullptr)
         {
             pfn_release_system_blob(system_blob);
 
-            system_blob = NULL;
+            system_blob = nullptr;
         }
     }
 } _system_screen_mode;
@@ -48,9 +48,9 @@ typedef struct _system_screen_mode
 
 #ifdef __linux
     /** TODO */
-    PRIVATE Display* display = NULL;
+    PRIVATE Display* display = nullptr;
     /* TODO */
-    PRIVATE XRRScreenConfiguration* screen_configuration_ptr = NULL;
+    PRIVATE XRRScreenConfiguration* screen_configuration_ptr = nullptr;
 #endif
 
 /* holds system_screen_mode instances. The system blob property is set to:
@@ -58,7 +58,7 @@ typedef struct _system_screen_mode
  * SizeID  value    - under Linux.
  * DEVMODE instance - under Windows.
  **/
-PRIVATE system_resizable_vector screen_modes = NULL;
+PRIVATE system_resizable_vector screen_modes = nullptr;
 
 
 /* Forward declarations */
@@ -68,14 +68,14 @@ PRIVATE void _system_screen_mode_init_full_screen_modes();
     PRIVATE void _system_screen_mode_release_devmode(void* blob);
 #endif
 
-PRIVATE bool _system_screen_mode_sort_descending(void* in_screen_mode_1,
-                                                 void* in_screen_mode_2);
+PRIVATE bool _system_screen_mode_sort_descending(const void* in_screen_mode_1,
+                                                 const void* in_screen_mode_2);
 
 
 /** TODO */
 PRIVATE void _system_screen_mode_init_full_screen_modes()
 {
-    ASSERT_DEBUG_SYNC(screen_modes == NULL,
+    ASSERT_DEBUG_SYNC(screen_modes == nullptr,
                       "Full-screen modes vector already initialized");
 
     screen_modes = system_resizable_vector_create(64); /* capacity */
@@ -88,10 +88,10 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
 
         while (true)
         {
-            DEVMODE*           device_mode_ptr = NULL;
-            system_screen_mode new_screen_mode = NULL;
+            DEVMODE*           device_mode_ptr = nullptr;
+            system_screen_mode new_screen_mode = nullptr;
 
-            if (::EnumDisplaySettings(NULL, /* lpszDeviceName */
+            if (::EnumDisplaySettings(nullptr, /* lpszDeviceName */
                                       n_mode,
                                      &current_device_mode) == 0)
             {
@@ -102,7 +102,7 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
             /* Make a copy of the devmode instance. */
             device_mode_ptr = new DEVMODE();
 
-            ASSERT_ALWAYS_SYNC(device_mode_ptr != NULL,
+            ASSERT_ALWAYS_SYNC(device_mode_ptr != nullptr,
                                "Out of memory");
 
             memcpy(device_mode_ptr,
@@ -121,7 +121,7 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
                                          (void*) new_screen_mode);
 
             n_mode++;
-        } /* while (true) */
+        }
     }
     #else
     {
@@ -130,13 +130,13 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
          * TODO: Enumerate all available displays!
          */
         int            n_screen_sizes   = 0;
-        Window         root_window      = (Window) NULL;
+        Window         root_window      = (Window) nullptr;
         int            screen           = 0;
-        XRRScreenSize* screen_sizes_ptr = NULL;
+        XRRScreenSize* screen_sizes_ptr = nullptr;
 
         display = XOpenDisplay(":0");
 
-        if (display == NULL)
+        if (display == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                               "Could not open display connection");
@@ -150,7 +150,7 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
         screen_configuration_ptr = XRRGetScreenInfo(display,
                                                     root_window);
 
-        if (screen_configuration_ptr == NULL)
+        if (screen_configuration_ptr == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Could not retrieve screen information");
@@ -161,7 +161,7 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
         screen_sizes_ptr = XRRConfigSizes(screen_configuration_ptr,
                                          &n_screen_sizes);
 
-        if (screen_sizes_ptr == NULL)
+        if (screen_sizes_ptr == nullptr)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Could not retrieve screen sizes");
@@ -176,13 +176,13 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
         {
             /* Query what refresh rates are supported for this resolution */
             int    n_refresh_rates = 0;
-            short* refresh_rates   = NULL;
+            short* refresh_rates   = nullptr;
 
             refresh_rates = XRRConfigRates(screen_configuration_ptr,
                                            n_screen_size,
                                           &n_refresh_rates);
 
-            if (refresh_rates == NULL)
+            if (refresh_rates == nullptr)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Could not retrieve refresh rate array for screen size ID [%d]",
@@ -201,12 +201,12 @@ PRIVATE void _system_screen_mode_init_full_screen_modes()
                                                                                screen_sizes_ptr[n_screen_size].height,
                                                                                current_refresh_rate,
                                                                                (void*) n_screen_size,
-                                                                               NULL); /* pfn_release_system_blob */
+                                                                               nullptr); /* pfn_release_system_blob */
 
                 system_resizable_vector_push(screen_modes,
                                              new_screen_mode);
-            } /* for (all refresh rates) */
-        } /* for (all screen sizes) */
+            }
+        }
 
 end:
     ;
@@ -224,22 +224,22 @@ end:
 /** TODO */
 PRIVATE void _system_screen_mode_release_devmode(void* blob)
 {
-    ASSERT_DEBUG_SYNC(blob != NULL,
-                      "Input blob argument is NULL");
+    ASSERT_DEBUG_SYNC(blob != nullptr,
+                      "Input blob argument is nullptr");
 
-    delete (DEVMODE*) blob;
+    delete static_cast<DEVMODE*>(blob);
 }
 #endif
 
 /** TODO */
-PRIVATE bool _system_screen_mode_sort_descending(void* in_screen_mode_1,
-                                                 void* in_screen_mode_2)
+PRIVATE bool _system_screen_mode_sort_descending(const void* in_screen_mode_1,
+                                                 const void* in_screen_mode_2)
 {
-    const _system_screen_mode* screen_mode_1_ptr   = (const _system_screen_mode*) in_screen_mode_1;
+    const _system_screen_mode* screen_mode_1_ptr   = reinterpret_cast<const _system_screen_mode*>(in_screen_mode_1);
     uint64_t                   screen_mode_1_score = uint64_t(screen_mode_1_ptr->height)       *
                                                      uint64_t(screen_mode_1_ptr->refresh_rate) *
                                                      uint64_t(screen_mode_1_ptr->width);
-    const _system_screen_mode* screen_mode_2_ptr   = (const _system_screen_mode*) in_screen_mode_2;
+    const _system_screen_mode* screen_mode_2_ptr   = reinterpret_cast<const _system_screen_mode*>(in_screen_mode_2);
     uint64_t                   screen_mode_2_score = uint64_t(screen_mode_2_ptr->height)       *
                                                      uint64_t(screen_mode_2_ptr->refresh_rate) *
                                                      uint64_t(screen_mode_2_ptr->width);
@@ -251,13 +251,12 @@ PRIVATE bool _system_screen_mode_sort_descending(void* in_screen_mode_1,
 /** Please see header for spec */
 PUBLIC bool system_screen_mode_activate(system_screen_mode screen_mode)
 {
-    bool result = true;
+    bool                 result          = true;
+    _system_screen_mode* screen_mode_ptr = reinterpret_cast<_system_screen_mode*>(screen_mode);
 
     #ifdef _WIN32
     {
-        _system_screen_mode* screen_mode_ptr = (_system_screen_mode*) screen_mode;
-
-        if (::ChangeDisplaySettingsA( (DEVMODE*) screen_mode_ptr->system_blob,
+        if (::ChangeDisplaySettingsA(static_cast<DEVMODE*>(screen_mode_ptr->system_blob),
                                      CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
         {
             ASSERT_ALWAYS_SYNC(false,
@@ -268,8 +267,6 @@ PUBLIC bool system_screen_mode_activate(system_screen_mode screen_mode)
     }
     #else
     {
-        _system_screen_mode* screen_mode_ptr = (_system_screen_mode*) screen_mode;
-
         if (XRRSetScreenConfig(display,
                                screen_configuration_ptr,
                                DefaultRootWindow(display),
@@ -301,61 +298,61 @@ PUBLIC system_screen_mode system_screen_mode_create(unsigned int             wid
                                                                                       system_blob,
                                                                                       pfn_release_system_blob);
 
-    ASSERT_ALWAYS_SYNC(new_screen_mode_ptr != NULL,
+    ASSERT_ALWAYS_SYNC(new_screen_mode_ptr != nullptr,
                        "Out of memory");
 
-    return (system_screen_mode) new_screen_mode_ptr;
+    return reinterpret_cast<system_screen_mode>(new_screen_mode_ptr);
 }
 
 /** Please see header for spec */
 PUBLIC void system_screen_mode_deinit()
 {
 #ifdef __linux
-    if (screen_configuration_ptr != NULL)
+    if (screen_configuration_ptr != nullptr)
     {
         XRRFreeScreenConfigInfo(screen_configuration_ptr);
 
-        screen_configuration_ptr = NULL;
+        screen_configuration_ptr = nullptr;
     }
 
     /* Clean up */
-    if (display != NULL)
+    if (display != nullptr)
     {
         XCloseDisplay(display);
 
-        display = NULL;
+        display = nullptr;
     }
 #endif
 
-    if (screen_modes != NULL)
+    if (screen_modes != nullptr)
     {
-        system_screen_mode current_screen_mode = NULL;
+        system_screen_mode current_screen_mode = nullptr;
 
         while (system_resizable_vector_pop(screen_modes,
                                           &current_screen_mode) )
         {
             system_screen_mode_release(current_screen_mode);
-            current_screen_mode = NULL;
+            current_screen_mode = nullptr;
         }
 
         system_resizable_vector_release(screen_modes);
-        screen_modes = NULL;
-    } /* if (screen_modes != NULL) */
+        screen_modes = nullptr;
+    }
 
 }
 
 /** Please see header for spec */
 PUBLIC EMERALD_API bool system_screen_mode_get(unsigned int        n_screen_mode,
-                                               system_screen_mode* out_screen_mode)
+                                               system_screen_mode* out_screen_mode_ptr)
 {
     bool result = true;
 
-    ASSERT_DEBUG_SYNC(screen_modes != NULL,
-                      "Screen modes vector is NULL");
+    ASSERT_DEBUG_SYNC(screen_modes != nullptr,
+                      "Screen modes vector is nullptr");
 
     if (!system_resizable_vector_get_element_at(screen_modes,
                                                 n_screen_mode,
-                                                out_screen_mode))
+                                                out_screen_mode_ptr))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Invalid screen modex index requested [%d]",
@@ -368,38 +365,38 @@ PUBLIC EMERALD_API bool system_screen_mode_get(unsigned int        n_screen_mode
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void system_screen_mode_get_property(system_screen_mode          screen_mode,
+PUBLIC EMERALD_API void system_screen_mode_get_property(const system_screen_mode    screen_mode,
                                                         system_screen_mode_property property,
-                                                        void*                       out_result)
+                                                        void*                       out_result_ptr)
 {
-    const _system_screen_mode* screen_mode_ptr = (const _system_screen_mode*) screen_mode;
+    const _system_screen_mode* screen_mode_ptr = reinterpret_cast<const _system_screen_mode*>(screen_mode);
 
     switch (property)
     {
         case SYSTEM_SCREEN_MODE_PROPERTY_HEIGHT:
         {
-            *(GLuint*) out_result = screen_mode_ptr->height;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = screen_mode_ptr->height;
 
             break;
         }
 
         case SYSTEM_SCREEN_MODE_PROPERTY_REFRESH_RATE:
         {
-            *(GLuint*) out_result = screen_mode_ptr->refresh_rate;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = screen_mode_ptr->refresh_rate;
 
             break;
         }
 
         case SYSTEM_SCREEN_MODE_PROPERTY_SYSTEM_BLOB:
         {
-            *(void**) out_result = screen_mode_ptr->system_blob;
+            *reinterpret_cast<void**>(out_result_ptr) = screen_mode_ptr->system_blob;
 
             break;
         }
 
         case SYSTEM_SCREEN_MODE_PROPERTY_WIDTH:
         {
-            *(GLuint*) out_result = screen_mode_ptr->width;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = screen_mode_ptr->width;
 
             break;
         }
@@ -411,21 +408,21 @@ PUBLIC EMERALD_API void system_screen_mode_get_property(system_screen_mode      
 
             break;
         }
-    } /* switch (property) */
+    }
 }
 
 /** Please see header for spec */
 PUBLIC EMERALD_API bool system_screen_mode_get_for_resolution(unsigned int        width,
                                                               unsigned int        height,
                                                               unsigned int        frequency,
-                                                              system_screen_mode* out_screen_mode)
+                                                              system_screen_mode* out_screen_mode_ptr)
 {
-    system_screen_mode current_screen_mode  = NULL;
+    system_screen_mode current_screen_mode  = nullptr;
     unsigned int       n_screen_modes      = 0;
     bool               result              = false;
 
-    ASSERT_DEBUG_SYNC(screen_modes != NULL,
-                      "Screen modes vector is NULL");
+    ASSERT_DEBUG_SYNC(screen_modes != nullptr,
+                      "Screen modes vector is nullptr");
 
     system_resizable_vector_get_property(screen_modes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -471,11 +468,11 @@ PUBLIC EMERALD_API bool system_screen_mode_get_for_resolution(unsigned int      
 
             break;
         }
-    } /* for (all screen modes) */
+    }
 
     if (result)
     {
-        *out_screen_mode = current_screen_mode;
+        *out_screen_mode_ptr = current_screen_mode;
     }
 
     return result;
@@ -490,11 +487,11 @@ PUBLIC void system_screen_mode_init()
 /** Please see header for spec */
 PUBLIC void system_screen_mode_release(system_screen_mode screen_mode)
 {
-    _system_screen_mode* screen_mode_ptr = (_system_screen_mode*) screen_mode;
+    _system_screen_mode* screen_mode_ptr = reinterpret_cast<_system_screen_mode*>(screen_mode);
 
-    ASSERT_DEBUG_SYNC(screen_mode != NULL,
-                      "Input system_screen_mode object is NULL");
+    ASSERT_DEBUG_SYNC(screen_mode != nullptr,
+                      "Input system_screen_mode object is nullptr");
 
     delete screen_mode_ptr;
-    screen_mode_ptr = NULL;
+    screen_mode_ptr = nullptr;
 }

@@ -160,7 +160,7 @@ PUBLIC EMERALD_API void system_resizable_vector_set_element_at(system_resizable_
 
 /** TODO */
 PUBLIC EMERALD_API void system_resizable_vector_sort(system_resizable_vector resizable_vector,
-                                                     bool                  (*comparator_func_ptr)(void*, void*) );
+                                                     bool                  (*comparator_func_ptr)(const void*, const void*) );
 
 /** TODO */
 PUBLIC EMERALD_API bool system_resizable_vector_swap(system_resizable_vector resizable_vector,

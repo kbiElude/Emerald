@@ -199,7 +199,12 @@ PRIVATE void _raGL_program_clear_bindings_metadata(_raGL_program* program_ptr,
 PRIVATE void _raGL_program_create_callback(ogl_context context,
                                            void*       in_arg)
 {
-    _raGL_program* program_ptr  = reinterpret_cast<_raGL_program*>(in_arg);
+    raGL_backend   context_backend = nullptr;
+    _raGL_program* program_ptr     = reinterpret_cast<_raGL_program*>(in_arg);
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &context_backend);
 
     /* Create a new program */
     program_ptr->id = program_ptr->pGLCreateProgram();
@@ -238,8 +243,9 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
             continue;
         }
 
-        current_shader_raGL = ral_context_get_shader_gl(program_ptr->context,
-                                                        current_shader);
+        raGL_backend_get_shader(context_backend,
+                                current_shader,
+                                (void**) &current_shader_raGL);
 
         ASSERT_DEBUG_SYNC(current_shader_raGL != nullptr,
                           "No raGL_shader instance associated with current ral_shader instance.");
@@ -608,9 +614,13 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
      *       have been already compiled, since we wouldn't have landed here, had the PO not linked successfully.
      *       Sigh.
      */
-    bool is_intel_driver = false;
+    ogl_context context_gl      = nullptr;
+    bool        is_intel_driver = false;
 
-    ogl_context_get_property(ral_context_get_gl_context(program_ptr->context),
+    ral_context_get_property(program_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_IS_INTEL_DRIVER,
                             &is_intel_driver);
 
@@ -1380,9 +1390,14 @@ PRIVATE void _raGL_program_on_shader_compile_callback(const void* callback_data,
 /** TODO */
 PRIVATE void _raGL_program_release(void* program)
 {
+    ogl_context    context_gl  = nullptr;
     _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
 
-    ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(program_ptr->context),
+    ral_context_get_property(program_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+
+    ogl_context_request_callback_from_context_thread(context_gl,
                                                      _raGL_program_release_callback,
                                                      program_ptr);
 
@@ -1722,7 +1737,9 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
     ASSERT_DEBUG_SYNC(shader != nullptr,
                       "Shader is nullptr.");
 
-    program_context = ral_context_get_gl_context(program_ptr->context);
+    ral_context_get_property(program_ptr->context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &program_context);
 
     if (program_ptr->id != 0)
     {
@@ -1752,7 +1769,12 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
 PUBLIC raGL_program raGL_program_create(ral_context context,
                                         ral_program program_ral)
 {
+    ogl_context    context_gl      = nullptr;
     _raGL_program* new_program_ptr = new (std::nothrow) _raGL_program;
+
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
 
     if (new_program_ptr != nullptr)
     {
@@ -1783,7 +1805,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
         {
             const ogl_context_es_entrypoints* entry_points = nullptr;
 
-            ogl_context_get_property(ral_context_get_gl_context(context),
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
@@ -1816,7 +1838,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
 
             const ogl_context_gl_entrypoints* entry_points = nullptr;
 
-            ogl_context_get_property(ral_context_get_gl_context(context),
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
@@ -1844,7 +1866,7 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
         }
 
         /* Carry on */
-        ogl_context_request_callback_from_context_thread(ral_context_get_gl_context(context),
+        ogl_context_request_callback_from_context_thread(context_gl,
                                                          _raGL_program_create_callback,
                                                          new_program_ptr);
     }
@@ -2169,6 +2191,12 @@ PUBLIC bool raGL_program_link(raGL_program program)
 
     if (n_attached_shaders > 0)
     {
+        raGL_backend context_backend = nullptr;
+
+        ral_context_get_property(program_ptr->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND,
+                                &context_backend);
+
         /* Clean up */
         _raGL_program_release_active_attributes(program_ptr->active_attributes_raGL);
         _raGL_program_release_active_uniforms  (program_ptr->active_uniforms_raGL);
@@ -2199,8 +2227,9 @@ PUBLIC bool raGL_program_link(raGL_program program)
                 continue;
             }
 
-            current_shader_raGL = ral_context_get_shader_gl(program_ptr->context,
-                                                            current_shader);
+            raGL_backend_get_shader(context_backend,
+                                    current_shader,
+                                    (void**) &current_shader_raGL);
 
             raGL_shader_get_property(current_shader_raGL,
                                      RAGL_SHADER_PROPERTY_ID,
@@ -2235,7 +2264,11 @@ PUBLIC bool raGL_program_link(raGL_program program)
         {
             /* Let's go. */
             ogl_context current_context = ogl_context_get_current_context();
-            ogl_context program_context = ral_context_get_gl_context     (program_ptr->context);
+            ogl_context program_context = nullptr;
+
+            ral_context_get_property(program_ptr->context,
+                                     RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                    &program_context);
 
             ogl_context_request_callback_from_context_thread( (current_context != nullptr && current_context != program_context) ? current_context
                                                                                                                                  : program_context,

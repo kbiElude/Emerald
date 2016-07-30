@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  */
 #ifndef SYSTEM_SCREEN_MODE_H
@@ -46,7 +46,7 @@ PUBLIC bool system_screen_mode_activate(system_screen_mode screen_mode);
 PUBLIC system_screen_mode system_screen_mode_create(unsigned int             width,
                                                     unsigned int             height,
                                                     unsigned int             refresh_rate,
-                                                    void*                    system_blob,
+                                                    const void*              system_blob,
                                                     PFNRELEASESYSTEMBLOBPROC pfn_release_system_blob);
 
 /** TODO */
@@ -54,18 +54,18 @@ PUBLIC void system_screen_mode_deinit();
 
 /** TODO */
 PUBLIC EMERALD_API bool system_screen_mode_get(unsigned int        n_screen_mode,
-                                               system_screen_mode* out_screen_mode);
+                                               system_screen_mode* out_screen_mode_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_screen_mode_get_for_resolution(unsigned int        width,
                                                               unsigned int        height,
                                                               unsigned int        frequency,
-                                                              system_screen_mode* out_screen_mode);
+                                                              system_screen_mode* out_screen_mode_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void system_screen_mode_get_property(system_screen_mode          screen_mode,
                                                         system_screen_mode_property property,
-                                                        void*                       out_result);
+                                                        void*                       out_result_ptr);
 
 /** TODO */
 PUBLIC void system_screen_mode_init();

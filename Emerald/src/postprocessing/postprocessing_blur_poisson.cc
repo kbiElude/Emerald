@@ -534,7 +534,8 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     group_task_create_info.unique_input_to_ingroup_task_mapping     = &group_task_input_to_ingroup_in_mapping;
     group_task_create_info.unique_output_to_ingroup_task_mapping    = &group_task_output_to_ingroup_out_mapping;
 
-    group_task = ral_present_task_create_group(&group_task_create_info);
+    group_task = ral_present_task_create_group(system_hashed_ansi_string_create("Poisson blur: processing"),
+                                              &group_task_create_info);
 
     ral_present_task_release(pp_task);
     pp_task = nullptr;

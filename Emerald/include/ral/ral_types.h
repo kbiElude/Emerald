@@ -651,15 +651,15 @@ typedef struct ral_command_buffer_create_info
 
 typedef enum
 {
-    /* TODO TODO TEMPORARY. THIS WILL BE REMOVED AFTER 1ST INTEGRATION STAGE IS FINISHED.
+    /* Backend instance. Private use only.
      *
      * not settable; void* (eg. raGL_backend for ES / GL).
      **/
     RAL_CONTEXT_PROPERTY_BACKEND,
 
-    /* TODO TODO TEMPORARY. THIS WILL BE REMOVED AFTER 1ST INTEGRATION STAGE IS FINISHED.
+    /* Backend-specific context handle. Private use only.
      *
-     * not settable; ogl_context.
+     * not settable; void* (eg. ogl_context for ES / GL).
      **/
     RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
 
@@ -890,6 +890,21 @@ typedef enum
 
     RAL_TEXTURE_MIPMAP_MODE_UNKNOWN
 } ral_texture_mipmap_mode;
+
+typedef enum
+{
+    /* not settable, bool */
+    RAL_TEXTURE_MIPMAP_PROPERTY_CONTENTS_SET,
+
+    /* not settable, uint32_t int */
+    RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+
+    /* not settable, uint32_t */
+    RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+
+    /* not settable, uint32_t */
+    RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+} ral_texture_mipmap_property;
 
 /* RAL texture wrap modes */
 typedef enum

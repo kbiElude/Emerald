@@ -148,8 +148,9 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(bool                      should_l
 
     if (header_ptr->bit_count != 24)
     {
-        LOG_FATAL("[%s] uses [%d] bits. Only 24-bit .bmps are supported",
-                  system_hashed_ansi_string_get_buffer(file_name), header_ptr->bit_count);
+        LOG_FATAL("[%s] uses [%u] bits. Only 24-bit .bmps are supported",
+                  system_hashed_ansi_string_get_buffer(file_name),
+                  header_ptr->bit_count);
 
         goto end;
     }
