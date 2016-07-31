@@ -6,6 +6,8 @@
 #include "shared.h"
 #include "ral/ral_present_job.h"
 #include "ral/ral_present_task.h"
+#include "ral/ral_texture_view.h"
+#include "ral/ral_utils.h"
 #include "system/system_dag.h"
 #include "system/system_hash64map.h"
 #include "system/system_resizable_vector.h"
@@ -549,6 +551,8 @@ PUBLIC bool ral_present_job_set_presentable_output(ral_present_job     job,
 {
     _ral_present_job*       job_ptr          = reinterpret_cast<_ral_present_job*>(job);
     bool                    result           = false;
+    ral_texture_view        task_output      = nullptr;
+    ral_format              task_output_format;
     ral_context_object_type task_output_type;
     _ral_present_job_task*  task_ptr         = nullptr;
 
@@ -592,6 +596,31 @@ PUBLIC bool ral_present_job_set_presentable_output(ral_present_job     job,
         ASSERT_DEBUG_SYNC(!(task_output_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE       &&
                             task_output_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW),
                           "Specified task output is neither a texture, nor a texture view.");
+
+        goto end;
+    }
+
+    /* Presentable output needs to hold color data */
+    bool has_color_data = false;
+
+    ral_present_task_get_io_property(task_ptr->task,
+                                     RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                     n_output,
+                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                     (void**) &task_output);
+
+    ral_texture_view_get_property(task_output,
+                                  RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                 &task_output_format);
+
+    ral_utils_get_format_property(task_output_format,
+                                  RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                 &has_color_data);
+
+    if (!has_color_data)
+    {
+        ASSERT_DEBUG_SYNC(has_color_data,
+                          "Presentable output specified for a present job does not carry color data!");
 
         goto end;
     }

@@ -17,6 +17,7 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ral/ral_context.h"
+#include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_resizable_vector.h"
@@ -262,10 +263,17 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
                                            "TODO");
 
                         /* We now know everything we need to configure the material */
-                        mesh_material_set_shading_property_to_texture(material,
+                        ral_texture_view                   shading_factor_texture_view = nullptr;
+                        const ral_texture_view_create_info tv_create_info              = ral_texture_view_get_create_info_from_texture(shading_factor_texture);
+
+                        ral_context_create_texture_views(context,
+                                                         1, /* n_texture_views */
+                                                         &tv_create_info,
+                                                         &shading_factor_texture_view);
+
+                        mesh_material_set_shading_property_to_texture_view(material,
                                                                       item_property,
-                                                                      shading_factor_texture,
-                                                                      0, /* always use base mip-map */
+                                                                      shading_factor_texture_view,
                                                                       _collada_mesh_generator_get_mesh_material_texture_filtering_from_collada_data_sampler_filter(shading_factor_mag_filter),
                                                                       _collada_mesh_generator_get_mesh_material_texture_filtering_from_collada_data_sampler_filter(shading_factor_min_filter) );
 

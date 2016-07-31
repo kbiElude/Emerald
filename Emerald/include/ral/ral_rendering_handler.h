@@ -26,7 +26,8 @@ typedef void  (*PFNRALRENDERINGHANDLERRELEASEBACKENDRENDERINGHANDLERPROC) (void*
 typedef bool  (*PFNRALRENDERINGHANDLERREQUESTRENDERINGCALLBACKPROC)       (void*                                   rendering_handler_raBackend,
                                                                            PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
                                                                            void*                                   user_arg,
-                                                                           raGL_rendering_handler_execution_mode   execution_mode);
+                                                                           bool                                    present_after_executed,
+                                                                           ral_rendering_handler_execution_mode    execution_mode);
 typedef void  (*PFNRALRENDERINGHANDLERWAITEVENTCALLBACKPROC)              (uint32_t                                id,
                                                                            void*                                   rendering_handler_raBackend);
 
@@ -159,10 +160,11 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
                                        system_time           start_time);
 
 /** TODO */
-PUBLIC EMERALD_API bool ral_rendering_handler_request_rendering_callback(ral_rendering_handler                   rendering_handler,
-                                                                         PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
-                                                                         void*                                   user_arg,
-                                                                         raGL_rendering_handler_execution_mode   execution_mode         = RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
+PUBLIC bool ral_rendering_handler_request_rendering_callback(ral_rendering_handler                   rendering_handler,
+                                                             PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
+                                                             void*                                   user_arg,
+                                                             bool                                    present_after_executed,
+                                                             ral_rendering_handler_execution_mode    execution_mode         = RAL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler          rendering_handler,

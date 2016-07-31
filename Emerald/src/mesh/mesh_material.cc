@@ -11,6 +11,7 @@
 #include "ral/ral_program.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
 #include "scene/scene_material.h"
@@ -27,19 +28,17 @@ typedef struct _mesh_material_property_texture
 {
     mesh_material_texture_filtering mag_filter;
     mesh_material_texture_filtering min_filter;
-    unsigned int                    mipmap_level;
     struct _mesh_material_property* parent_property_ptr;
     ral_sampler                     sampler;
-    ral_texture                     texture;
+    ral_texture_view                texture_view;
 
     _mesh_material_property_texture(_mesh_material_property* in_parent_property_ptr)
         :parent_property_ptr(in_parent_property_ptr)
     {
         mag_filter   = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
         min_filter   = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
-        mipmap_level = -1;
         sampler      = nullptr;
-        texture      = nullptr;
+        texture_view = nullptr;
     }
 
     ~_mesh_material_property_texture();
@@ -170,6 +169,10 @@ _mesh_material_property_texture::~_mesh_material_property_texture()
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_objects */
                                    (const void**) &sampler);
+        ral_context_delete_objects(parent_property_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   1, /* n_objects */
+                                   (const void**) &texture_view);
 
         sampler = nullptr;
     }
@@ -243,16 +246,17 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    if (material_ptr->shading_properties[current_property].texture_data.sampler != nullptr)
-                    {
-                        ral_context_delete_objects(material_ptr->context,
-                                                   RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-                                                   1, /* n_objects */
-                                                   (const void**) &material_ptr->shading_properties[current_property].texture_data.sampler);
-                    }
+                    ral_context_delete_objects(material_ptr->context,
+                                               RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                               1, /* n_objects */
+                                               (const void**) &material_ptr->shading_properties[current_property].texture_data.sampler);
+                    ral_context_delete_objects(material_ptr->context,
+                                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                               1, /* n_objects */
+                                               (const void**) &material_ptr->shading_properties[current_property].texture_data.texture_view);
 
-                    material_ptr->shading_properties[current_property].texture_data.sampler = nullptr;
-                    material_ptr->shading_properties[current_property].texture_data.texture = nullptr;
+                    material_ptr->shading_properties[current_property].texture_data.sampler      = nullptr;
+                    material_ptr->shading_properties[current_property].texture_data.texture_view = nullptr;
 
                     break;
                 }
@@ -551,8 +555,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                 else
                 if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
                 {
-                    shading_property.texture_data.sampler = nullptr;
-                    shading_property.texture_data.texture = nullptr;
+                    shading_property.texture_data.sampler      = nullptr;
+                    shading_property.texture_data.texture_view = nullptr;
                 }
             }
         }
@@ -891,12 +895,19 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
 
                 if (texture != nullptr)
                 {
-                    mesh_material_set_shading_property_to_texture(result_material,
-                                                                  config.shading_property,
-                                                                  texture,
-                                                                  0, /* mipmap_level */
-                                                                  config.texture_mag_filter,
-                                                                  config.texture_min_filter);
+                    ral_texture_view             texture_view             = nullptr;
+                    ral_texture_view_create_info texture_view_create_info = ral_texture_view_get_create_info_from_texture(texture);
+
+                    ral_context_create_texture_views(context_ral,
+                                                     1, /* n_texture_views */
+                                                    &texture_view_create_info,
+                                                    &texture_view);
+
+                    mesh_material_set_shading_property_to_texture_view(result_material,
+                                                                       config.shading_property,
+                                                                       texture_view,
+                                                                       config.texture_mag_filter,
+                                                                       config.texture_min_filter);
 
                     /* Generate mip-maps if needed */
                     ral_texture_generate_mipmaps(texture,
@@ -1579,11 +1590,6 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture_view(me
         *out_texture_view_ptr = texture_data_ptr->texture_view;
     }
 
-    if (out_mipmap_level_ptr != nullptr)
-    {
-        *out_mipmap_level_ptr = texture_data_ptr->mipmap_level;
-    }
-
     if (out_sampler_ptr != nullptr)
     {
         *out_sampler_ptr = texture_data_ptr->sampler;
@@ -1704,38 +1710,36 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(mesh_material material_a,
 
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
-                ral_texture      material_a_texture = nullptr;
                 ral_texture_type material_a_texture_type;
-                ral_texture      material_b_texture = nullptr;
+                ral_texture_view material_a_texture_view = nullptr;
                 ral_texture_type material_b_texture_type;
+                ral_texture_view material_b_texture_view = nullptr;
 
-                mesh_material_get_shading_property_value_texture(material_a,
-                                                                 property,
-                                                                &material_a_texture,
-                                                                 nullptr, /* out_mipmap_level - irrelevant */
-                                                                 nullptr);/* out_sampler - irrelevant */
+                mesh_material_get_shading_property_value_texture_view(material_a,
+                                                                      property,
+                                                                     &material_a_texture_view,
+                                                                      nullptr);/* out_sampler_ptr - irrelevant */
 
-                mesh_material_get_shading_property_value_texture(material_b,
-                                                                 property,
-                                                                &material_b_texture,
-                                                                 nullptr, /* out_mipmap_level - irrelevant */
-                                                                 nullptr);/* out_sampler - irrelevant */
+                mesh_material_get_shading_property_value_texture_view(material_b,
+                                                                      property,
+                                                                     &material_b_texture_view,
+                                                                      nullptr);/* out_sampler_ptr - irrelevant */
 
-                if (material_a_texture == nullptr && material_b_texture != nullptr ||
-                    material_a_texture != nullptr && material_b_texture == nullptr)
+                if (material_a_texture_view == nullptr && material_b_texture_view != nullptr ||
+                    material_a_texture_view != nullptr && material_b_texture_view == nullptr)
                 {
                     goto end;
                 }
 
-                if (material_a_texture != nullptr &&
-                    material_b_texture != nullptr)
+                if (material_a_texture_view != nullptr &&
+                    material_b_texture_view != nullptr)
                 {
-                    ral_texture_get_property(material_a_texture,
-                                             RAL_TEXTURE_PROPERTY_TYPE,
-                                            &material_a_texture_type);
-                    ral_texture_get_property(material_b_texture,
-                                             RAL_TEXTURE_PROPERTY_TYPE,
-                                            &material_b_texture_type);
+                    ral_texture_view_get_property(material_a_texture_view,
+                                                  RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                                 &material_a_texture_type);
+                    ral_texture_view_get_property(material_b_texture_view,
+                                                  RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                                 &material_b_texture_type);
 
                     if (material_a_texture_type != material_b_texture_type)
                     {
@@ -1918,40 +1922,42 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_material                   material,
-                                                                      mesh_material_shading_property  property,
-                                                                      ral_texture                     texture,
-                                                                      unsigned int                    mipmap_level,
-                                                                      mesh_material_texture_filtering mag_filter,
-                                                                      mesh_material_texture_filtering min_filter)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture_view(mesh_material                   material,
+                                                                           mesh_material_shading_property  property,
+                                                                           ral_texture_view                texture_view,
+                                                                           mesh_material_texture_filtering mag_filter,
+                                                                           mesh_material_texture_filtering min_filter)
 {
     _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
 
     ASSERT_DEBUG_SYNC(reinterpret_cast<_mesh_material*>(material)->type == MESH_MATERIAL_TYPE_GENERAL,
                       "mesh_material_set_shading_property_to_texture() call is invalid for customized mesh_material instances.");
-    ASSERT_DEBUG_SYNC(texture != nullptr,
-                      "Bound texture is nullptr");
+    ASSERT_DEBUG_SYNC(texture_view != nullptr,
+                      "Bound texture view is nullptr");
 
     if (material_ptr->shading_properties[property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
     {
-        ral_sampler& bound_sampler = material_ptr->shading_properties[property].texture_data.sampler;
-        ral_texture& bound_texture = material_ptr->shading_properties[property].texture_data.texture;
+        ral_sampler&      bound_sampler      = material_ptr->shading_properties[property].texture_data.sampler;
+        ral_texture_view& bound_texture_view = material_ptr->shading_properties[property].texture_data.texture_view;
 
         ral_context_delete_objects(material_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_samplers */
                                    (const void**) &bound_sampler);
+        ral_context_delete_objects(material_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   1, /* n_samplers */
+                                   (const void**) &bound_texture_view);
 
-        bound_sampler = nullptr;
-        bound_texture = nullptr;
+        bound_sampler      = nullptr;
+        bound_texture_view = nullptr;
     }
 
     material_ptr->dirty                                                  = true;
     material_ptr->shading_properties[property].attachment                = MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE;
     material_ptr->shading_properties[property].texture_data.mag_filter   = mag_filter;
     material_ptr->shading_properties[property].texture_data.min_filter   = min_filter;
-    material_ptr->shading_properties[property].texture_data.mipmap_level = mipmap_level;
-    material_ptr->shading_properties[property].texture_data.texture      = texture;
+    material_ptr->shading_properties[property].texture_data.texture_view = texture_view;
 
     /* Cache the sampler object we will need to use for the sampling process.
      * Pass nullptr to all irrelevant arguments - we will use default GL state values

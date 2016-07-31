@@ -215,66 +215,72 @@ static _raGL_backend_global _global;
 
 
 /* Forward declarations */
-PRIVATE void        _raGL_backend_cache_limits                                   (_raGL_backend*            backend_ptr);
-PRIVATE demo_window _raGL_backend_create_helper_window                           (ral_backend_type          backend_type,
-                                                                                  uint32_t                  n_helper_window);
-PRIVATE bool        _raGL_backend_get_object                                     (void*                     backend,
-                                                                                  ral_context_object_type   object_type,
-                                                                                  void*                     object_ral,
-                                                                                  void**                    out_result_ptr);
-PRIVATE void        _raGL_backend_get_object_vars                                (_raGL_backend*            backend_ptr,
-                                                                                  ral_context_object_type   object_type,
-                                                                                  system_read_write_mutex** out_rw_mutex_ptr_ptr,
-                                                                                  system_hash64map**        out_hashmap_ptr_ptr,
-                                                                                  bool*                     out_is_owner_ptr);
-PRIVATE void        _raGL_backend_helper_context_renderer_callback               (ogl_context               context,
-                                                                                  void*                     unused);
-PRIVATE void        _raGL_backend_link_program_handler                           (void*                     job_arg);
-PRIVATE void        _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_buffer_to_buffer_copy_request               (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_command_buffer_recording_started            (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_command_buffer_recording_stopped            (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_objects_created                             (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_objects_created_rendering_callback          (ogl_context               context,
-                                                                                  void*                     callback_arg);
-PRIVATE void        _raGL_backend_on_objects_deleted                             (const void*               callback_arg,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_objects_deleted_rendering_callback          (ogl_context               context,
-                                                                                  void*                     callback_arg);
-PRIVATE void        _raGL_backend_on_shader_attach_request                       (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_shader_body_updated_notification            (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_texture_client_memory_sourced_update_request(const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_on_texture_mipmap_generation_request           (const void*               callback_arg_data,
-                                                                                  void*                     backend);
-PRIVATE void        _raGL_backend_release_raGL_object                            (_raGL_backend*            backend_ptr,
-                                                                                  ral_context_object_type   object_type,
-                                                                                  void*                     object_raGL,
-                                                                                  void*                     object_ral);
-PRIVATE void        _raGL_backend_subscribe_for_buffer_notifications             (_raGL_backend*            backend_ptr,
-                                                                                  ral_buffer                buffer,
-                                                                                  bool                      should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_command_buffer_notifications     (_raGL_backend*            backend_ptr,
-                                                                                  ral_command_buffer        command_buffer,
-                                                                                  bool                      should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_notifications                    (_raGL_backend*            backend_ptr,
-                                                                                  bool                      should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_program_notifications            (_raGL_backend*            backend_ptr,
-                                                                                  ral_program               program,
-                                                                                  bool                      should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_shader_notifications             (_raGL_backend*            backend_ptr,
-                                                                                  ral_shader                shader,
-                                                                                  bool                      should_subscribe);
-PRIVATE void        _raGL_backend_subscribe_for_texture_notifications            (_raGL_backend*            backend_ptr,
-                                                                                  ral_texture               texture,
-                                                                                  bool                      should_subscribe);
+PRIVATE demo_window     _raGL_backend_create_helper_window                 (ral_backend_type                                           backend_type,
+                                                                            uint32_t                                                   n_helper_window);
+PRIVATE ral_present_job _raGL_backend_helper_context_renderer_callback     (ral_context                                                context_ral,
+                                                                            void*                                                      unused,
+                                                                            const ral_rendering_handler_rendering_callback_frame_data* unused2);
+PRIVATE ral_present_job _raGL_backend_on_objects_created_rendering_callback(ral_context                                                context,
+                                                                            void*                                                      callback_arg,
+                                                                            const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE ral_present_job _raGL_backend_on_objects_deleted_rendering_callback(ral_context                                                context,
+                                                                            void*                                                      callback_arg,
+                                                                            const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE ral_present_job _raGL_backend_release_rendering_callback           (ral_context                                                context,
+                                                                            void*                                                      callback_arg,
+                                                                            const ral_rendering_handler_rendering_callback_frame_data* unused);
+
+PRIVATE bool _raGL_backend_get_object                                     (void*                     backend,
+                                                                           ral_context_object_type   object_type,
+                                                                           void*                     object_ral,
+                                                                           void**                    out_result_ptr);
+PRIVATE void _raGL_backend_get_object_vars                                (_raGL_backend*            backend_ptr,
+                                                                           ral_context_object_type   object_type,
+                                                                           system_read_write_mutex** out_rw_mutex_ptr_ptr,
+                                                                           system_hash64map**        out_hashmap_ptr_ptr,
+                                                                           bool*                     out_is_owner_ptr);
+PRIVATE void _raGL_backend_link_program_handler                           (void*                     job_arg);
+PRIVATE void _raGL_backend_on_buffer_client_memory_sourced_update_request (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_buffer_to_buffer_copy_request               (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_command_buffer_recording_started            (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_command_buffer_recording_stopped            (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_objects_created                             (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_objects_deleted                             (const void*               callback_arg,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_shader_attach_request                       (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_shader_body_updated_notification            (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_texture_client_memory_sourced_update_request(const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_on_texture_mipmap_generation_request           (const void*               callback_arg_data,
+                                                                           void*                     backend);
+PRIVATE void _raGL_backend_release_raGL_object                            (_raGL_backend*            backend_ptr,
+                                                                           ral_context_object_type   object_type,
+                                                                           void*                     object_raGL,
+                                                                           void*                     object_ral);
+PRIVATE void _raGL_backend_subscribe_for_buffer_notifications             (_raGL_backend*            backend_ptr,
+                                                                           ral_buffer                buffer,
+                                                                           bool                      should_subscribe);
+PRIVATE void _raGL_backend_subscribe_for_command_buffer_notifications     (_raGL_backend*            backend_ptr,
+                                                                           ral_command_buffer        command_buffer,
+                                                                           bool                      should_subscribe);
+PRIVATE void _raGL_backend_subscribe_for_notifications                    (_raGL_backend*            backend_ptr,
+                                                                           bool                      should_subscribe);
+PRIVATE void _raGL_backend_subscribe_for_program_notifications            (_raGL_backend*            backend_ptr,
+                                                                           ral_program               program,
+                                                                           bool                      should_subscribe);
+PRIVATE void _raGL_backend_subscribe_for_shader_notifications             (_raGL_backend*            backend_ptr,
+                                                                           ral_shader                shader,
+                                                                           bool                      should_subscribe);
+PRIVATE void _raGL_backend_subscribe_for_texture_notifications            (_raGL_backend*            backend_ptr,
+                                                                           ral_texture               texture,
+                                                                           bool                      should_subscribe);
 
 
 /** TODO */
@@ -379,17 +385,17 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
                   n_helper_context < N_HELPER_CONTEXTS;
                 ++n_helper_context)
     {
-        ogl_context helper_context_gl = nullptr;
+        ral_rendering_handler helper_context_rendering_handler = nullptr;
 
         ral_context_get_property(_global.helper_contexts[n_helper_context].helper_context,
-                                 RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                                &helper_context_gl);
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                &helper_context_rendering_handler);
 
-        ogl_context_request_callback_from_context_thread(helper_context_gl,
+        ral_rendering_handler_request_rendering_callback(helper_context_rendering_handler,
                                                          _raGL_backend_helper_context_renderer_callback,
                                                          reinterpret_cast<void*>(n_helper_context),
                                                          false,  /* swap_buffers_afterward */
-                                                         RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK);
+                                                         RAL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK);
 
     }
 
@@ -671,19 +677,24 @@ PRIVATE void _raGL_backend_helper_context_execute_command_buffers_callback(void*
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_helper_context_renderer_callback(ogl_context context,
-                                                            void*       unused)
+PRIVATE ral_present_job _raGL_backend_helper_context_renderer_callback(ral_context                                                context_ral,
+                                                                       void*                                                      unused,
+                                                                       const ral_rendering_handler_rendering_callback_frame_data* unused2)
 {
     raGL_backend  backend           = nullptr;
+    ogl_context   context_gl        = nullptr;
     bool          is_helper_context = false;
     ral_scheduler scheduler         = nullptr;
 
     demo_app_get_property   (DEMO_APP_PROPERTY_GPU_SCHEDULER,
                             &scheduler);
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BACKEND,
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND,
                             &backend);
-    ogl_context_get_property(context,
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT,
                             &is_helper_context);
 
@@ -693,6 +704,10 @@ PRIVATE void _raGL_backend_helper_context_renderer_callback(ogl_context context,
                                                          : (RAL_QUEUE_COMPUTE_BIT  | RAL_QUEUE_GRAPHICS_BIT | RAL_QUEUE_TRANSFER_BIT),
                                      _raGL_backend_helper_context_execute_command_buffers_callback,
                                      backend);
+
+    /* This is a helper context thread, which we're going to use to fire GL calls directly from. Hence, we're OK
+     * to return a null present job here. */
+    return nullptr;
 }
 
 /** TODO */
@@ -1127,13 +1142,19 @@ PRIVATE void _raGL_backend_on_objects_created(const void* callback_arg_data,
 
     /* Request a rendering call-back to create the buffer instances */
     _raGL_backend_on_objects_created_rendering_callback_arg rendering_callback_arg;
+    ral_rendering_handler                                   rendering_handler;
 
     rendering_callback_arg.backend_ptr          = backend_ptr;
     rendering_callback_arg.ral_callback_arg_ptr = callback_arg_ptr;
 
-    ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
+    ral_context_get_property(backend_ptr->context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
+
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                      _raGL_backend_on_objects_created_rendering_callback,
-                                                    &rendering_callback_arg);
+                                                    &rendering_callback_arg,
+                                                     false); /* present_after_executed */
 
     /* Sign up for notifications we will want to forward to the raGL instances */
     switch (rendering_callback_arg.ral_callback_arg_ptr->object_type)
@@ -1224,10 +1245,12 @@ PRIVATE void _raGL_backend_on_objects_created(const void* callback_arg_data,
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context context,
-                                                                 void*       callback_arg)
+PRIVATE ral_present_job _raGL_backend_on_objects_created_rendering_callback(ral_context                                                context_ral,
+                                                                            void*                                                      callback_arg,
+                                                                            const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     const _raGL_backend_on_objects_created_rendering_callback_arg* callback_arg_ptr         = reinterpret_cast<const _raGL_backend_on_objects_created_rendering_callback_arg*>(callback_arg);
+    ogl_context                                                    context                  = nullptr;
     const ogl_context_gl_entrypoints*                              entrypoints_ptr          = nullptr;
     bool                                                           is_object_owner          = false;
     uint32_t                                                       n_objects_to_initialize  = 0;
@@ -1239,6 +1262,9 @@ PRIVATE void _raGL_backend_on_objects_created_rendering_callback(ogl_context con
     ASSERT_DEBUG_SYNC(callback_arg != nullptr,
                       "Callback argument is NULL");
 
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context);
     ogl_context_get_property(callback_arg_ptr->backend_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
@@ -1528,6 +1554,8 @@ end:
         result_object_ids_ptr = nullptr;
     }
 
+    /* We fired GL calls directly here, no need for a RAL present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -1645,13 +1673,19 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 
     /* Request a rendering call-back to release the objects */
     _raGL_backend_on_objects_deleted_rendering_callback_arg rendering_callback_arg;
+    ral_rendering_handler                                   rendering_handler;
+
+    ral_context_get_property(backend_ptr->context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
     rendering_callback_arg.backend_ptr          = backend_ptr;
     rendering_callback_arg.ral_callback_arg_ptr = callback_arg_ptr;
 
-    ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                      _raGL_backend_on_objects_deleted_rendering_callback,
-                                                    &rendering_callback_arg);
+                                                    &rendering_callback_arg,
+                                                     false); /* present_after_executed */
 
     /* Remove the object from all hashmaps relevant to the object */
     system_read_write_mutex_lock(*object_map_rw_mutex_ptr,
@@ -1720,8 +1754,9 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context context,
-                                                                 void*       callback_arg)
+PRIVATE ral_present_job _raGL_backend_on_objects_deleted_rendering_callback(ral_context                                                context_ral,
+                                                                            void*                                                      callback_arg,
+                                                                            const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     const _raGL_backend_on_objects_deleted_rendering_callback_arg* callback_arg_ptr        = reinterpret_cast<const _raGL_backend_on_objects_deleted_rendering_callback_arg*>(callback_arg);
     const ogl_context_gl_entrypoints*                              entrypoints_ptr         = nullptr;
@@ -1764,7 +1799,8 @@ PRIVATE void _raGL_backend_on_objects_deleted_rendering_callback(ogl_context con
                                           (const void**) callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object]);
     }
 end:
-    ;
+    /* We speak GL here, no need for a present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -2069,10 +2105,13 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
 }
 
 /** TODO */
-PRIVATE void _raGL_backend_release_rendering_callback(ogl_context context,
-                                                      void*       callback_arg)
+PRIVATE ral_present_job _raGL_backend_release_rendering_callback(ral_context                                                context,
+                                                                 void*                                                      callback_arg,
+                                                                 const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     delete reinterpret_cast<_raGL_backend*>(callback_arg);
+
+    return nullptr;
 }
 
 /** TODO */
@@ -3049,11 +3088,17 @@ PUBLIC void raGL_backend_release(void* backend)
         backend_ptr->framebuffers = nullptr;
 
         /* Request a rendering context call-back to release backend's assets */
-        const bool is_helper_context = backend_ptr->is_helper_context;
+        const bool            is_helper_context = backend_ptr->is_helper_context;
+        ral_rendering_handler rendering_handler = nullptr;
 
-        ogl_context_request_callback_from_context_thread(backend_ptr->context_gl,
+        ral_context_get_property(backend_ptr->context_ral,
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                &rendering_handler);
+
+        ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_backend_release_rendering_callback,
-                                                         backend_ptr);
+                                                         backend_ptr,
+                                                         false); /* present_after_executed */
 
         if (!is_helper_context)
         {

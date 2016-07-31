@@ -257,21 +257,6 @@ PUBLIC bool ogl_context_is_extension_supported(ogl_context,
 /** TODO */
 PUBLIC bool ogl_context_release_managers(ogl_context);
 
-/** Blocks by default until user-specified entry-point finishes executing. The entry-point WILL be called
- *  a different thread, that is currently bound to GL context described by @param ogl_context.
- *
- *  @param ogl_context                                GL context to use. Cannot be NULL.
- *  @param PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC Call-back entry point. Cannot be NULL.
- *  @param void*                                      User argument to be passed to call-back entry point.
- *
- *  @return true if successful, false otherwise
- **/
-PUBLIC bool ogl_context_request_callback_from_context_thread(ogl_context                                 context,
-                                                             PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
-                                                             void*                                       user_arg,
-                                                             bool                                        swap_buffers_afterward = false,
-                                                             raGL_rendering_handler_execution_mode       execution_mode         = RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED);
-
 /** TODO.
  *
  *  This setter will NOT throw an assertion failure if @param property is not recognized.

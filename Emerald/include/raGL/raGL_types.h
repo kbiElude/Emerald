@@ -29,11 +29,5 @@ typedef enum
 typedef void (*PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context context,
                                                             void*       user_arg);
 
-typedef enum
-{
-    RAGL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED,
-    RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK,
-    RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED,
-} raGL_rendering_handler_execution_mode;
 
 #endif /* RAGL_TYPES_H */

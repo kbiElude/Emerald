@@ -552,11 +552,15 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                  {
                      if (rendering_handler_ptr->pfn_rendering_callback != nullptr)
                      {
+                         ral_rendering_handler_rendering_callback_frame_data frame_data;
+
+                         frame_data.frame_time                = new_frame_time;
+                         frame_data.n_frame                   = frame_index;
+                         frame_data.rendering_area_px_topdown = rendering_area;
+
                          frame_present_job = rendering_handler_ptr->pfn_rendering_callback(rendering_handler_ptr->context,
-                                                                                           frame_index,
-                                                                                           new_frame_time,
-                                                                                           rendering_area,
-                                                                                           rendering_handler_ptr->rendering_callback_user_arg);
+                                                                                           rendering_handler_ptr->rendering_callback_user_arg,
+                                                                                          &frame_data);
                      }
                  }
 
@@ -1327,16 +1331,18 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_rendering_handler_request_rendering_callback(ral_rendering_handler                   rendering_handler,
-                                                                         PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
-                                                                         void*                                   user_arg,
-                                                                         raGL_rendering_handler_execution_mode   execution_mode)
+PUBLIC bool ral_rendering_handler_request_rendering_callback(ral_rendering_handler                   rendering_handler,
+                                                             PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
+                                                             void*                                   user_arg,
+                                                             bool                                    present_after_executed,
+                                                             ral_rendering_handler_execution_mode    execution_mode)
 {
     _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
 
     return rendering_handler_ptr->pfn_request_rendering_callback_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
                                                                                 pfn_callback_proc,
                                                                                 user_arg,
+                                                                                present_after_executed,
                                                                                 execution_mode);
 }
 

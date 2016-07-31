@@ -3684,42 +3684,6 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
 }
 
 /** Please see header for specification */
-PUBLIC bool ogl_context_request_callback_from_context_thread(ogl_context                                 context,
-                                                             PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
-                                                             void*                                       user_arg,
-                                                             bool                                        swap_buffers_afterward,
-                                                             raGL_rendering_handler_execution_mode       execution_mode)
-{
-    bool                   result                 = false;
-    _ogl_context*          context_ptr            = reinterpret_cast<_ogl_context*>(context);
-    raGL_rendering_handler rendering_handler_raGL = nullptr;
-    ral_rendering_handler  rendering_handler_ral  = nullptr;
-
-    system_window_get_property        (context_ptr->window,
-                                       SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
-                                      &rendering_handler_ral);
-    ral_rendering_handler_get_property(rendering_handler_ral,
-                                       RAL_RENDERING_HANDLER_PROPERTY_RENDERING_HANDLER_BACKEND,
-                                      &rendering_handler_raGL);
-
-    if (rendering_handler_raGL != nullptr)
-    {
-        result = raGL_rendering_handler_request_callback_from_context_thread(rendering_handler_raGL,
-                                                                             pfn_callback_proc,
-                                                                             user_arg,
-                                                                             swap_buffers_afterward,
-                                                                             execution_mode);
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
 PUBLIC bool ogl_context_set_property(ogl_context          context,
                                      ogl_context_property property,
                                      const void*          data)

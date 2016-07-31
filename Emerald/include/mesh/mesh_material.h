@@ -295,12 +295,11 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
                                                                                        mesh_material_input_fragment_attribute attribute);
 
 /** TODO. */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(mesh_material                   material,
-                                                                      mesh_material_shading_property  property,
-                                                                      ral_texture                     texture,
-                                                                      unsigned int                    mipmap_level,
-                                                                      mesh_material_texture_filtering mag_filter,
-                                                                      mesh_material_texture_filtering min_filter);
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture_view(mesh_material                   material,
+                                                                           mesh_material_shading_property  property,
+                                                                           ral_texture_view                texture_view,
+                                                                           mesh_material_texture_filtering mag_filter,
+                                                                           mesh_material_texture_filtering min_filter);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_vec4(mesh_material                  material,

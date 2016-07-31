@@ -53,7 +53,8 @@ PUBLIC void raGL_rendering_handler_release(void* rendering_handler);
 PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(void*                                   rendering_handler_backend,
                                                                               PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
                                                                               void*                                   user_arg,
-                                                                              raGL_rendering_handler_execution_mode   execution_mode);
+                                                                              bool                                    present_after_executed,
+                                                                              ral_rendering_handler_execution_mode    execution_mode);
 
 /** TODO */
 PUBLIC void raGL_rendering_handler_set_property(raGL_rendering_handler           rendering_handler,

@@ -851,8 +851,12 @@ end:
 PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_multiloader_scene* scene_ptr,
                                                                      system_hashed_ansi_string object_manager_path,
                                                                      unsigned int              n_scene_textures,
-                                                                     ral_context               context,
-                                                                     system_hash64map          texture_id_to_ogl_texture_map)
+                                                                     ral_context               context
+#if 0
+                                                                    ,system_hash64map          texture_id_to_ral_texture_map)
+#else
+                                                                                                       )
+#endif
 {
     /*
      * We break the usual scene_texture_load_with_serializer() routine by first
@@ -1031,6 +1035,10 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
     }
     system_critical_section_leave(scene_ptr->loader_ptr->cs);
 
+    #if 0
+
+    TODO: This seems to be a functional NOP ?
+
     /* Carry on with scene_texture initialization */
     for (unsigned int n_scene_texture = 0;
                       n_scene_texture < n_scene_textures;
@@ -1040,31 +1048,32 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(_scene_mult
                                                                    n_scene_texture);
 
         /* Map the serialized texture ID to the ogl_texture instance, if necessary */
-        unsigned int texture_gl_id    = 0;
-        ral_texture  texture_instance = nullptr;
-        raGL_texture texture_raGL     = nullptr;
+        ral_texture texture_instance = nullptr;
 
         scene_texture_get(current_texture,
                           SCENE_TEXTURE_PROPERTY_TEXTURE_RAL,
                          &texture_instance);
 
-        texture_raGL = ral_context_get_texture_gl(scene_ptr->loader_ptr->context_ral,
-                                                  texture_instance);
-
-        raGL_texture_get_property(texture_raGL,
-                                  RAGL_TEXTURE_PROPERTY_ID,
-                                 &texture_gl_id);
-
-        if (!system_hash64map_contains(texture_id_to_ogl_texture_map,
-                                       texture_gl_id) )
         {
-            system_hash64map_insert(texture_id_to_ogl_texture_map,
+            texture_raGL = ral_context_get_texture_gl(scene_ptr->loader_ptr->context_ral,
+                                                      texture_instance);
+
+            raGL_texture_get_property(texture_raGL,
+                                      RAGL_TEXTURE_PROPERTY_ID,
+                                     &texture_gl_id);
+        }
+
+        if (!system_hash64map_contains(texture_id_to_ral_texture_map,
+                                       texture_instance) )
+        {
+            system_hash64map_insert(texture_id_to_ral_texture_map,
                                     (system_hash64) texture_gl_id,
                                     texture_instance,
                                     nullptr,  /* on_remove_callback */
                                     nullptr); /* on_remove_callback_user_arg */
         }
     }
+    #endif
 
     if (!result)
     {
@@ -1137,7 +1146,10 @@ PRIVATE void _scene_multiloader_load_scene_internal(_scene_multiloader_scene* sc
     system_resizable_vector   serialized_scene_lights           = system_resizable_vector_create(4 /* capacity */);
     system_resizable_vector   serialized_scene_mesh_instances   = system_resizable_vector_create(4 /* capacity */);
     system_hash64map          scene_material_to_material_id_map = system_hash64map_create       (sizeof(unsigned int) );
-    system_hash64map          texture_id_to_ogl_texture_map     = system_hash64map_create       (sizeof(void*) );
+
+    #if 0
+        system_hash64map          texture_id_to_ral_texture_map     = system_hash64map_create       (sizeof(void*) );
+    #endif
 
     /* Read basic stuff */
     float                     scene_animation_duration = 0.0f;
@@ -1283,8 +1295,12 @@ PRIVATE void _scene_multiloader_load_scene_internal(_scene_multiloader_scene* sc
     result &= _scene_multiloader_load_scene_internal_get_texture_data(scene_ptr,
                                                                       scene_name,
                                                                       n_scene_textures,
-                                                                      scene_ptr->loader_ptr->context_ral,
-                                                                      texture_id_to_ogl_texture_map);
+                                                                      scene_ptr->loader_ptr->context_ral
+#if 0
+                                                                     ,texture_id_to_ral_texture_map);
+#else
+        );
+#endif
 
     if (!result)
     {
@@ -1486,12 +1502,16 @@ end:
         serialized_scene_mesh_instances = nullptr;
     }
 
-    if (texture_id_to_ogl_texture_map != nullptr)
+    #if 0
     {
-        system_hash64map_release(texture_id_to_ogl_texture_map);
+        if (texture_id_to_ral_texture_map != nullptr)
+        {
+            system_hash64map_release(texture_id_to_ral_texture_map);
 
-        texture_id_to_ogl_texture_map = nullptr;
+            texture_id_to_ral_texture_map = nullptr;
+        }
     }
+    #endif
 }
 
 /** TODO */

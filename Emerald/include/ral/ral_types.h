@@ -19,6 +19,13 @@ DECLARE_HANDLE(ral_texture_pool);
 DECLARE_HANDLE(ral_texture_view);
 
 
+typedef struct
+{
+    system_time frame_time;
+    uint32_t    n_frame;
+    const int*  rendering_area_px_topdown;
+} ral_rendering_handler_rendering_callback_frame_data;
+
 /** Rendering handler call-back
  *
  *  @param context           TODO
@@ -31,11 +38,9 @@ DECLARE_HANDLE(ral_texture_view);
  *  @param user_arg          TODO
  *
  */
-typedef ral_present_job (*PFNRALRENDERINGHANDLERRENDERINGCALLBACK)(ral_context context,
-                                                                   system_time frame_time,
-                                                                   uint32_t    n_frame,
-                                                                   const int*  rendering_area_px_topdown,
-                                                                   void*       user_arg);
+typedef ral_present_job (*PFNRALRENDERINGHANDLERRENDERINGCALLBACK)(ral_context                                                context,
+                                                                   void*                                                      user_arg,
+                                                                   const ral_rendering_handler_rendering_callback_frame_data* frame_data_ptr);
 
 typedef enum
 {
@@ -458,6 +463,13 @@ enum
     RAL_QUEUE_LAST_USED_BIT = 2
 } ral_queue;
 typedef int ral_queue_bits;
+
+typedef enum
+{
+    RAL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED,
+    RAL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK,
+    RAL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_BLOCK_TILL_FINISHED,
+} ral_rendering_handler_execution_mode;
 
 /** Enumerator that describes current rendering handler's playback status */
 typedef enum

@@ -202,11 +202,10 @@ PRIVATE void _raGL_rendering_handler_ral_based_rendering_callback_handler(ogl_co
     ral_present_job          present_job;
     _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler);
 
+
     present_job = rendering_handler_ptr->ral_callback_pfn_callback_proc(rendering_handler_ptr->context_ral,
-                                                                        -1,      /* frame_time                */
-                                                                        -1,      /* n_frame                   */
-                                                                        nullptr, /* rendering_area_px_topdown */
-                                                                        rendering_handler_ptr->ral_callback_user_arg);
+                                                                        rendering_handler_ptr->ral_callback_user_arg,
+                                                                        nullptr); /* frame_data_ptr */
 
     raGL_rendering_handler_execute_present_job(reinterpret_cast<ral_rendering_handler>(rendering_handler),
                                                present_job);
@@ -638,15 +637,17 @@ PUBLIC void raGL_rendering_handler_release(void* rendering_handler)
 PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(void*                                   rendering_handler_backend,
                                                                               PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
                                                                               void*                                   user_arg,
-                                                                              raGL_rendering_handler_execution_mode   execution_mode)
+                                                                              bool                                    present_after_executed,
+                                                                              ral_rendering_handler_execution_mode    execution_mode)
 {
     _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler_backend);
     bool                     result;
 
     system_critical_section_enter(rendering_handler_ptr->ral_callback_cs);
     {
-        rendering_handler_ptr->ral_callback_pfn_callback_proc = pfn_callback_proc;
-        rendering_handler_ptr->ral_callback_user_arg          = user_arg;
+        rendering_handler_ptr->ral_callback_buffer_swap_needed = present_after_executed;
+        rendering_handler_ptr->ral_callback_pfn_callback_proc  = pfn_callback_proc;
+        rendering_handler_ptr->ral_callback_user_arg           = user_arg;
 
         if (ral_rendering_handler_is_current_thread_rendering_thread(rendering_handler_ptr->rendering_handler_ral) ||
             rendering_handler_ptr->call_passthrough_mode)
@@ -660,7 +661,7 @@ PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(vo
         {
             bool should_continue = false;
 
-            if (execution_mode != RAGL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED)
+            if (execution_mode != RAL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED)
             {
                 system_critical_section_enter(rendering_handler_ptr->callback_request_cs);
 
@@ -678,7 +679,7 @@ PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(vo
 
                 system_event_set(rendering_handler_ptr->callback_request_event);
 
-                if (execution_mode != RAGL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK)
+                if (execution_mode != RAL_RENDERING_HANDLER_EXECUTION_MODE_WAIT_UNTIL_IDLE_DONT_BLOCK)
                 {
                     system_event_wait_single(rendering_handler_ptr->callback_request_ack_event);
                 }
