@@ -7,6 +7,8 @@
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_texture.h"
 #include "raGL/raGL_textures.h"
+#include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -110,21 +112,27 @@ REFCOUNT_INSERT_IMPLEMENTATION(raGL_textures,
 
 
 /* Forward declarations */
-PRIVATE void          _raGL_textures_alloc_texture_rendering_thread_callback(ogl_context context,
-                                                                             void*       callback_arg);
-PRIVATE system_hash64 _raGL_textures_get_texture_hash                       (ral_texture texture);
-PRIVATE void          _raGL_textures_release                                (void*       textures);
-PRIVATE void          _raGL_textures_release_rendering_thread_callback      (ogl_context context,
-                                                                             void*       callback_arg);
+PRIVATE ral_present_job _raGL_textures_alloc_texture_rendering_thread_callback(ral_context                                                context,
+                                                                               void*                                                      callback_arg,
+                                                                               const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE system_hash64   _raGL_textures_get_texture_hash                       (ral_texture                                                texture);
+PRIVATE void            _raGL_textures_release                                (void*                                                      textures);
+PRIVATE ral_present_job _raGL_textures_release_rendering_thread_callback      (ral_context                                                context,
+                                                                               void*                                                      callback_arg,
+                                                                               const ral_rendering_handler_rendering_callback_frame_data* unused);
 
 /** TODO */
-PRIVATE void _raGL_textures_alloc_texture_rendering_thread_callback(ogl_context context,
-                                                                    void*       callback_arg)
+PRIVATE ral_present_job _raGL_textures_alloc_texture_rendering_thread_callback(ral_context                                                context,
+                                                                               void*                                                      callback_arg,
+                                                                               const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_textures_alloc_texture_rendering_thread_callback_arg* callback_arg_ptr = reinterpret_cast<_raGL_textures_alloc_texture_rendering_thread_callback_arg*>(callback_arg);
 
     callback_arg_ptr->result_texture = raGL_texture_create(callback_arg_ptr->textures_ptr->context,
                                                            callback_arg_ptr->texture_ral);
+
+    /* We speak GL here, no need for a present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -211,18 +219,29 @@ PRIVATE system_hash64 _raGL_textures_get_texture_hash(ral_texture texture)
 /** TODO */
 PRIVATE void _raGL_textures_release(void* textures)
 {
-    _raGL_textures* textures_ptr = reinterpret_cast<_raGL_textures*>(textures);
+    ral_context           context_ral  = nullptr;
+    ral_rendering_handler context_rh   = nullptr;
+    _raGL_textures*       textures_ptr = reinterpret_cast<_raGL_textures*>(textures);
 
     /* Request a rendering thread call-back, so that we can release all the textures we
      * were holding in the heaps */
-    ogl_context_request_callback_from_context_thread(textures_ptr->context,
+    ogl_context_get_property(textures_ptr->context,
+                             OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                            &context_ral);
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &context_rh);
+
+    ral_rendering_handler_request_rendering_callback(context_rh,
                                                      _raGL_textures_release_rendering_thread_callback,
-                                                     textures_ptr);
+                                                     textures_ptr,
+                                                     false); /* present_after_executed */
 }
 
 /** TODO */
-PRIVATE void _raGL_textures_release_rendering_thread_callback(ogl_context context,
-                                                              void*       callback_arg)
+PRIVATE ral_present_job _raGL_textures_release_rendering_thread_callback(ral_context                                                context,
+                                                                         void*                                                      callback_arg,
+                                                                         const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_textures* textures_ptr = reinterpret_cast<_raGL_textures*>(callback_arg);
 
@@ -266,6 +285,9 @@ PRIVATE void _raGL_textures_release_rendering_thread_callback(ogl_context contex
         system_hash64map_clear(textures_ptr->key_hash_to_texture_heap_map);
     }
     system_critical_section_leave(textures_ptr->cs);
+
+    /* We fire GL calls directly from this func, so we don't need to return any present job. */
+    return nullptr;
 }
 
 
@@ -357,14 +379,24 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
         {
             /* Nope. Need to alloc it now. */
             _raGL_textures_alloc_texture_rendering_thread_callback_arg callback_arg;
+            ral_context                                                context_ral   = nullptr;
+            ral_rendering_handler                                      context_rh    = nullptr;
 
             callback_arg.result_texture = nullptr;
             callback_arg.texture_ral    = texture_ral;
             callback_arg.textures_ptr   = textures_ptr;
 
-            ogl_context_request_callback_from_context_thread(textures_ptr->context,
+            ogl_context_get_property(textures_ptr->context,
+                                     OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                    &context_ral);
+            ral_context_get_property(context_ral,
+                                     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                    &context_rh);
+
+            ral_rendering_handler_request_rendering_callback(context_rh,
                                                              _raGL_textures_alloc_texture_rendering_thread_callback,
-                                                            &callback_arg);
+                                                            &callback_arg,
+                                                             false); /* present_after_executed */
 
             if (callback_arg.result_texture == nullptr)
             {

@@ -4,13 +4,15 @@
  *
  */
 #include "shared.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_types.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_buffers.h"
 #include "raGL/raGL_sync.h"
 #include "ral/ral_buffer.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_types.h"
+#include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
@@ -621,8 +623,9 @@ PRIVATE unsigned int _raGL_buffers_get_nonsparse_buffer_size(_raGL_buffers_heap 
 }
 
 /** TODO */
-PRIVATE void _raGL_buffers_init_rendering_callback(ogl_context     context,
-                                                   void*           buffers_raw_ptr)
+PRIVATE ral_present_job _raGL_buffers_init_rendering_callback(ral_context                                                context,
+                                                              void*                                                      buffers_raw_ptr,
+                                                              const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_buffers* buffers_ptr = reinterpret_cast<_raGL_buffers*>(buffers_raw_ptr);
 
@@ -649,6 +652,9 @@ PRIVATE void _raGL_buffers_init_rendering_callback(ogl_context     context,
                                                      _raGL_buffers_get_nonsparse_buffer_size( (_raGL_buffers_heap) n_heap) );
         }
     }
+
+    /* We issue GL calls directly from this entrypoint, so it's OK to return a null present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -1025,9 +1031,16 @@ PUBLIC raGL_buffers raGL_buffers_create(raGL_backend backend,
 
     if (new_buffers != nullptr)
     {
-        ogl_context_request_callback_from_context_thread(context,
+        ral_rendering_handler rendering_handler = nullptr;
+
+        ral_context_get_property(context_ral,
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                &rendering_handler);
+
+        ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_buffers_init_rendering_callback,
-                                                         new_buffers);
+                                                         new_buffers,
+                                                         false); /* present_after_executed */
 
         /* Register in the object manager */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_buffers,

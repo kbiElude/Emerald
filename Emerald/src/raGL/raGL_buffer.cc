@@ -9,6 +9,8 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_sync.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_scheduler.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
@@ -113,36 +115,50 @@ typedef struct
 
 
 /** Forward declarations */
-PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread(void*       callback_arg);
-PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread    (ogl_context context,
-                                                                                       void*       callback_arg);
-PRIVATE void _raGL_buffer_on_clear_region_request_rendering_thread                    (ogl_context context,
-                                                                                       void*       callback_arg);
-PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread    (ogl_context context,
-                                                                                       void*       callback_arg);
+PRIVATE void            _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread(void*                                                      callback_arg);
+PRIVATE ral_present_job _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread    (ral_context                                                context,
+                                                                                                  void*                                                      callback_arg,
+                                                                                                  const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE ral_present_job _raGL_buffer_on_clear_region_request_rendering_thread                    (ral_context                                                context,
+                                                                                                  void*                                                      callback_arg,
+                                                                                                  const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE ral_present_job _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread    (ral_context                                                context,
+                                                                                                  void*                                                      callback_arg,
+                                                                                                  const ral_rendering_handler_rendering_callback_frame_data* unused);
 
 
 /** TODO */
 PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_gpu_scheduler_thread(void* callback_arg)
 {
-    _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr = static_cast<_raGL_buffer_client_memory_sourced_update_request_arg*>(callback_arg);
-    ogl_context                                            current_context  = ogl_context_get_current_context();
+    _raGL_buffer_client_memory_sourced_update_request_arg* callback_arg_ptr    = static_cast<_raGL_buffer_client_memory_sourced_update_request_arg*>(callback_arg);
+    ogl_context                                            current_context     = ogl_context_get_current_context();
+    ral_context                                            current_context_ral = nullptr;
 
-    _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(current_context,
-                                                                          callback_arg_ptr);
+    ogl_context_get_property(current_context,
+                              OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                             &current_context_ral);
+
+    _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(current_context_ral,
+                                                                          callback_arg_ptr,
+                                                                          nullptr); /* unused */
 }
 
 /** TODO */
-PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(ogl_context context,
-                                                                                   void*       callback_arg)
+PRIVATE ral_present_job _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread(ral_context                                                context,
+                                                                                              void*                                                      callback_arg,
+                                                                                              const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_buffer*                                             buffer_ptr          = nullptr;
     _raGL_buffer_client_memory_sourced_update_request_arg*    callback_arg_ptr    = reinterpret_cast<_raGL_buffer_client_memory_sourced_update_request_arg*>(callback_arg);
+    ogl_context                                               context_gl          = nullptr;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
 
     buffer_ptr = reinterpret_cast<_raGL_buffer*>(callback_arg_ptr->buffer);
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa_ptr);
 
@@ -171,17 +187,25 @@ PRIVATE void _raGL_buffer_on_client_memory_sourced_update_request_rendering_thre
     {
         delete callback_arg_ptr;
     }
+
+    /* We speak GL here. No need for a present job */
+    return nullptr;
 }
 
 /** TODO */
-PRIVATE void _raGL_buffer_on_clear_region_request_rendering_thread(ogl_context context,
-                                                                   void*       callback_arg)
+PRIVATE ral_present_job _raGL_buffer_on_clear_region_request_rendering_thread(ral_context                                                context,
+                                                                              void*                                                      callback_arg,
+                                                                              const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_buffer*                          buffer_ptr       = nullptr;
     _raGL_buffer_clear_region_request_arg* callback_arg_ptr = reinterpret_cast<_raGL_buffer_clear_region_request_arg*>(callback_arg);
+    ogl_context                            context_gl       = nullptr;
     const ogl_context_gl_entrypoints*      entrypoints_ptr  = nullptr;
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
@@ -212,18 +236,26 @@ PRIVATE void _raGL_buffer_on_clear_region_request_rendering_thread(ogl_context c
     {
         raGL_backend_enqueue_sync();
     }
+
+    /* We speak GL here. No need for a present job */
+    return nullptr;
 }
 
 /** TODO */
-PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread(ogl_context context,
-                                                                                   void*       callback_arg)
+PRIVATE ral_present_job _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread(ral_context                                                context_ral,
+                                                                                              void*                                                      callback_arg,
+                                                                                              const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_buffer_copy_buffer_to_buffer_request_arg*           callback_arg_ptr    = reinterpret_cast<_raGL_buffer_copy_buffer_to_buffer_request_arg*>(callback_arg);
+    ogl_context                                               context_gl          = nullptr;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = nullptr;
     _raGL_buffer*                                             dst_buffer_ptr      = reinterpret_cast<_raGL_buffer*>(callback_arg_ptr->dst_buffer);
     _raGL_buffer*                                             src_buffer_ptr      = reinterpret_cast<_raGL_buffer*>(callback_arg_ptr->src_buffer);
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints_ptr);
 
@@ -246,6 +278,9 @@ PRIVATE void _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thre
     {
         raGL_backend_enqueue_sync();
     }
+
+    /* We speak GL here, no need for a present job */
+    return nullptr;
 }
 
 /** Please see header for specification */
@@ -256,17 +291,31 @@ PUBLIC void raGL_buffer_clear_region(raGL_buffer                         buffer_
 {
     _raGL_buffer*                         buffer_ptr      = reinterpret_cast<_raGL_buffer*>(buffer_raGL);
     _raGL_buffer_clear_region_request_arg callback_arg;
-    ogl_context                           current_context = ogl_context_get_current_context();
+    ogl_context                           context_gl        = ogl_context_get_current_context();
+    ral_context                           context_ral       = nullptr;
+    ral_rendering_handler                 rendering_handler = nullptr;
 
     callback_arg.buffer              = buffer_raGL;
     callback_arg.clear_ops           = clear_ops;
     callback_arg.n_clear_ops         = n_clear_ops;
     callback_arg.sync_other_contexts = sync_other_contexts;
 
-    ogl_context_request_callback_from_context_thread( (current_context != buffer_ptr->context && current_context != nullptr) ? current_context
-                                                                                                                          : buffer_ptr->context,
+    if (buffer_ptr->context != nullptr)
+    {
+        context_gl = buffer_ptr->context;
+    }
+
+    ogl_context_get_property(context_gl,
+                             OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                            &context_ral);
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
+
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                      _raGL_buffer_on_clear_region_request_rendering_thread,
-                                                     &callback_arg);
+                                                    &callback_arg,
+                                                     false); /* present_after_executed */
 }
 
 /** Please see header for specification */
@@ -277,9 +326,11 @@ PUBLIC void raGL_buffer_copy_buffer_to_buffer(raGL_buffer                       
                                               bool                                  sync_other_contexts)
 {
     _raGL_buffer_copy_buffer_to_buffer_request_arg callback_arg;
-    ogl_context                                    current_context = ogl_context_get_current_context();
-    _raGL_buffer*                                  dst_buffer_ptr  = reinterpret_cast<_raGL_buffer*>(dst_buffer_raGL);
-    _raGL_buffer*                                  src_buffer_ptr  = reinterpret_cast<_raGL_buffer*>(src_buffer_raGL);
+    ogl_context                                    current_context     = ogl_context_get_current_context();
+    ral_context                                    current_context_ral = nullptr;
+    ral_rendering_handler                          current_context_rh  = nullptr;
+    _raGL_buffer*                                  dst_buffer_ptr      = reinterpret_cast<_raGL_buffer*>(dst_buffer_raGL);
+    _raGL_buffer*                                  src_buffer_ptr      = reinterpret_cast<_raGL_buffer*>(src_buffer_raGL);
 
     callback_arg.copy_ops            = copy_ops;
     callback_arg.dst_buffer          = dst_buffer_raGL;
@@ -287,10 +338,22 @@ PUBLIC void raGL_buffer_copy_buffer_to_buffer(raGL_buffer                       
     callback_arg.src_buffer          = src_buffer_raGL;
     callback_arg.sync_other_contexts = sync_other_contexts;
 
-    ogl_context_request_callback_from_context_thread( (current_context != dst_buffer_ptr->context && current_context != nullptr) ? current_context
-                                                                                                                              : dst_buffer_ptr->context,
+    if (current_context != dst_buffer_ptr->context)
+    {
+        current_context = dst_buffer_ptr->context;
+    }
+
+    ogl_context_get_property(current_context,
+                             OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                            &current_context_ral);
+    ral_context_get_property(current_context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                             &current_context_rh);
+
+    ral_rendering_handler_request_rendering_callback(current_context_rh,
                                                      _raGL_buffer_on_copy_buffer_to_buffer_update_request_rendering_thread,
-                                                    &callback_arg);
+                                                    &callback_arg,
+                                                     false); /* present_after_executed */
 }
 
 /** Please see header for specification */
@@ -490,15 +553,30 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
     else
     {
         _raGL_buffer_client_memory_sourced_update_request_arg callback_arg;
+        ogl_context                                           context_gl   = nullptr;
+        ral_context                                           context_ral  = nullptr;
+        ral_rendering_handler                                 context_rh   = nullptr;
+
+        if (buffer_ptr->context != current_context)
+        {
+            current_context = buffer_ptr->context;
+        }
+
+        ogl_context_get_property(context_gl,
+                                 OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                &context_ral);
+        ral_context_get_property(context_ral,
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                &context_rh);
 
         callback_arg.buffer              = buffer;
         callback_arg.should_delete       = false;
         callback_arg.sync_other_contexts = sync_other_contexts;
         callback_arg.updates             = updates;
 
-        ogl_context_request_callback_from_context_thread( (current_context != buffer_ptr->context && current_context != nullptr) ? current_context
-                                                                                                                              : buffer_ptr->context,
+        ral_rendering_handler_request_rendering_callback(context_rh,
                                                          _raGL_buffer_on_client_memory_sourced_update_request_rendering_thread,
-                                                        &callback_arg);
+                                                        &callback_arg,
+                                                         false); /* present_after_executed */
     }
 }

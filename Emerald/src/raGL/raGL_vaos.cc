@@ -4,7 +4,9 @@
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_utils.h"
 #include "raGL/raGL_vaos.h"
+#include "ral/ral_context.h"
 #include "ral/ral_gfx_state.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_utils.h"
 #include "system/system_critical_section.h"
 #include "system/system_hash64map.h"
@@ -187,10 +189,12 @@ bool _raGL_vao::is_a_match(raGL_buffer                           in_index_buffer
 
 
 /* Forward declarations */
-PRIVATE void _raGL_vaos_bake_vao_renderer_thread_callback    (ogl_context context,
-                                                              void*       vaos_raw_ptr);
-PRIVATE void _raGL_vaos_release_vaos_renderer_thread_callback(ogl_context context,
-                                                              void*       vaos_raw_ptr);
+PRIVATE ral_present_job _raGL_vaos_bake_vao_renderer_thread_callback    (ral_context                                                context,
+                                                                         void*                                                      vaos_raw_ptr,
+                                                                         const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE ral_present_job _raGL_vaos_release_vaos_renderer_thread_callback(ral_context                                                context,
+                                                                         void*                                                      vaos_raw_ptr,
+                                                                         const ral_rendering_handler_rendering_callback_frame_data* unused);
 
 
 /** TODO */
@@ -204,12 +208,12 @@ _raGL_vaos::_raGL_vaos(raGL_backend in_backend_gl)
 /** TODO */
 _raGL_vaos::~_raGL_vaos()
 {
-    ogl_context context_gl    = nullptr;
-    uint32_t    n_map_entries = 0;
+    uint32_t              n_map_entries     = 0;
+    ral_rendering_handler rendering_handler = nullptr;
 
     raGL_backend_get_property(backend_gl,
-                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                             &context_gl);
+                              RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                             &rendering_handler);
 
     /* Make sure no VAO is being baked at call time */
     if (bake_cs != nullptr)
@@ -222,9 +226,10 @@ _raGL_vaos::~_raGL_vaos()
     }
 
     /* Release all created VAOs GL-side */
-    ogl_context_request_callback_from_context_thread(context_gl,
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                      _raGL_vaos_release_vaos_renderer_thread_callback,
-                                                     this);
+                                                     this,
+                                                     false); /* present_after_executed */
 
     /* Release everything else */
     system_hash64map_get_property(n_vbs_to_vao_map,
@@ -255,18 +260,18 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
                                        const ral_gfx_state_vertex_attribute* in_vertex_attributes,
                                        const raGL_vaos_vertex_buffer*        in_vertex_buffers)
 {
-    ogl_context context_gl                = nullptr;
-    GLuint      index_buffer_raGL_id      = 0;
-    uint32_t    index_buffer_start_offset = 0;
-    _raGL_vao*  new_vao_ptr               = new (std::nothrow) _raGL_vao;
-    GLuint      result_vao_id             = 0;
+    GLuint                index_buffer_raGL_id      = 0;
+    uint32_t              index_buffer_start_offset = 0;
+    _raGL_vao*            new_vao_ptr               = new (std::nothrow) _raGL_vao;
+    ral_rendering_handler rendering_handler         = nullptr;
+    GLuint                result_vao_id             = 0;
 
     ASSERT_ALWAYS_SYNC(new_vao_ptr != nullptr,
                        "Out of memory");
 
     raGL_backend_get_property(in_vaos_ptr->backend_gl,
-                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                             &context_gl);
+                              RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                             &rendering_handler);
 
     raGL_buffer_get_property(in_index_buffer,
                              RAGL_BUFFER_PROPERTY_ID,
@@ -328,9 +333,10 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
         in_vaos_ptr->bake_result_vao_id = 0;
         in_vaos_ptr->bake_vbs_ptr       = &baked_vbs[0];
 
-        ogl_context_request_callback_from_context_thread(context_gl,
+        ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_vaos_bake_vao_renderer_thread_callback,
-                                                         in_vaos_ptr);
+                                                         in_vaos_ptr,
+                                                         false); /* present_after_executed */
 
         result_vao_id = in_vaos_ptr->bake_result_vao_id;
 
@@ -370,18 +376,23 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
 }
 
 /** TODO */
-PRIVATE void _raGL_vaos_bake_vao_renderer_thread_callback(ogl_context context,
-                                                          void*       vaos_raw_ptr)
+PRIVATE ral_present_job _raGL_vaos_bake_vao_renderer_thread_callback(ral_context                                                context,
+                                                                     void*                                                      vaos_raw_ptr,
+                                                                     const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     /* Note: The originating thread is blocking a CS during execution of this call-back.
      *       vaos_ptr->bake_* variables are guaranteed not to change until
      *       _raGL_vaos_bake_vao_renderer_thread_callback() leaves.
      */
+    ogl_context                       context_gl      = nullptr;
     const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     GLuint                            result_vao_id   = 0;
     _raGL_vaos*                       vaos_ptr        = reinterpret_cast<_raGL_vaos*>(vaos_raw_ptr);
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
@@ -472,17 +483,25 @@ PRIVATE void _raGL_vaos_bake_vao_renderer_thread_callback(ogl_context context,
 
     /* All done */
     vaos_ptr->bake_result_vao_id = result_vao_id;
+
+    /* No need for a present job - we fire GL calls directly */
+    return nullptr;
 }
 
 /** TODO */
-PRIVATE void _raGL_vaos_release_vaos_renderer_thread_callback(ogl_context context,
-                                                              void*       vaos_raw_ptr)
+PRIVATE ral_present_job _raGL_vaos_release_vaos_renderer_thread_callback(ral_context                                                context,
+                                                                         void*                                                      vaos_raw_ptr,
+                                                                         const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
+    ogl_context                 context_gl      = nullptr;
     ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
     _raGL_vaos*                 vaos_ptr        = reinterpret_cast<_raGL_vaos*>(vaos_raw_ptr);
     uint32_t                    n_vao_vectors   = 0;
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
@@ -518,6 +537,9 @@ PRIVATE void _raGL_vaos_release_vaos_renderer_thread_callback(ogl_context contex
             vao_ptr->vao_id = 0;
         }
     }
+
+    /* No need for a present job - we fire GL calls directly */
+    return nullptr;
 }
 
 

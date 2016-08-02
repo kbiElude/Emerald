@@ -10,6 +10,7 @@
 #include "raGL/raGL_sync.h"
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
@@ -41,8 +42,9 @@ typedef struct
 
 
 /** TODO */
-PRIVATE void _raGL_shader_compile_callback(ogl_context context,
-                                           void*       in_arg)
+PRIVATE ral_present_job _raGL_shader_compile_callback(ral_context                                                context,
+                                                      void*                                                      in_arg,
+                                                      const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_shader* shader_ptr          = reinterpret_cast<_raGL_shader*>(in_arg);
     const char*   shader_body_raw_ptr = system_hashed_ansi_string_get_buffer(shader_ptr->last_compiled_body);
@@ -100,11 +102,15 @@ PRIVATE void _raGL_shader_compile_callback(ogl_context context,
 
     /* Notify contexts about the update */
     raGL_backend_enqueue_sync();
+
+    /* We fire GL calls directly in this func, so no need to return a present job */
+    return nullptr;
 }
 
 /** TODO */
-PRIVATE void _raGL_shader_create_callback(ogl_context context,
-                                          void*       in_arg)
+PRIVATE ral_present_job _raGL_shader_create_callback(ral_context                                                context,
+                                                     void*                                                      in_arg,
+                                                     const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_shader*     shader_ptr    = reinterpret_cast<_raGL_shader*>(in_arg);
     ral_shader_source shader_source = RAL_SHADER_SOURCE_UNKNOWN;
@@ -125,11 +131,15 @@ PRIVATE void _raGL_shader_create_callback(ogl_context context,
 
     /* Force other contexts to sync */
     raGL_backend_enqueue_sync();
+
+    /* We fire GL calls directly in this func, so no need to return a present job */
+    return nullptr;
 }
 
 /** TODO */
-PRIVATE void _raGL_shader_release_callback(ogl_context context,
-                                           void*       in_arg)
+PRIVATE ral_present_job _raGL_shader_release_callback(ral_context                                                context,
+                                                      void*                                                      in_arg,
+                                                      const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_shader* shader_ptr = reinterpret_cast<_raGL_shader*>(in_arg);
 
@@ -143,7 +153,9 @@ PRIVATE void _raGL_shader_release_callback(ogl_context context,
 /** TODO */
 PRIVATE void _raGL_shader_release(void* shader)
 {
-    _raGL_shader* shader_ptr = reinterpret_cast<_raGL_shader*>(shader);
+    ral_context           context_ral       = nullptr;
+    ral_rendering_handler rendering_handler = nullptr;
+    _raGL_shader*         shader_ptr        = reinterpret_cast<_raGL_shader*>(shader);
 
     if (shader_ptr->callback_manager != nullptr)
     {
@@ -159,9 +171,17 @@ PRIVATE void _raGL_shader_release(void* shader)
         shader_ptr->shader_info_log = nullptr;
     }
 
-    ogl_context_request_callback_from_context_thread(shader_ptr->context,
+    ogl_context_get_property(shader_ptr->context,
+                             OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                            &context_ral);
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
+
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                      _raGL_shader_release_callback,
-                                                     shader_ptr);
+                                                     shader_ptr,
+                                                     false); /* present_after_executed */
 }
 
 /** Please see header for specification */
@@ -192,10 +212,25 @@ PUBLIC bool raGL_shader_compile(raGL_shader shader)
 
     if (!shader_ptr->has_been_compiled)
     {
-        ogl_context_request_callback_from_context_thread((current_context != shader_ptr->context && current_context != nullptr) ? current_context
-                                                                                                                                : shader_ptr->context,
+        ral_context           context_ral       = nullptr;
+        ral_rendering_handler rendering_handler = nullptr;
+
+        if (shader_ptr->context != current_context)
+        {
+            current_context = shader_ptr->context;
+        }
+
+        ogl_context_get_property(current_context,
+                                 OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                &context_ral);
+        ral_context_get_property(context_ral,
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                &rendering_handler);
+
+        ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_shader_compile_callback,
-                                                         shader_ptr);
+                                                         shader_ptr,
+                                                         false); /* present_after_executed */
 
         result                        = shader_ptr->compile_status;
         shader_ptr->has_been_compiled = true;
@@ -214,11 +249,15 @@ PUBLIC raGL_shader raGL_shader_create(ral_context context_ral,
                                       ogl_context context_ogl,
                                       ral_shader  shader_ral)
 {
-    system_hashed_ansi_string shader_name = nullptr;
+    ral_rendering_handler     rendering_handler = nullptr;
+    system_hashed_ansi_string shader_name       = nullptr;
 
-    ral_shader_get_property(shader_ral,
-                            RAL_SHADER_PROPERTY_NAME,
-                           &shader_name);
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
+    ral_shader_get_property (shader_ral,
+                             RAL_SHADER_PROPERTY_NAME,
+                            &shader_name);
 
     ASSERT_DEBUG_SYNC(ral_context_get_shader_by_name(context_ral,
                                                      shader_name) == nullptr,
@@ -284,9 +323,10 @@ PUBLIC raGL_shader raGL_shader_create(ral_context context_ral,
         }
 
         /* Carry on */
-        ogl_context_request_callback_from_context_thread(context_ogl,
+        ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_shader_create_callback,
-                                                         new_shader_ptr);
+                                                         new_shader_ptr,
+                                                         false); /* present_after_executed */
     }
 
     return (raGL_shader) new_shader_ptr;

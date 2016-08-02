@@ -422,11 +422,16 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
 }
 
 /** TODO */
-PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_context context,
-                                                                           void*       user_arg)
+PRIVATE ral_present_job _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ral_context                                                context_ral,
+                                                                                      void*                                                      user_arg,
+                                                                                      const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
-    _ogl_context*                context_ptr            = reinterpret_cast<_ogl_context*>(context);
+    _ogl_context*                context_ptr            = nullptr;
     PFNGLGETINTERNALFORMATIVPROC pGLGetInternalformativ = nullptr;
+
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_ptr);
 
     /* Determine all supported n_samples for the internalformat we intend to use for the color attachment */
     struct _internalformat
@@ -483,6 +488,9 @@ PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback(ogl_c
              *internalformat_ptr->samples_ptr = nullptr;
          }
     }
+
+    /* We fire GL calls directly from this entry-point, so no need to return a present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -3135,6 +3143,7 @@ PUBLIC void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
     ral_context             root_context                           = nullptr;
     ogl_context             root_context_gl                        = nullptr;
     _ogl_context*           root_context_gl_ptr                    = nullptr;
+    ral_rendering_handler   root_context_rh                        = nullptr;
 
     result = _ogl_context_get_attachment_formats_for_system_pixel_format(pf,
                                                                         &format_color,
@@ -3163,15 +3172,19 @@ PUBLIC void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
     ral_context_get_property(root_context,
                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
                             &root_context_gl);
+    ral_context_get_property(root_context,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &root_context_rh);
 
     root_context_gl_ptr = reinterpret_cast<_ogl_context*>(root_context_gl);
 
     root_context_gl_ptr->msaa_enumeration_color_internalformat         = raGL_utils_get_ogl_enum_for_ral_format(format_color);
     root_context_gl_ptr->msaa_enumeration_depth_stencil_internalformat = raGL_utils_get_ogl_enum_for_ral_format(format_depth_stencil);
 
-    ogl_context_request_callback_from_context_thread(root_context_gl,
+    ral_rendering_handler_request_rendering_callback(root_context_rh,
                                                      _ogl_context_enumerate_msaa_samples_rendering_thread_callback,
-                                                     nullptr); /* user_arg */
+                                                     nullptr,
+                                                     false); /* present_after_executed */
 
     /* Extract the information we gathered in the rendering thread. Since the number of samples
      * used for color & depth attachments must match, we can only return values that are supported

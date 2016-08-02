@@ -8,6 +8,8 @@
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_framebuffer.h"
 #include "raGL/raGL_texture.h"
+#include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_texture_view.h"
 #include "ral/ral_utils.h"
 #include "system/system_callback_manager.h"
@@ -18,13 +20,15 @@ typedef struct _raGL_framebuffer
 {
     /* NOTE: Draw / read buffers are managed externally */
 
-    GLint id; /* NOT owned */
+    ogl_context context;
+    GLint       id; /* NOT owned */
 
 
     _raGL_framebuffer(ogl_context in_context,
                       GLint       in_fb_id)
     {
-        id = in_fb_id;
+        context = in_context;
+        id      = in_fb_id;
 
         /* NOTE: Only GL is supported at the moment. */
         ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
@@ -39,7 +43,8 @@ typedef struct _raGL_framebuffer
 
     ~_raGL_framebuffer()
     {
-        /* Do not release the framebuffer. Object life-time is handled by raGL_backend. */
+        ASSERT_DEBUG_SYNC(id == 0,
+                          "raGL_framebuffer instance about to be destroyed with FB id != 0");
     }
 } _raGL_framebuffer;
 
@@ -64,11 +69,36 @@ typedef struct _raGL_framebuffer_init_rendering_thread_callback_data
 
 
 /** TODO */
-PRIVATE void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context,
-                                                             void*       user_arg)
+PRIVATE ral_present_job _raGL_framebuffer_deinit_rendering_thread_calback(ral_context                                                context_ral,
+                                                                          void*                                                      user_arg,
+                                                                          const ral_rendering_handler_rendering_callback_frame_data* unused)
+{
+    ogl_context                       context         = nullptr;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
+    _raGL_framebuffer*                fb_ptr          = reinterpret_cast<_raGL_framebuffer*>(user_arg);
+
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+
+    entrypoints_ptr->pGLDeleteFramebuffers(1, /* n */
+                                           reinterpret_cast<const GLuint*>(&fb_ptr->id) );
+
+    /* We issue GL calls directly from this entrypoint, so we don't need a present job */
+    return nullptr;
+}
+
+/** TODO */
+PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_context                                                context_ral,
+                                                                        void*                                                      user_arg,
+                                                                        const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_framebuffer_init_rendering_thread_callback_data*    args_ptr            = reinterpret_cast<_raGL_framebuffer_init_rendering_thread_callback_data*>(user_arg);
     raGL_backend                                              backend_gl          = nullptr;
+    ogl_context                                               context             = nullptr;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr = nullptr;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = nullptr;
 
@@ -78,6 +108,10 @@ PRIVATE void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context
                       "Input callback args are nullptr.");
 
     /* Iterate over all attachments */
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context);
+
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BACKEND,
                             &backend_gl);
@@ -204,7 +238,7 @@ PRIVATE void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context
                         }
                         else
                         {
-                            /* TODO: This is a bit tricky and need to be implemented carefully. */
+                            /* TODO: This is a bit tricky and needs to be implemented carefully. */
                             ASSERT_DEBUG_SYNC(texture_view_n_base_layer == 0,
                                               "Invalid base layer specified.");
                             ASSERT_DEBUG_SYNC(false,
@@ -224,12 +258,18 @@ PRIVATE void _raGL_framebuffer_init_rendering_thread_calback(ogl_context context
         }
     }
 
-    /* Make sure the FB is complete */
+    /* Make sure the FB is complete.
+     *
+     * NOTE: Completeness should be checked in regard for each context state configuration we use. Oh well.
+     */
     GLenum completeness_status = entrypoints_dsa_ptr->pGLCheckNamedFramebufferStatusEXT(args_ptr->fbo_ptr->id,
                                                                                         GL_DRAW_FRAMEBUFFER);
 
     ASSERT_DEBUG_SYNC(completeness_status == GL_FRAMEBUFFER_COMPLETE,
                       "Incomplete framebuffer reported.");
+
+    /* We fire GL calls directly from this entrypoint, so it's safe to return null here */
+    return nullptr;
 }
 
 /** Please see header for specification */
@@ -251,10 +291,20 @@ PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
                                                                             opt_ds_attachment,
                                                                             new_fb_ptr,
                                                                             n_color_attachments);
+        ral_context                                           context_ral;
+        ral_rendering_handler                                 rendering_handler;
 
-        ogl_context_request_callback_from_context_thread(context,
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                &context_ral);
+        ral_context_get_property(context_ral,
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                &rendering_handler);
+
+        ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_framebuffer_init_rendering_thread_calback,
-                                                        &callback_data);
+                                                        &callback_data,
+                                                         false); /* present_after_executed */
     }
 
     return (raGL_framebuffer) new_fb_ptr;
@@ -302,8 +352,24 @@ end:
 /** Please see header for specification */
 PUBLIC void raGL_framebuffer_release(raGL_framebuffer fb)
 {
+    ral_context           context_ral       = nullptr;
+    _raGL_framebuffer*    fb_ptr            = reinterpret_cast<_raGL_framebuffer*>(fb);
+    ral_rendering_handler rendering_handler = nullptr;
+
     ASSERT_DEBUG_SYNC(fb != nullptr,
                       "Input framebuffer is nullptr");
+
+    ogl_context_get_property(fb_ptr->context,
+                             OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                            &context_ral);
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
+
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
+                                                     _raGL_framebuffer_deinit_rendering_thread_calback,
+                                                     fb_ptr,
+                                                     false); /* present_after_executed */
 
     /* Safe to release the instance at this point */
     delete reinterpret_cast<_raGL_framebuffer*>(fb);

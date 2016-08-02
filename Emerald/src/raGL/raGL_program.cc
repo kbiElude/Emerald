@@ -13,6 +13,7 @@
 #include "raGL/raGL_utils.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_utils.h"
 #include "system/system_assertions.h"
@@ -115,32 +116,36 @@ typedef struct
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void _raGL_program_attach_shader_callback   (ogl_context             context,
-                                                    void*                    in_arg);
-/** TODO */                                         
-PRIVATE void _raGL_program_clear_bindings_metadata  (_raGL_program*          program_ptr,
-                                                     bool                    should_release);
-PRIVATE void _raGL_program_create_callback          (ogl_context             context,
-                                                    void*                    in_arg);
-PRIVATE char*_raGL_program_get_binary_blob_file_name(_raGL_program*          program_ptr);
-PRIVATE char*_raGL_program_get_source_code_file_name(_raGL_program*          program_ptr);
-PRIVATE void _raGL_program_link_callback            (ogl_context             context,
-                                                     void*                   in_arg);
-PRIVATE bool _raGL_program_load_binary_blob         (ogl_context,
-                                                     _raGL_program*          program_ptr);
-PRIVATE void _raGL_program_release                  (void*                   program);
-PRIVATE void _raGL_program_release_active_attributes(system_resizable_vector active_attributes);
-PRIVATE void _raGL_program_release_active_uniforms  (system_resizable_vector active_uniforms);
-PRIVATE void _raGL_program_release_callback         (ogl_context             context,
-                                                     void*                   in_arg);
-PRIVATE void _raGL_program_save_binary_blob         (ogl_context,
-                                                     _raGL_program*          program_ptr);
-PRIVATE void _raGL_program_save_shader_sources      (_raGL_program*          program_ptr);
+PRIVATE ral_present_job _raGL_program_attach_shader_callback   (ral_context                                                context,
+                                                                void*                                                      in_arg,
+                                                                const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE void            _raGL_program_clear_bindings_metadata  (_raGL_program*                                             program_ptr,
+                                                                bool                                                       should_release);
+PRIVATE ral_present_job _raGL_program_create_callback          (ral_context                                                context,
+                                                                void*                                                      in_arg,
+                                                                const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE char*           _raGL_program_get_binary_blob_file_name(_raGL_program*                                             program_ptr);
+PRIVATE char*           _raGL_program_get_source_code_file_name(_raGL_program*                                             program_ptr);
+PRIVATE ral_present_job _raGL_program_link_callback            (ral_context                                                context,
+                                                                void*                                                      in_arg,
+                                                                const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE bool            _raGL_program_load_binary_blob         (ogl_context,
+                                                                _raGL_program*                                             program_ptr);
+PRIVATE void            _raGL_program_release                  (void*                                                      program);
+PRIVATE void            _raGL_program_release_active_attributes(system_resizable_vector                                    active_attributes);
+PRIVATE void            _raGL_program_release_active_uniforms  (system_resizable_vector                                    active_uniforms);
+PRIVATE ral_present_job _raGL_program_release_callback         (ral_context                                                context,
+                                                                void*                                                      in_arg,
+                                                                const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE void            _raGL_program_save_binary_blob         (ogl_context                                                context,
+                                                                _raGL_program*                                             program_ptr);
+PRIVATE void            _raGL_program_save_shader_sources      (_raGL_program*                                             program_ptr);
 
 
 /** TODO */
-PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
-                                                  void*       in_arg)
+PRIVATE ral_present_job _raGL_program_attach_shader_callback(ral_context                                                context,
+                                                             void*                                                      in_arg,
+                                                             const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_attach_shader_callback_argument* callback_arg_ptr = reinterpret_cast<_raGL_attach_shader_callback_argument*>(in_arg);
     GLuint                                 shader_raGL_id   = 0;
@@ -157,6 +162,9 @@ PRIVATE void _raGL_program_attach_shader_callback(ogl_context context,
 
     /* Sync other contexts to take notice of the new shader attachment */
     raGL_backend_enqueue_sync();
+
+    /* We speak GL here. No need for a present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -196,14 +204,15 @@ PRIVATE void _raGL_program_clear_bindings_metadata(_raGL_program* program_ptr,
 }
 
 /** TODO */
-PRIVATE void _raGL_program_create_callback(ogl_context context,
-                                           void*       in_arg)
+PRIVATE ral_present_job _raGL_program_create_callback(ral_context                                                context,
+                                                      void*                                                      in_arg,
+                                                      const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     raGL_backend   context_backend = nullptr;
     _raGL_program* program_ptr     = reinterpret_cast<_raGL_program*>(in_arg);
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BACKEND,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND,
                             &context_backend);
 
     /* Create a new program */
@@ -260,6 +269,9 @@ PRIVATE void _raGL_program_create_callback(ogl_context context,
 
     /* Force sync of other contexts */
     raGL_backend_enqueue_sync();
+
+    /* We speak GL here. No need for a present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -836,9 +848,11 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
 }
 
 /** TODO */
-PRIVATE void _raGL_program_link_callback(ogl_context context,
-                                         void*       in_arg)
+PRIVATE ral_present_job _raGL_program_link_callback(ral_context                                                context,
+                                                    void*                                                      in_arg,
+                                                    const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
+    ogl_context                  context_gl          = nullptr;
     system_time                  end_time            = 0;
     uint32_t                     execution_time_msec = 0;
     const ogl_context_gl_limits* limits_ptr          = nullptr;
@@ -846,7 +860,10 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     bool                         has_used_binary     = false;
     system_time                  start_time          = system_time_now();
 
-    ogl_context_get_property(context,
+    ral_context_get_property(context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                             &context_gl);
+    ogl_context_get_property(context_gl,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
@@ -861,7 +878,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
     raGL_backend_sync();
 
     /* If program binaries are supportd, see if we've got a blob file already stashed. If so, no need to link at this point */
-    has_used_binary = _raGL_program_load_binary_blob(context,
+    has_used_binary = _raGL_program_load_binary_blob(context_gl,
                                                      program_ptr);
 
     if (!has_used_binary)
@@ -886,7 +903,7 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
         if (!has_used_binary)
         {
             /* Stash the binary to local storage! */
-            _raGL_program_save_binary_blob(context,
+            _raGL_program_save_binary_blob(context_gl,
                                            program_ptr);
 
             /* On debug builds, also stash source code of the shaders that were used
@@ -1176,6 +1193,9 @@ PRIVATE void _raGL_program_link_callback(ogl_context context,
 
     LOG_INFO("Linking time: %u ms",
              execution_time_msec);
+
+    /* We speak GL here. No need for a present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -1390,16 +1410,18 @@ PRIVATE void _raGL_program_on_shader_compile_callback(const void* callback_data,
 /** TODO */
 PRIVATE void _raGL_program_release(void* program)
 {
-    ogl_context    context_gl  = nullptr;
-    _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
+    ral_context           context_ral = nullptr;
+    ral_rendering_handler context_rh  = nullptr;
+    _raGL_program*        program_ptr = reinterpret_cast<_raGL_program*>(program);
 
     ral_context_get_property(program_ptr->context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                            &context_gl);
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &context_rh);
 
-    ogl_context_request_callback_from_context_thread(context_gl,
+    ral_rendering_handler_request_rendering_callback(context_rh,
                                                      _raGL_program_release_callback,
-                                                     program_ptr);
+                                                     program_ptr,
+                                                     false); /* present_after_executed */
 
     /* Release resizable vectors */
     ral_program_attribute* attribute_ptr = nullptr;
@@ -1462,8 +1484,9 @@ PRIVATE void _raGL_program_release_active_uniforms(system_resizable_vector activ
 }
 
 /** TODO */
-PRIVATE void _raGL_program_release_callback(ogl_context context,
-                                            void*       in_arg)
+PRIVATE ral_present_job _raGL_program_release_callback(ral_context                                                context,
+                                                       void*                                                      in_arg,
+                                                       const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(in_arg);
 
@@ -1472,6 +1495,8 @@ PRIVATE void _raGL_program_release_callback(ogl_context context,
 
     raGL_backend_enqueue_sync();
 
+    /* We speak GL here. No need for a present job */
+    return nullptr;
 }
 
 /** TODO */
@@ -1745,14 +1770,28 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program,
     {
         /* Request a rendering thread call-back, so that we can pass the request to the driver */
         _raGL_attach_shader_callback_argument callback_argument;
+        ral_context                           context_ral;
+        ral_rendering_handler                 context_rh;
 
         callback_argument.program_ptr = program_ptr;
         callback_argument.shader      = shader;
 
-        ogl_context_request_callback_from_context_thread((current_context != nullptr && current_context != program_context) ? current_context
-                                                                                                                            : program_context,
+        if (current_context != program_context)
+        {
+            current_context = program_context;
+        }
+
+        ogl_context_get_property(current_context,
+                                 OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                 &context_ral);
+        ral_context_get_property (context_ral,
+                                  RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                 &context_rh);
+
+        ral_rendering_handler_request_rendering_callback(context_rh,
                                                          _raGL_program_attach_shader_callback,
-                                                        &callback_argument);
+                                                        &callback_argument,
+                                                         false); /* present_after_executed */
 
         result = true;
     }
@@ -1866,9 +1905,16 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
         }
 
         /* Carry on */
-        ogl_context_request_callback_from_context_thread(context_gl,
+        ral_rendering_handler context_rh = nullptr;
+
+        ral_context_get_property(context,
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                 &context_rh);
+
+        ral_rendering_handler_request_rendering_callback(context_rh,
                                                          _raGL_program_create_callback,
-                                                         new_program_ptr);
+                                                         new_program_ptr,
+                                                         false); /* present_after_executed */
     }
 
     return (raGL_program) new_program_ptr;
@@ -2263,17 +2309,31 @@ PUBLIC bool raGL_program_link(raGL_program program)
         if (all_shaders_compiled)
         {
             /* Let's go. */
-            ogl_context current_context = ogl_context_get_current_context();
-            ogl_context program_context = nullptr;
+            ogl_context           current_context     = ogl_context_get_current_context();
+            ral_context           current_context_ral = nullptr;
+            ral_rendering_handler current_context_rh  = nullptr;
+            ogl_context           program_context     = nullptr;
 
             ral_context_get_property(program_ptr->context,
                                      RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
                                     &program_context);
 
-            ogl_context_request_callback_from_context_thread( (current_context != nullptr && current_context != program_context) ? current_context
-                                                                                                                                 : program_context,
+            if (current_context != program_context)
+            {
+                current_context = program_context;
+            }
+
+            ogl_context_get_property(current_context,
+                                     OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                    &current_context_ral);
+            ral_context_get_property(current_context_ral,
+                                     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                     &current_context_rh);
+
+            ral_rendering_handler_request_rendering_callback(current_context_rh,
                                                              _raGL_program_link_callback,
-                                                             program);
+                                                             program,
+                                                             false); /* present_after_executed */
 
             result = program_ptr->link_status;
         }
@@ -2295,16 +2355,17 @@ PUBLIC void raGL_program_lock(raGL_program program)
 /** Please see header for specification */
 PUBLIC void raGL_program_release(raGL_program program)
 {
-    ogl_context    context_gl  = nullptr;
-    _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
+    _raGL_program*        program_ptr = reinterpret_cast<_raGL_program*>(program);
+    ral_rendering_handler rh         = nullptr;
 
     ral_context_get_property(program_ptr->context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                            &context_gl);
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rh);
 
-    ogl_context_request_callback_from_context_thread(context_gl,
+    ral_rendering_handler_request_rendering_callback(rh,
                                                      _raGL_program_release_callback,
-                                                     program_ptr);
+                                                     program_ptr,
+                                                     false); /* present_after_executed */
 
     /* Release lock objects */
     ASSERT_DEBUG_SYNC(system_event_wait_single_peek(program_ptr->queries_enabled_event),

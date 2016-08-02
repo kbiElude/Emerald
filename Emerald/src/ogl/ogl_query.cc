@@ -8,6 +8,7 @@
 #include "ogl/ogl_query.h"
 #include "raGL/raGL_rendering_handler.h"
 #include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "system/system_log.h"
 
 
@@ -72,10 +73,12 @@ typedef struct _ogl_query
 
 
 /* Forward declarations */
-PRIVATE void _ogl_query_deinit_renderer_callback(ogl_context context,
-                                                 void*       user_arg);
-PRIVATE void _ogl_query_init_renderer_callback  (ogl_context context,
-                                                 void*       user_arg);
+PRIVATE ral_present_job _ogl_query_deinit_renderer_callback(ral_context                                                context,
+                                                            void*                                                      user_arg,
+                                                            const ral_rendering_handler_rendering_callback_frame_data* unused);
+PRIVATE ral_present_job _ogl_query_init_renderer_callback  (ral_context                                                context,
+                                                            void*                                                      user_arg,
+                                                            const ral_rendering_handler_rendering_callback_frame_data* unused);
 
 
 /** TODO */
@@ -103,14 +106,18 @@ _ogl_query::_ogl_query(ral_context  in_context,
                             &backend);
 
     /* Cache ES/GL entry-points */
-    ogl_context context_gl = nullptr;
+    ogl_context           context_gl        = nullptr;
+    ral_rendering_handler rendering_handler = nullptr;
 
     ral_context_get_property (context,
                               RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
                              &backend_type);
-     ral_context_get_property(in_context,
-                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                             &context_gl);
+    ral_context_get_property(in_context,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context_gl);
+    ral_context_get_property(in_context,
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
     if (backend_type == RAL_BACKEND_TYPE_GL)
     {
@@ -147,24 +154,26 @@ _ogl_query::_ogl_query(ral_context  in_context,
     }
 
     /* Initialize the object */
-    ogl_context_request_callback_from_context_thread(context_gl,
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                      _ogl_query_init_renderer_callback,
-                                                     this);
+                                                     this,
+                                                     false); /* present_after_executed */
 
 }
 
 /** TODO */
 _ogl_query::~_ogl_query()
 {
-    ogl_context context_gl = nullptr;
+    ral_rendering_handler rendering_handler = nullptr;
 
     ral_context_get_property(context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                            &context_gl);
+                             RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                            &rendering_handler);
 
-    ogl_context_request_callback_from_context_thread(context_gl,
+    ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                      _ogl_query_deinit_renderer_callback,
-                                                     this);
+                                                     this,
+                                                     false); /* present_after_executed */
 
     if (qo_items != nullptr)
     {
@@ -176,8 +185,9 @@ _ogl_query::~_ogl_query()
 
 
 /** TODO */
-PRIVATE void _ogl_query_deinit_renderer_callback(ogl_context context,
-                                                 void*       user_arg)
+PRIVATE ral_present_job _ogl_query_deinit_renderer_callback(ral_context                                                context,
+                                                            void*                                                      user_arg,
+                                                            const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _ogl_query* query_ptr = reinterpret_cast<_ogl_query*>(user_arg);
 
@@ -190,11 +200,15 @@ PRIVATE void _ogl_query_deinit_renderer_callback(ogl_context context,
 
         query_ptr->qo_items[n_item].gl_id = 0;
     }
+
+    /* We speak GL here, no need for a present job */
+    return nullptr;
 }
 
 /** TODO */
-PRIVATE void _ogl_query_init_renderer_callback(ogl_context context,
-                                               void*       user_arg)
+PRIVATE ral_present_job _ogl_query_init_renderer_callback(ral_context                                                context,
+                                                          void*                                                      user_arg,
+                                                          const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     _ogl_query* query_ptr = reinterpret_cast<_ogl_query*>(user_arg);
 
@@ -205,6 +219,9 @@ PRIVATE void _ogl_query_init_renderer_callback(ogl_context context,
         query_ptr->pGLGenQueries(1, /* n */
                                 &query_ptr->qo_items[n_item].gl_id);
     }
+
+    /* We speak GL here, don't need a present job. */
+    return nullptr;
 }
 
 

@@ -7,6 +7,8 @@
 #include "ogl/ogl_context.h"
 #include "raGL/raGL_sampler.h"
 #include "raGL/raGL_utils.h"
+#include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_sampler.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
@@ -69,13 +71,15 @@ typedef struct _raGL_sampler
 
 
 /** TODO */
-PRIVATE void _raGL_sampler_init_rendering_thread_callback(ogl_context context,
-                                                          void*       sampler)
+PRIVATE ral_present_job _raGL_sampler_init_rendering_thread_callback(ral_context                                                context_ral,
+                                                                     void*                                                      sampler,
+                                                                     const ral_rendering_handler_rendering_callback_frame_data* unused)
 {
     ral_color               border_color;
     GLenum                  compare_op_gl           = GL_NONE;
     ral_compare_op          compare_op_ral          = RAL_COMPARE_OP_UNKNOWN;
     bool                    compare_mode_enabled    = false;
+    ogl_context             context                 = nullptr;
     bool                    is_anisotropy_supported = false;
     float                   lod_bias;
     GLenum                  mag_filter_gl        = GL_NONE;
@@ -97,6 +101,9 @@ PRIVATE void _raGL_sampler_init_rendering_thread_callback(ogl_context context,
     LOG_ERROR("Performance warning: raGL_sampler sync request.");
 
     /* Sanity checks */
+    ral_context_get_property(context_ral,
+                             RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                            &context);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_TEXTURE_FILTER_ANISOTROPIC,
                             &is_anisotropy_supported);
@@ -237,6 +244,9 @@ PRIVATE void _raGL_sampler_init_rendering_thread_callback(ogl_context context,
     sampler_ptr->entrypoints_ptr->pGLSamplerParameteri(sampler_ptr->id,
                                                        GL_TEXTURE_WRAP_T,
                                                        wrap_t_gl);
+
+    /* We fire GL calls directly from this func, so no need for a present job */
+    return nullptr;
 }
 
 
@@ -255,12 +265,23 @@ PUBLIC raGL_sampler raGL_sampler_create(ogl_context context,
     if (new_sampler_ptr != nullptr)
     {
         /* Request rendering thread call-back to set up the sampler object */
-        ogl_context_request_callback_from_context_thread(context,
+        ral_context           context_ral       = nullptr;
+        ral_rendering_handler rendering_handler = nullptr;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                                &context_ral);
+        ral_context_get_property(context_ral,
+                                 RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                &rendering_handler);
+
+        ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_sampler_init_rendering_thread_callback,
-                                                         new_sampler_ptr);
+                                                         new_sampler_ptr,
+                                                         false); /* present_after_executed */
     }
 
-    return (raGL_sampler) new_sampler_ptr;
+    return reinterpret_cast<raGL_sampler>(new_sampler_ptr);
 }
 
 
