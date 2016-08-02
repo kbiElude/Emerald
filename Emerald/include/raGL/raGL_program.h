@@ -11,6 +11,18 @@
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
+typedef struct _raGL_program_attribute
+{
+    int32_t                   location;
+    system_hashed_ansi_string name;
+
+    _raGL_program_attribute()
+    {
+        location = -1;
+        name     = nullptr;
+    }
+} _raGL_program_attribute;
+
 typedef enum
 {
     /* settable; uint32_t */
@@ -70,6 +82,11 @@ PUBLIC bool raGL_program_attach_shader(raGL_program program_raGL,
  **/
 PUBLIC raGL_program raGL_program_create(ral_context context,
                                         ral_program program_ral);
+
+/** TODO */
+PUBLIC bool raGL_program_get_attribute_by_name(const raGL_program              program,
+                                               system_hashed_ansi_string       name,
+                                               const _raGL_program_attribute** out_attribute_ptr);
 
 /** TODO */
 PUBLIC void raGL_program_get_block_property(const raGL_program          program,

@@ -34,18 +34,6 @@ const char* file_blob_prefix       = "temp_shader_blob_";
 const char* file_sourcecode_prefix = "temp_shader_sourcecode_";
 
 /** Internal type definitions */
-typedef struct _raGL_program_attribute
-{
-    int32_t                   location;
-    system_hashed_ansi_string name;
-
-    _raGL_program_attribute()
-    {
-        location = -1;
-        name     = nullptr;
-    }
-} _raGL_program_attribute;
-
 typedef struct _raGL_program_block_binding
 {
     uint32_t                  block_index;

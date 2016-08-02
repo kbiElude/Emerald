@@ -1228,9 +1228,6 @@ DECLARE_HANDLE(ogl_context);
     DECLARE_HANDLE(ogl_context_linux);
 #endif
 
-/** Pipeline handle */
-DECLARE_HANDLE(ogl_pipeline);
-
 /** TODO.
  *
  *  @param context           TODO

@@ -1,3 +1,13 @@
+#if 0
+
+TODO: to be removed. Pipeline functionality needs to be moved as below:
+
+      * Queries need to be assigned at present task level.
+      * Query results are to be gathered and averaged at RAL level. ral_rendering_handler
+        is probably the most suitable location for this.
+      * Query results should be rendered also at RAL level.
+
+
 /**
  *
  * Emerald (kbi/elude @2013-2016)
@@ -820,3 +830,5 @@ PUBLIC ui ogl_pipeline_get_ui(ogl_pipeline instance)
 {
     return reinterpret_cast<_ogl_pipeline*>(instance)->ui_instance;
 }
+
+#endif

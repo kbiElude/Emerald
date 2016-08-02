@@ -33,7 +33,6 @@ static system_hashed_ansi_string _object_type_ocl_kdtree_hashed_ansi_string     
 static system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_string                            = nullptr;
 static system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = nullptr;
 static system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = nullptr;
-static system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = nullptr;
 static system_hashed_ansi_string _object_type_ogl_textures_hashed_ansi_string                          = nullptr;
 static system_hashed_ansi_string _object_type_postprocessing_bloom_hashed_ansi_string                  = nullptr;
 static system_hashed_ansi_string _object_type_postprocessing_blur_poisson_hashed_ansi_string           = nullptr;
@@ -115,7 +114,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OCL_KERNEL:                                      return _object_type_ocl_kernel_hashed_ansi_string;
         case OBJECT_TYPE_OCL_PROGRAM:                                     return _object_type_ocl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
         case OBJECT_TYPE_OGL_TEXTURE:                                     return _object_type_ogl_textures_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLOOM:                            return _object_type_postprocessing_bloom_hashed_ansi_string;
         case OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON:                     return _object_type_postprocessing_blur_poisson_hashed_ansi_string;
@@ -369,7 +367,6 @@ PUBLIC void _object_manager_init()
     _object_type_ocl_kernel_hashed_ansi_string                            = system_hashed_ansi_string_create("OpenCL Kernels");
     _object_type_ocl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Programs");
     _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
-    _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
     _object_type_ogl_textures_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Textures");
     _object_type_postprocessing_bloom_hashed_ansi_string                  = system_hashed_ansi_string_create("Post-processing Bloom");
     _object_type_postprocessing_blur_poisson_hashed_ansi_string           = system_hashed_ansi_string_create("Post-processing Blur Poisson");

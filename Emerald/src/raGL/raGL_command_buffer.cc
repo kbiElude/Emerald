@@ -1656,15 +1656,11 @@ void _raGL_command_buffer::bake_gfx_state()
     if (static_scissor_boxes_enabled)
     {
         uint32_t                                         n_scissor_boxes              = 0;
-        bool                                             scissor_test_enabled         = false;
         ral_command_buffer_set_scissor_box_command_info* set_scissor_box_commands_ral = nullptr;
 
         ral_gfx_state_get_property(bake_state.active_gfx_state,
                                    RAL_GFX_STATE_PROPERTY_N_STATIC_SCISSOR_BOXES_AND_VIEWPORTS,
                                   &n_scissor_boxes);
-        ral_gfx_state_get_property(bake_state.active_gfx_state,
-                                   RAL_GFX_STATE_PROPERTY_SCISSOR_TEST_ENABLED,
-                                  &scissor_test_enabled);
         ral_gfx_state_get_property(bake_state.active_gfx_state,
                                    RAL_GFX_STATE_PROPERTY_STATIC_SCISSOR_BOXES,
                                   &set_scissor_box_commands_ral);
@@ -3720,12 +3716,16 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
      *
      * In order to avoid doing insensible bind calls all the time, we cache configured VA state
      * and bind corresponding VAOs at draw call time. */
-    raGL_backend backend_raGL = nullptr;
-    raGL_buffer  buffer_raGL  = nullptr;
+    const _raGL_program_attribute* attribute_ptr = nullptr;
+    raGL_backend                   backend_raGL  = nullptr;
+    raGL_buffer                    buffer_raGL   = nullptr;
 
-    ASSERT_DEBUG_SYNC(command_ral_ptr->location < static_cast<uint32_t>(limits_ptr->max_vertex_attribs) &&
-                      command_ral_ptr->location < N_MAX_VERTEX_ATTRIBUTES,
-                      "Invalid vertex attribute index requested.");
+    raGL_program_get_attribute_by_name(bake_state.active_program,
+                                       command_ral_ptr->name,
+                                      &attribute_ptr);
+
+    ASSERT_DEBUG_SYNC(attribute_ptr != nullptr,
+                      "Invalid vertex attribute requested.");
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BACKEND,
@@ -3738,13 +3738,13 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
     ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
                       "No raGL buffer instance found for the specified RAL buffer instance.");
 
-    if (bake_state.vbs[command_ral_ptr->location].buffer_raGL  != buffer_raGL                   ||
-        bake_state.vbs[command_ral_ptr->location].start_offset != command_ral_ptr->start_offset)
+    if (bake_state.vbs[attribute_ptr->location].buffer_raGL  != buffer_raGL                   ||
+        bake_state.vbs[attribute_ptr->location].start_offset != command_ral_ptr->start_offset)
     {
         /* Need to update the VA configuration */
-        bake_state.vbs[command_ral_ptr->location].buffer_raGL  = buffer_raGL;
-        bake_state.vbs[command_ral_ptr->location].start_offset = command_ral_ptr->start_offset;
-        bake_state.vao_dirty                                   = true;
+        bake_state.vbs[attribute_ptr->location].buffer_raGL  = buffer_raGL;
+        bake_state.vbs[attribute_ptr->location].start_offset = command_ral_ptr->start_offset;
+        bake_state.vao_dirty                                 = true;
     }
 }
 

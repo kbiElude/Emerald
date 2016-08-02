@@ -51,7 +51,6 @@ typedef struct _demo_timeline
     ral_context             context;
     system_critical_section cs;
     system_time             duration;
-    ogl_pipeline            rendering_pipeline;
     system_hash64map        segment_id_to_postprocessing_segment_map; /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
     system_hash64map        segment_id_to_video_segment_map;          /* maps system_timeline_segment_id to _demo_timeline_segment_item instance */
 
@@ -81,14 +80,6 @@ typedef struct _demo_timeline
         context                                  = in_context;
         cs                                       = system_critical_section_create();
         duration                                 = 0;
-        rendering_pipeline                       = ogl_pipeline_create(in_context,
-#ifdef _DEBUG
-                                                                       true, /* should_overlay_performance_info */
-#else
-                                                                       false, /* should_overlay_performance_info */
-#endif
-                                                                       system_hashed_ansi_string_create("Demo timeline rendering pipeline") );
-
         postprocessing_segments                  = system_resizable_vector_create(4  /* capacity */);
         segment_cache_vector                     = system_resizable_vector_create(16 /* capacity */);
         video_segments                           = system_resizable_vector_create(4  /* capacity */);
@@ -98,9 +89,6 @@ typedef struct _demo_timeline
 
         postprocessing_segment_id_counter        = 0;
         video_segment_id_counter                 = 0;
-
-        ASSERT_DEBUG_SYNC (rendering_pipeline != nullptr,
-                           "Could not spawn a rendering pipeline instance.");
 
         ral_context_retain(in_context);
     }
@@ -119,13 +107,6 @@ typedef struct _demo_timeline
             system_critical_section_release(cs);
 
             cs = nullptr;
-        }
-
-        if (rendering_pipeline != nullptr)
-        {
-            ogl_pipeline_release(rendering_pipeline);
-
-            rendering_pipeline = nullptr;
         }
 
         if (postprocessing_segments != nullptr)
@@ -1131,13 +1112,6 @@ PUBLIC EMERALD_API bool demo_timeline_get_property(const demo_timeline    timeli
                                                      out_result_ptr);
             }
             system_critical_section_leave(timeline_ptr->cs);
-
-            break;
-        }
-
-        case DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE:
-        {
-            *reinterpret_cast<ogl_pipeline*>(out_result_ptr) = timeline_ptr->rendering_pipeline;
 
             break;
         }

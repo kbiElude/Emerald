@@ -116,9 +116,6 @@ typedef enum
     /* unsigned int; not settable. */
     DEMO_TIMELINE_PROPERTY_N_VIDEO_SEGMENTS,
 
-    /* ogl_pipeline; not settable. */
-    DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
-
 } demo_timeline_property;
 
 /** Adds a new postprocessing segment to the timeline. Only one postprocessing segment is allowed
