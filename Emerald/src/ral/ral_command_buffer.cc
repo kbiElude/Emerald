@@ -15,6 +15,7 @@
 #include "ral/ral_texture_view.h"
 #include "ral/ral_utils.h"
 #include "system/system_callback_manager.h"
+#include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
 
@@ -46,20 +47,24 @@ typedef struct _ral_command
     union
     {
         ral_command_buffer_clear_rt_binding_command_info        clear_rt_binding_command;
+        ral_command_buffer_copy_buffer_to_buffer_command_info   copy_buffer_to_buffer_command;
         ral_command_buffer_copy_texture_to_texture_command_info copy_texture_to_texture_command;
         ral_command_buffer_dispatch_command_info                dispatch_command;
         ral_command_buffer_draw_call_indexed_command_info       draw_call_indexed_command;
         ral_command_buffer_draw_call_indirect_command_info      draw_call_indirect_command;
         ral_command_buffer_draw_call_regular_command_info       draw_call_regular_command;
         ral_command_buffer_execute_command_buffer_command_info  execute_command_buffer_command;
+        ral_command_buffer_fill_buffer_command_info             fill_buffer_command;
         ral_command_buffer_invalidate_texture_command_info      invalidate_texture_command;
         ral_command_buffer_set_binding_command_info             set_binding_command;
         ral_command_buffer_set_gfx_state_command_info           set_gfx_state_command;
         ral_command_buffer_set_program_command_info             set_program_command;
         ral_command_buffer_set_color_rendertarget_command_info  set_color_rendertarget_command;
+        ral_command_buffer_set_depth_rendertarget_command_info  set_depth_rendertarget_command;
         ral_command_buffer_set_scissor_box_command_info         set_scissor_box_command;
         ral_command_buffer_set_vertex_buffer_command_info       set_vertex_buffer_command;
         ral_command_buffer_set_viewport_command_info            set_viewport_command;
+        ral_command_buffer_update_buffer_command_info           update_buffer_command;
     };
 
     void deinit()
@@ -128,6 +133,22 @@ typedef struct _ral_command
                                            RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                            1, /* n_objects */
                                            (const void**) &execute_command_buffer_command.command_buffer);
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_FILL_BUFFER:
+            {
+                ral_context buffer_context = nullptr;
+
+                ral_buffer_get_property(fill_buffer_command.buffer,
+                                        RAL_BUFFER_PROPERTY_CONTEXT,
+                                       &buffer_context);
+
+                ral_context_delete_objects(buffer_context,
+                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                           1, /* n_objects */
+                                           (const void**) &fill_buffer_command.buffer);
 
                 break;
             }
@@ -213,6 +234,36 @@ typedef struct _ral_command
                 break;
             }
 
+            case RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET:
+            {
+                ral_context texture_view_context = nullptr;
+
+                ral_texture_view_get_property(set_color_rendertarget_command.texture_view,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &texture_view_context);
+                ral_context_delete_objects   (texture_view_context,
+                                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                              1, /* n_objects */
+                                              (const void**) &set_color_rendertarget_command.texture_view);
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_SET_DEPTH_RENDERTARGET:
+            {
+                ral_context rt_context = nullptr;
+
+                ral_texture_view_get_property(set_depth_rendertarget_command.depth_rt,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &rt_context);
+                ral_context_delete_objects   (rt_context,
+                                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                              1, /* n_objects */
+                                              (const void**) &set_depth_rendertarget_command.depth_rt);
+
+                break;
+            }
+
             case RAL_COMMAND_TYPE_SET_GFX_STATE:
             {
                 ral_context gfx_state_context = nullptr;
@@ -243,21 +294,6 @@ typedef struct _ral_command
                 break;
             }
 
-            case RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET:
-            {
-                ral_context texture_view_context = nullptr;
-
-                ral_texture_view_get_property(set_color_rendertarget_command.texture_view,
-                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
-                                             &texture_view_context);
-                ral_context_delete_objects   (texture_view_context,
-                                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                              1, /* n_objects */
-                                              (const void**) &set_color_rendertarget_command.texture_view);
-
-                break;
-            }
-
             case RAL_COMMAND_TYPE_SET_VERTEX_BUFFER:
             {
                 ral_context buffer_context = nullptr;
@@ -269,6 +305,21 @@ typedef struct _ral_command
                                            RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                            1, /* n_objects */
                                            (const void**) &set_vertex_buffer_command.buffer);
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_UPDATE_BUFFER:
+            {
+                ral_context buffer_context = nullptr;
+
+                ral_buffer_get_property   (update_buffer_command.buffer,
+                                           RAL_BUFFER_PROPERTY_CONTEXT,
+                                          &buffer_context);
+                ral_context_delete_objects(buffer_context,
+                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                           1, /* n_objects */
+                                           (const void**) &update_buffer_command.buffer);
 
                 break;
             }
@@ -606,6 +657,93 @@ PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buf
             system_resizable_vector_push(command_buffer_ptr->commands,
                                          new_command_ptr);
         }
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_copy_buffer_to_buffer(ral_command_buffer                                           recording_command_buffer,
+                                                            uint32_t                                                     n_copy_ops,
+                                                            const ral_command_buffer_copy_buffer_to_buffer_command_info* copy_op_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
+    _ral_command*        new_command_ptr    = nullptr;
+
+    if (command_buffer_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer_ptr != nullptr,
+                          "Input command buffer is null");
+
+        goto end;
+    }
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                          "Command buffer not in recording status");
+
+        goto end;
+    }
+
+    for (uint32_t n_copy_op = 0;
+                  n_copy_op < n_copy_ops;
+                ++n_copy_op)
+    {
+        const ral_command_buffer_copy_buffer_to_buffer_command_info& src_command = copy_op_ptrs[n_copy_op];
+
+        #ifdef _DEBUG
+        {
+            uint32_t dst_buffer_size         = 0;
+            uint32_t dst_buffer_start_offset = 0;
+            uint32_t src_buffer_size         = 0;
+            uint32_t src_buffer_start_offset = 0;
+
+            if (src_command.dst_buffer == nullptr ||
+                src_command.src_buffer == nullptr)
+            {
+                ASSERT_DEBUG_SYNC(!(src_command.dst_buffer == nullptr ||
+                                    src_command.src_buffer == nullptr),
+                                  "Destination/source RAL buffer, specified for a buffer->buffer copy op, is null");
+
+                continue;
+            }
+
+            ral_buffer_get_property(src_command.dst_buffer,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &dst_buffer_size);
+            ral_buffer_get_property(src_command.dst_buffer,
+                                    RAL_BUFFER_PROPERTY_START_OFFSET,
+                                   &dst_buffer_start_offset);
+            ral_buffer_get_property(src_command.src_buffer,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &src_buffer_size);
+            ral_buffer_get_property(src_command.src_buffer,
+                                    RAL_BUFFER_PROPERTY_START_OFFSET,
+                                   &src_buffer_start_offset);
+
+            if (src_command.dst_buffer_start_offset + dst_buffer_start_offset + src_command.size > dst_buffer_size ||
+                src_command.src_buffer_start_offset + src_buffer_start_offset + src_command.size > src_buffer_size)
+            {
+                ASSERT_DEBUG_SYNC(!(src_command.dst_buffer_start_offset + src_command.size > dst_buffer_size ||
+                                    src_command.src_buffer_start_offset + src_command.size > src_buffer_size),
+                                  "Data region exceeds destination / source buffer boundary");
+
+                continue;
+            }
+
+            /* TODO: Region overlapping test if dst_buffer == src_buffer */
+        }
+        #endif
+
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+        new_command_ptr->copy_buffer_to_buffer_command = copy_op_ptrs[n_copy_op];
+        new_command_ptr->type                          = RAL_COMMAND_TYPE_COPY_BUFFER_TO_BUFFER;
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
     }
 
 end:
@@ -1156,6 +1294,87 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC void ral_command_buffer_record_fill_buffer(ral_command_buffer                                 recording_command_buffer,
+                                                  uint32_t                                           n_fill_ops,
+                                                  const ral_command_buffer_fill_buffer_command_info* fill_ops_ptr)
+{
+    ral_context          buffer_context     = nullptr;
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(recording_command_buffer != nullptr,
+                      "Specified RAL command buffer instance is NULL");
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    for (uint32_t n_fill_op = 0;
+                  n_fill_op < n_fill_ops;
+                ++n_fill_op)
+    {
+        const ral_command_buffer_fill_buffer_command_info& src_command = fill_ops_ptr[n_fill_op];
+
+        #ifdef _DEBUG
+        {
+            /* Sanity checks */
+            uint32_t buffer_size = 0;
+
+            ASSERT_DEBUG_SYNC(src_command.buffer != nullptr,
+                              "Buffer to fill with DWORDs is null");
+            ASSERT_DEBUG_SYNC(src_command.start_offset % sizeof(uint32_t) == 0,
+                              "Start offset must be a mul of 4");
+
+            ral_buffer_get_property(src_command.buffer,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &buffer_size);
+
+            ASSERT_DEBUG_SYNC(src_command.start_offset < buffer_size,
+                              "Invalid start offset specified.");
+            ASSERT_DEBUG_SYNC(src_command.start_offset + src_command.n_dwords * sizeof(uint32_t) <= buffer_size,
+                              "Buffer overflow condition detected.");
+        }
+        #endif
+
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool));
+
+        new_command_ptr->fill_buffer_command = src_command;
+        new_command_ptr->type                = RAL_COMMAND_TYPE_FILL_BUFFER;
+
+        if (n_fill_op == 0)
+        {
+            ral_buffer_get_property(src_command.buffer,
+                                    RAL_BUFFER_PROPERTY_CONTEXT,
+                                   &buffer_context);
+        }
+        else
+        {
+            ral_context tmp_buffer_context = nullptr;
+
+            ral_buffer_get_property(src_command.buffer,
+                                    RAL_BUFFER_PROPERTY_CONTEXT,
+                                   &tmp_buffer_context);
+
+            ASSERT_DEBUG_SYNC(buffer_context == tmp_buffer_context,
+                              "Specified buffers use different rendering contexts.");
+        }
+
+        ral_context_retain_object(command_buffer_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                  (void*) src_command.buffer);
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_command_buffer_record_invalidate_texture(ral_command_buffer recording_command_buffer,
                                                          ral_texture        texture,
                                                          uint32_t           n_start_mip,
@@ -1455,6 +1674,57 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC void ral_command_buffer_record_set_depth_rendertarget(ral_command_buffer recording_command_buffer,
+                                                             ral_texture_view   depth_rt)
+{
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    #ifdef _DEBUG
+    {
+        ral_format depth_rt_format;
+        bool       depth_rt_format_has_depth_components = false;
+
+        ASSERT_DEBUG_SYNC(depth_rt != nullptr,
+                          "Null texture view specified");
+
+        ral_texture_view_get_property(depth_rt,
+                                      RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                     &depth_rt_format);
+        ral_utils_get_format_property(depth_rt_format,
+                                      RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                     &depth_rt_format_has_depth_components);
+
+        ASSERT_DEBUG_SYNC(depth_rt_format_has_depth_components,
+                          "Depth texture view uses a format which does not contain depth data.");
+    }
+    #endif
+
+    new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+    new_command_ptr->set_depth_rendertarget_command.depth_rt = depth_rt;
+    new_command_ptr->type                                    = RAL_COMMAND_TYPE_SET_DEPTH_RENDERTARGET;
+
+    ral_context_retain_object(command_buffer_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                              depth_rt);
+
+    system_resizable_vector_push(command_buffer_ptr->commands,
+                                 new_command_ptr);
+
+end:
+    ;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
                                                         uint32_t                                               n_scissor_boxes,
                                                         const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs)
@@ -1593,6 +1863,86 @@ PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer          
                                      new_command_ptr);
     }
 
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_record_update_buffer(ral_command_buffer recording_command_buffer,
+                                                    ral_buffer         buffer,
+                                                    uint32_t           start_offset,
+                                                    uint32_t           n_data_bytes,
+                                                    const void*        data)
+{
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
+    _ral_command*        new_command_ptr    = nullptr;
+
+    ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                      "Command buffer not in recording status");
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        goto end;
+    }
+
+    #ifdef _DEBUG
+    {
+        uint32_t buffer_size         = 0;
+        uint32_t buffer_start_offset = -1;
+
+        ral_buffer_get_property(buffer,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &buffer_size);
+        ral_buffer_get_property(buffer,
+                                RAL_BUFFER_PROPERTY_START_OFFSET,
+                               &buffer_start_offset);
+
+        if (start_offset + n_data_bytes > buffer_size - buffer_start_offset)
+        {
+            ASSERT_DEBUG_SYNC(!(start_offset + n_data_bytes > buffer_size - buffer_start_offset),
+                              "Data region specified for the \"update buffer\" command exceeds available buffer space");
+
+            goto end;
+        }
+    }
+    #endif
+
+    new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+    new_command_ptr->update_buffer_command.buffer       = buffer;
+    new_command_ptr->update_buffer_command.size         = n_data_bytes;
+    new_command_ptr->update_buffer_command.start_offset = start_offset;
+    new_command_ptr->type                               = RAL_COMMAND_TYPE_UPDATE_BUFFER;
+
+    if (n_data_bytes > sizeof(new_command_ptr->update_buffer_command.preallocated_data))
+    {
+        LOG_FATAL("Performance warning: need to alloc a heap memory-backed region (%d bytes) for the \"update buffer\" RAL command",
+                  n_data_bytes);
+
+        new_command_ptr->update_buffer_command.alloced_data = new char[n_data_bytes];
+
+        ASSERT_DEBUG_SYNC(new_command_ptr->update_buffer_command.alloced_data != nullptr,
+                          "Out of memory");
+
+        memcpy(new_command_ptr->update_buffer_command.alloced_data,
+               data,
+               n_data_bytes);
+    }
+    else
+    {
+        new_command_ptr->update_buffer_command.alloced_data = nullptr;
+
+        memcpy(new_command_ptr->update_buffer_command.preallocated_data,
+               data,
+               n_data_bytes);
+    }
+
+    ral_context_retain_object(command_buffer_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                              buffer);
+
+    system_resizable_vector_push(command_buffer_ptr->commands,
+                                 new_command_ptr);
 end:
     ;
 }

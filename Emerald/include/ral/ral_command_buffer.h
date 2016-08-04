@@ -305,6 +305,8 @@ typedef struct ral_command_buffer_fill_buffer_command_info
     ral_buffer buffer;
     uint32_t   dword_value;
     uint32_t   n_dwords;
+
+    /* Note: must be divisible by 4 */
     uint32_t   start_offset;
 
 } ral_command_buffer_fill_buffer_command_info;
@@ -430,6 +432,12 @@ typedef struct ral_command_buffer_set_color_rendertarget_command_info
     }
 } ral_command_buffer_set_color_rendertarget_command_info;
 
+typedef struct ral_command_buffer_set_depth_rendertarget_command_info
+{
+    ral_texture_view depth_rt;
+
+} ral_command_buffer_set_depth_rendertarget_command_info;
+
 typedef struct ral_command_buffer_set_scissor_box_command_info
 {
     uint32_t index;
@@ -455,6 +463,19 @@ typedef struct ral_command_buffer_set_viewport_command_info
     float xy         [2];
 } ral_command_buffer_set_viewport_command_info;
 
+typedef struct ral_command_buffer_update_buffer_command_info
+{
+    ral_buffer buffer;
+    uint32_t   size;
+    uint32_t   start_offset;
+
+    /* Only used if size <= sizeof(preallocated_data) */
+    char* alloced_data;
+
+    /* Only used if size > sizeof(preallocated_data) */
+    char  preallocated_data[1024];
+} ral_command_buffer_update_buffer_command_info;
+
 typedef enum
 {
     RAL_COMMAND_BUFFER_STATUS_UNDEFINED,
@@ -465,20 +486,24 @@ typedef enum
 typedef enum
 {
     RAL_COMMAND_TYPE_CLEAR_RT_BINDING,
+    RAL_COMMAND_TYPE_COPY_BUFFER_TO_BUFFER,
     RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE,
     RAL_COMMAND_TYPE_DISPATCH,
     RAL_COMMAND_TYPE_DRAW_CALL_INDEXED,
     RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT,
     RAL_COMMAND_TYPE_DRAW_CALL_REGULAR,
     RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER,
+    RAL_COMMAND_TYPE_FILL_BUFFER,
     RAL_COMMAND_TYPE_INVALIDATE_TEXTURE,
     RAL_COMMAND_TYPE_SET_BINDING,
     RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET,
+    RAL_COMMAND_TYPE_SET_DEPTH_RENDERTARGET,
     RAL_COMMAND_TYPE_SET_GFX_STATE,
     RAL_COMMAND_TYPE_SET_PROGRAM,
     RAL_COMMAND_TYPE_SET_SCISSOR_BOX,
     RAL_COMMAND_TYPE_SET_VERTEX_BUFFER,
     RAL_COMMAND_TYPE_SET_VIEWPORT,
+    RAL_COMMAND_TYPE_UPDATE_BUFFER,
 
     RAL_COMMAND_TYPE_UNKNOWN
 } ral_command_type;
@@ -611,7 +636,6 @@ PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer          
 
 /** TODO
  *
- *  update 
  *  @param data Data to update with. Will be cached at call time, so that @param data
  *              can be freed after the call leaves.
  */
