@@ -986,9 +986,10 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
         /* Set up the sampler */
         ral_sampler_create_info sampler_create_info;
 
-        new_texture_preview_ptr->sampler = ral_sampler_create(new_texture_preview_ptr->context,
-                                                              name,
-                                                             &sampler_create_info);
+        ral_context_create_samplers(new_texture_preview_ptr->context,
+                                    1, /* n_create_info_items */
+                                   &sampler_create_info,
+                                   &new_texture_preview_ptr->sampler);
 
         /* Retrieve the rendering program */
         new_texture_preview_ptr->program = ui_get_registered_program(instance,

@@ -428,14 +428,18 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool_with_create_info(raGL_te
     raGL_texture    result_texture = nullptr;
     ral_texture     temp_texture   = nullptr;
 
-    temp_texture = ral_texture_create(textures_ptr->context_ral,
-                                      system_hashed_ansi_string_create("Temporary RAL texture"),
-                                      info_ptr);
+    ral_context_create_textures(textures_ptr->context_ral,
+                                1, /* n_textures */
+                                info_ptr,
+                                &temp_texture);
 
     result_texture = raGL_textures_get_texture_from_pool(textures,
                                                          temp_texture);
 
-    ral_texture_release(temp_texture);
+    ral_context_delete_objects(textures_ptr->context_ral,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&temp_texture) );
 
     return result_texture;
 }

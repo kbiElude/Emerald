@@ -1004,15 +1004,19 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer_create_info(raGL_
     bool           result      = false;
     ral_buffer     temp_buffer = nullptr;
 
-    temp_buffer = ral_buffer_create(buffers_ptr->context_ral,
-                                    system_hashed_ansi_string_create("Temporary RAL buffer"),
-                                    buffer_create_info_ptr);
+    ral_context_create_buffers(buffers_ptr->context_ral,
+                               1, /* n_buffers */
+                               buffer_create_info_ptr,
+                              &temp_buffer);
 
     result = raGL_buffers_allocate_buffer_memory_for_ral_buffer(buffers,
                                                                 temp_buffer,
                                                                 out_buffer_ptr);
 
-    ral_buffer_release(temp_buffer);
+    ral_context_delete_objects(buffers_ptr->context_ral,
+                               RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&temp_buffer) );
 
     return result;
 }

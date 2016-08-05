@@ -105,7 +105,7 @@ typedef enum
     RAL_BLEND_OP_SUBTRACT_REVERSE,
 } ral_blend_op;
 
-enum
+typedef enum
 {
     RAL_BUFFER_MAPPABILITY_NONE = 0,
 
@@ -152,7 +152,7 @@ typedef struct ral_buffer_client_sourced_update_info
 } ral_buffer_client_sourced_update_info;
 
 
-enum
+typedef enum
 {
     RAL_BUFFER_USAGE_COPY_BIT                     = (1 << 0),
     RAL_BUFFER_USAGE_INDEX_BUFFER_BIT             = (1 << 1),
@@ -448,7 +448,7 @@ typedef struct
 
 } ral_program_variable;
 
-enum
+typedef enum
 {
     /* This queue accepts compute shader invocations */
     RAL_QUEUE_COMPUTE_BIT = 1 << 0,
@@ -1267,7 +1267,7 @@ typedef enum
  * For OpenGL back-end, these bits help determine whether a renderbuffer or a texture
  * should be spawned when creating the raGL_texture instance for a RAL texture.
  */
-enum
+typedef enum
 {
     /* The described texture will be used as a destination for blit operations */
     RAL_TEXTURE_USAGE_BLIT_DST_BIT                 = 1 << 0,

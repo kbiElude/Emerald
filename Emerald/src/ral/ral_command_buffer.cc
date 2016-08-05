@@ -2001,3 +2001,83 @@ PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer)
                                         reinterpret_cast<system_resource_pool_block>(command_buffer) );
 }
 
+/** Please see header for specification */
+PUBLIC bool ral_command_buffer_start_recording(ral_command_buffer command_buffer)
+{
+    _ral_command_buffer* cmd_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(command_buffer);
+    bool                 result         = false;
+
+    /* Sanity checks */
+    if (command_buffer == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer != nullptr,
+                          "A null command buffer was specified");
+
+        goto end;
+    }
+
+    if ( cmd_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDED &&
+        !cmd_buffer_ptr->is_resettable)
+    {
+        ASSERT_DEBUG_SYNC(cmd_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDED && cmd_buffer_ptr->is_resettable,
+                          "Cannot reset a non-resettable command buffer");
+
+        goto end;
+    }
+
+    if (cmd_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        ASSERT_DEBUG_SYNC(cmd_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                          "ral_command_buffer_start_recording() called against a command buffer in a recording state");
+
+        goto end;
+    }
+
+    /* Update the cmd buffer and fire a notification to listening backend. */
+    cmd_buffer_ptr->status = RAL_COMMAND_BUFFER_STATUS_RECORDING;
+
+    system_callback_manager_call_back(cmd_buffer_ptr->callback_manager,
+                                      RAL_COMMAND_BUFFER_CALLBACK_ID_RECORDING_STARTED,
+                                      command_buffer);
+
+    /* All done */
+    result = true;
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC bool ral_command_buffer_stop_recording(ral_command_buffer command_buffer)
+{
+    _ral_command_buffer* cmd_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(command_buffer);
+    bool                 result         = false;
+
+    /* Sanity checks */
+    if (command_buffer == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer != nullptr,
+                          "A null command buffer was specified");
+
+        goto end;
+    }
+
+    if (cmd_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        ASSERT_DEBUG_SYNC(cmd_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                          "ral_command_buffer_stop_recording() called against a command buffer in a non-recording state");
+
+        goto end;
+    }
+
+    /* Update the cmd buffer and fire a notification to listening backend. */
+    cmd_buffer_ptr->status = RAL_COMMAND_BUFFER_STATUS_RECORDED;
+
+    system_callback_manager_call_back(cmd_buffer_ptr->callback_manager,
+                                      RAL_COMMAND_BUFFER_CALLBACK_ID_RECORDING_STOPPED,
+                                      command_buffer);
+
+    /* All done */
+    result = true;
+end:
+    return result;
+}
