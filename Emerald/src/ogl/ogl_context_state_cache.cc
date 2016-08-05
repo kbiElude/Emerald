@@ -54,8 +54,8 @@ typedef struct _ogl_context_state_cache
     GLuint active_rbo_context;
     GLuint active_rbo_local;
 
-    GLint active_scissor_box_context[4];
-    GLint active_scissor_box_local  [4];
+    GLint* active_scissor_boxes_context; /* each scissor box = 4 consecutive GLint values */
+    GLint* active_scissor_boxes_local;   /* each scissor box = 4 consecutive GLint values */
 
     GLuint active_texture_unit_context;
     GLuint active_texture_unit_local;
@@ -63,8 +63,8 @@ typedef struct _ogl_context_state_cache
     GLuint active_vertex_array_object_context;
     GLuint active_vertex_array_object_local;
 
-    GLint  active_viewport_context[4];
-    GLint  active_viewport_local  [4];
+    GLfloat* active_viewports_context; /* each viewport = 4 consecutive GLint values */
+    GLfloat* active_viewports_local;   /* each viewport = 4 consecutive GLint values */
 
     /* Blending */
     GLfloat blend_color_context[4];
@@ -140,6 +140,7 @@ typedef struct _ogl_context_state_cache
     ogl_context context;
 
     const ogl_context_gl_entrypoints_private* entrypoints_private_ptr;
+    const ogl_context_gl_limits*              limits_ptr;
 } _ogl_context_state_cache;
 
 
@@ -157,6 +158,42 @@ PUBLIC ogl_context_state_cache ogl_context_state_cache_create(ogl_context contex
     }
 
     return reinterpret_cast<ogl_context_state_cache>(new_cache_ptr);
+}
+
+/** Please see header for spec */
+PUBLIC void ogl_context_state_cache_get_indexed_property(const ogl_context_state_cache            cache,
+                                                         ogl_context_state_cache_indexed_property property,
+                                                         uint32_t                                 index,
+                                                         void*                                    data)
+{
+    const _ogl_context_state_cache* cache_ptr = reinterpret_cast<const _ogl_context_state_cache*>(cache);
+
+    switch (property)
+    {
+        case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX:
+        {
+            memcpy(data,
+                   cache_ptr->active_scissor_boxes_local + 4 * index,
+                   sizeof(GLint) * 4);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_VIEWPORT:
+        {
+            memcpy(data,
+                   cache_ptr->active_viewports_local + 4 * index,
+                   sizeof(GLint) * 4);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized indexed property was specified.");
+        }
+    }
 }
 
 /** Please see header for spec */
@@ -466,15 +503,6 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
             break;
         }
 
-        case OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX:
-        {
-            memcpy(out_result_ptr,
-                   cache_ptr->active_scissor_box_local,
-                   sizeof(cache_ptr->active_scissor_box_local) );
-
-            break;
-        }
-
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT:
         {
             *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_texture_unit_local;
@@ -489,15 +517,6 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
             break;
         }
 
-        case OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT:
-        {
-            memcpy(out_result_ptr,
-                   cache_ptr->active_viewport_local,
-                   sizeof(cache_ptr->active_viewport_local) );
-
-            break;
-        }
-
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -508,13 +527,14 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
 
 /** Please see header for spec */
 PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                   cache,
-                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr)
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr,
+                                         const ogl_context_gl_limits*              limits_ptr)
 {
-    _ogl_context_state_cache*    cache_ptr  = reinterpret_cast<_ogl_context_state_cache*>(cache);
-    const ogl_context_gl_limits* limits_ptr = nullptr;
+    _ogl_context_state_cache* cache_ptr = reinterpret_cast<_ogl_context_state_cache*>(cache);
 
     /* Cache info in private descriptor */
     cache_ptr->entrypoints_private_ptr = entrypoints_private_ptr;
+    cache_ptr->limits_ptr              = limits_ptr;
 
     /* Set default state: active color mask */
     cache_ptr->active_color_mask_context[0] = GL_TRUE;
@@ -674,18 +694,48 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     cache_ptr->active_rendering_mode_multisample_local = cache_ptr->active_rendering_mode_multisample_context;
 
     /* Set default state: scissor box */
+    ASSERT_DEBUG_SYNC(limits_ptr->max_viewports >= 1,
+                      "Invalid maximum number of viewports reported by the GL implementation");
+
+    cache_ptr->active_scissor_boxes_context = new GLint[4 * limits_ptr->max_viewports];
+    cache_ptr->active_scissor_boxes_local   = new GLint[4 * limits_ptr->max_viewports];
+
     entrypoints_private_ptr->pGLGetIntegerv(GL_SCISSOR_BOX,
-                                            cache_ptr->active_scissor_box_context);
-    memcpy                                 (cache_ptr->active_scissor_box_local,
-                                            cache_ptr->active_scissor_box_context,
-                                            sizeof(cache_ptr->active_scissor_box_local) );
+                                            cache_ptr->active_scissor_boxes_context);
+
+    for (int32_t n_scissor_box = 1;
+                 n_scissor_box < limits_ptr->max_viewports;
+               ++n_scissor_box)
+    {
+        memcpy(cache_ptr->active_scissor_boxes_context + 4 * n_scissor_box,
+               cache_ptr->active_scissor_boxes_context,
+               sizeof(GLint) * 4);
+    }
+
+    memcpy(cache_ptr->active_scissor_boxes_local,
+           cache_ptr->active_scissor_boxes_context,
+           sizeof(GLint) * 4 * limits_ptr->max_viewports);
 
     /* Set default state: viewport */
-    entrypoints_private_ptr->pGLGetIntegerv(GL_VIEWPORT,
-                                            cache_ptr->active_viewport_context);
-    memcpy                                 (cache_ptr->active_viewport_local,
-                                            cache_ptr->active_viewport_context,
-                                            sizeof(cache_ptr->active_viewport_local) );
+    cache_ptr->active_viewports_context = new GLfloat[4 * limits_ptr->max_viewports];
+    cache_ptr->active_viewports_local   = new GLfloat[4 * limits_ptr->max_viewports];
+
+    entrypoints_private_ptr->pGLGetFloatv(GL_SCISSOR_BOX,
+                                          cache_ptr->active_viewports_context);
+
+    for (int32_t n_viewport = 1;
+                 n_viewport < limits_ptr->max_viewports;
+               ++n_viewport)
+    {
+        memcpy(cache_ptr->active_viewports_context + 4 * n_viewport,
+               cache_ptr->active_viewports_context,
+               sizeof(GLfloat) * 4);
+    }
+
+    memcpy(cache_ptr->active_viewports_local,
+           cache_ptr->active_viewports_context,
+           sizeof(GLfloat) * 4 * limits_ptr->max_viewports);
+
 }
 
 /** Please see header for spec */
@@ -693,10 +743,74 @@ PUBLIC void ogl_context_state_cache_release(ogl_context_state_cache cache)
 {
     _ogl_context_state_cache* cache_ptr = reinterpret_cast<_ogl_context_state_cache*>(cache);
 
+    if (cache_ptr->active_scissor_boxes_context != nullptr)
+    {
+        delete [] cache_ptr->active_scissor_boxes_context;
+
+        cache_ptr->active_scissor_boxes_context = nullptr;
+    }
+
+    if (cache_ptr->active_scissor_boxes_local != nullptr)
+    {
+        delete [] cache_ptr->active_scissor_boxes_local;
+
+        cache_ptr->active_scissor_boxes_local = nullptr;
+    }
+
+    if (cache_ptr->active_viewports_context != nullptr)
+    {
+        delete [] cache_ptr->active_viewports_context;
+
+        cache_ptr->active_viewports_context = nullptr;
+    }
+
+    if (cache_ptr->active_viewports_local != nullptr)
+    {
+        delete [] cache_ptr->active_viewports_local;
+
+        cache_ptr->active_viewports_local = nullptr;
+    }
+
     /* Done */
     delete cache_ptr;
 
     cache_ptr = nullptr;
+}
+
+/* Please see header for spec */
+PUBLIC void ogl_context_state_cache_set_indexed_property(ogl_context_state_cache                  cache,
+                                                         ogl_context_state_cache_indexed_property property,
+                                                         uint32_t                                 index,
+                                                         const void*                              data)
+{
+    _ogl_context_state_cache* cache_ptr = reinterpret_cast<_ogl_context_state_cache*>(cache);
+
+    switch (property)
+    {
+        case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX:
+        {
+            memcpy(cache_ptr->active_scissor_boxes_local + 4 * index,
+                   data,
+                   sizeof(GLint) * 4);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_VIEWPORT:
+        {
+            memcpy(cache_ptr->active_viewports_local + 4 * index,
+                   data,
+                   sizeof(GLint) * 4);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized indexed property was specified.");
+        }
+    }
 }
 
 /* Please see header for spec */
@@ -1029,15 +1143,6 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
             break;
         }
 
-        case OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX:
-        {
-            memcpy(cache_ptr->active_scissor_box_local,
-                   data,
-                   sizeof(cache_ptr->active_scissor_box_local) );
-
-            break;
-        }
-
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT:
         {
             cache_ptr->active_texture_unit_local = *reinterpret_cast<const GLuint*>(data);
@@ -1048,15 +1153,6 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT:
         {
             cache_ptr->active_vertex_array_object_local = *reinterpret_cast<const GLuint*>(data);
-
-            break;
-        }
-
-        case OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT:
-        {
-            memcpy(cache_ptr->active_viewport_local,
-                   data,
-                   sizeof(cache_ptr->active_viewport_local) );
 
             break;
         }
@@ -1438,20 +1534,24 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
         }
 
         /* Scissor box */
-        if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX) &&
-            (cache_ptr->active_scissor_box_context[0] != cache_ptr->active_scissor_box_local[0] ||
-             cache_ptr->active_scissor_box_context[1] != cache_ptr->active_scissor_box_local[1] ||
-             cache_ptr->active_scissor_box_context[2] != cache_ptr->active_scissor_box_local[2] ||
-             cache_ptr->active_scissor_box_context[3] != cache_ptr->active_scissor_box_local[3]))
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX)
         {
-            cache_ptr->entrypoints_private_ptr->pGLScissor(cache_ptr->active_scissor_box_local[0],
-                                                           cache_ptr->active_scissor_box_local[1],
-                                                           cache_ptr->active_scissor_box_local[2],
-                                                           cache_ptr->active_scissor_box_local[3]);
+            for (int32_t n_scissor_box = 0;
+                         n_scissor_box < cache_ptr->limits_ptr->max_viewports;
+                       ++n_scissor_box)
+            {
+                if (memcmp(cache_ptr->active_scissor_boxes_context + n_scissor_box * 4,
+                           cache_ptr->active_scissor_boxes_local   + n_scissor_box * 4,
+                           4 * sizeof(GLint) ) != 0)
+                {
+                    cache_ptr->entrypoints_private_ptr->pGLScissorIndexedv(n_scissor_box,
+                                                                           cache_ptr->active_scissor_boxes_local + (n_scissor_box * 4) );
 
-            memcpy(cache_ptr->active_scissor_box_context,
-                   cache_ptr->active_scissor_box_local,
-                   sizeof(cache_ptr->active_scissor_box_context) );
+                    memcpy(cache_ptr->active_scissor_boxes_context + n_scissor_box * 4,
+                           cache_ptr->active_scissor_boxes_local   + n_scissor_box * 4,
+                           sizeof(GLint) * 4);
+                }
+            }
         }
 
         /* Texture unit */
@@ -1504,20 +1604,24 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
         }
 
         /* Viewport */
-        if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT)                            &&
-            (cache_ptr->active_viewport_context[0] != cache_ptr->active_viewport_local[0] ||
-             cache_ptr->active_viewport_context[1] != cache_ptr->active_viewport_local[1] ||
-             cache_ptr->active_viewport_context[2] != cache_ptr->active_viewport_local[2] ||
-             cache_ptr->active_viewport_context[3] != cache_ptr->active_viewport_local[3] ))
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT)
         {
-            cache_ptr->entrypoints_private_ptr->pGLViewport(cache_ptr->active_viewport_local[0],
-                                                            cache_ptr->active_viewport_local[1],
-                                                            cache_ptr->active_viewport_local[2],
-                                                            cache_ptr->active_viewport_local[3]);
+            for (int32_t n_viewport = 0;
+                         n_viewport < cache_ptr->limits_ptr->max_viewports;
+                       ++n_viewport)
+            {
+                if (memcmp(cache_ptr->active_viewports_context + n_viewport * 4,
+                           cache_ptr->active_viewports_local   + n_viewport * 4,
+                           4 * sizeof(GLint) ) != 0)
+                {
+                    cache_ptr->entrypoints_private_ptr->pGLViewportIndexedfv(n_viewport,
+                                                                             cache_ptr->active_viewports_local + (n_viewport * 4) );
 
-            memcpy(cache_ptr->active_viewport_context,
-                   cache_ptr->active_viewport_local,
-                   sizeof(cache_ptr->active_viewport_local) );
+                    memcpy(cache_ptr->active_viewports_context + n_viewport * 4,
+                           cache_ptr->active_viewports_local   + n_viewport * 4,
+                           sizeof(GLfloat) * 4);
+                }
+            }
         }
     }
 }

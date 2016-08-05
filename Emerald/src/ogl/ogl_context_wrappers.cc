@@ -4089,9 +4089,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
 
         case GL_VIEWPORT:
         {
-            ogl_context_state_cache_get_property(state_cache,
-                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
-                                                 params);
+            ogl_context_state_cache_get_indexed_property(state_cache,
+                                                         OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_VIEWPORT,
+                                                         0, /* index */
+                                                         params);
 
             goto end;
         }
@@ -5628,9 +5629,27 @@ PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
 
-    ogl_context_state_cache_set_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,
-                                         scissor_box);
+    ogl_context_state_cache_set_indexed_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX,
+                                                 0, /* index */
+                                                 scissor_box);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glScissorIndexedv(GLuint       index,
+                                                            const GLint *v)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_indexed_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX,
+                                                 index,
+                                                 v);
 }
 
 /** Please see header for spec */
@@ -7028,9 +7047,27 @@ PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
 
-    ogl_context_state_cache_set_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
-                                         viewport);
+    ogl_context_state_cache_set_indexed_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_VIEWPORT,
+                                                 0, /* index */
+                                                 viewport);
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glViewportIndexedfv(GLuint         index,
+                                                              const GLfloat *v)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_indexed_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_VIEWPORT,
+                                                 index,
+                                                 v);
 }
 
 

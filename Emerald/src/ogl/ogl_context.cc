@@ -1099,7 +1099,8 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
         ogl_context_sampler_bindings_init   (context_ptr->sampler_bindings,
                                             &context_ptr->entry_points_private);
         ogl_context_state_cache_init        (context_ptr->state_cache,
-                                            &context_ptr->entry_points_private);
+                                            &context_ptr->entry_points_private,
+                                            &context_ptr->limits);
         ogl_context_texture_compression_init(context_ptr->texture_compression,
                                             &context_ptr->entry_points_private);
         ogl_context_to_bindings_init        (context_ptr->to_bindings,

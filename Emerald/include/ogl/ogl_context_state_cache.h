@@ -9,6 +9,15 @@
 
 #include "ogl/ogl_types.h"
 
+enum ogl_context_state_cache_indexed_property
+{
+    /* settable, GLint[4] */
+    OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX,
+
+    /* settable, GLfloat[4] */
+    OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_VIEWPORT,
+};
+
 enum ogl_context_state_cache_property
 {
     /* settable, GLfloat[4] */
@@ -146,17 +155,11 @@ enum ogl_context_state_cache_property
     /* settable, GLboolean */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_TEXTURE_CUBE_MAP_SEAMLESS,
 
-    /* settable, GLint[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,
-
     /* settable, GLuint (GL_TEXTURE0 = 0, ..) */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,
 
     /* settable, GLuint */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
-
-    /* settable, GLint[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
 
     OGL_CONTEXT_STATE_CACHE_PROPERTY_UNKNOWN
 };
@@ -191,16 +194,29 @@ DECLARE_HANDLE(ogl_context_state_cache);
 PUBLIC ogl_context_state_cache ogl_context_state_cache_create(ogl_context context);
 
 /** TODO */
+PUBLIC void ogl_context_state_cache_get_indexed_property(const ogl_context_state_cache            cache,
+                                                         ogl_context_state_cache_indexed_property property,
+                                                         uint32_t                                 index,
+                                                         void*                                    data);
+
+/** TODO */
 PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache    cache,
                                                  ogl_context_state_cache_property property,
                                                  void*                            out_result_ptr);
 
 /** TODO */
 PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                   cache,
-                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr);
+                                         const ogl_context_gl_entrypoints_private* entrypoints_private_ptr,
+                                         const ogl_context_gl_limits*              limits_ptr);
 
 /** TODO */
 PUBLIC void ogl_context_state_cache_release(ogl_context_state_cache cache);
+
+/** TODO */
+PUBLIC void ogl_context_state_cache_set_indexed_property(ogl_context_state_cache                  cache,
+                                                         ogl_context_state_cache_indexed_property property,
+                                                         uint32_t                                 index,
+                                                         const void*                              data);
 
 /** TODO */
 PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache          cache,
