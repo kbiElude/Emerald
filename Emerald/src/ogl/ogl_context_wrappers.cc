@@ -947,8 +947,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearDepth(GLdouble value)
                             &state_cache);
 
     ogl_context_state_cache_set_property(state_cache,
-                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH_DOUBLE,
                                         &value);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glClearDepthf(GLfloat d)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH_FLOAT,
+                                        &d);
 }
 
 /** Please see header for spec */
@@ -1903,6 +1918,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -1958,6 +1975,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysIndirect(GLenum      mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2015,6 +2034,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2074,6 +2095,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2178,6 +2201,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2244,6 +2269,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseInstance(GL
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2312,6 +2339,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertex(GLen
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2381,6 +2410,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseI
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2449,6 +2480,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2516,6 +2549,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2580,6 +2615,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2641,6 +2678,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackInstanced(GLenu
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -2704,6 +2742,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackStreamInstanced
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -4978,6 +5018,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMemoryBarrier(GLbitfield barriers)
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glMinSampleShading(GLfloat value)
+{
+    ogl_context             context      = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache  = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_MIN_SAMPLE_SHADING,
+                                        &value);
+}
+
+/** Please see header for spec */
 PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mode,
                                                               const GLint*   first,
                                                               const GLsizei* count,
@@ -5008,6 +5063,8 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -5072,6 +5129,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawArraysIndirect(GLenum      
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -5137,6 +5196,8 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -5204,6 +5265,8 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -5271,6 +5334,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawElementsIndirect(GLenum    
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING  |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
@@ -5347,6 +5412,28 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferStorageEXT(GLuint        
         _private_entrypoints_ptr->pGLFinish();
     }
     #endif
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glPatchParameteri(GLenum pname,
+                                                            GLint  value)
+{
+
+    ogl_context             context      = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache  = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    /* TODO: Ignore GL_PATCH_DEFAULT_OUTER_LEVEL and GL_PATCH_DEFAULT_INNER_LEVEL for now. Implement
+     *       if needed. */
+    ASSERT_DEBUG_SYNC(pname == GL_PATCH_VERTICES,
+                      "Invalid pname specified for a glPatchParameteri() call.");
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES,
+                                        &value);
 }
 
 /* Please see header for specification */

@@ -39,6 +39,12 @@ typedef struct _ogl_context_state_cache
     GLenum active_front_face_context;
     GLenum active_front_face_local;
 
+    GLfloat active_min_sample_shading_context;
+    GLfloat active_min_sample_shading_local;
+
+    GLint active_n_patch_vertices_context;
+    GLint active_n_patch_vertices_local;
+
     GLuint active_program_context;
     GLuint active_program_local;
 
@@ -253,6 +259,20 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
         {
             *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_front_face_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_MIN_SAMPLE_SHADING:
+        {
+            *reinterpret_cast<GLfloat*>(out_result_ptr) = cache_ptr->active_min_sample_shading_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES:
+        {
+            *reinterpret_cast<GLint*>(out_result_ptr) = cache_ptr->active_n_patch_vertices_local;
 
             break;
         }
@@ -590,6 +610,14 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     cache_ptr->active_depth_func_context = GL_LESS;
     cache_ptr->active_depth_func_local   = GL_LESS;
 
+    /* Set default state: min sample shading */
+    cache_ptr->active_min_sample_shading_context = 0.0f;
+    cache_ptr->active_min_sample_shading_local   = 0.0f;
+
+    /* Set default state: n of patch vertices */
+    cache_ptr->active_n_patch_vertices_context = 3;
+    cache_ptr->active_n_patch_vertices_local   = 3;
+
     /* Set default state: rendering modes */
     cache_ptr->active_rendering_mode_blend_context                         = false;
     cache_ptr->active_rendering_mode_blend_local                           = false;
@@ -740,9 +768,16 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
             break;
         }
 
-        case OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH:
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH_DOUBLE:
         {
             cache_ptr->active_clear_depth_local = *reinterpret_cast<const GLdouble*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH_FLOAT:
+        {
+            cache_ptr->active_clear_depth_local = *reinterpret_cast<const GLfloat*>(data);
 
             break;
         }
@@ -787,6 +822,20 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
         {
             cache_ptr->active_front_face_local = *reinterpret_cast<const GLenum*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_MIN_SAMPLE_SHADING:
+        {
+            cache_ptr->active_min_sample_shading_local = *reinterpret_cast<const GLfloat*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES:
+        {
+            cache_ptr->active_n_patch_vertices_local = *reinterpret_cast<const GLint*>(data);
 
             break;
         }
@@ -1155,6 +1204,25 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
             cache_ptr->entrypoints_private_ptr->pGLFrontFace(cache_ptr->active_front_face_local);
 
             cache_ptr->active_front_face_context = cache_ptr->active_front_face_local;
+        }
+
+        /* Minimum fraction of samples to calculate per-fragment */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING &&
+            cache_ptr->active_min_sample_shading_context != cache_ptr->active_min_sample_shading_local)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLMinSampleShading(cache_ptr->active_min_sample_shading_local);
+
+            cache_ptr->active_min_sample_shading_context = cache_ptr->active_min_sample_shading_local;
+        }
+
+        /* Number of patch vertices */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES &&
+            cache_ptr->active_n_patch_vertices_context != cache_ptr->active_n_patch_vertices_local)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLPatchParameteri(GL_PATCH_VERTICES,
+                                                                   cache_ptr->active_n_patch_vertices_local);
+
+            cache_ptr->active_n_patch_vertices_context = cache_ptr->active_n_patch_vertices_local;
         }
 
         /* Program object */
