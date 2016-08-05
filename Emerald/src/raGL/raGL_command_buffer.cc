@@ -765,7 +765,10 @@ typedef struct
         _raGL_command_viewport_indexedfv_command_info                                viewport_indexedfv_command_info;
     };
 
-    void deinit();
+    void deinit()
+    {
+        /* Stub */
+    }
 
 } _raGL_command;
 

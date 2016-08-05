@@ -348,7 +348,7 @@ PRIVATE void _ui_button_init_program(ui          ui_instance,
     ral_context_delete_objects(button_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_delete,
-                               (const void**) shaders_to_delete);
+                               reinterpret_cast<void* const*>(shaders_to_delete) );
 }
 
 /** TODO */
@@ -520,7 +520,7 @@ PUBLIC void ui_button_deinit(void* internal_instance)
     ral_context_delete_objects(ui_button_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                               (const void**) &ui_button_ptr->program);
+                               reinterpret_cast<void* const*>(&ui_button_ptr->program) );
 
     if (ui_button_ptr->cpu_present_task != nullptr)
     {

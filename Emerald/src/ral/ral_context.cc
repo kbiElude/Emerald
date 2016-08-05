@@ -395,7 +395,7 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
 PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                          ral_context_object_type object_type,
                                          uint32_t                n_objects,
-                                         void**                  object_create_info_ptrs,
+                                         void* const*            object_create_info_ptrs,
                                          void**                  out_result_object_ptrs)
 {
     bool                    backend_texture_callback_used = false;
@@ -537,63 +537,63 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         {
             case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
             {
-                result_objects_ptr[n_object] = ral_buffer_create((ral_context) context_ptr,
+                result_objects_ptr[n_object] = ral_buffer_create(reinterpret_cast<ral_context>(context_ptr),
                                                                  name_has,
-                                                                 (const ral_buffer_create_info*) (object_create_info_ptrs + n_object) );
+                                                                 reinterpret_cast<const ral_buffer_create_info*>(object_create_info_ptrs + n_object) );
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER:
             {
-                result_objects_ptr[n_object] = ral_command_buffer_create((ral_context) context_ptr,
-                                                                         (const ral_command_buffer_create_info*) (object_create_info_ptrs) + n_object);
+                result_objects_ptr[n_object] = ral_command_buffer_create(reinterpret_cast<ral_context>                          (context_ptr),
+                                                                         reinterpret_cast<const ral_command_buffer_create_info*>(object_create_info_ptrs) + n_object);
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:
             {
-                result_objects_ptr[n_object] = ral_gfx_state_create( (ral_context) context_ptr,
-                                                                    (const ral_gfx_state_create_info*) (object_create_info_ptrs) + n_object);
+                result_objects_ptr[n_object] = ral_gfx_state_create(reinterpret_cast<ral_context>                     (context_ptr),
+                                                                    reinterpret_cast<const ral_gfx_state_create_info*>(object_create_info_ptrs) + n_object);
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
             {
-                result_objects_ptr[n_object] = ral_program_create((ral_context) context_ptr,
-                                                                  (const ral_program_create_info*) (object_create_info_ptrs) + n_object);
+                result_objects_ptr[n_object] = ral_program_create(reinterpret_cast<ral_context>                   (context_ptr),
+                                                                  reinterpret_cast<const ral_program_create_info*>(object_create_info_ptrs) + n_object);
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
             {
-                result_objects_ptr[n_object] = ral_sampler_create((ral_context) context_ptr,
+                result_objects_ptr[n_object] = ral_sampler_create(reinterpret_cast<ral_context>(context_ptr),
                                                                   name_has,
-                                                                  (const ral_sampler_create_info*) (object_create_info_ptrs) + n_object);
+                                                                  reinterpret_cast<const ral_sampler_create_info*>(object_create_info_ptrs) + n_object);
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_SHADER:
             {
-                result_objects_ptr[n_object] = ral_shader_create( (const ral_shader_create_info*) (object_create_info_ptrs) + n_object);
+                result_objects_ptr[n_object] = ral_shader_create(reinterpret_cast<const ral_shader_create_info*>(object_create_info_ptrs) + n_object);
 
                 break;
             }
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
             {
-                const ral_texture_create_info* texture_create_info_ptr = (const ral_texture_create_info*) (object_create_info_ptrs) + n_object;
+                const ral_texture_create_info* texture_create_info_ptr = reinterpret_cast<const ral_texture_create_info*>(object_create_info_ptrs) + n_object;
 
                 if (!ral_texture_pool_get(context_ptr->texture_pool,
                                           texture_create_info_ptr,
-                                          (ral_texture*) (result_objects_ptr + n_object) ))
+                                          reinterpret_cast<ral_texture*>(result_objects_ptr + n_object) ))
                 {
                     backend_texture_callback_used = true;
-                    result_objects_ptr[n_object]  = ral_texture_create((ral_context) context_ptr,
+                    result_objects_ptr[n_object]  = ral_texture_create(reinterpret_cast<ral_context>(context_ptr),
                                                                        name_has,
                                                                        texture_create_info_ptr);
                 }
@@ -603,10 +603,10 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                      * to what's been requested */
                     const system_hashed_ansi_string empty_string = system_hashed_ansi_string_get_default_empty_string();
 
-                    ral_texture_set_property((ral_texture) result_objects_ptr[n_object],
+                    ral_texture_set_property(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
                                              RAL_TEXTURE_PROPERTY_FILENAME,
                                             &empty_string);
-                    ral_texture_set_property((ral_texture) result_objects_ptr[n_object],
+                    ral_texture_set_property(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
                                              RAL_TEXTURE_PROPERTY_NAME,
                                             &texture_create_info_ptr->name);
                 }
@@ -617,9 +617,9 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
-                result_objects_ptr[n_object] = ral_texture_create_from_file_name((ral_context) context_ptr,
+                result_objects_ptr[n_object] = ral_texture_create_from_file_name(reinterpret_cast<ral_context>(context_ptr),
                                                                                  name_has,
-                                                                                 *(system_hashed_ansi_string*) (object_create_info_ptrs + n_object),
+                                                                                 *reinterpret_cast<const system_hashed_ansi_string*>(object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
                                                                                  _ral_context_notify_backend_about_new_object,
                                                                                  true /* async */);
@@ -632,21 +632,21 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
                 system_hashed_ansi_string file_name_has = nullptr;
 
-                gfx_image_get_property(*(gfx_image*) (object_create_info_ptrs + n_object),
+                gfx_image_get_property(*reinterpret_cast<const gfx_image*>(object_create_info_ptrs + n_object),
                                        GFX_IMAGE_PROPERTY_FILENAME,
                                       &file_name_has);
-                gfx_image_get_property(*(gfx_image*) (object_create_info_ptrs + n_object),
+                gfx_image_get_property(*reinterpret_cast<const gfx_image*>(object_create_info_ptrs + n_object),
                                        GFX_IMAGE_PROPERTY_NAME,
                                       &name_has);
 
-                result_objects_ptr[n_object] = ral_texture_create_from_gfx_image((ral_context) context_ptr,
+                result_objects_ptr[n_object] = ral_texture_create_from_gfx_image(reinterpret_cast<ral_context>(context_ptr),
                                                                                  name_has,
-                                                                                 *(gfx_image*) (object_create_info_ptrs + n_object),
+                                                                                 *reinterpret_cast<const gfx_image*>(object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
                                                                                  _ral_context_notify_backend_about_new_object,
                                                                                  true /* async */);
 
-                ral_texture_set_property((ral_texture) result_objects_ptr[n_object],
+                ral_texture_set_property(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
                                          RAL_TEXTURE_PROPERTY_FILENAME,
                                         &file_name_has);
 
@@ -655,7 +655,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
             {
-                result_objects_ptr[n_object] = ral_texture_view_create( (const ral_texture_view_create_info*) (object_create_info_ptrs) + n_object);
+                result_objects_ptr[n_object] = ral_texture_view_create(reinterpret_cast<const ral_texture_view_create_info*>(object_create_info_ptrs) + n_object);
 
                 break;
             }
@@ -686,7 +686,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE && backend_texture_callback_used ||
                 object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
             {
-                _ral_context_notify_backend_about_new_object((ral_context) context_ptr,
+                _ral_context_notify_backend_about_new_object(reinterpret_cast<ral_context>(context_ptr),
                                                              result_objects_ptr[n_object],
                                                              object_type);
             }
@@ -717,12 +717,12 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                     ++n_object)
         {
             ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->object_to_refcount_map,
-                                                         (system_hash64) result_objects_ptr[n_object]),
+                                                         reinterpret_cast<system_hash64>(result_objects_ptr[n_object])),
                               "Reference counter already defined for the newly created object.");
 
             system_hash64map_insert(context_ptr->object_to_refcount_map,
-                                    (system_hash64) result_objects_ptr[n_object],
-                                    (void*) 1,
+                                    reinterpret_cast<system_hash64>(result_objects_ptr[n_object]),
+                                    reinterpret_cast<void*>(1),
                                     nullptr,  /* callback          */
                                     nullptr); /* callback_argument */
         }
@@ -749,19 +749,19 @@ end:
                 {
                     switch (object_type)
                     {
-                        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        ( (ral_buffer&)         result_objects_ptr[n_object]); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release( (ral_command_buffer&) result_objects_ptr[n_object]); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     ( (ral_gfx_state&)      result_objects_ptr[n_object]); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       ( (ral_program&)        result_objects_ptr[n_object]); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       ( (ral_sampler&)        result_objects_ptr[n_object]); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_SHADER:         ral_shader_release        ( (ral_shader&)         result_objects_ptr[n_object]); break;
-                        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:   ral_texture_view_release  ( (ral_texture_view&)   result_objects_ptr[n_object]); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        (reinterpret_cast<ral_buffer&>        (result_objects_ptr[n_object]) ); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release(reinterpret_cast<ral_command_buffer&>(result_objects_ptr[n_object]) ); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     (reinterpret_cast<ral_gfx_state&>     (result_objects_ptr[n_object]) ); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       (reinterpret_cast<ral_program&>       (result_objects_ptr[n_object]) ); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       (reinterpret_cast<ral_sampler&>       (result_objects_ptr[n_object]) ); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_SHADER:         ral_shader_release        (reinterpret_cast<ral_shader&>        (result_objects_ptr[n_object]) ); break;
+                        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:   ral_texture_view_release  (reinterpret_cast<ral_texture_view&>  (result_objects_ptr[n_object]) ); break;
 
                         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
                         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
                         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE:
                         {
-                            ral_texture_release( (ral_texture&) result_objects_ptr[n_object]);
+                            ral_texture_release(reinterpret_cast<ral_texture&>(result_objects_ptr[n_object]) );
 
                             break;
                         }
@@ -793,7 +793,7 @@ end:
 PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                                          ral_context_object_type object_type,
                                          uint32_t                in_n_objects,
-                                         const void**            in_object_ptrs)
+                                         void* const*            in_object_ptrs)
 {
     system_critical_section cs            = nullptr;
     system_resizable_vector object_vector = nullptr;
@@ -969,8 +969,8 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                       n_object < in_n_objects;
                     ++n_object)
         {
-            const void* object_ptr          = in_object_ptrs[n_object];
-            uint32_t    object_vector_index = ITEM_NOT_FOUND;
+            void*    object_ptr          = in_object_ptrs[n_object];
+            uint32_t object_vector_index = ITEM_NOT_FOUND;
 
             if (in_object_ptrs[n_object] == nullptr)
             {
@@ -1000,14 +1000,14 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
             switch (object_type)
             {
-                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        ( (ral_buffer&)         object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release( (ral_command_buffer&) object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     ( (ral_gfx_state&)      object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       ( (ral_program&)        object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       ( (ral_sampler&)        object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_SHADER:         ral_shader_release        ( (ral_shader&)         object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:        ral_texture_release       ( (ral_texture&)        object_ptr); break;
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:   ral_texture_view_release  ( (ral_texture_view&)   object_ptr); break;
+                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        (*reinterpret_cast<ral_buffer*>        (object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release(*reinterpret_cast<ral_command_buffer*>(object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     (*reinterpret_cast<ral_gfx_state*>     (object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       (*reinterpret_cast<ral_program*>       (object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       (*reinterpret_cast<ral_sampler*>       (object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_SHADER:         ral_shader_release        (*reinterpret_cast<ral_shader*>        (object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:        ral_texture_release       (*reinterpret_cast<ral_texture*>       (object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:   ral_texture_view_release  (*reinterpret_cast<ral_texture_view*>  (object_ptr) ); break;
 
                 default:
                 {
@@ -1153,7 +1153,7 @@ PUBLIC void _ral_context_init(_ral_context* context_ptr)
         case RAL_BACKEND_TYPE_ES:
         case RAL_BACKEND_TYPE_GL:
         {
-            raGL_backend_init( (raGL_backend) context_ptr->backend);
+            raGL_backend_init(reinterpret_cast<raGL_backend>(context_ptr->backend) );
 
             break;
         }
@@ -1175,7 +1175,7 @@ PRIVATE void _ral_context_notify_backend_about_new_object(ral_context           
                                                           ral_context_object_type object_type)
 {
     ral_context_callback_objects_created_callback_arg callback_arg;
-    _ral_context*                                     context_ptr  = (_ral_context*) context;
+    _ral_context*                                     context_ptr  = reinterpret_cast<_ral_context*>(context);
 
     callback_arg.created_objects = &result_object;
     callback_arg.object_type     = object_type;
@@ -1265,14 +1265,14 @@ PRIVATE void _ral_context_notify_backend_about_new_object(ral_context           
 PRIVATE void _ral_context_on_texture_dropped_from_texture_pool(const void* callback_arg,
                                                                      void* context)
 {
-    _ral_texture_pool_callback_texture_dropped_arg* callback_arg_ptr = (_ral_texture_pool_callback_texture_dropped_arg*) callback_arg;
-    _ral_context*                                   context_ptr      = (_ral_context*)                                   context;
-    bool                                            result;
+    const _ral_texture_pool_callback_texture_dropped_arg* callback_arg_ptr = reinterpret_cast<const _ral_texture_pool_callback_texture_dropped_arg*>(callback_arg);
+    _ral_context*                                         context_ptr      = reinterpret_cast<_ral_context*>                                        (context);
+    bool                                                  result;
 
     result = _ral_context_delete_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                          callback_arg_ptr->n_textures,
-                                         (const void**) callback_arg_ptr->textures);
+                                         reinterpret_cast<void* const*>(callback_arg_ptr->textures) );
 
     ASSERT_DEBUG_SYNC(result,
                       "Could not physically delete texture objects.");
@@ -1281,7 +1281,7 @@ PRIVATE void _ral_context_on_texture_dropped_from_texture_pool(const void* callb
 /** TODO */
 PRIVATE void _ral_context_release(void* context)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
 
     system_callback_manager_call_back(context_ptr->callback_manager,
                                       RAL_CONTEXT_CALLBACK_ID_ABOUT_TO_RELEASE,
@@ -1406,9 +1406,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
             case RAL_BACKEND_TYPE_GL:
             {
                 new_context_ptr->backend_type                  = backend_type;
-                new_context_ptr->backend                       = (void*) raGL_backend_create( (ral_context) new_context_ptr,
-                                                                                             name,
-                                                                                             backend_type);
+                new_context_ptr->backend                       = reinterpret_cast<void*>(raGL_backend_create(reinterpret_cast<ral_context>(new_context_ptr),
+                                                                                                             name,
+                                                                                                             backend_type) );
                 new_context_ptr->pfn_backend_get_property_proc = raGL_backend_get_property;
                 new_context_ptr->pfn_backend_release_proc      = raGL_backend_release;
 
@@ -1433,7 +1433,7 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
         _ral_context_init(new_context_ptr);
     }
 
-    return (ral_context) new_context_ptr;
+    return reinterpret_cast<ral_context>(new_context_ptr);
 }
 
 /** Please see header for specification */
@@ -1442,7 +1442,7 @@ PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                  
                                                    const ral_buffer_create_info* buffer_create_info_ptr,
                                                    ral_buffer*                   out_result_buffers_ptr)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1478,8 +1478,8 @@ PUBLIC EMERALD_API bool ral_context_create_buffers(ral_context                  
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                          n_buffers,
-                                         (void**) buffer_create_info_ptr,
-                                         (void**) out_result_buffers_ptr);
+                                         reinterpret_cast<void* const*>(buffer_create_info_ptr),
+                                         reinterpret_cast<void**>      (out_result_buffers_ptr) );
 
 end:
     return result;
@@ -1490,7 +1490,7 @@ PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context          
                                                            const ral_command_buffer_create_info* command_buffer_create_info_ptr,
                                                            ral_command_buffer*                   out_result_command_buffers_ptr)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1526,8 +1526,8 @@ PUBLIC EMERALD_API bool ral_context_create_command_buffers(ral_context          
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                          n_command_buffers,
-                                         (void**) command_buffer_create_info_ptr,
-                                         (void**) out_result_command_buffers_ptr);
+                                         reinterpret_cast<void* const*>(command_buffer_create_info_ptr) ,
+                                         reinterpret_cast<void**>      (out_result_command_buffers_ptr) );
 
 end:
     return result;
@@ -1539,7 +1539,7 @@ PUBLIC EMERALD_API bool ral_context_create_gfx_states(ral_context               
                                                       const ral_gfx_state_create_info* create_info_ptrs,
                                                       ral_gfx_state*                   out_result_gfx_states_ptr)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1567,8 +1567,8 @@ PUBLIC EMERALD_API bool ral_context_create_gfx_states(ral_context               
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
                                          n_create_info_items,
-                                         (void**) create_info_ptrs,
-                                         (void**) out_result_gfx_states_ptr);
+                                         reinterpret_cast<void* const*>(create_info_ptrs),
+                                         reinterpret_cast<void**>      (out_result_gfx_states_ptr) );
 
 end:
     return result;
@@ -1580,7 +1580,7 @@ PUBLIC EMERALD_API bool ral_context_create_programs(ral_context                 
                                                     const ral_program_create_info* create_info_ptrs,
                                                     ral_program*                   out_result_program_ptrs)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1608,8 +1608,8 @@ PUBLIC EMERALD_API bool ral_context_create_programs(ral_context                 
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                          n_create_info_items,
-                                         (void**) create_info_ptrs,
-                                         (void**) out_result_program_ptrs);
+                                         reinterpret_cast<void* const*>(create_info_ptrs),
+                                         reinterpret_cast<void**>      (out_result_program_ptrs) );
 
     if (result)
     {
@@ -1627,7 +1627,7 @@ PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context                 
                                                     const ral_sampler_create_info* create_info_ptrs,
                                                     ral_sampler*                   out_result_sampler_ptrs)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1655,8 +1655,8 @@ PUBLIC EMERALD_API bool ral_context_create_samplers(ral_context                 
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                          n_create_info_items,
-                                         (void**) create_info_ptrs,
-                                         (void**) out_result_sampler_ptrs);
+                                         reinterpret_cast<void* const*>(create_info_ptrs),
+                                         reinterpret_cast<void**>      (out_result_sampler_ptrs) );
 
 end:
     return result;
@@ -1668,7 +1668,7 @@ PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context                  
                                                    const ral_shader_create_info* create_info_ptrs,
                                                    ral_shader*                   out_result_shader_ptrs)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1704,8 +1704,8 @@ PUBLIC EMERALD_API bool ral_context_create_shaders(ral_context                  
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                          n_create_info_items,
-                                         (void**) create_info_ptrs,
-                                         (void**) out_result_shader_ptrs);
+                                         reinterpret_cast<void* const*>(create_info_ptrs),
+                                         reinterpret_cast<void**>      (out_result_shader_ptrs) );
 
     if (result)
     {
@@ -1723,7 +1723,7 @@ PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context            
                                                          const ral_texture_view_create_info* create_info_ptrs,
                                                          ral_texture_view*                   out_result_texture_view_ptrs)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1759,8 +1759,8 @@ PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context            
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                          n_create_info_items,
-                                         (void**) create_info_ptrs,
-                                         (void**) out_result_texture_view_ptrs);
+                                         reinterpret_cast<void* const*>(create_info_ptrs),
+                                         reinterpret_cast<void**>      (out_result_texture_view_ptrs) );
 
 end:
     return result;
@@ -1772,7 +1772,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                 
                                                     const ral_texture_create_info* texture_create_info_ptr,
                                                     ral_texture*                   out_result_textures_ptr)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1808,8 +1808,8 @@ PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                 
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                          n_textures,
-                                         (void**) texture_create_info_ptr,
-                                         (void**) out_result_textures_ptr);
+                                         reinterpret_cast<void* const*>(texture_create_info_ptr),
+                                         reinterpret_cast<void**>      (out_result_textures_ptr) );
 
     if (result)
     {
@@ -1827,7 +1827,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
                                                                     const system_hashed_ansi_string* file_names_ptr,
                                                                     ral_texture*                     out_result_textures_ptr)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1893,7 +1893,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
         if (n_file_names_to_handle > 0)
         {
             system_hashed_ansi_string* file_names_to_handle = nullptr;
-            ral_texture*               result_textures      = new (std::nothrow) ral_texture[n_file_names_to_handle];
+            ral_texture*               result_textures      = reinterpret_cast<ral_texture*>(_malloca(sizeof(ral_texture) * n_file_names_to_handle) );
 
             ASSERT_ALWAYS_SYNC(result_textures != nullptr,
                                "Out of memory");
@@ -1905,8 +1905,8 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
             result = _ral_context_create_objects(context_ptr,
                                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME,
                                                  n_file_names_to_handle,
-                                                 (void**) file_names_to_handle,
-                                                 (void**) result_textures);
+                                                 reinterpret_cast<void* const*>(file_names_to_handle),
+                                                 reinterpret_cast<void**>      (result_textures) );
 
             if (!result)
             {
@@ -1937,9 +1937,6 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
                                                               n_file_names_to_handle,
                                                               result_textures);
             }
-
-            delete [] result_textures;
-            result_textures = nullptr;
         }
         else
         {
@@ -1960,7 +1957,7 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
                                                                     const gfx_image* images,
                                                                     ral_texture*     out_result_textures_ptr)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     bool          result      = false;
 
     /* Sanity checks */
@@ -1996,8 +1993,8 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
     result = _ral_context_create_objects(context_ptr,
                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE,
                                          n_images,
-                                         (void**) images,
-                                         (void**) out_result_textures_ptr);
+                                         reinterpret_cast<void* const*>(images),
+                                         reinterpret_cast<void**>      (out_result_textures_ptr) );
 
     if (result)
     {
@@ -2014,10 +2011,10 @@ end:
 PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,
                                                    ral_context_object_type object_type,
                                                    uint32_t                in_n_objects,
-                                                   const void**            in_objects)
+                                                   void* const*            in_objects)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
-    const void*   object_ptrs[16];
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
+    void*         object_ptrs[16];
     bool          result      = false;
 
     /* Sanity checks */
@@ -2079,13 +2076,13 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
             }
 
             system_hash64map_remove(context_ptr->object_to_refcount_map,
-                                    (system_hash64) in_objects[n_object]);
+                                    reinterpret_cast<system_hash64>(in_objects[n_object]) );
 
             if (object_ref_counter != 0)
             {
                 system_hash64map_insert(context_ptr->object_to_refcount_map,
-                                        (system_hash64) in_objects[n_object],
-                                        (void*) object_ref_counter,
+                                        reinterpret_cast<system_hash64>(in_objects[n_object]),
+                                        reinterpret_cast<void*>        (object_ref_counter),
                                         nullptr, /* calback           */
                                         nullptr  /* callback_argument */);
             }
@@ -2115,7 +2112,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
         {
             _ral_context_delete_programs_from_program_hashmap(context_ptr,
                                                               n_objects,
-                                                              (ral_program*) object_ptrs);
+                                                              reinterpret_cast<ral_program*>(object_ptrs) );
 
             break;
         }
@@ -2124,7 +2121,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
         {
             _ral_context_delete_shaders_from_shader_hashmap(context_ptr,
                                                             n_objects,
-                                                            (ral_shader*) object_ptrs);
+                                                            reinterpret_cast<ral_shader*>(object_ptrs) );
 
             break;
         }
@@ -2133,7 +2130,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
         {
             _ral_context_delete_textures_from_texture_hashmaps(context_ptr,
                                                                n_objects,
-                                                               (ral_texture*) object_ptrs);
+                                                               reinterpret_cast<ral_texture*>(object_ptrs) );
 
             /* Note: Instead of deleting the textures, we stash them back in the texture pool so that
              *       they can be re-used.. unless the texture pool is no longer available, in which
@@ -2145,7 +2142,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                             ++n_texture)
                 {
                     ral_texture_pool_add(context_ptr->texture_pool,
-                                         (ral_texture) object_ptrs[n_texture]);
+                                         reinterpret_cast<ral_texture>(object_ptrs[n_texture]) );
                 }
             }
             else
@@ -2153,7 +2150,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                 _ral_texture_pool_callback_texture_dropped_arg fake_callback_arg;
 
                 fake_callback_arg.n_textures = n_objects;
-                fake_callback_arg.textures   = (ral_texture*) object_ptrs;
+                fake_callback_arg.textures   = reinterpret_cast<ral_texture*>(object_ptrs);
 
                 _ral_context_on_texture_dropped_from_texture_pool(&fake_callback_arg,
                                                                   context_ptr);
@@ -2183,7 +2180,7 @@ end:
 /** TODO */
 PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context)
 {
-    raGL_backend backend         = (raGL_backend) ((_ral_context*) context)->backend;
+    raGL_backend backend         = reinterpret_cast<raGL_backend>(reinterpret_cast<_ral_context*>(context)->backend);
     ogl_context  backend_context = nullptr;
 
     raGL_backend_get_property(backend,
@@ -2197,7 +2194,7 @@ PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context)
 PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context               context,
                                                                system_hashed_ansi_string name)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     ral_program   result      = nullptr;
 
     /* Sanity checks..*/
@@ -2235,7 +2232,7 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
                                                  ral_context_property property,
                                                  void*                out_result_ptr)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
 
     /* Sanity checks */
     if (context == nullptr)
@@ -2252,14 +2249,14 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
     {
         case RAL_CONTEXT_PROPERTY_BACKEND:
         {
-            *(raGL_backend*) out_result_ptr = (raGL_backend) context_ptr->backend;
+            *reinterpret_cast<raGL_backend*>(out_result_ptr) = reinterpret_cast<raGL_backend>(context_ptr->backend);
 
             break;
         }
 
         case RAL_CONTEXT_PROPERTY_BACKEND_TYPE:
         {
-            *(ral_backend_type*) out_result_ptr = context_ptr->backend_type;
+            *reinterpret_cast<ral_backend_type*>(out_result_ptr) = context_ptr->backend_type;
 
             break;
         }
@@ -2285,28 +2282,28 @@ PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,
 
         case RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result_ptr = context_ptr->callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = context_ptr->callback_manager;
 
             break;
         }
 
         case RAL_CONTEXT_PROPERTY_RENDERING_HANDLER:
         {
-            *(ral_rendering_handler*) out_result_ptr = context_ptr->rendering_handler;
+            *reinterpret_cast<ral_rendering_handler*>(out_result_ptr) = context_ptr->rendering_handler;
 
             break;
         }
 
         case RAL_CONTEXT_PROPERTY_WINDOW_DEMO:
         {
-            *(demo_window*) out_result_ptr = context_ptr->window_demo;
+            *reinterpret_cast<demo_window*>(out_result_ptr) = context_ptr->window_demo;
 
             break;
         }
 
         case RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM:
         {
-            *(system_window*) out_result_ptr = context_ptr->window_system;
+            *reinterpret_cast<system_window*>(out_result_ptr) = context_ptr->window_system;
 
             break;
         }
@@ -2325,7 +2322,7 @@ end:
 PUBLIC EMERALD_API ral_shader ral_context_get_shader_by_name(ral_context               context,
                                                              system_hashed_ansi_string name)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     ral_shader    result      = nullptr;
 
     /* Sanity checks..*/
@@ -2362,7 +2359,7 @@ end:
 PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_file_name(ral_context               context,
                                                                     system_hashed_ansi_string file_name)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     ral_texture   result      = nullptr;
 
     /* Sanity checks..*/
@@ -2399,7 +2396,7 @@ end:
 PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context               context,
                                                                system_hashed_ansi_string name)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
     ral_texture   result      = nullptr;
 
     /* Sanity checks..*/
@@ -2433,11 +2430,12 @@ end:
 }
 
 /** TODO */
-PUBLIC EMERALD_API void ral_context_retain_object(ral_context             context,
+PUBLIC EMERALD_API bool ral_context_retain_object(ral_context             context,
                                                   ral_context_object_type object_type,
                                                   void*                   object)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    const _ral_context* context_ptr = reinterpret_cast<const _ral_context*>(context);
+    bool                result      = false;
 
     if (context == nullptr)
     {
@@ -2452,34 +2450,36 @@ PUBLIC EMERALD_API void ral_context_retain_object(ral_context             contex
         uint32_t ref_counter = 0;
 
         ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->object_to_refcount_map,
-                                                    (system_hash64) object),
+                                                    reinterpret_cast<system_hash64>(object) ),
                           "No reference counter associated with the specified object.");
 
         system_hash64map_get(context_ptr->object_to_refcount_map,
-                             (system_hash64) object,
+                             reinterpret_cast<system_hash64>(object),
                             &ref_counter);
 
         ref_counter++;
 
         system_hash64map_remove(context_ptr->object_to_refcount_map,
-                                (system_hash64) object);
+                                reinterpret_cast<system_hash64>(object) );
         system_hash64map_insert(context_ptr->object_to_refcount_map,
-                                (system_hash64) object,
-                                (void*) ref_counter,
+                                reinterpret_cast<system_hash64>(object),
+                                reinterpret_cast<void*>        (ref_counter),
                                 nullptr,  /* callback          */
                                 nullptr); /* callback_argument */
     }
     system_critical_section_leave(context_ptr->object_to_refcount_cs);
+
+    result = true;
 end:
-    ;
+    return result;
 }
 
 /** TODO */
 PUBLIC void ral_context_set_property(ral_context          context,
                                      ral_context_property property,
-                                     const void*          data)
+                                     void* const*         data)
 {
-    _ral_context* context_ptr = (_ral_context*) context;
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
 
     switch (property)
     {
@@ -2488,7 +2488,7 @@ PUBLIC void ral_context_set_property(ral_context          context,
             ASSERT_DEBUG_SYNC(context_ptr->backend == nullptr,
                               "Backend is not NULL");
 
-            context_ptr->backend = *(void**) data;
+            context_ptr->backend = *data;
 
             break;
         }

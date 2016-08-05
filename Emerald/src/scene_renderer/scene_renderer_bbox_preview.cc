@@ -304,7 +304,7 @@ end:
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               (const void**) shaders_to_release);
+                               reinterpret_cast<void* const*>(shaders_to_release) );
 }
 
 /** TODO */
@@ -519,7 +519,7 @@ PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview prev
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &preview_ptr->preview_program);
+                                   reinterpret_cast<void* const*>(&preview_ptr->preview_program) );
 
         preview_ptr->preview_program = nullptr;
     }
@@ -682,11 +682,11 @@ PUBLIC ral_present_task scene_renderer_bbox_preview_stop(scene_renderer_bbox_pre
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                1, /* n_objects */
-                               (const void**) &preview_ptr->active_command_buffer);
+                               reinterpret_cast<void* const*>(&preview_ptr->active_command_buffer) );
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                1, /* n_objects */
-                               (const void**) &preview_ptr->active_rendertarget);
+                               reinterpret_cast<void* const*>(&preview_ptr->active_rendertarget) );
 
     preview_ptr->active_command_buffer = nullptr;
     preview_ptr->active_rendertarget   = nullptr;

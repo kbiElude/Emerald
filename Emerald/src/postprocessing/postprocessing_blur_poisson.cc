@@ -122,7 +122,7 @@ PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
     ral_context_delete_objects(data_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                               (const void**) &data_ptr->program);
+                               reinterpret_cast<void* const*>(&data_ptr->program) );
 
     if (data_ptr->cached_command_buffer != nullptr)
     {
@@ -150,7 +150,7 @@ PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_objects */
-                                   (const void**) &data_ptr->sampler);
+                                   reinterpret_cast<void* const*>(&data_ptr->sampler) );
     }
 }
 
@@ -254,7 +254,7 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
     ral_context_delete_objects(result_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                1, /* n_objects */
-                               (const void**) &fragment_shader);
+                               reinterpret_cast<void* const*>(&fragment_shader) );
 
     shaders_vertex_fullscreen_release(vertex_shader);
 

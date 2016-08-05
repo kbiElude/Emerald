@@ -69,6 +69,22 @@ typedef struct _ral_command
 
     void deinit()
     {
+        update_reference_counters(false);
+    }
+
+    void init()
+    {
+        update_reference_counters(true);
+    }
+
+private:
+    void update_reference_counters(bool is_init_op)
+    {
+        bool (*pfn_update_ref_proc)(ral_context, ral_context_object_type, uint32_t, void* const* objects);
+
+        pfn_update_ref_proc = (is_init_op) ? ral_context_retain_objects
+                                           : ral_context_delete_objects;
+
         switch (type)
         {
             case RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE:
@@ -83,14 +99,17 @@ typedef struct _ral_command
                                          RAL_TEXTURE_PROPERTY_CONTEXT,
                                         &src_texture_context);
 
-                ral_context_delete_objects(dst_texture_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                           1, /* n_objects */
-                                           (const void**) &copy_texture_to_texture_command.dst_texture);
-                ral_context_delete_objects(src_texture_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                           1, /* n_objects */
-                                           (const void**) &copy_texture_to_texture_command.src_texture);
+                ral_texture textures[] =
+                {
+                    copy_texture_to_texture_command.dst_texture,
+                    copy_texture_to_texture_command.src_texture
+                };
+                const uint32_t n_textures = sizeof(textures) / sizeof(textures[0]);
+
+                pfn_update_ref_proc(dst_texture_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                    n_textures,
+                                    reinterpret_cast<void* const*>(textures) );
 
                 break;
             }
@@ -103,10 +122,10 @@ typedef struct _ral_command
                                         RAL_BUFFER_PROPERTY_CONTEXT,
                                        &index_buffer_context);
 
-                ral_context_delete_objects(index_buffer_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                           1, /* n_objects */
-                                           (const void**) &draw_call_indexed_command.index_buffer);
+                pfn_update_ref_proc(index_buffer_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&draw_call_indexed_command.index_buffer) );
 
                 break;
             }
@@ -119,20 +138,20 @@ typedef struct _ral_command
                                         RAL_BUFFER_PROPERTY_CONTEXT,
                                        &buffer_context);
 
-                ral_context_delete_objects(buffer_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                           1, /* n_objects */
-                                           (const void**) &draw_call_indirect_command.indirect_buffer);
+                pfn_update_ref_proc(buffer_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&draw_call_indirect_command.indirect_buffer) );
 
                 break;
             }
 
             case RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
             {
-                ral_context_delete_objects( (reinterpret_cast<_ral_command_buffer*>(execute_command_buffer_command.command_buffer))->context,
-                                           RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
-                                           1, /* n_objects */
-                                           (const void**) &execute_command_buffer_command.command_buffer);
+                pfn_update_ref_proc((reinterpret_cast<_ral_command_buffer*>(execute_command_buffer_command.command_buffer))->context,
+                                    RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&execute_command_buffer_command.command_buffer) );
 
                 break;
             }
@@ -145,10 +164,10 @@ typedef struct _ral_command
                                         RAL_BUFFER_PROPERTY_CONTEXT,
                                        &buffer_context);
 
-                ral_context_delete_objects(buffer_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                           1, /* n_objects */
-                                           (const void**) &fill_buffer_command.buffer);
+                pfn_update_ref_proc(buffer_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&fill_buffer_command.buffer) );
 
                 break;
             }
@@ -161,10 +180,10 @@ typedef struct _ral_command
                                          RAL_TEXTURE_PROPERTY_CONTEXT,
                                         &texture_context);
 
-                ral_context_delete_objects(texture_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                           1, /* n_objects */
-                                           (const void**) &invalidate_texture_command.texture);
+                pfn_update_ref_proc(texture_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&invalidate_texture_command.texture) );
 
                 break;
             }
@@ -183,22 +202,24 @@ typedef struct _ral_command
                         ral_texture_view_get_property(texture_view,
                                                       RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                                      &texture_view_context);
-                        ral_context_delete_objects   (texture_view_context,
-                                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                                      1, /* n_objects */
-                                                      (const void**) &texture_view);
+
+                        pfn_update_ref_proc(texture_view_context,
+                                            RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                            1, /* n_objects */
+                                            reinterpret_cast<void* const*>(&texture_view) );
 
                         if (set_binding_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE)
                         {
                             ral_context sampler_context = nullptr;
 
-                            ral_sampler_get_property  (set_binding_command.sampled_image_binding.sampler,
-                                                       RAL_SAMPLER_PROPERTY_CONTEXT,
-                                                      &sampler_context);
-                            ral_context_delete_objects(sampler_context,
-                                                       RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-                                                       1, /* n_objects */
-                                                       (const void**) &set_binding_command.sampled_image_binding.sampler);
+                            ral_sampler_get_property(set_binding_command.sampled_image_binding.sampler,
+                                                     RAL_SAMPLER_PROPERTY_CONTEXT,
+                                                    &sampler_context);
+
+                            pfn_update_ref_proc(sampler_context,
+                                                RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                                1, /* n_objects */
+                                                reinterpret_cast<void* const*>(&set_binding_command.sampled_image_binding.sampler) );
                         }
 
                         break;
@@ -211,13 +232,14 @@ typedef struct _ral_command
                                                                                                                                 : set_binding_command.uniform_buffer_binding.buffer;
                         ral_context      buffer_context = nullptr;
 
-                        ral_buffer_get_property   (buffer,
-                                                   RAL_BUFFER_PROPERTY_CONTEXT,
-                                                  &buffer_context);
-                        ral_context_delete_objects(buffer_context,
-                                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                                   1, /* n_objects */
-                                                   (const void**) &buffer);
+                        ral_buffer_get_property(buffer,
+                                                RAL_BUFFER_PROPERTY_CONTEXT,
+                                               &buffer_context);
+
+                        pfn_update_ref_proc(buffer_context,
+                                            RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                            1, /* n_objects */
+                                            reinterpret_cast<void* const*>(&buffer) );
 
                         break;
                     }
@@ -241,10 +263,11 @@ typedef struct _ral_command
                 ral_texture_view_get_property(set_color_rendertarget_command.texture_view,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &texture_view_context);
-                ral_context_delete_objects   (texture_view_context,
-                                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                              1, /* n_objects */
-                                              (const void**) &set_color_rendertarget_command.texture_view);
+
+                pfn_update_ref_proc(texture_view_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&set_color_rendertarget_command.texture_view) );
 
                 break;
             }
@@ -256,10 +279,11 @@ typedef struct _ral_command
                 ral_texture_view_get_property(set_depth_rendertarget_command.depth_rt,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &rt_context);
-                ral_context_delete_objects   (rt_context,
-                                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                              1, /* n_objects */
-                                              (const void**) &set_depth_rendertarget_command.depth_rt);
+
+                pfn_update_ref_proc(rt_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&set_depth_rendertarget_command.depth_rt) );
 
                 break;
             }
@@ -271,10 +295,11 @@ typedef struct _ral_command
                 ral_gfx_state_get_property(set_gfx_state_command.new_state,
                                            RAL_GFX_STATE_PROPERTY_CONTEXT,
                                           &gfx_state_context);
-                ral_context_delete_objects(gfx_state_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
-                                           1, /* n_objects */
-                                           (const void**) &set_gfx_state_command.new_state);
+
+                pfn_update_ref_proc(gfx_state_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&set_gfx_state_command.new_state) );
 
                 break;
             }
@@ -283,13 +308,14 @@ typedef struct _ral_command
             {
                 ral_context program_context = nullptr;
 
-                ral_program_get_property  (set_program_command.new_program,
-                                           RAL_PROGRAM_PROPERTY_CONTEXT,
-                                          &program_context);
-                ral_context_delete_objects(program_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                           1, /* n_objects */
-                                           (const void**) &set_program_command.new_program);
+                ral_program_get_property(set_program_command.new_program,
+                                         RAL_PROGRAM_PROPERTY_CONTEXT,
+                                        &program_context);
+
+                pfn_update_ref_proc(program_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&set_program_command.new_program) );
 
                 break;
             }
@@ -298,13 +324,14 @@ typedef struct _ral_command
             {
                 ral_context buffer_context = nullptr;
 
-                ral_buffer_get_property   (set_vertex_buffer_command.buffer,
-                                           RAL_BUFFER_PROPERTY_CONTEXT,
-                                          &buffer_context);
-                ral_context_delete_objects(buffer_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                           1, /* n_objects */
-                                           (const void**) &set_vertex_buffer_command.buffer);
+                ral_buffer_get_property(set_vertex_buffer_command.buffer,
+                                        RAL_BUFFER_PROPERTY_CONTEXT,
+                                       &buffer_context);
+
+                pfn_update_ref_proc(buffer_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&set_vertex_buffer_command.buffer) );
 
                 break;
             }
@@ -313,13 +340,14 @@ typedef struct _ral_command
             {
                 ral_context buffer_context = nullptr;
 
-                ral_buffer_get_property   (update_buffer_command.buffer,
-                                           RAL_BUFFER_PROPERTY_CONTEXT,
-                                          &buffer_context);
-                ral_context_delete_objects(buffer_context,
-                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                           1, /* n_objects */
-                                           (const void**) &update_buffer_command.buffer);
+                ral_buffer_get_property(update_buffer_command.buffer,
+                                        RAL_BUFFER_PROPERTY_CONTEXT,
+                                       &buffer_context);
+
+                pfn_update_ref_proc(buffer_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                    1, /* n_objects */
+                                    reinterpret_cast<void* const*>(&update_buffer_command.buffer) );
 
                 break;
             }
@@ -398,6 +426,88 @@ PRIVATE void _ral_command_buffer_init_command_buffer(system_resource_pool_block 
     cmd_buffer_ptr->context          = nullptr;
 }
 
+
+/** Please see header for specification */
+PUBLIC void ral_command_buffer_append_commands_from_command_buffer(ral_command_buffer recording_command_buffer,
+                                                                   ral_command_buffer src_command_buffer,
+                                                                   uint32_t           n_start_command,
+                                                                   uint32_t           n_commands)
+{
+    uint32_t             n_src_commands               = 0;
+    _ral_command_buffer* recording_command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(recording_command_buffer);
+    _ral_command_buffer* src_command_buffer_ptr       = reinterpret_cast<_ral_command_buffer*>(src_command_buffer);
+
+    /* Sanity checks */
+    if (recording_command_buffer == nullptr ||
+        src_command_buffer       == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(recording_command_buffer == nullptr ||
+                            src_command_buffer       == nullptr),
+                          "At least one of the input command buffers is null");
+
+        goto end;
+    }
+
+    if (recording_command_buffer == src_command_buffer)
+    {
+        ASSERT_DEBUG_SYNC(!(recording_command_buffer == src_command_buffer),
+                          "Source and target command buffers are exactly the same.");
+
+        goto end;
+    }
+
+    if (recording_command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        ASSERT_DEBUG_SYNC(!(recording_command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING),
+                          "Target command buffer is not in the recording state");
+
+        goto end;
+    }
+
+    if ((recording_command_buffer_ptr->compatible_queues & src_command_buffer_ptr->compatible_queues) != recording_command_buffer_ptr->compatible_queues)
+    {
+        ASSERT_DEBUG_SYNC(!((recording_command_buffer_ptr->compatible_queues & src_command_buffer_ptr->compatible_queues) != recording_command_buffer_ptr->compatible_queues),
+                          "Target command buffer's queue set is not a sub-set of the source command buffer's queue set");
+        
+        goto end;
+    }
+
+    /* Copy all commands from the source command buffer */
+    system_resizable_vector_get_property(src_command_buffer_ptr->commands,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_src_commands);
+
+    for (uint32_t n_src_command = 0;
+                  n_src_command < n_src_commands;
+                ++n_src_command)
+    {
+        _ral_command* new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
+        _ral_command* src_command_ptr = nullptr;
+
+        system_resizable_vector_get_element_at(src_command_buffer_ptr->commands,
+                                               n_src_command,
+                                              &src_command_ptr);
+
+        /* TODO: The "update buffer" command may use heap-allocated memory if the data chunk's size exceeds the predefined
+         *       size. If we append such command to another cmd buffer and later release the source command buffer, that chunk
+         *       will have been freed when it's accessed while processing the command from the other command buffer. The
+         *       existing solution needs to be redesigned to take such cases into account (move to shared pointers? copy constructors?)
+         **/
+        ASSERT_DEBUG_SYNC(src_command_ptr->type != RAL_COMMAND_TYPE_UPDATE_BUFFER,
+                          "TODO");
+
+        memcpy(new_command_ptr,
+               src_command_ptr,
+               sizeof(*src_command_ptr) );
+
+        new_command_ptr->init();
+
+        system_resizable_vector_push(recording_command_buffer_ptr->commands,
+                                     new_command_ptr);
+    }
+end:
+    ;
+}
 
 /** Please see header for specification */
 PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                           context,
@@ -654,6 +764,8 @@ PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buf
 
             new_command_ptr->type = RAL_COMMAND_TYPE_CLEAR_RT_BINDING;
 
+            new_command_ptr->init();
+
             system_resizable_vector_push(command_buffer_ptr->commands,
                                          new_command_ptr);
         }
@@ -741,6 +853,8 @@ PUBLIC void ral_command_buffer_record_copy_buffer_to_buffer(ral_command_buffer  
 
         new_command_ptr->copy_buffer_to_buffer_command = copy_op_ptrs[n_copy_op];
         new_command_ptr->type                          = RAL_COMMAND_TYPE_COPY_BUFFER_TO_BUFFER;
+
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1028,12 +1142,7 @@ PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer
 
         new_command_ptr->type = RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE;
 
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                  src_command.dst_texture);
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                  src_command.src_texture);
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1082,6 +1191,8 @@ PUBLIC void ral_command_buffer_record_dispatch(ral_command_buffer recording_comm
     new_command_ptr->dispatch_command.z = xyz[2];
     new_command_ptr->type               = RAL_COMMAND_TYPE_DISPATCH;
 
+    new_command_ptr->init();
+
     system_resizable_vector_push(command_buffer_ptr->commands,
                                  new_command_ptr);
 
@@ -1123,9 +1234,7 @@ PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer      
         new_command_ptr->draw_call_indexed_command = src_command;
         new_command_ptr->type                      = RAL_COMMAND_TYPE_DRAW_CALL_INDEXED;
 
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                  src_command.index_buffer);
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1177,9 +1286,7 @@ PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buf
         new_command_ptr->draw_call_indirect_command = src_command;
         new_command_ptr->type                       = RAL_COMMAND_TYPE_DRAW_CALL_INDIRECT;
 
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                  src_command.indirect_buffer);
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1222,6 +1329,8 @@ PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer      
         new_command_ptr                            = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool));
         new_command_ptr->draw_call_regular_command = src_command;
         new_command_ptr->type                      = RAL_COMMAND_TYPE_DRAW_CALL_REGULAR;
+
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1271,19 +1380,7 @@ PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer 
         new_command_ptr->execute_command_buffer_command.command_buffer = src_command.command_buffer;
         new_command_ptr->type                                          = RAL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER;
 
-        if (n_command == 0)
-        {
-            command_buffer_context = (reinterpret_cast<_ral_command_buffer*>(src_command.command_buffer) )->context;
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC((reinterpret_cast<_ral_command_buffer*>(src_command.command_buffer))->context == command_buffer_context,
-                              "Scheduled command buffers use different rendering contexts.");
-        }
-
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
-                                  (void*) src_command.command_buffer);
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1344,27 +1441,7 @@ PUBLIC void ral_command_buffer_record_fill_buffer(ral_command_buffer            
         new_command_ptr->fill_buffer_command = src_command;
         new_command_ptr->type                = RAL_COMMAND_TYPE_FILL_BUFFER;
 
-        if (n_fill_op == 0)
-        {
-            ral_buffer_get_property(src_command.buffer,
-                                    RAL_BUFFER_PROPERTY_CONTEXT,
-                                   &buffer_context);
-        }
-        else
-        {
-            ral_context tmp_buffer_context = nullptr;
-
-            ral_buffer_get_property(src_command.buffer,
-                                    RAL_BUFFER_PROPERTY_CONTEXT,
-                                   &tmp_buffer_context);
-
-            ASSERT_DEBUG_SYNC(buffer_context == tmp_buffer_context,
-                              "Specified buffers use different rendering contexts.");
-        }
-
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                  (void*) src_command.buffer);
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1421,9 +1498,7 @@ PUBLIC void ral_command_buffer_record_invalidate_texture(ral_command_buffer reco
     new_command_ptr->invalidate_texture_command.texture     = texture;
     new_command_ptr->type                                   = RAL_COMMAND_TYPE_INVALIDATE_TEXTURE;
 
-    ral_context_retain_object(command_buffer_ptr->context,
-                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                              texture);
+    new_command_ptr->init();
 
     system_resizable_vector_push(command_buffer_ptr->commands,
                                  new_command_ptr);
@@ -1521,30 +1596,7 @@ PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer           
         new_command_ptr->set_binding_command = src_command;
         new_command_ptr->type                = RAL_COMMAND_TYPE_SET_BINDING;
 
-        if (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER ||
-            src_command.binding_type == RAL_BINDING_TYPE_UNIFORM_BUFFER)
-        {
-            ral_context_retain_object(command_buffer_ptr->context,
-                                      RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                      (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? new_command_ptr->set_binding_command.storage_buffer_binding.buffer
-                                                                                                    : new_command_ptr->set_binding_command.uniform_buffer_binding.buffer);
-        }
-
-        if (src_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE)
-        {
-            ral_context_retain_object(command_buffer_ptr->context,
-                                      RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
-                                      new_command_ptr->set_binding_command.sampled_image_binding.sampler);
-        }
-
-        if (src_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE ||
-            src_command.binding_type == RAL_BINDING_TYPE_STORAGE_IMAGE)
-        {
-            ral_context_retain_object(command_buffer_ptr->context,
-                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                      (src_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE) ? new_command_ptr->set_binding_command.sampled_image_binding.texture_view
-                                                                                                   : new_command_ptr->set_binding_command.storage_image_binding.texture_view);
-        }
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1585,9 +1637,7 @@ PUBLIC void ral_command_buffer_record_set_gfx_state(ral_command_buffer recording
     new_command_ptr->set_gfx_state_command.new_state = gfx_state;
     new_command_ptr->type                            = RAL_COMMAND_TYPE_SET_GFX_STATE;
 
-    ral_context_retain_object(command_buffer_ptr->context,
-                              RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
-                              gfx_state);
+    new_command_ptr->init();
 
     system_resizable_vector_push(command_buffer_ptr->commands,
                                  new_command_ptr);
@@ -1616,9 +1666,7 @@ PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_c
     new_command_ptr->set_program_command.new_program = program;
     new_command_ptr->type                            = RAL_COMMAND_TYPE_SET_PROGRAM;
 
-    ral_context_retain_object(command_buffer_ptr->context,
-                              RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                              program);
+    new_command_ptr->init();
 
     system_resizable_vector_push(command_buffer_ptr->commands,
                                  new_command_ptr);
@@ -1661,9 +1709,7 @@ PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer
         new_command_ptr->set_color_rendertarget_command = src_command;
         new_command_ptr->type                           = RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET;
 
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                  new_command_ptr->set_color_rendertarget_command.texture_view);
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1713,9 +1759,7 @@ PUBLIC void ral_command_buffer_record_set_depth_rendertarget(ral_command_buffer 
     new_command_ptr->set_depth_rendertarget_command.depth_rt = depth_rt;
     new_command_ptr->type                                    = RAL_COMMAND_TYPE_SET_DEPTH_RENDERTARGET;
 
-    ral_context_retain_object(command_buffer_ptr->context,
-                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                              depth_rt);
+    new_command_ptr->init();
 
     system_resizable_vector_push(command_buffer_ptr->commands,
                                  new_command_ptr);
@@ -1760,6 +1804,8 @@ PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer      
 
         new_command_ptr->set_scissor_box_command.index = src_command.index;
         new_command_ptr->type                          = RAL_COMMAND_TYPE_SET_SCISSOR_BOX;
+
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1813,9 +1859,7 @@ PUBLIC void ral_command_buffer_record_set_vertex_buffers(ral_command_buffer     
         new_command_ptr->set_vertex_buffer_command = src_command;
         new_command_ptr->type                      = RAL_COMMAND_TYPE_SET_VERTEX_BUFFER;
 
-        ral_context_retain_object(command_buffer_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                  src_command.buffer);
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1858,6 +1902,8 @@ PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer          
 
         new_command_ptr->set_viewport_command.index = src_command.index;
         new_command_ptr->type                       = RAL_COMMAND_TYPE_SET_VIEWPORT;
+
+        new_command_ptr->init();
 
         system_resizable_vector_push(command_buffer_ptr->commands,
                                      new_command_ptr);
@@ -1916,7 +1962,7 @@ PUBLIC void ral_command_buffer_record_update_buffer(ral_command_buffer recording
 
     if (n_data_bytes > sizeof(new_command_ptr->update_buffer_command.preallocated_data))
     {
-        LOG_FATAL("Performance warning: need to alloc a heap memory-backed region (%d bytes) for the \"update buffer\" RAL command",
+        LOG_FATAL("Performance warning: need to alloc a heap memory-backed region (%u bytes) for the \"update buffer\" RAL command",
                   n_data_bytes);
 
         new_command_ptr->update_buffer_command.alloced_data = new char[n_data_bytes];
@@ -1937,9 +1983,7 @@ PUBLIC void ral_command_buffer_record_update_buffer(ral_command_buffer recording
                n_data_bytes);
     }
 
-    ral_context_retain_object(command_buffer_ptr->context,
-                              RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                              buffer);
+    new_command_ptr->init();
 
     system_resizable_vector_push(command_buffer_ptr->commands,
                                  new_command_ptr);

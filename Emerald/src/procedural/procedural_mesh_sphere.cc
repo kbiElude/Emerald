@@ -209,7 +209,7 @@ PRIVATE void _procedural_mesh_sphere_release(void* arg)
         ral_context_delete_objects(sphere_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                   (const void**) &sphere_ptr->nonindexed_bo);
+                                   reinterpret_cast<void* const*>(&sphere_ptr->nonindexed_bo) );
 
         sphere_ptr->nonindexed_bo = nullptr;
     }

@@ -189,7 +189,7 @@ typedef struct
 
 typedef struct
 {
-    const void**            deleted_objects;
+    void* const*            deleted_objects;
     ral_context_object_type object_type;
     uint32_t                n_objects;
 
@@ -272,7 +272,7 @@ PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context            
 PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,
                                                    ral_context_object_type object_type,
                                                    uint32_t                n_objects,
-                                                   const void**            objects);
+                                                   void* const*            objects);
 
 /** TODO */
 PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context               context,
@@ -296,13 +296,18 @@ PUBLIC EMERALD_API ral_texture ral_context_get_texture_by_name(ral_context      
                                                                system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API void ral_context_retain_object(ral_context             context,
+PUBLIC EMERALD_API bool ral_context_retain_object(ral_context             context,
                                                   ral_context_object_type object_type,
                                                   void*                   object);
 
 /** TODO */
+PUBLIC EMERALD_API bool ral_context_retain_objects(ral_context             context,
+                                                   ral_context_object_type object_type,
+                                                   uint32_t                n_objects,
+                                                   void* const*            objects);
+/** TODO */
 PUBLIC void ral_context_set_property(ral_context          context,
                                      ral_context_property property,
-                                     const void*          data);
+                                     void* const*         data);
 
 #endif /* RAL_CONTEXT_H */

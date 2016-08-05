@@ -859,7 +859,7 @@ PRIVATE void _scene_renderer_uber_release(void* uber)
             ral_context_delete_objects(uber_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
-                                       (const void**) &uber_ptr->program);
+                                       reinterpret_cast<void* const*>(&uber_ptr->program) );
 
             uber_ptr->program = nullptr;
         }

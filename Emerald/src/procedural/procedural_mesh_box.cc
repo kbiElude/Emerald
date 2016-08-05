@@ -557,7 +557,7 @@ PRIVATE void _procedural_mesh_box_release(void* arg)
         ral_context_delete_objects(box_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &box_ptr->nonindexed_bo);
+                                   reinterpret_cast<void* const*>(&box_ptr->nonindexed_bo) );
 
         box_ptr->nonindexed_bo                    = nullptr;
         box_ptr->nonindexed_bo_normal_data_offset = -1;
@@ -568,7 +568,7 @@ PRIVATE void _procedural_mesh_box_release(void* arg)
         ral_context_delete_objects(box_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                   (const void**) &box_ptr->indexed_bo);
+                                   reinterpret_cast<void* const*>(&box_ptr->indexed_bo) );
 
         box_ptr->indexed_bo                    = nullptr;
         box_ptr->indexed_bo_index_data_offset  = -1;

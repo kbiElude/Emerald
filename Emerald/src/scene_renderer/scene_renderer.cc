@@ -1796,7 +1796,7 @@ PRIVATE void _scene_renderer_return_shadow_maps_to_pool(scene_renderer renderer)
         ral_context_delete_objects(renderer_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    sizeof(current_light_sm_texture_views) / sizeof(current_light_sm_texture_views[0]),
-                                   (const void**) current_light_sm_texture_views);
+                                   reinterpret_cast<void* const*>(current_light_sm_texture_views) );
     }
 }
 

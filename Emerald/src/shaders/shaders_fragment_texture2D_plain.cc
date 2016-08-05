@@ -69,7 +69,7 @@ PRIVATE void _shaders_fragment_texture2D_plain_release(void* ptr)
         ral_context_delete_objects(data_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                   (const void**) &data_ptr->shader);
+                                   reinterpret_cast<void* const*>(&data_ptr->shader) );
 
         data_ptr->shader = nullptr;
     }
@@ -134,7 +134,7 @@ end:
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                   (const void**) &shader);
+                                   reinterpret_cast<void* const*>(&shader) );
 
         shader = nullptr;
     }

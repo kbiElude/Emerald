@@ -1307,7 +1307,7 @@ PRIVATE void _mesh_release(void* arg)
         ral_context_delete_objects(mesh_ptr->ral_context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &mesh_ptr->bo);
+                                   reinterpret_cast<void* const*>(&mesh_ptr->bo) );
     }
 
     if (mesh_ptr->bo_processed_data != nullptr)
@@ -2694,7 +2694,7 @@ PUBLIC EMERALD_API bool mesh_fill_ral_buffers(mesh        instance,
         ral_context_delete_objects(mesh_ptr->ral_context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &mesh_ptr->bo);
+                                   reinterpret_cast<void* const*>(&mesh_ptr->bo) );
 
         mesh_ptr->bo = nullptr;
     }
@@ -4897,7 +4897,7 @@ PUBLIC EMERALD_API void mesh_set_as_instantiated(mesh mesh_to_modify,
         ral_context_delete_objects(mesh_to_modify_ptr->ral_context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &mesh_to_modify_ptr->bo);
+                                   reinterpret_cast<void* const*>(&mesh_to_modify_ptr->bo) );
 
         mesh_to_modify_ptr->bo = nullptr;
     }

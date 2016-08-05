@@ -31,7 +31,7 @@ typedef struct _ral_texture_view
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1,
-                                   (const void**) &create_info.texture);
+                                   reinterpret_cast<void* const*>(&create_info.texture) );
     }
 } _ral_texture_view;
 
@@ -607,6 +607,22 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
                               "Unrecognized ral_texture_view_property value.");
         }
     }
+}
+
+/** Please see header for speification */
+PUBLIC EMERALD_API bool ral_texture_view_get_mipmap_property(ral_texture_view            texture_view,
+                                                             uint32_t                    n_layer,
+                                                             uint32_t                    n_mipmap,
+                                                             ral_texture_mipmap_property mipmap_property,
+                                                             void*                       out_result_ptr)
+{
+    _ral_texture_view* texture_view_ptr = reinterpret_cast<_ral_texture_view*>(texture_view);
+
+    return ral_texture_get_mipmap_property(texture_view_ptr->create_info.texture,
+                                           n_layer,
+                                           n_mipmap,
+                                           mipmap_property,
+                                           out_result_ptr);
 }
 
 /** Please see header for specification */

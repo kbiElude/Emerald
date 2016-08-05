@@ -412,7 +412,7 @@ PRIVATE void _postprocessing_motion_blur_init_po(_postprocessing_motion_blur* mo
         ral_context_delete_objects(motion_blur_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                   (const void**) &cs);
+                                   reinterpret_cast<void* const*>(&cs) );
     }
     else
     {
@@ -495,11 +495,11 @@ PRIVATE void _postprocessing_motion_blur_release(void* ptr)
     ral_context_delete_objects(motion_blur_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                               (const void**) &motion_blur_ptr->po);
+                               reinterpret_cast<void* const*>(&motion_blur_ptr->po) );
     ral_context_delete_objects(motion_blur_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                1, /* n_objects */
-                               (const void**) &motion_blur_ptr->sampler);
+                               reinterpret_cast<void* const*>(&motion_blur_ptr->sampler) );
 
     if (motion_blur_ptr->cached_command_buffer != nullptr)
     {

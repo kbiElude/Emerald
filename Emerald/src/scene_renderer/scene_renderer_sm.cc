@@ -1095,7 +1095,7 @@ PRIVATE void _scene_renderer_sm_deinit_samplers(_scene_renderer_sm* sm_ptr)
     ral_context_delete_objects(sm_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                n_samplers,
-                               (const void**) samplers);
+                               reinterpret_cast<void* const*>(samplers) );
 
     sm_ptr->pcf_color_sampler  = nullptr;
     sm_ptr->pcf_depth_sampler  = nullptr;
@@ -1417,7 +1417,7 @@ PRIVATE ral_command_buffer _scene_renderer_sm_start(_scene_renderer_sm*         
         ral_context_delete_objects(handler_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_objects */
-                                   (const void**) &sm_depth_texture);
+                                   reinterpret_cast<void* const*>(&sm_depth_texture) );
 
         if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
         {
@@ -1501,7 +1501,7 @@ PRIVATE ral_command_buffer _scene_renderer_sm_start(_scene_renderer_sm*         
             ral_context_delete_objects(handler_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                        1, /* n_objects */
-                                       (const void**) &sm_color_texture);
+                                       reinterpret_cast<void* const*>(&sm_color_texture) );
         }
 
         scene_light_set_property(light,
@@ -1798,7 +1798,7 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
     ral_context_delete_objects(handler_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                n_tvs_to_release,
-                               (const void**) tvs_to_release);
+                               reinterpret_cast<void* const*>(tvs_to_release) );
 
     handler_ptr->current_sm_color0_l0_texture_view = nullptr;
     handler_ptr->current_sm_color0_l1_texture_view = nullptr;
@@ -1809,7 +1809,7 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
     ral_context_delete_objects(handler_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                1, /* n_objects */
-                               (const void**) &handler_ptr->current_command_buffer);
+                               reinterpret_cast<void* const*>(&handler_ptr->current_command_buffer) );
 
     handler_ptr->current_command_buffer = nullptr;
     handler_ptr->is_enabled             = false;

@@ -52,7 +52,7 @@ PRIVATE void _scene_texture_release(void* data_ptr)
         ral_context_delete_objects(texture_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_objects */
-                                   (const void**) &texture_ptr->texture);
+                                   reinterpret_cast<void* const*>(&texture_ptr->texture) );
 
         texture_ptr->texture = nullptr;
     }

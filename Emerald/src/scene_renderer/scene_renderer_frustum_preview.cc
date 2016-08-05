@@ -217,7 +217,7 @@ typedef struct _scene_renderer_frustum_preview
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
-                                       (const void**) &po);
+                                       reinterpret_cast<void* const*>(&po) );
 
             po = nullptr;
         }
@@ -574,7 +574,7 @@ PRIVATE void _scene_renderer_frustum_preview_init(_scene_renderer_frustum_previe
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    n_shaders_to_release,
-                                   (const void**) shaders_to_release);
+                                   reinterpret_cast<void* const*>(shaders_to_release) );
     }
 
     /* Retrieve PO UB details */
@@ -958,7 +958,7 @@ PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_previe
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &preview_ptr->data_bo);
+                                   reinterpret_cast<void* const*>(&preview_ptr->data_bo) );
 
         preview_ptr->data_bo = nullptr;
     }
@@ -969,7 +969,7 @@ PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_previe
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &preview_ptr->po);
+                                   reinterpret_cast<void* const*>(&preview_ptr->po) );
 
         preview_ptr->po = nullptr;
     }
@@ -1020,7 +1020,7 @@ PUBLIC ral_present_task scene_renderer_frustum_preview_render(scene_renderer_fru
             ral_context_delete_objects(preview_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
-                                       (const void**) &preview_ptr->data_bo);
+                                       reinterpret_cast<void* const*>(&preview_ptr->data_bo) );
 
             preview_ptr->data_bo = nullptr;
         }

@@ -308,7 +308,7 @@ end_fail:
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &preview_ptr->preview_program);
+                                   reinterpret_cast<void* const*>(&preview_ptr->preview_program) );
 
         preview_ptr->preview_program = nullptr;
     }
@@ -325,7 +325,7 @@ end:
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               (const void**) shaders_to_release);
+                               reinterpret_cast<void* const*>(shaders_to_release) );
 }
 
 /** Please see header for spec */
@@ -367,11 +367,11 @@ PUBLIC void scene_renderer_normals_preview_release(scene_renderer_normals_previe
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
                                1, /* n_objects */
-                               (const void**) &preview_ptr->cached_gfx_state);
+                               reinterpret_cast<void* const*>(&preview_ptr->cached_gfx_state) );
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                1, /* n_objects */
-                               (const void**) &preview_ptr->cached_command_buffer);
+                               reinterpret_cast<void* const*>(&preview_ptr->cached_command_buffer) );
 
     if (preview_ptr->owned_scene != nullptr)
     {
@@ -383,7 +383,7 @@ PUBLIC void scene_renderer_normals_preview_release(scene_renderer_normals_previe
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &preview_ptr->preview_program);
+                                   reinterpret_cast<void* const*>(&preview_ptr->preview_program) );
 
         preview_ptr->preview_program = nullptr;
     }
@@ -550,7 +550,7 @@ PUBLIC void scene_renderer_normals_preview_start(scene_renderer_normals_preview 
             ral_context_delete_objects(preview_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
                                        1, /* n_objects */
-                                       (const void**) &preview_ptr->cached_gfx_state);
+                                       reinterpret_cast<void* const*>(&preview_ptr->cached_gfx_state) );
 
             preview_ptr->cached_gfx_state = nullptr;
         }

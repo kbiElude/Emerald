@@ -161,7 +161,7 @@ typedef struct _ral_present_task
                 ral_context_delete_objects(context,
                                            current_io_array_ptr[n_item].object_type,
                                            1, /* n_objects */
-                                           (const void**) &current_io_array_ptr[n_item].object);
+                                           reinterpret_cast<void* const*>(&current_io_array_ptr[n_item].object) );
             }
 
             delete [] current_io_array_ptr;
@@ -172,7 +172,7 @@ typedef struct _ral_present_task
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                        1, /* n_objects */
-                                       (const void**) command_buffer);
+                                       reinterpret_cast<void* const*>(command_buffer) );
 
             command_buffer = nullptr;
         }

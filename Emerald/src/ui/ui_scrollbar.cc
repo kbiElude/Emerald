@@ -225,7 +225,7 @@ PRIVATE void _ui_scrollbar_init_program(ui             ui_instance,
     ral_context_delete_objects(scrollbar_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               (const void**) shaders_to_release);
+                               reinterpret_cast<void* const*>(shaders_to_release) );
 }
 
 /** TODO */
@@ -333,7 +333,7 @@ PUBLIC void ui_scrollbar_deinit(void* internal_instance)
     ral_context_delete_objects(scrollbar_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                               (const void**) &scrollbar_ptr->program_slider);
+                               reinterpret_cast<void* const*>(&scrollbar_ptr->program_slider) );
 
     /* Release variants */
     system_variant_release(scrollbar_ptr->max_value_variant);

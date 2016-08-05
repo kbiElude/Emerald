@@ -263,7 +263,7 @@ typedef struct _ral_program
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                        n_shaders_to_delete,
-                                       (const void**) shaders_to_delete);
+                                       reinterpret_cast<void* const*>(shaders_to_delete) );
         }
 
         if (callback_manager != nullptr)

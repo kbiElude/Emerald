@@ -572,7 +572,7 @@ PUBLIC void demo_loader_run(demo_loader   loader,
                         ral_context_delete_objects(loader_ptr->context,
                                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                                    1, /* n_objects */
-                                                   (const void**) &new_shader);
+                                                   reinterpret_cast<void* const*>(&new_shader) );
                     }
                 }
 

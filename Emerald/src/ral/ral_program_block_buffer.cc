@@ -59,7 +59,7 @@ typedef struct _ral_program_block_buffer
             ral_context_delete_objects(context_ral,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
-                                       (const void**) &buffer_ral);
+                                       reinterpret_cast<void* const*>(&buffer_ral) );
 
             buffer_ral = nullptr;
         }

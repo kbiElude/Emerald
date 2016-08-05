@@ -376,7 +376,7 @@ PRIVATE void _scalar_field_metaballs_init(_scalar_field_metaballs* metaballs_ptr
     ral_context_delete_objects(metaballs_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                1, /* n_objects */
-                               (const void**) &cs);
+                               reinterpret_cast<void* const*>(&cs) );
 }
 
 /** TODO */
@@ -552,7 +552,7 @@ PRIVATE void _scalar_field_metaballs_release(void* metaballs)
         ral_context_delete_objects(metaballs_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &metaballs_ptr->po);
+                                   reinterpret_cast<void* const*>(&metaballs_ptr->po) );
 
         metaballs_ptr->po = nullptr;
     }
@@ -569,7 +569,7 @@ PRIVATE void _scalar_field_metaballs_release(void* metaballs)
         ral_context_delete_objects(metaballs_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &metaballs_ptr->scalar_field_bo);
+                                   reinterpret_cast<void* const*>(&metaballs_ptr->scalar_field_bo) );
 
         metaballs_ptr->scalar_field_bo = nullptr;
     }

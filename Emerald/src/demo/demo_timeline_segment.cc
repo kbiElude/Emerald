@@ -1054,7 +1054,7 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
     ral_context_delete_objects(segment_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                1, /* n_objects */
-                               (const void**) &callback_arg_ptr->texture);
+                               reinterpret_cast<void* const*>(&callback_arg_ptr->texture) );
 
     /* Notify any subscribers about the event */
     system_callback_manager_call_back(segment_ptr->callback_manager,
@@ -2294,7 +2294,7 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
         if (n_cached_texture_attachments > 0 && !ral_context_delete_objects(node_ptr->parent_segment_ptr->context,
                                                                             RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                                                             n_cached_texture_attachments,
-                                                                            (const void**) cached_texture_attachments) )
+                                                                            reinterpret_cast<void* const*>(cached_texture_attachments) ))
         {
             ASSERT_DEBUG_SYNC(false,
                               "Texture attachment release process failed.");

@@ -105,7 +105,7 @@ PRIVATE void _procedural_mesh_circle_release(void* arg)
         ral_context_delete_objects(instance_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                   (const void**) &instance_ptr->nonindexed_bo);
+                                   reinterpret_cast<void* const*>(&instance_ptr->nonindexed_bo) );
 
         instance_ptr->nonindexed_bo = nullptr;
     }

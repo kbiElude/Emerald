@@ -664,7 +664,7 @@ PRIVATE void _ui_dropdown_init_program(ui            ui_instance,
     ral_context_delete_objects(dropdown_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               (const void**) shaders_to_release);
+                               reinterpret_cast<void* const*>(shaders_to_release) );
 }
 
 /* TODO */
@@ -1092,7 +1092,7 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
     ral_context_delete_objects(ui_dropdown_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                n_programs_to_release,
-                               (const void**) programs_to_release);
+                               reinterpret_cast<void* const*>(programs_to_release) );
 
     /* Release all entry instances */
     _ui_dropdown_entry* entry_ptr = nullptr;

@@ -138,7 +138,7 @@ PRIVATE void _ui_frame_init_program(ui         ui_instance,
                         frame_ptr->program);
 
     /* Release shaders we will no longer need */
-    const ral_shader shaders_to_release[] =
+    ral_shader shaders_to_release[] =
     {
         fs,
         vs
@@ -148,7 +148,7 @@ PRIVATE void _ui_frame_init_program(ui         ui_instance,
     ral_context_delete_objects(frame_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               (const void**) shaders_to_release);
+                               reinterpret_cast<void* const*>(shaders_to_release) );
 }
 
 /** TODO */
@@ -175,7 +175,7 @@ PUBLIC void ui_frame_deinit(void* internal_instance)
     ral_context_delete_objects(ui_frame_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                1, /* n_objects */
-                               (const void**) &ui_frame_ptr->program);
+                               reinterpret_cast<void* const*>(&ui_frame_ptr->program) );
 
     if (ui_frame_ptr->last_cached_command_buffer != nullptr)
     {

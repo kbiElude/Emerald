@@ -230,7 +230,7 @@ end_fail:
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &preview_ptr->preview_program);
+                                   reinterpret_cast<void* const*>(&preview_ptr->preview_program) );
 
         preview_ptr->preview_program = nullptr;
     }
@@ -246,7 +246,7 @@ end:
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shaders_to_release,
-                               (const void**) shaders_to_release);
+                               reinterpret_cast<void* const*>(shaders_to_release) );
 }
 
 
@@ -287,11 +287,11 @@ PUBLIC void scene_renderer_lights_preview_release(scene_renderer_lights_preview 
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                1, /* n_objects */
-                               (const void**) &preview_ptr->cached_command_buffer);
+                               reinterpret_cast<void* const*>(&preview_ptr->cached_command_buffer) );
     ral_context_delete_objects(preview_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
                                sizeof(gfx_states) / sizeof(gfx_states[0]),
-                               (const void**) gfx_states);
+                               reinterpret_cast<void* const*>(gfx_states) );
 
 
     preview_ptr->cached_command_buffer   = nullptr;
@@ -304,7 +304,7 @@ PUBLIC void scene_renderer_lights_preview_release(scene_renderer_lights_preview 
         ral_context_delete_objects(preview_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &preview_ptr->preview_program);
+                                   reinterpret_cast<void* const*>(&preview_ptr->preview_program) );
 
         preview_ptr->preview_program = nullptr;
     }

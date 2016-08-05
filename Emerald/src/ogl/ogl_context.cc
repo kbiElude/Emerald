@@ -1510,11 +1510,11 @@ PRIVATE void _ogl_context_release(void* ptr)
         ral_context_delete_objects(context_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    n_fbo_textures,
-                                   (const void**) fbo_textures);
+                                   reinterpret_cast<void* const*>(fbo_textures) );
         ral_context_delete_objects(context_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                    n_fbo_texture_views,
-                                   (const void**) fbo_texture_views);
+                                   reinterpret_cast<void* const*>(fbo_texture_views) );
 
         context_ptr->fbo_color_texture = nullptr;
         context_ptr->fbo_ds_texture    = nullptr;

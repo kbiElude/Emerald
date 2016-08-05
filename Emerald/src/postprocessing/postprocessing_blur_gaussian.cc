@@ -243,20 +243,20 @@ typedef struct _postprocessing_blur_gaussian
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                        1, /* n_objects */
-                                       (const void**) &ping_pong_rt);
+                                       reinterpret_cast<void* const*>(&ping_pong_rt) );
         }
 
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                    n_texture_views_to_release,
-                                   (const void**) texture_views_to_release);
+                                   reinterpret_cast<void* const*>(texture_views_to_release) );
 
         if (po != nullptr)
         {
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
-                                       (const void**) &po);
+                                       reinterpret_cast<void* const*>(&po) );
 
             po = nullptr;
         }
@@ -264,15 +264,15 @@ typedef struct _postprocessing_blur_gaussian
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    n_buffers_to_release,
-                                   (const void**) buffers_to_release);
+                                   reinterpret_cast<void* const*>(buffers_to_release) );
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
                                    n_gfx_states_to_release,
-                                   (const void**) gfx_states_to_release);
+                                   reinterpret_cast<void* const*>(gfx_states_to_release) );
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    n_samplers_to_release,
-                                   (const void**) samplers_to_release);
+                                   reinterpret_cast<void* const*>(samplers_to_release) );
     }
 
     REFCOUNT_INSERT_VARIABLES
@@ -826,7 +826,7 @@ PRIVATE void _postprocessing_blur_gaussian_init(_postprocessing_blur_gaussian* i
         ral_context_delete_objects(instance_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    sizeof(result_shaders) / sizeof(result_shaders[0]),
-                                   (const void**) result_shaders);
+                                   reinterpret_cast<void* const*>(result_shaders) );
     }
 }
 
@@ -1115,11 +1115,11 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             ral_context_delete_objects(blur_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                        1, /* n_objects */
-                                       (const void**) &blur_ptr->ping_pong_rt);
+                                       reinterpret_cast<void* const*>(&blur_ptr->ping_pong_rt) );
             ral_context_delete_objects(blur_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                        n_ping_pong_rt_views,
-                                       (const void**) ping_pong_rt_views);
+                                       reinterpret_cast<void* const*>(ping_pong_rt_views) );
 
             blur_ptr->ping_pong_rt           = nullptr;
             blur_ptr->ping_pong_rt_view_l0   = nullptr;

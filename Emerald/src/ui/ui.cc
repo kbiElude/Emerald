@@ -330,7 +330,7 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
                 ral_context_delete_objects(context,
                                            RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                            1, /* n_objects */
-                                           (const void**) &ui_control_program);
+                                           reinterpret_cast<void* const*>(&ui_control_program) );
 
                 result = system_hash64map_remove(ui_ptr->registered_ui_control_programs,
                                                  ui_control_program_name_hash);

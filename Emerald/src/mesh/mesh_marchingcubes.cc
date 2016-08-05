@@ -819,7 +819,7 @@ PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
         ral_context_delete_objects(mesh_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &mesh_ptr->indirect_draw_call_args_bo);
+                                   reinterpret_cast<void* const*>(&mesh_ptr->indirect_draw_call_args_bo) );
 
         mesh_ptr->indirect_draw_call_args_bo = nullptr;
     }
@@ -838,7 +838,7 @@ PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
             ral_context_delete_objects(mesh_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
-                                       (const void**) &mesh_ptr->polygonized_data_normals_subregion_bo);
+                                       reinterpret_cast<void* const*>(&mesh_ptr->polygonized_data_normals_subregion_bo) );
 
             mesh_ptr->polygonized_data_normals_subregion_bo = nullptr;
         }
@@ -848,7 +848,7 @@ PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
             ral_context_delete_objects(mesh_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_objects */
-                                       (const void**) &mesh_ptr->polygonized_data_vertices_subregion_bo);
+                                       reinterpret_cast<void* const*>(&mesh_ptr->polygonized_data_vertices_subregion_bo) );
 
             mesh_ptr->polygonized_data_vertices_subregion_bo = nullptr;
         }
@@ -856,7 +856,7 @@ PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
         ral_context_delete_objects(mesh_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_objects */
-                                   (const void**) &mesh_ptr->polygonized_data_bo);
+                                   reinterpret_cast<void* const*>(&mesh_ptr->polygonized_data_bo) );
 
         mesh_ptr->polygonized_data_bo = nullptr;
     }
@@ -887,7 +887,7 @@ PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
         ral_context_delete_objects(mesh_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &mesh_ptr->po_scalar_field_polygonizer);
+                                   reinterpret_cast<void* const*>(&mesh_ptr->po_scalar_field_polygonizer) );
 
         mesh_ptr->po_scalar_field_polygonizer = nullptr;
     }
@@ -1401,7 +1401,7 @@ PRIVATE void _mesh_marchingcubes_init_polygonizer_po(_mesh_marchingcubes* mesh_p
     ral_context_delete_objects(mesh_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                1, /* n_objects */
-                               (const void**) &cs);
+                               reinterpret_cast<void* const*>(&cs) );
 }
 
 /** TODO */

@@ -46,7 +46,7 @@ PUBLIC bool system_screen_mode_activate(system_screen_mode screen_mode);
 PUBLIC system_screen_mode system_screen_mode_create(unsigned int             width,
                                                     unsigned int             height,
                                                     unsigned int             refresh_rate,
-                                                    const void*              system_blob,
+                                                    void*                    system_blob,
                                                     PFNRELEASESYSTEMBLOBPROC pfn_release_system_blob);
 
 /** TODO */

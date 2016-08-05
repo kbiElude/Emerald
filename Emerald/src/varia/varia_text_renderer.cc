@@ -438,7 +438,7 @@ PRIVATE void _varia_text_renderer_init_programs(_varia_text_renderer* text_ptr)
     ral_context_delete_objects(text_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                n_shader_create_info_items,
-                               (const void**) result_shaders);
+                               reinterpret_cast<void* const*>(result_shaders) );
 
     /* Retrieve uniform block instances. */
     text_ptr->fsdata_ub = ral_program_block_buffer_create(text_ptr->context,
@@ -460,7 +460,7 @@ PRIVATE void _varia_text_renderer_release(void* text)
         ral_context_delete_objects(text_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                    1, /* n_buffers */
-                                   (const void**) &text_ptr->data_buffer);
+                                   reinterpret_cast<void* const*>(&text_ptr->data_buffer) );
 
         text_ptr->data_buffer = nullptr;
     }
@@ -485,7 +485,7 @@ PRIVATE void _varia_text_renderer_release(void* text)
         ral_context_delete_objects(text_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &text_ptr->draw_text_program);
+                                   reinterpret_cast<void* const*>(&text_ptr->draw_text_program));
 
         text_ptr->draw_text_program = nullptr;
     }
@@ -521,7 +521,7 @@ PRIVATE void _varia_text_renderer_release(void* text)
         ral_context_delete_objects(text_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_textures */
-                                   (const void**) &text_ptr->font_table_texture);
+                                   reinterpret_cast<void* const*>(&text_ptr->font_table_texture) );
 
         text_ptr->font_table_texture = nullptr;
     }
@@ -531,7 +531,7 @@ PRIVATE void _varia_text_renderer_release(void* text)
         ral_context_delete_objects(text_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                    1, /* n_textures */
-                                   (const void**) &text_ptr->font_table_texture_view);
+                                   reinterpret_cast<void* const*>(&text_ptr->font_table_texture_view) );
 
         text_ptr->font_table_texture_view = nullptr;
     }
@@ -562,7 +562,7 @@ PRIVATE void _varia_text_renderer_release(void* text)
         ral_context_delete_objects(text_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_textures */
-                                   (const void**) &text_ptr->sampler);
+                                   reinterpret_cast<void* const*>(&text_ptr->sampler) );
 
         text_ptr->sampler = nullptr;
     }
@@ -646,7 +646,7 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(voi
             ral_context_delete_objects(text_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                        1, /* n_buffers */
-                                       (const void**) &text_ptr->data_buffer);
+                                       reinterpret_cast<void* const*>(&text_ptr->data_buffer) );
 
             text_ptr->data_buffer = nullptr;
         }

@@ -414,7 +414,7 @@ PUBLIC void collada_data_geometry_release(collada_data_geometry geometry)
 /* Please see header for spec */
 PUBLIC void collada_data_geometry_set_property(collada_data_geometry          geometry,
                                                collada_data_geometry_property property,
-                                               void*                          data)
+                                               const void*                    data)
 {
     _collada_data_geometry* geometry_ptr = reinterpret_cast<_collada_data_geometry*>(geometry);
 
@@ -422,14 +422,14 @@ PUBLIC void collada_data_geometry_set_property(collada_data_geometry          ge
     {
         case COLLADA_DATA_GEOMETRY_PROPERTY_EMERALD_MESH:
         {
-            geometry_ptr->emerald_mesh = *reinterpret_cast<mesh*>(data);
+            geometry_ptr->emerald_mesh = *reinterpret_cast<const mesh*>(data);
 
             break;
         }
 
         case COLLADA_DATA_GEOMETRY_PROPERTY_ID:
         {
-            geometry_ptr->id = *reinterpret_cast<system_hashed_ansi_string*>(data);
+            geometry_ptr->id = *reinterpret_cast<const system_hashed_ansi_string*>(data);
 
             break;
         }

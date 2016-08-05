@@ -168,11 +168,11 @@ _mesh_material_property_texture::~_mesh_material_property_texture()
         ral_context_delete_objects(parent_property_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_objects */
-                                   (const void**) &sampler);
+                                   reinterpret_cast<void* const*>(&sampler) );
         ral_context_delete_objects(parent_property_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                    1, /* n_objects */
-                                   (const void**) &texture_view);
+                                   reinterpret_cast<void* const*>(&texture_view) );
 
         sampler = nullptr;
     }
@@ -249,11 +249,11 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                     ral_context_delete_objects(material_ptr->context,
                                                RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                                1, /* n_objects */
-                                               (const void**) &material_ptr->shading_properties[current_property].texture_data.sampler);
+                                               reinterpret_cast<void* const*>(&material_ptr->shading_properties[current_property].texture_data.sampler) );
                     ral_context_delete_objects(material_ptr->context,
                                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                                1, /* n_objects */
-                                               (const void**) &material_ptr->shading_properties[current_property].texture_data.texture_view);
+                                               reinterpret_cast<void* const*>(&material_ptr->shading_properties[current_property].texture_data.texture_view) );
 
                     material_ptr->shading_properties[current_property].texture_data.sampler      = nullptr;
                     material_ptr->shading_properties[current_property].texture_data.texture_view = nullptr;
@@ -282,7 +282,7 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                 ral_context_delete_objects(material_ptr->context,
                                            RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                            1, /* n_objects */
-                                           (const void**) &material_ptr->shaders[n_shader_stage]);
+                                           reinterpret_cast<void* const*>(&material_ptr->shaders[n_shader_stage]) );
 
                 material_ptr->shaders[n_shader_stage] = nullptr;
             }
@@ -293,7 +293,7 @@ PRIVATE void _mesh_material_release(void* data_ptr)
             ral_context_delete_objects(material_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                        1, /* n_objects */
-                                       (const void**) &material_ptr->program);
+                                       reinterpret_cast<void* const*>(&material_ptr->program) );
 
             material_ptr->program = nullptr;
         }
@@ -1062,7 +1062,7 @@ end_error:
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                        1, /* n_objects */
-                                       (const void**) &result_material_ptr->shaders[n_shader]);
+                                       reinterpret_cast<void* const*>(&result_material_ptr->shaders[n_shader]) );
 
             result_material_ptr->shaders[n_shader] = nullptr;
         }
@@ -1073,7 +1073,7 @@ end_error:
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                    1, /* n_objects */
-                                   (const void**) &temp_shader);
+                                   reinterpret_cast<void* const*>(&temp_shader) );
 
         temp_shader = nullptr;
     }
@@ -1084,7 +1084,7 @@ end_error:
         ral_context_delete_objects(context,
                                    RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                    1, /* n_objects */
-                                   (const void**) &result_material_ptr->program);
+                                   reinterpret_cast<void* const*>(&result_material_ptr->program) );
 
         result_material_ptr->program = nullptr;
     }
@@ -1943,11 +1943,11 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture_view(mesh_
         ral_context_delete_objects(material_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_samplers */
-                                   (const void**) &bound_sampler);
+                                   reinterpret_cast<void* const*>(&bound_sampler) );
         ral_context_delete_objects(material_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                    1, /* n_samplers */
-                                   (const void**) &bound_texture_view);
+                                   reinterpret_cast<void* const*>(&bound_texture_view) );
 
         bound_sampler      = nullptr;
         bound_texture_view = nullptr;
