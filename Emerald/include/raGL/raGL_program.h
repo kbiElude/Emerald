@@ -11,17 +11,17 @@
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
-typedef struct _raGL_program_attribute
+typedef struct raGL_program_attribute
 {
     int32_t                   location;
     system_hashed_ansi_string name;
 
-    _raGL_program_attribute()
+    raGL_program_attribute()
     {
         location = -1;
         name     = nullptr;
     }
-} _raGL_program_attribute;
+} raGL_program_attribute;
 
 typedef enum
 {
@@ -29,7 +29,7 @@ typedef enum
     RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP
 } raGL_program_block_property;
 
-typedef struct _raGL_program_variable
+typedef struct raGL_program_variable
 {
     /* Buffer variables, uniforms (default & regular uniform block): */
     uint32_t block_index;
@@ -44,14 +44,14 @@ typedef struct _raGL_program_variable
     uint32_t texture_unit;
 
 
-    _raGL_program_variable()
+    raGL_program_variable()
     {
         block_index  = -1;
         image_unit   = -1;
         name         = nullptr;
         texture_unit = -1;
     }
-} _raGL_program_variable;
+} raGL_program_variable;
 
 typedef enum
 {
@@ -84,9 +84,9 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
                                         ral_program program_ral);
 
 /** TODO */
-PUBLIC bool raGL_program_get_attribute_by_name(const raGL_program              program,
-                                               system_hashed_ansi_string       name,
-                                               const _raGL_program_attribute** out_attribute_ptr);
+PUBLIC bool raGL_program_get_attribute_by_name(const raGL_program             program,
+                                               system_hashed_ansi_string      name,
+                                               const raGL_program_attribute** out_attribute_ptr);
 
 /** TODO */
 PUBLIC void raGL_program_get_block_property(const raGL_program          program,
@@ -106,14 +106,14 @@ PUBLIC void raGL_program_get_property(const raGL_program    program,
                                       raGL_program_property property,
                                       void*                 out_result_ptr);
 
-PUBLIC void raGL_program_get_uniform_by_location(const raGL_program             program,
-                                                 uint32_t                       location,
-                                                 const _raGL_program_variable** out_uniform_ptr);
+PUBLIC void raGL_program_get_uniform_by_location(const raGL_program            program,
+                                                 uint32_t                      location,
+                                                 const raGL_program_variable** out_uniform_ptr);
 
 /** TODO */
-PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program             program,
-                                             system_hashed_ansi_string      name,
-                                             const _raGL_program_variable** out_uniform_ptr);
+PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program            program,
+                                             system_hashed_ansi_string     name,
+                                             const raGL_program_variable** out_uniform_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *

@@ -1345,11 +1345,11 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             /* Make sure this is actually a renderbuffer. */
             raGL_backend_get_texture(context_ptr->backend,
                                      context_ptr->fbo_color_texture,
-                                     (void**) &color_to_raGL);
+                                     &color_to_raGL);
 
             raGL_texture_get_property(color_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                      (void**) &color_to_is_rb);
+                                      reinterpret_cast<void**>(&color_to_is_rb) );
 
             ASSERT_DEBUG_SYNC(color_to_is_rb,
                               "Default FB's color texture is not a RB");
@@ -1385,7 +1385,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             /* Make sure this is actually a renderbuffer. */
             raGL_backend_get_texture(context_ptr->backend,
                                      context_ptr->fbo_ds_texture,
-                                     (void**) &depth_stencil_to_raGL);
+                                     &depth_stencil_to_raGL);
 
             raGL_texture_get_property(depth_stencil_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,

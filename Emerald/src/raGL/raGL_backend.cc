@@ -1796,7 +1796,7 @@ PRIVATE ral_present_job _raGL_backend_on_objects_deleted_rendering_callback(ral_
         _raGL_backend_release_raGL_object(callback_arg_ptr->backend_ptr,
                                           callback_arg_ptr->ral_callback_arg_ptr->object_type,
                                           object_raGL,
-                                          (const void**) callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object]);
+                                          callback_arg_ptr->ral_callback_arg_ptr->deleted_objects[n_deleted_object]);
     }
 end:
     /* We speak GL here, no need for a present job */
@@ -1805,20 +1805,21 @@ end:
 
 /** TODO */
 PRIVATE void _raGL_backend_on_shader_attach_request(const void* callback_arg_data,
-                                                    void*       backend)
+                                                    void*       backend_raw_ptr)
 {
-    _raGL_backend*                                               backend_ptr      = reinterpret_cast<_raGL_backend*>                                              (backend);
+    raGL_backend                                                 backend          = reinterpret_cast<raGL_backend>                                                (backend_raw_ptr);
+    _raGL_backend*                                               backend_ptr      = reinterpret_cast<_raGL_backend*>                                              (backend_raw_ptr);
     const _ral_program_callback_shader_attach_callback_argument* callback_arg_ptr = reinterpret_cast<const _ral_program_callback_shader_attach_callback_argument*>(callback_arg_data);
-    const raGL_program                                           program_raGL     = nullptr;
+    raGL_program                                                 program_raGL     = nullptr;
     bool                                                         result           = false;
-    const raGL_shader                                            shader_raGL      = nullptr;
+    raGL_shader                                                  shader_raGL      = nullptr;
 
     raGL_backend_get_program(backend,
                              callback_arg_ptr->program,
-                             (void**) &program_raGL);
+                             &program_raGL);
     raGL_backend_get_shader (backend,
                              callback_arg_ptr->shader,
-                             (void**) &shader_raGL);
+                             &shader_raGL);
 
     if (!raGL_program_attach_shader(program_raGL,
                                     shader_raGL) )
@@ -1886,16 +1887,17 @@ end:
 
 /** TODO */
 PRIVATE void _raGL_backend_on_shader_body_updated_notification(const void* callback_arg_data,
-                                                               void*       backend)
+                                                               void*       backend_raw_ptr)
 {
-    _raGL_backend*    backend_ptr       = reinterpret_cast<_raGL_backend*>(backend);
-    bool              result            = false;
-    ral_shader        shader_to_compile = (ral_shader) callback_arg_data;
-    const raGL_shader shader_raGL       = nullptr;
+    raGL_backend   backend           = reinterpret_cast<raGL_backend>  (backend_raw_ptr);
+    _raGL_backend* backend_ptr       = reinterpret_cast<_raGL_backend*>(backend);
+    bool           result            = false;
+    ral_shader     shader_to_compile = (ral_shader) callback_arg_data;
+    raGL_shader    shader_raGL       = nullptr;
 
     raGL_backend_get_shader(backend,
                             shader_to_compile,
-                            (void**) &shader_raGL);
+                            &shader_raGL);
 
     if (!raGL_shader_compile(shader_raGL) )
     {
@@ -2636,14 +2638,14 @@ PUBLIC void raGL_backend_init(raGL_backend backend)
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_backend_get_buffer(void*      backend,
-                                    ral_buffer buffer_ral,
-                                    void**     out_buffer_raGL_ptr)
+PUBLIC bool raGL_backend_get_buffer(raGL_backend backend,
+                                    ral_buffer   buffer_ral,
+                                    raGL_buffer* out_buffer_raGL_ptr)
 {
     return _raGL_backend_get_object(backend,
                                     RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                     buffer_ral,
-                                    out_buffer_raGL_ptr);
+                                    reinterpret_cast<void**>(out_buffer_raGL_ptr) );
 }
 
 /** Please see header for specification */
@@ -2656,6 +2658,17 @@ PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 
                                      bo_id,
                                      property,
                                      out_result_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC bool raGL_backend_get_command_buffer(raGL_backend         backend,
+                                            ral_command_buffer   command_buffer_ral,
+                                            raGL_command_buffer* out_command_buffer_raGL_ptr)
+{
+    return _raGL_backend_get_object(backend,
+                                    RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                    command_buffer_ral,
+                                    reinterpret_cast<void**>(out_command_buffer_raGL_ptr) );
 }
 
 /** Please see header for specification */
@@ -2728,14 +2741,14 @@ PUBLIC void raGL_backend_get_private_property(raGL_backend                  back
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_backend_get_program(void*       backend,
-                                     ral_program program_ral,
-                                     void**      out_program_raGL_ptr)
+PUBLIC bool raGL_backend_get_program(raGL_backend  backend,
+                                     ral_program   program_ral,
+                                     raGL_program* out_program_raGL_ptr)
 {
     return _raGL_backend_get_object(backend,
                                     RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
                                     program_ral,
-                                    out_program_raGL_ptr);
+                                    reinterpret_cast<void**>(out_program_raGL_ptr) );
 }
 
 /** Please see header for specification */
@@ -2797,47 +2810,47 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_backend_get_sampler(void*       backend,
-                                     ral_sampler sampler_ral,
-                                     void**      out_sampler_raGL_ptr)
+PUBLIC bool raGL_backend_get_sampler(raGL_backend  backend,
+                                     ral_sampler   sampler_ral,
+                                     raGL_sampler* out_sampler_raGL_ptr)
 {
     return _raGL_backend_get_object(backend,
                                     RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                     sampler_ral,
-                                    out_sampler_raGL_ptr);
+                                    reinterpret_cast<void**>(out_sampler_raGL_ptr) );
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_backend_get_shader(void*      backend,
-                                    ral_shader shader_ral,
-                                    void**     out_shader_raGL_ptr)
+PUBLIC bool raGL_backend_get_shader(raGL_backend backend,
+                                    ral_shader   shader_ral,
+                                    raGL_shader* out_shader_raGL_ptr)
 {
     return _raGL_backend_get_object(backend,
                                     RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                     shader_ral,
-                                    out_shader_raGL_ptr);
+                                    reinterpret_cast<void**>(out_shader_raGL_ptr) );
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_backend_get_texture(void*       backend,
-                                     ral_texture texture_ral,
-                                     void**      out_texture_raGL_ptr)
+PUBLIC bool raGL_backend_get_texture(raGL_backend  backend,
+                                     ral_texture   texture_ral,
+                                     raGL_texture* out_texture_raGL_ptr)
 {
     return _raGL_backend_get_object(backend,
                                     RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                     texture_ral,
-                                    out_texture_raGL_ptr);
+                                    reinterpret_cast<void**>(out_texture_raGL_ptr) );
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_backend_get_texture_view(void*            backend,
+PUBLIC bool raGL_backend_get_texture_view(raGL_backend     backend,
                                           ral_texture_view texture_view_ral,
-                                          void**           out_texture_raGL_ptr)
+                                          raGL_texture*    out_texture_raGL_ptr)
 {
     return _raGL_backend_get_object(backend,
                                     RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                     texture_view_ral,
-                                    out_texture_raGL_ptr);
+                                    reinterpret_cast<void**>(out_texture_raGL_ptr) );
 }
 
 /** Please see header for specification */

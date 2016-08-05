@@ -762,7 +762,7 @@ PUBLIC bool raGL_buffers_allocate_buffer_memory_for_ral_buffer(raGL_buffers in_r
 
         if (!raGL_backend_get_buffer(buffers_ptr->backend,
                                      buffer_parent,
-                           (void**) &buffer_parent_raGL) )
+                                    &buffer_parent_raGL) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not find a raGL_buffer instance for the parent ral_buffer instance.");

@@ -2434,6 +2434,18 @@ PUBLIC EMERALD_API bool ral_context_retain_object(ral_context             contex
                                                   ral_context_object_type object_type,
                                                   void*                   object)
 {
+    return ral_context_retain_objects(context,
+                                      object_type,
+                                      1, /* n_objects */
+                                     &object);
+}
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_context_retain_objects(ral_context             context,
+                                                   ral_context_object_type object_type,
+                                                   uint32_t                n_objects,
+                                                   void* const*            objects)
+{
     const _ral_context* context_ptr = reinterpret_cast<const _ral_context*>(context);
     bool                result      = false;
 
@@ -2447,25 +2459,30 @@ PUBLIC EMERALD_API bool ral_context_retain_object(ral_context             contex
 
     system_critical_section_enter(context_ptr->object_to_refcount_cs);
     {
-        uint32_t ref_counter = 0;
+        for (uint32_t n_object = 0;
+                      n_object < n_objects;
+                    ++n_object)
+        {
+            uint32_t ref_counter = 0;
 
-        ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->object_to_refcount_map,
-                                                    reinterpret_cast<system_hash64>(object) ),
-                          "No reference counter associated with the specified object.");
+            ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->object_to_refcount_map,
+                                                        reinterpret_cast<system_hash64>(objects[n_object]) ),
+                              "No reference counter associated with the specified object.");
 
-        system_hash64map_get(context_ptr->object_to_refcount_map,
-                             reinterpret_cast<system_hash64>(object),
-                            &ref_counter);
+            system_hash64map_get(context_ptr->object_to_refcount_map,
+                                 reinterpret_cast<system_hash64>(objects[n_object]),
+                                &ref_counter);
 
-        ref_counter++;
+            ref_counter++;
 
-        system_hash64map_remove(context_ptr->object_to_refcount_map,
-                                reinterpret_cast<system_hash64>(object) );
-        system_hash64map_insert(context_ptr->object_to_refcount_map,
-                                reinterpret_cast<system_hash64>(object),
-                                reinterpret_cast<void*>        (ref_counter),
-                                nullptr,  /* callback          */
-                                nullptr); /* callback_argument */
+            system_hash64map_remove(context_ptr->object_to_refcount_map,
+                                    reinterpret_cast<system_hash64>(objects[n_object]) );
+            system_hash64map_insert(context_ptr->object_to_refcount_map,
+                                    reinterpret_cast<system_hash64>(objects[n_object]),
+                                    reinterpret_cast<void*>        (ref_counter),
+                                    nullptr,  /* callback          */
+                                    nullptr); /* callback_argument */
+        }
     }
     system_critical_section_leave(context_ptr->object_to_refcount_cs);
 

@@ -169,13 +169,13 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
 
             raGL_backend_get_texture_view(backend_gl,
                                           texture_view,
-                                          (void**) &texture_view_raGL);
+                                         &texture_view_raGL);
             raGL_texture_get_property    (texture_view_raGL,
                                           RAGL_TEXTURE_PROPERTY_ID,
-                                          (void**) &texture_view_raGL_id);
+                                          reinterpret_cast<void**>(&texture_view_raGL_id) );
             raGL_texture_get_property    (texture_view_raGL,
                                           RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                          (void**) &texture_view_raGL_is_rb);
+                                          reinterpret_cast<void**>(&texture_view_raGL_is_rb) );
 
             switch (n_iteration)
             {

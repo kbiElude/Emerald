@@ -51,9 +51,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context,
 PUBLIC void raGL_backend_enqueue_sync();
 
 /** TODO */
-PUBLIC bool raGL_backend_get_buffer(void*      backend,
-                                    ral_buffer buffer_ral,
-                                    void**     out_buffer_raGL_ptr);
+PUBLIC bool raGL_backend_get_buffer(raGL_backend backend,
+                                    ral_buffer   buffer_ral,
+                                    raGL_buffer* out_buffer_raGL_ptr);
 
 /** TODO */
 PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 backend,
@@ -62,7 +62,7 @@ PUBLIC void raGL_backend_get_buffer_property_by_id(raGL_backend                 
                                                    void*                        out_result_ptr);
 
 /** TODO */
-PUBLIC void raGL_backend_get_command_buffer(raGL_backend         backend,
+PUBLIC bool raGL_backend_get_command_buffer(raGL_backend         backend,
                                             ral_command_buffer   command_buffer_ral,
                                             raGL_command_buffer* out_command_buffer_raGL_ptr);
 
@@ -75,14 +75,14 @@ PUBLIC void raGL_backend_get_private_property(raGL_backend                  back
                                               void*                         out_result_ptr);
 
 /** TODO */
-PUBLIC void raGL_backend_get_property(void*                backend, /* raGL_backend instance */
+PUBLIC void raGL_backend_get_property(void*                backend,
                                       ral_context_property property,
                                       void*                out_result_ptr);
 
 /** TODO */
-PUBLIC bool raGL_backend_get_program(void*       backend, /* raGL_backend instance */
-                                     ral_program program_ral,
-                                     void**      out_program_raGL_ptr);
+PUBLIC bool raGL_backend_get_program(raGL_backend  backend,
+                                     ral_program   program_ral,
+                                     raGL_program* out_program_raGL_ptr);
 
 /* TODO */
 PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
@@ -90,19 +90,19 @@ PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
                                            raGL_program* out_program_raGL_ptr);
 
 /** TODO */
-PUBLIC bool raGL_backend_get_sampler(void*       backend, /* raGL_backend instance */
-                                     ral_sampler sampler_ral,
-                                     void**      out_sampler_raGL_ptr);
+PUBLIC bool raGL_backend_get_sampler(raGL_backend  backend,
+                                     ral_sampler   sampler_ral,
+                                     raGL_sampler* out_sampler_raGL_ptr);
 
 /** TODO */
-PUBLIC bool raGL_backend_get_shader(void*      backend, /* raGL_backend instance */
-                                    ral_shader shader_ral,
-                                    void**     out_shader_raGL_ptr);
+PUBLIC bool raGL_backend_get_shader(raGL_backend backend,
+                                    ral_shader   shader_ral,
+                                    raGL_shader* out_shader_raGL_ptr);
 
 /** TODO */
-PUBLIC bool raGL_backend_get_texture(void*       backend,
-                                     ral_texture texture_ral,
-                                     void**      out_texture_raGL_ptr);
+PUBLIC bool raGL_backend_get_texture(raGL_backend  backend,
+                                     ral_texture   texture_ral,
+                                     raGL_texture* out_texture_raGL_ptr);
 
 /** TODO */
 PUBLIC bool raGL_backend_get_texture_by_id(raGL_backend  backend,
@@ -110,9 +110,9 @@ PUBLIC bool raGL_backend_get_texture_by_id(raGL_backend  backend,
                                            raGL_texture* out_texture_raGL_ptr);
 
 /** TODO */
-PUBLIC bool raGL_backend_get_texture_view(void*            backend,
+PUBLIC bool raGL_backend_get_texture_view(raGL_backend     backend,
                                           ral_texture_view texture_view_ral,
-                                          void**           out_texture_raGL_ptr);
+                                          raGL_texture*    out_texture_raGL_ptr);
 
 /** TODO */ 
 PUBLIC void raGL_backend_init(raGL_backend backend);

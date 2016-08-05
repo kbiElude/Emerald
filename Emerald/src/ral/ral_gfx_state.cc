@@ -97,7 +97,7 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
                                        ral_gfx_state_property property,
                                        void*                  out_result_ptr)
 {
-    _ral_gfx_state* gfx_state_ptr = (_ral_gfx_state*) gfx_state;
+    _ral_gfx_state* gfx_state_ptr = reinterpret_cast<_ral_gfx_state*>(gfx_state);
 
     switch (property)
     {
@@ -363,5 +363,5 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
 /** Please see header for specification */
 PUBLIC void ral_gfx_state_release(ral_gfx_state state)
 {
-    delete (_ral_gfx_state*) state;
+    delete reinterpret_cast<_ral_gfx_state*>(state);
 }

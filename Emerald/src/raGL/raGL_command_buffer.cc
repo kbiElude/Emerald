@@ -1949,8 +1949,8 @@ void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
                       n_si < n_storage_image_variables;
                     ++n_si)
         {
-            const ral_program_variable*   si_variable_ptr      = nullptr;
-            const _raGL_program_variable* si_variable_raGL_ptr = nullptr;
+            const ral_program_variable*  si_variable_ptr      = nullptr;
+            const raGL_program_variable* si_variable_raGL_ptr = nullptr;
 
             ral_program_get_block_variable_by_class(active_program_ral,
                                                     system_hashed_ansi_string_get_default_empty_string(),
@@ -2056,8 +2056,8 @@ void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
                   n_sampler_variable < n_sampler_variables;
                 ++n_sampler_variable)
     {
-        const ral_program_variable*   sampler_variable_ptr      = nullptr;
-        const _raGL_program_variable* sampler_variable_raGL_ptr = nullptr;
+        const ral_program_variable*  sampler_variable_ptr      = nullptr;
+        const raGL_program_variable* sampler_variable_raGL_ptr = nullptr;
 
         ral_program_get_block_variable_by_class(active_program_ral,
                                                 system_hashed_ansi_string_get_default_empty_string(),
@@ -2624,10 +2624,10 @@ void _raGL_command_buffer::process_copy_buffer_to_buffer_command(const ral_comma
 
     result &= raGL_backend_get_buffer(backend_raGL,
                                       command_ral_ptr->dst_buffer,
-                                      (void**) &dst_buffer_raGL);
+                                      &dst_buffer_raGL);
     result &= raGL_backend_get_buffer(backend_raGL,
                                       command_ral_ptr->src_buffer,
-                                      (void**) &src_buffer_raGL);
+                                      &src_buffer_raGL);
 
     ASSERT_DEBUG_SYNC(result,
                       "Could not retrieve raGL_buffer instances");
@@ -2733,10 +2733,10 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
 
     result &= raGL_backend_get_texture(backend_raGL,
                                        command_ral_ptr->dst_texture,
-                                       (void**) &dst_texture_raGL);
+                                       &dst_texture_raGL);
     result &= raGL_backend_get_texture(backend_raGL,
                                        command_ral_ptr->src_texture,
-                                       (void**) &src_texture_raGL);
+                                       &src_texture_raGL);
 
     ASSERT_DEBUG_SYNC(result,
                       "Could not retrieve raGL_texture instances");
@@ -3038,7 +3038,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
     /* Bind the index buffer */
     raGL_backend_get_buffer(backend_raGL,
                             command_ral_ptr->index_buffer,
-                            (void**) &index_buffer_raGL);
+                           &index_buffer_raGL);
 
     raGL_buffer_get_property(index_buffer_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
@@ -3205,7 +3205,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
         raGL_backend_get_buffer (backend_raGL,
                                  command_ral_ptr->indirect_buffer,
-                                 (void**) &indirect_buffer_raGL);
+                                &indirect_buffer_raGL);
         raGL_buffer_get_property(indirect_buffer_raGL,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &indirect_buffer_raGL_id);
@@ -3281,9 +3281,9 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
             _raGL_command* bind_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
             raGL_buffer    index_buffer_raGL = nullptr;
 
-            raGL_backend_get_buffer (backend_raGL,
-                                     command_ral_ptr->index_buffer,
-                                     (void**) &index_buffer_raGL);
+            raGL_backend_get_buffer(backend_raGL,
+                                    command_ral_ptr->index_buffer,
+                                   &index_buffer_raGL);
 
             /* Bind the index buffer */
             if (index_buffer_raGL != bake_state.vao_index_buffer)
@@ -3461,7 +3461,7 @@ void _raGL_command_buffer::process_fill_buffer_command(const ral_command_buffer_
                             &backend_raGL);
     raGL_backend_get_buffer (backend_raGL,
                              command_ral_ptr->buffer,
-                             (void**) &buffer_raGL);
+                            &buffer_raGL);
     raGL_buffer_get_property(buffer_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &buffer_raGL_id);
@@ -3504,7 +3504,7 @@ void _raGL_command_buffer::process_invalidate_texture_command(const ral_command_
 
     raGL_backend_get_texture(backend_raGL,
                              command_ral_ptr->texture,
-                             (void**) &texture_raGL);
+                            &texture_raGL);
 
     raGL_texture_get_property(texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
@@ -3578,18 +3578,18 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
         case RAL_BINDING_TYPE_SAMPLED_IMAGE:
         {
-            _raGL_command*                active_texture_command_ptr      = nullptr;
-            _raGL_command*                bind_sampler_command_ptr        = nullptr;
-            _raGL_command*                bind_texture_command_ptr        = nullptr;
-            raGL_sampler                  sampler_raGL                    = nullptr;
-            GLuint                        sampler_raGL_id                 = 0;
-            _raGL_command*                texture_parameterfv_command_ptr = nullptr;
-            raGL_texture                  texture_raGL                    = nullptr;
-            GLuint                        texture_raGL_id                 = 0;
-            bool                          texture_raGL_is_rb;
-            ral_texture                   texture_ral                     = nullptr;
-            ral_texture_type              texture_ral_type;
-            const _raGL_program_variable* variable_raGL_ptr               = nullptr;
+            _raGL_command*               active_texture_command_ptr      = nullptr;
+            _raGL_command*               bind_sampler_command_ptr        = nullptr;
+            _raGL_command*               bind_texture_command_ptr        = nullptr;
+            raGL_sampler                 sampler_raGL                    = nullptr;
+            GLuint                       sampler_raGL_id                 = 0;
+            _raGL_command*               texture_parameterfv_command_ptr = nullptr;
+            raGL_texture                 texture_raGL                    = nullptr;
+            GLuint                       texture_raGL_id                 = 0;
+            bool                         texture_raGL_is_rb;
+            ral_texture                  texture_ral                     = nullptr;
+            ral_texture_type             texture_ral_type;
+            const raGL_program_variable* variable_raGL_ptr               = nullptr;
 
             raGL_program_get_uniform_by_name(bake_state.active_program,
                                              command_ral_ptr->name,
@@ -3608,10 +3608,10 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
             raGL_backend_get_sampler(backend_gl,
                                      command_ral_ptr->sampled_image_binding.sampler,
-                                     (void**) &sampler_raGL);
+                                    &sampler_raGL);
             raGL_backend_get_texture(backend_gl,
                                      texture_ral,
-                                     (void**) &texture_raGL);
+                                    &texture_raGL);
 
             raGL_sampler_get_property(sampler_raGL,
                                       RAGL_SAMPLER_PROPERTY_ID,
@@ -3702,7 +3702,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
             raGL_backend_get_buffer(backend_gl,
                                     buffer_binding_info.buffer,
-                                    (void**) &buffer_raGL);
+                                   &buffer_raGL);
 
             ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
                               "No raGL_buffer instance associated with the specified RAL buffer");
@@ -3755,15 +3755,15 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
         case RAL_BINDING_TYPE_STORAGE_IMAGE:
         {
-            raGL_texture                  parent_texture_raGL       = nullptr;
-            GLuint                        parent_texture_raGL_id    = 0;
-            bool                          parent_texture_raGL_is_rb = false;
-            ral_texture                   parent_texture_ral        = nullptr;
-            ral_format                    texture_view_format;
-            GLuint                        texture_view_n_base_layer = -1;
-            GLuint                        texture_view_n_base_level = -1;
-            GLuint                        texture_view_n_layers     = 0;
-            const _raGL_program_variable* variable_ptr              = nullptr;
+            raGL_texture                 parent_texture_raGL       = nullptr;
+            GLuint                       parent_texture_raGL_id    = 0;
+            bool                         parent_texture_raGL_is_rb = false;
+            ral_texture                  parent_texture_ral        = nullptr;
+            ral_format                   texture_view_format;
+            GLuint                       texture_view_n_base_layer = -1;
+            GLuint                       texture_view_n_base_level = -1;
+            GLuint                       texture_view_n_layers     = 0;
+            const raGL_program_variable* variable_ptr              = nullptr;
 
             raGL_program_get_uniform_by_name(bake_state.active_program,
                                              command_ral_ptr->name,
@@ -3787,7 +3787,7 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
             raGL_backend_get_texture(backend_gl,
                                      parent_texture_ral,
-                                     (void**) &parent_texture_raGL);
+                                    &parent_texture_raGL);
 
             ASSERT_DEBUG_SYNC(parent_texture_raGL != nullptr,
                               "Null raGL_texture reported for a RAL texture");
@@ -3859,7 +3859,7 @@ void _raGL_command_buffer::process_set_program_command(const ral_command_buffer_
 
     raGL_backend_get_program(backend_gl,
                              command_ral_ptr->new_program,
-                             (void**) &program_raGL);
+                            &program_raGL);
 
     ASSERT_DEBUG_SYNC(program_raGL != nullptr,
                       "No raGL_program instance associated with the specified RAL program");
@@ -3946,9 +3946,9 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
      *
      * In order to avoid doing insensible bind calls all the time, we cache configured VA state
      * and bind corresponding VAOs at draw call time. */
-    const _raGL_program_attribute* attribute_ptr = nullptr;
-    raGL_backend                   backend_raGL  = nullptr;
-    raGL_buffer                    buffer_raGL   = nullptr;
+    const raGL_program_attribute* attribute_ptr = nullptr;
+    raGL_backend                  backend_raGL  = nullptr;
+    raGL_buffer                   buffer_raGL   = nullptr;
 
     raGL_program_get_attribute_by_name(bake_state.active_program,
                                        command_ral_ptr->name,
@@ -3963,7 +3963,7 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
 
     raGL_backend_get_buffer(backend_raGL,
                             command_ral_ptr->buffer,
-                            (void**) &buffer_raGL);
+                           &buffer_raGL);
 
     ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
                       "No raGL buffer instance found for the specified RAL buffer instance.");
@@ -4032,7 +4032,7 @@ void _raGL_command_buffer::process_update_buffer_command(const ral_command_buffe
 
     raGL_backend_get_buffer(backend_gl,
                             command_ral_ptr->buffer,
-                            (void**) &buffer_raGL);
+                           &buffer_raGL);
 
     ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
                       "No raGL_buffer instance associated with the specified RAL buffer");

@@ -823,7 +823,7 @@ PRIVATE ral_present_job _raGL_texture_init_view_renderer_callback(ral_context   
 
     raGL_backend_get_texture (backend,
                               parent_texture,
-                              reinterpret_cast<void**>(&parent_texture_raGL) );
+                             &parent_texture_raGL);
     raGL_texture_get_property(parent_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
                               reinterpret_cast<void**>(&parent_texture_raGL_id) );

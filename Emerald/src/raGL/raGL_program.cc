@@ -242,7 +242,7 @@ PRIVATE ral_present_job _raGL_program_create_callback(ral_context               
 
         raGL_backend_get_shader(context_backend,
                                 current_shader,
-                                (void**) &current_shader_raGL);
+                               &current_shader_raGL);
 
         ASSERT_DEBUG_SYNC(current_shader_raGL != nullptr,
                           "No raGL_shader instance associated with current ral_shader instance.");
@@ -263,13 +263,13 @@ PRIVATE ral_present_job _raGL_program_create_callback(ral_context               
 }
 
 /** TODO */
-PUBLIC void raGL_program_get_program_variable_details(raGL_program            program,
-                                                      unsigned int            temp_variable_name_storage_size,
-                                                      char*                   temp_variable_name_storage,
-                                                      ral_program_variable*   variable_ral_ptr,
-                                                      _raGL_program_variable* variable_raGL_ptr,
-                                                      GLenum                  variable_interface_type,
-                                                      unsigned int            n_variable)
+PUBLIC void raGL_program_get_program_variable_details(raGL_program           program,
+                                                      unsigned int           temp_variable_name_storage_size,
+                                                      char*                  temp_variable_name_storage,
+                                                      ral_program_variable*  variable_ral_ptr,
+                                                      raGL_program_variable* variable_raGL_ptr,
+                                                      GLenum                 variable_interface_type,
+                                                      unsigned int           n_variable)
 {
     bool                is_temp_variable_defined            = (temp_variable_name_storage != nullptr) ? true
                                                                                                       : false;
@@ -950,8 +950,8 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                    n_active_attribute < n_active_attributes;
                  ++n_active_attribute)
         {
-            _raGL_program_attribute* new_attribute_raGL_ptr = new _raGL_program_attribute;
-            ral_program_attribute*   new_attribute_ral_ptr  = new ral_program_attribute;
+            raGL_program_attribute* new_attribute_raGL_ptr = new raGL_program_attribute;
+            ral_program_attribute*  new_attribute_ral_ptr  = new ral_program_attribute;
 
             ASSERT_ALWAYS_SYNC(new_attribute_raGL_ptr != nullptr &&
                                new_attribute_ral_ptr  != nullptr,
@@ -1054,8 +1054,8 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                    n_active_uniform < n_active_uniforms;
                  ++n_active_uniform)
         {
-            _raGL_program_variable temp_raGL;
-            ral_program_variable   temp_ral;
+            raGL_program_variable temp_raGL;
+            ral_program_variable  temp_ral;
 
             raGL_program_get_program_variable_details((raGL_program) program_ptr,
                                                       uniform_name_length,
@@ -1067,8 +1067,8 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
 
             if (temp_ral.block_offset == -1)
             {
-                _raGL_program_variable* new_uniform_raGL_ptr = new (std::nothrow) _raGL_program_variable(temp_raGL);
-                ral_program_variable*   new_uniform_ral_ptr  = new (std::nothrow) ral_program_variable  (temp_ral);
+                raGL_program_variable* new_uniform_raGL_ptr = new (std::nothrow) raGL_program_variable(temp_raGL);
+                ral_program_variable*  new_uniform_ral_ptr  = new (std::nothrow) ral_program_variable (temp_ral);
 
                 ASSERT_ALWAYS_SYNC(new_uniform_raGL_ptr != nullptr &&
                                    new_uniform_ral_ptr  != nullptr,
@@ -2104,9 +2104,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program             program,
-                                             system_hashed_ansi_string      name,
-                                             const _raGL_program_variable** out_uniform_ptr)
+PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program            program,
+                                             system_hashed_ansi_string     name,
+                                             const raGL_program_variable** out_uniform_ptr)
 {
     _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
     bool           result      = false;
@@ -2128,7 +2128,7 @@ PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program             prog
                           n_uniform < n_uniforms;
                         ++n_uniform)
         {
-            _raGL_program_variable* uniform_ptr = nullptr;
+            raGL_program_variable* uniform_ptr = nullptr;
 
             result = system_resizable_vector_get_element_at(program_ptr->active_uniforms_raGL,
                                                             n_uniform,
@@ -2154,9 +2154,9 @@ PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program             prog
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_program_get_vertex_attribute_by_name(const raGL_program              program,
-                                                      system_hashed_ansi_string       name,
-                                                      const _raGL_program_attribute** out_attribute_ptr)
+PUBLIC bool raGL_program_get_vertex_attribute_by_name(const raGL_program             program,
+                                                      system_hashed_ansi_string      name,
+                                                      const raGL_program_attribute** out_attribute_ptr)
 {
     _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
     bool           result      = false;
@@ -2178,7 +2178,7 @@ PUBLIC bool raGL_program_get_vertex_attribute_by_name(const raGL_program        
                           n_attribute < n_attributes;
                         ++n_attribute)
         {
-            _raGL_program_attribute* attribute_ptr = nullptr;
+            raGL_program_attribute* attribute_ptr = nullptr;
 
             result = system_resizable_vector_get_element_at(program_ptr->active_attributes_raGL,
                                                             n_attribute,
@@ -2263,7 +2263,7 @@ PUBLIC bool raGL_program_link(raGL_program program)
 
             raGL_backend_get_shader(context_backend,
                                     current_shader,
-                                    (void**) &current_shader_raGL);
+                                   &current_shader_raGL);
 
             raGL_shader_get_property(current_shader_raGL,
                                      RAGL_SHADER_PROPERTY_ID,

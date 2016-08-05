@@ -284,7 +284,7 @@ PUBLIC void ral_program_add_block(ral_program               program,
                                   system_hashed_ansi_string block_name)
 {
     const system_hash64 block_name_hash             = system_hashed_ansi_string_get_hash(block_name);
-    _ral_program*       program_ptr                 = (_ral_program*) program;
+    _ral_program*       program_ptr                 = reinterpret_cast<_ral_program*>(program);
     system_hash64map    specialized_by_name_hashmap = nullptr;
 
     /* Sanity checks */
@@ -365,7 +365,7 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
 {
     const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr          = nullptr;
-    _ral_program*                program_ptr        = (_ral_program*) program;
+    _ral_program*                program_ptr        = reinterpret_cast<_ral_program*>(program);
     system_hash64                variable_name_hash = 0;
 
     /* Sanity checks */
@@ -412,7 +412,7 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
 
     ral_utils_get_ral_program_variable_type_property(variable_ptr->type,
                                                      RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS,
-                                                     (void**) &variable_type_class);
+                                                     reinterpret_cast<void**>(&variable_type_class) );
 
     if (system_hash64map_get(block_ptr->variable_vector_by_class_hashmap,
                              variable_type_class,
@@ -488,7 +488,7 @@ PUBLIC void ral_program_attach_vertex_attribute(ral_program            program,
                                                 ral_program_attribute* attribute_ptr)
 {
     system_hash64 attribute_name_hash = 0;
-    _ral_program* program_ptr         = (_ral_program*) program;
+    _ral_program* program_ptr         = reinterpret_cast<_ral_program*>(program);
 
     /* Sanity checks */
     if (program_ptr == nullptr)
@@ -546,7 +546,7 @@ PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
 {
     bool                                                  all_shaders_attached = true;
     _ral_program_callback_shader_attach_callback_argument callback_arg;
-    _ral_program*                                         program_ptr  = (_ral_program*) program;
+    _ral_program*                                         program_ptr  = reinterpret_cast<_ral_program*>(program);
     bool                                                  result       = false;
     ral_shader_type                                       shader_type;
 
@@ -627,7 +627,7 @@ end:
 /** Please see header for specification */
 PUBLIC void ral_program_clear_metadata(ral_program program)
 {
-    _ral_program* program_ptr = (_ral_program*) program;
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
 
     /* Block any get() calls until metadata is filled by the rendering backend. */
     system_event_reset(program_ptr->metadata.metadata_ready_event);
@@ -746,7 +746,7 @@ end:
 /** Please see header for specification */
 PUBLIC void ral_program_expose_metadata(ral_program program)
 {
-    _ral_program* program_ptr = (_ral_program*) program;
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
 
     system_event_set(program_ptr->metadata.metadata_ready_event);
 }
@@ -757,7 +757,7 @@ PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program pro
                                                                  ral_shader* out_shader_ptr)
 {
     uint32_t      n_nonnull_shader = 0;
-    _ral_program* program_ptr      = (_ral_program*) program;
+    _ral_program* program_ptr      = reinterpret_cast<_ral_program*>(program);
     bool          result           = false;
 
     if (program == nullptr)
@@ -806,7 +806,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
 {
     const system_hash64          block_name_hash = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr       = nullptr;
-    _ral_program*                program_ptr     = (_ral_program*) program;
+    _ral_program*                program_ptr     = reinterpret_cast<_ral_program*>(program);
     bool                         result          = false;
 
     /* Sanity checks */
@@ -841,7 +841,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
     {
         case RAL_PROGRAM_BLOCK_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = block_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = block_ptr->name;
 
             break;
         }
@@ -863,7 +863,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
             }
             else
             {
-                *(uint32_t*) out_result_ptr = 0;
+                *reinterpret_cast<uint32_t*>(out_result_ptr) = 0;
             }
 
             break;
@@ -880,14 +880,14 @@ PUBLIC EMERALD_API bool ral_program_get_block_property(ral_program              
 
         case RAL_PROGRAM_BLOCK_PROPERTY_SIZE:
         {
-            *(uint32_t*) out_result_ptr = block_ptr->size;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = block_ptr->size;
 
             break;
         }
 
         case RAL_PROGRAM_BLOCK_PROPERTY_TYPE:
         {
-            *(ral_program_block_type*) out_result_ptr = block_ptr->type;
+            *reinterpret_cast<ral_program_block_type*>(out_result_ptr) = block_ptr->type;
 
             break;
         }
@@ -916,7 +916,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_property_by_index(ral_program     
                                                                 void*                      out_result_ptr)
 {
     _ral_program_metadata_block* block_ptr                   = nullptr;
-    _ral_program*                program_ptr                 = (_ral_program*) program;
+    _ral_program*                program_ptr                 = reinterpret_cast<_ral_program*>(program);
     system_hash64map             specialized_by_name_hashmap = nullptr;
 
     /* Sanity checks */
@@ -974,7 +974,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_class(ral_program     
 {
     const system_hash64          block_name_hash = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr       = nullptr;
-    _ral_program*                program_ptr     = (_ral_program*) program;
+    _ral_program*                program_ptr     = reinterpret_cast<_ral_program*>(program);
     bool                         result          = false;
     system_resizable_vector      variable_vector = nullptr;
 
@@ -1014,7 +1014,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_class(ral_program     
 
         ral_utils_get_ral_program_variable_type_class_property(variable_type_class,
                                                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_PROPERTY_NAME,
-                                                               (void**) &variable_type_class_name);
+                                                               reinterpret_cast<void**>(&variable_type_class_name) );
 
         ASSERT_DEBUG_SYNC(false,
                           "No variable of the requested type class [%s] is defined for program [%s].",
@@ -1032,7 +1032,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_class(ral_program     
 
         ral_utils_get_ral_program_variable_type_class_property(variable_type_class,
                                                                RAL_PROGRAM_VARIABLE_TYPE_CLASS_PROPERTY_NAME,
-                                                               (void**) &variable_type_class_name);
+                                                               reinterpret_cast<void**>(&variable_type_class_name) );
 
         ASSERT_DEBUG_SYNC(false,
                           "Could not retrieve descriptor of variable of the requested type class [%s] at index [%d] for program [%s].",
@@ -1058,7 +1058,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_index(ral_program     
 {
     const system_hash64          block_name_hash = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr       = nullptr;
-    _ral_program*                program_ptr     = (_ral_program*) program;
+    _ral_program*                program_ptr     = reinterpret_cast<_ral_program*>(program);
     bool                         result          = false;
     ral_program_variable*        variable_ptr    = nullptr;
 
@@ -1120,7 +1120,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_offset(ral_program    
 {
     const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr          = nullptr;
-    _ral_program*                program_ptr        = (_ral_program*) program;
+    _ral_program*                program_ptr        = reinterpret_cast<_ral_program*>(program);
     bool                         result             = false;
     ral_program_variable*        variable_ptr       = nullptr;
 
@@ -1182,7 +1182,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program      
 {
     const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr          = nullptr;
-    _ral_program*                program_ptr        = (_ral_program*) program;
+    _ral_program*                program_ptr        = reinterpret_cast<_ral_program*>(program);
     bool                         result             = false;
     const system_hash64          variable_name_hash = system_hashed_ansi_string_get_hash(variable_name);
     ral_program_variable*        variable_ptr       = nullptr;
@@ -1234,7 +1234,7 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
                                                  ral_program_property property,
                                                  void*                out_result_ptr)
 {
-    _ral_program* program_ptr = (_ral_program*) program;
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
 
     if (program == nullptr)
     {
@@ -1279,28 +1279,28 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
                 }
             }
 
-            *(bool*) out_result_ptr = result;
+            *reinterpret_cast<bool*>(out_result_ptr) = result;
 
             break;
         }
 
         case RAL_PROGRAM_PROPERTY_CALLBACK_MANAGER:
         {
-            *(system_callback_manager*) out_result_ptr = program_ptr->callback_manager;
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = program_ptr->callback_manager;
 
             break;
         }
 
         case RAL_PROGRAM_PROPERTY_CONTEXT:
         {
-            *(ral_context*) out_result_ptr = program_ptr->context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = program_ptr->context;
 
             break;
         }
 
         case RAL_PROGRAM_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = program_ptr->name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = program_ptr->name;
 
             break;
         }
@@ -1321,7 +1321,7 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
                 }
             }
 
-            *(uint32_t*) out_result_ptr = result;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = result;
 
             break;
         }
@@ -1374,7 +1374,7 @@ end:
 PUBLIC EMERALD_API bool ral_program_is_block_defined(ral_program               program,
                                                      system_hashed_ansi_string block_name)
 {
-    _ral_program* program_ptr = (_ral_program*) program;
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
     bool          result      = false;
 
     if (program_ptr == nullptr)
@@ -1405,7 +1405,7 @@ end:
 PUBLIC bool ral_program_is_shader_attached(ral_program program,
                                            ral_shader  shader)
 {
-    _ral_program* program_ptr = (_ral_program*) program;
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
     bool          result      = false;
 
     system_read_write_mutex_lock(program_ptr->lock,
@@ -1429,16 +1429,34 @@ PUBLIC bool ral_program_is_shader_attached(ral_program program,
 }
 
 /** Please see header for specification */
+PUBLIC bool ral_program_is_shader_stage_defined(ral_program     program,
+                                                ral_shader_type stage)
+{
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
+    bool          result;
+
+    system_read_write_mutex_lock(program_ptr->lock,
+                                 ACCESS_READ);
+    {
+        result = program_ptr->attached_shaders[stage].active;
+    }
+    system_read_write_mutex_unlock(program_ptr->lock,
+                                   ACCESS_READ);
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_program_lock(ral_program program)
 {
-    system_read_write_mutex_lock( ((_ral_program*) program)->lock,
+    system_read_write_mutex_lock( reinterpret_cast<_ral_program*>(program)->lock,
                                  ACCESS_WRITE);
 }
 
 /** Please see header for specification */
 PUBLIC void ral_program_release(ral_program& program)
 {
-    _ral_program* program_ptr = (_ral_program*) program;
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
 
     delete program_ptr;
 }
@@ -1446,6 +1464,6 @@ PUBLIC void ral_program_release(ral_program& program)
 /** Please see header for specification */
 PUBLIC void ral_program_unlock(ral_program program)
 {
-    system_read_write_mutex_unlock( ((_ral_program*) program)->lock,
+    system_read_write_mutex_unlock( reinterpret_cast<_ral_program*>(program)->lock,
                                    ACCESS_WRITE);
 }

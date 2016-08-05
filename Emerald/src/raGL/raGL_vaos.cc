@@ -587,15 +587,15 @@ PUBLIC raGL_vaos raGL_vaos_create(raGL_backend in_backend_gl)
 }
 
 /* Please see header for specification */
-PUBLIC GLuint raGL_vaos_get_vao(raGL_vaos                       in_vaos,
-                                raGL_buffer                     in_opt_index_buffer,
-                                uint32_t                        in_n_vertex_buffers,
-                                ral_gfx_state_vertex_attribute* in_vertex_attributes,
-                                const raGL_vaos_vertex_buffer*  in_vertex_buffers)
+PUBLIC raGL_vao raGL_vaos_get_vao(raGL_vaos                             in_vaos,
+                                  raGL_buffer                           in_opt_index_buffer,
+                                  uint32_t                              in_n_vertex_buffers,
+                                  const ral_gfx_state_vertex_attribute* in_vertex_attributes,
+                                  const raGL_vaos_vertex_buffer*        in_vertex_buffers)
 {
-    GLuint                  result_vao_id = 0;
-    _raGL_vaos*             vaos_ptr      = reinterpret_cast<_raGL_vaos*>(in_vaos);
-    system_resizable_vector vaos_vector   = nullptr;
+    raGL_vao                result_vao  = nullptr;
+    _raGL_vaos*             vaos_ptr    = reinterpret_cast<_raGL_vaos*>(in_vaos);
+    system_resizable_vector vaos_vector = nullptr;
 
     system_hash64map_get(vaos_ptr->n_vbs_to_vao_map,
                          in_n_vertex_buffers,
@@ -624,7 +624,7 @@ PUBLIC GLuint raGL_vaos_get_vao(raGL_vaos                       in_vaos,
                                     in_vertex_attributes,
                                     in_vertex_buffers) )
             {
-                result_vao_id = vao_ptr->vao_id;
+                result_vao = reinterpret_cast<raGL_vao>(vao_ptr);
 
                 break;
             }
@@ -641,29 +641,30 @@ PUBLIC GLuint raGL_vaos_get_vao(raGL_vaos                       in_vaos,
                                 nullptr); /* on_remove_callback_user_arg */
     }
 
-    if (result_vao_id == 0)
+    if (result_vao == nullptr)
     {
         /* Generate the VAO and cache it */
         _raGL_vao* new_vao_ptr = nullptr;
 
         new_vao_ptr = _raGL_vaos_bake_vao(vaos_ptr,
-                                            in_opt_index_buffer,
-                                            in_n_vertex_buffers,
-                                            in_vertex_attributes,
-                                            in_vertex_buffers);
+                                          in_opt_index_buffer,
+                                          in_n_vertex_buffers,
+                                          in_vertex_attributes,
+                                          in_vertex_buffers);
 
-        LOG_INFO("Baked a new VAO with ID [%u]",
-                 result_vao_id);
+        LOG_INFO("Baked a new VAO");
 
         system_resizable_vector_push(vaos_vector,
                                      new_vao_ptr);
+
+        result_vao = reinterpret_cast<raGL_vao>(new_vao_ptr);
     }
 
     /* All done */
-    ASSERT_DEBUG_SYNC(result_vao_id != 0,
-                      "Zero VAO id about to be returned.");
+    ASSERT_DEBUG_SYNC(result_vao != nullptr,
+                      "Null VAO about to be returned.");
 
-    return result_vao_id;
+    return result_vao;
 }
 
 /* Please see header for specification */

@@ -1475,8 +1475,8 @@ typedef struct ral_gfx_state_create_info
         scissor_test       = false;
         stencil_test       = false;
 
-        static_scissor_boxes = false;
-        static_viewports     = false;
+        static_scissor_boxes = nullptr;
+        static_viewports     = nullptr;
 
         cull_mode                         = RAL_CULL_MODE_BACK;
         depth_bias_constant_factor        = 0.0f;
