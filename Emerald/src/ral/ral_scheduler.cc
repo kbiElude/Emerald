@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_scheduler.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -222,6 +223,7 @@ PUBLIC void ral_scheduler_schedule_job(ral_scheduler                 scheduler,
 /** Please see header for specification */
 PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler                            scheduler,
                                              ral_backend_type                         backend_type,
+                                             ral_queue_bits                           supported_queue_types,
                                              PFNRALSCHEDULEREXECUTECOMMANDBUFFERSPROC pfn_execute_command_buffers_proc,
                                              void*                                    execute_command_buffers_proc_backend_callback_arg)
 {
@@ -280,7 +282,32 @@ PUBLIC void ral_scheduler_use_backend_thread(ral_scheduler                      
                                                                job_index,
                                                               &job_ptr);
 
-                        if (job_ptr->n_read_locks  > 0 ||
+                        /* If this is a command buffer job, make sure the running thread can actually handle it */
+                        if (job_ptr->job_type == RAL_SCHEDULER_JOB_TYPE_COMMAND_BUFFER)
+                        {
+                            ral_queue_bits required_queue_caps = 0;
+
+                            for (uint32_t n_cmd_buffer = 0;
+                                          n_cmd_buffer < job_ptr->command_buffer_job_args.n_command_buffers_to_execute;
+                                        ++n_cmd_buffer)
+                            {
+                                ral_queue_bits cmd_buffer_queue_caps;
+
+                                ral_command_buffer_get_property(job_ptr->command_buffer_job_args.command_buffers_to_execute[n_cmd_buffer],
+                                                                RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES,
+                                                               &cmd_buffer_queue_caps);
+
+                                required_queue_caps |= cmd_buffer_queue_caps;
+                            }
+
+                            if ((supported_queue_types & required_queue_caps) != required_queue_caps)
+                            {
+                                is_job_executable = false;
+                            }
+                        }
+
+                        if (is_job_executable          &&
+                            job_ptr->n_read_locks  > 0 ||
                             job_ptr->n_write_locks > 0)
                         {
                             /* Check the write locks first. If any of the write locks are currently in use, immediately move on to the next job */
