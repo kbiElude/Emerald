@@ -432,12 +432,12 @@ typedef struct
     uint32_t top_level_array_stride;
 
     /* Buffer variables, uniforms (default & regular uniform block): */
-    uint32_t                      array_stride;
-    uint32_t                      block_offset;
-    uint32_t                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
-    uint32_t                      matrix_stride;
-    int32_t                       length;
-    int32_t                       size;             /* array size for arrayed uniforms or 1 otherwise */
+    uint32_t array_stride;
+    uint32_t block_offset;
+    uint32_t is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
+    uint32_t matrix_stride;
+    int32_t  length;
+    int32_t  size;             /* array size for arrayed uniforms or 1 otherwise */
 
     /* Output variables + uniforms (default & regular uniform block): */
     int32_t location;

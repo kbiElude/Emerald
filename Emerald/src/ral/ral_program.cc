@@ -136,17 +136,21 @@ typedef struct _ral_program_metadata
     system_hash64map        blocks_ub_by_name_hashmap;   /* does NOT own _ral_program_metadata_block instance values */
     system_event            metadata_ready_event;
     ral_program             owner_program;
+    system_resizable_vector output_variables;                 /* owns ral_program_variable instances         */
+    system_hash64map        output_variables_by_name_hashmap; /* does NOT own ral_program_variable instances */
 
     explicit _ral_program_metadata(ral_program in_owner_program)
     {
-        attributes                  = system_resizable_vector_create(4 /* capacity */);
-        attributes_by_name_hashmap  = system_hash64map_create       (sizeof(ral_program_attribute*) );
-        blocks                      = system_resizable_vector_create(4 /* capacity */);
-        blocks_by_name_hashmap      = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
-        blocks_ssb_by_name_hashmap  = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
-        blocks_ub_by_name_hashmap   = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
-        metadata_ready_event        = system_event_create           (true); /* manual_reset */
-        owner_program               = in_owner_program;
+        attributes                       = system_resizable_vector_create(4 /* capacity */);
+        attributes_by_name_hashmap       = system_hash64map_create       (sizeof(ral_program_attribute*) );
+        blocks                           = system_resizable_vector_create(4 /* capacity */);
+        blocks_by_name_hashmap           = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
+        blocks_ssb_by_name_hashmap       = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
+        blocks_ub_by_name_hashmap        = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
+        metadata_ready_event             = system_event_create           (true); /* manual_reset */
+        output_variables                 = system_resizable_vector_create(4 /* capacity */);
+        output_variables_by_name_hashmap = system_hash64map_create       (sizeof(ral_program_variable) );
+        owner_program                    = in_owner_program;
     }
 
     ~_ral_program_metadata()
@@ -206,6 +210,20 @@ typedef struct _ral_program_metadata
             system_event_release(metadata_ready_event);
 
             metadata_ready_event = nullptr;
+        }
+
+        if (output_variables != nullptr)
+        {
+            system_resizable_vector_release(output_variables);
+
+            output_variables = nullptr;
+        }
+
+        if (output_variables_by_name_hashmap != nullptr)
+        {
+            system_hash64map_release(output_variables_by_name_hashmap);
+
+            output_variables_by_name_hashmap = nullptr;
         }
     }
 } _ral_program_metadata;
@@ -356,6 +374,132 @@ PUBLIC void ral_program_add_block(ral_program               program,
                             nullptr); /* callback_argument */
 end:
     ;
+}
+
+/** Please see header for specificaiton */
+PUBLIC void ral_program_attach_output_variable(ral_program           program,
+                                               ral_program_variable* variable_ptr)
+{
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
+
+    /* Sanity checks */
+    if (program_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(program_ptr != nullptr,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    if (variable_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(variable_ptr != nullptr,
+                          "Input RAL program variable instance is NULL");
+
+        goto end;
+    }
+
+    /* Cache the output variable instance */
+    ASSERT_DEBUG_SYNC(!system_hash64map_contains(program_ptr->metadata.output_variables_by_name_hashmap,
+                                                 system_hashed_ansi_string_get_hash(variable_ptr->name) ),
+                      "Output variable [%s] is already recognized!",
+                      system_hashed_ansi_string_get_buffer(variable_ptr->name) );
+
+    system_hash64map_insert     (program_ptr->metadata.output_variables_by_name_hashmap,
+                                 system_hashed_ansi_string_get_hash(variable_ptr->name),
+                                 variable_ptr,
+                                 nullptr,  /* on_removal_callback          */
+                                 nullptr); /* on_removal_callback_user_arg */
+    system_resizable_vector_push(program_ptr->metadata.output_variables,
+                                 variable_ptr);
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
+                                                  ral_shader  shader,
+                                                  bool        async)
+{
+    bool                                                  all_shaders_attached = true;
+    _ral_program_callback_shader_attach_callback_argument callback_arg;
+    _ral_program*                                         program_ptr  = reinterpret_cast<_ral_program*>(program);
+    bool                                                  result       = false;
+    ral_shader_type                                       shader_type;
+
+    if (program == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input ral_program instance is NULL");
+
+        goto end;
+    }
+
+    if (shader == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input ral_shader instance is NULL");
+
+        goto end;
+    }
+
+    /* Verify there's no shader already attached to the slot which the specified shader
+     * is about to take over */
+    ral_shader_get_property(shader,
+                            RAL_SHADER_PROPERTY_TYPE,
+                           &shader_type);
+
+    if (!program_ptr->attached_shaders[shader_type].active)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Cannot attach RAL shader - the target RAL program does not expose the required shader stage slot.");
+
+        goto end;
+    }
+
+    if (program_ptr->attached_shaders[shader_type].shader != nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Another shader is already attached to the pipeline stage the input shader defines.");
+
+        goto end;
+    }
+
+    /* Attach the shader and fire a notification */
+    program_ptr->attached_shaders[shader_type].shader = shader;
+
+    for (ral_shader_type current_shader_type = RAL_SHADER_TYPE_FIRST;
+                         current_shader_type < RAL_SHADER_TYPE_COUNT;
+                 ++(int&)current_shader_type)
+    {
+        if (program_ptr->attached_shaders[current_shader_type].active            &&
+            program_ptr->attached_shaders[current_shader_type].shader == nullptr)
+        {
+            all_shaders_attached = false;
+
+            break;
+        }
+    }
+
+    callback_arg = _ral_program_callback_shader_attach_callback_argument(program,
+                                                                         shader,
+                                                                         all_shaders_attached,
+                                                                         async);
+
+    ral_context_retain_object(program_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                              shader);
+
+    system_callback_manager_call_back(program_ptr->callback_manager,
+                                      RAL_PROGRAM_CALLBACK_ID_SHADER_ATTACHED,
+                                     &callback_arg);
+
+    result = true;
+
+end:
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -540,91 +684,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_program_attach_shader(ral_program program,
-                                                  ral_shader  shader,
-                                                  bool        async)
-{
-    bool                                                  all_shaders_attached = true;
-    _ral_program_callback_shader_attach_callback_argument callback_arg;
-    _ral_program*                                         program_ptr  = reinterpret_cast<_ral_program*>(program);
-    bool                                                  result       = false;
-    ral_shader_type                                       shader_type;
-
-    if (program == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input ral_program instance is NULL");
-
-        goto end;
-    }
-
-    if (shader == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input ral_shader instance is NULL");
-
-        goto end;
-    }
-
-    /* Verify there's no shader already attached to the slot which the specified shader
-     * is about to take over */
-    ral_shader_get_property(shader,
-                            RAL_SHADER_PROPERTY_TYPE,
-                           &shader_type);
-
-    if (!program_ptr->attached_shaders[shader_type].active)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Cannot attach RAL shader - the target RAL program does not expose the required shader stage slot.");
-
-        goto end;
-    }
-
-    if (program_ptr->attached_shaders[shader_type].shader != nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Another shader is already attached to the pipeline stage the input shader defines.");
-
-        goto end;
-    }
-
-    /* Attach the shader and fire a notification */
-    program_ptr->attached_shaders[shader_type].shader = shader;
-
-    for (ral_shader_type current_shader_type = RAL_SHADER_TYPE_FIRST;
-                         current_shader_type < RAL_SHADER_TYPE_COUNT;
-                 ++(int&)current_shader_type)
-    {
-        if (program_ptr->attached_shaders[current_shader_type].active            &&
-            program_ptr->attached_shaders[current_shader_type].shader == nullptr)
-        {
-            all_shaders_attached = false;
-
-            break;
-        }
-    }
-
-    callback_arg = _ral_program_callback_shader_attach_callback_argument(program,
-                                                                         shader,
-                                                                         all_shaders_attached,
-                                                                         async);
-
-    ral_context_retain_object(program_ptr->context,
-                              RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                              shader);
-
-    system_callback_manager_call_back(program_ptr->callback_manager,
-                                      RAL_PROGRAM_CALLBACK_ID_SHADER_ATTACHED,
-                                     &callback_arg);
-
-    result = true;
-
-end:
-
-    return result;
-}
-
-/** Please see header for specification */
 PUBLIC void ral_program_clear_metadata(ral_program program)
 {
     _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
@@ -676,6 +735,22 @@ PUBLIC void ral_program_clear_metadata(ral_program program)
     if (program_ptr->metadata.blocks_ub_by_name_hashmap != nullptr)
     {
         system_hash64map_clear(program_ptr->metadata.blocks_ub_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.output_variables != nullptr)
+    {
+        ral_program_variable* variable_ptr = nullptr;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.output_variables,
+                                          &variable_ptr) )
+        {
+            delete variable_ptr;
+        }
+    }
+
+    if (program_ptr->metadata.output_variables_by_name_hashmap != nullptr)
+    {
+        system_hash64map_clear(program_ptr->metadata.output_variables_by_name_hashmap);
     }
 }
 
@@ -1230,6 +1305,36 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_get_output_variable_by_name(ral_program                  program,
+                                                                system_hashed_ansi_string    variable_name,
+                                                                const ral_program_variable** out_variable_ptr_ptr)
+{
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
+    bool          result      = false;
+
+    /* Sanity checks */
+    if (program == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the variable descriptor */
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
+    result = system_hash64map_get(program_ptr->metadata.output_variables_by_name_hashmap,
+                                  system_hashed_ansi_string_get_hash(variable_name),
+                                  out_variable_ptr_ptr);
+
+    /* All done */
+    result = true;
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
                                                  ral_program_property property,
                                                  void*                out_result_ptr)
@@ -1368,6 +1473,34 @@ PUBLIC EMERALD_API void ral_program_get_property(ral_program          program,
 
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_program_get_vertex_attribute_by_name(ral_program                   program,
+                                                                 system_hashed_ansi_string     va_name,
+                                                                 const ral_program_attribute** out_attribute_ptr_ptr)
+{
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
+    bool          result      = false;
+
+    /* Sanity checks */
+    if (program == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input RAL program instance is NULL");
+
+        goto end;
+    }
+
+    /* Retrieve the attribute descriptor */
+    system_event_wait_single(program_ptr->metadata.metadata_ready_event);
+
+    result = system_hash64map_get(program_ptr->metadata.attributes_by_name_hashmap,
+                                  system_hashed_ansi_string_get_hash(va_name),
+                                  out_attribute_ptr_ptr);
+
+end:
+    return result;
 }
 
 /** Please see header for specification */

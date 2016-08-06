@@ -52,8 +52,8 @@ typedef struct _raGL_program_block_binding
 
 typedef struct
 {
-    system_resizable_vector   active_attributes_raGL; /* holds _raGL_program_attribute instances */
-    system_resizable_vector   active_uniforms_raGL;   /* holds _raGL_program_variable instances */
+    system_resizable_vector   active_attributes_raGL; /* holds raGL_program_attribute instances */
+    system_resizable_vector   active_uniforms_raGL;   /* holds raGL_program_variable instances */
     ral_context               context;                /* DO NOT retain - context owns the instance! */
     GLuint                    id;
     system_semaphore          link_semaphore;
@@ -68,6 +68,7 @@ typedef struct
     uint32_t                     n_ub_bindings;
     _raGL_program_block_binding* ssb_bindings;
     _raGL_program_block_binding* ub_bindings;
+    system_hash64map             uniform_location_to_variable_map;
 
     /* GL entry-point cache */
     PFNGLATTACHSHADERPROC               pGLAttachShader;
@@ -206,8 +207,9 @@ PRIVATE ral_present_job _raGL_program_create_callback(ral_context               
     /* Create a new program */
     program_ptr->id = program_ptr->pGLCreateProgram();
 
-    program_ptr->active_attributes_raGL = system_resizable_vector_create(4 /* capacity */);
-    program_ptr->active_uniforms_raGL   = system_resizable_vector_create(4 /* capacity */);
+    program_ptr->active_attributes_raGL           = system_resizable_vector_create(4 /* capacity */);
+    program_ptr->active_uniforms_raGL             = system_resizable_vector_create(4 /* capacity */);
+    program_ptr->uniform_location_to_variable_map = system_hash64map_create       (sizeof(raGL_program_variable*) );
 
     /* Let the impl know that we will be interested in extracting the blob */
     program_ptr->pGLProgramParameteri(program_ptr->id,
@@ -1074,6 +1076,16 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                                    new_uniform_ral_ptr  != nullptr,
                                    "Out of memory while allocating space for uniform descriptors.");
 
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(program_ptr->uniform_location_to_variable_map,
+                                                             new_uniform_ral_ptr->location),
+                                  "Uniform's location (%u) already has a raGL_program_variable instance assigned.",
+                                  new_uniform_ral_ptr->location);
+
+                system_hash64map_insert     (program_ptr->uniform_location_to_variable_map,
+                                             static_cast<system_hash64>(new_uniform_ral_ptr->location),
+                                             new_uniform_raGL_ptr,
+                                             nullptr,  /* on_remove_callback */
+                                             nullptr); /* callback_argument  */
                 system_resizable_vector_push(program_ptr->active_uniforms_raGL,
                                              new_uniform_raGL_ptr);
 
@@ -1410,6 +1422,14 @@ PRIVATE void _raGL_program_release(void* program)
                                                      _raGL_program_release_callback,
                                                      program_ptr,
                                                      false); /* present_after_executed */
+
+    /* Release maps */
+    if (program_ptr->uniform_location_to_variable_map != nullptr)
+    {
+        system_hash64map_release(program_ptr->uniform_location_to_variable_map);
+
+        program_ptr->uniform_location_to_variable_map = nullptr;
+    }
 
     /* Release resizable vectors */
     ral_program_attribute* attribute_ptr = nullptr;
@@ -2104,6 +2124,29 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC bool raGL_program_get_uniform_by_location(const raGL_program            program,
+                                                 uint32_t                      location,
+                                                 const raGL_program_variable** out_uniform_ptr)
+{
+    _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
+    bool           result      = false;
+
+    system_event_wait_single(program_ptr->queries_enabled_event);
+
+    ASSERT_DEBUG_SYNC(program_ptr->link_status,
+                      "You cannot retrieve an uniform descriptor without linking the program beforehand.");
+
+    if (program_ptr->link_status)
+    {
+        result = system_hash64map_get(program_ptr->uniform_location_to_variable_map,
+                                      location,
+                                      out_uniform_ptr);
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program            program,
                                              system_hashed_ansi_string     name,
                                              const raGL_program_variable** out_uniform_ptr)
@@ -2234,6 +2277,8 @@ PUBLIC bool raGL_program_link(raGL_program program)
         /* Clean up */
         _raGL_program_release_active_attributes(program_ptr->active_attributes_raGL);
         _raGL_program_release_active_uniforms  (program_ptr->active_uniforms_raGL);
+
+        system_hash64map_clear(program_ptr->uniform_location_to_variable_map);
 
         /* Run through all the attached shaders and make sure these are compiled.
         *

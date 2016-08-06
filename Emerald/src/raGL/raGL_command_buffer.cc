@@ -3950,9 +3950,9 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
     raGL_backend                  backend_raGL  = nullptr;
     raGL_buffer                   buffer_raGL   = nullptr;
 
-    raGL_program_get_attribute_by_name(bake_state.active_program,
-                                       command_ral_ptr->name,
-                                      &attribute_ptr);
+    raGL_program_get_vertex_attribute_by_name(bake_state.active_program,
+                                              command_ral_ptr->name,
+                                             &attribute_ptr);
 
     ASSERT_DEBUG_SYNC(attribute_ptr != nullptr,
                       "Invalid vertex attribute requested.");

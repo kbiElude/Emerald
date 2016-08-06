@@ -84,11 +84,6 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
                                         ral_program program_ral);
 
 /** TODO */
-PUBLIC bool raGL_program_get_attribute_by_name(const raGL_program             program,
-                                               system_hashed_ansi_string      name,
-                                               const raGL_program_attribute** out_attribute_ptr);
-
-/** TODO */
 PUBLIC void raGL_program_get_block_property(const raGL_program          program,
                                             ral_program_block_type      block_type,
                                             uint32_t                    index,
@@ -106,7 +101,8 @@ PUBLIC void raGL_program_get_property(const raGL_program    program,
                                       raGL_program_property property,
                                       void*                 out_result_ptr);
 
-PUBLIC void raGL_program_get_uniform_by_location(const raGL_program            program,
+/** TODO */
+PUBLIC bool raGL_program_get_uniform_by_location(const raGL_program            program,
                                                  uint32_t                      location,
                                                  const raGL_program_variable** out_uniform_ptr);
 
@@ -114,6 +110,11 @@ PUBLIC void raGL_program_get_uniform_by_location(const raGL_program            p
 PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program            program,
                                              system_hashed_ansi_string     name,
                                              const raGL_program_variable** out_uniform_ptr);
+
+/** TODO */
+PUBLIC bool raGL_program_get_vertex_attribute_by_name(const raGL_program             program,
+                                                      system_hashed_ansi_string      name,
+                                                      const raGL_program_attribute** out_attribute_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *

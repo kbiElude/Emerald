@@ -34,8 +34,8 @@ typedef struct _ral_program_callback_shader_attach_callback_argument
     {
         all_shader_stages_have_shaders_attached = false;
         async                                   = false;
-        program                                 = NULL;
-        shader                                  = NULL;
+        program                                 = nullptr;
+        shader                                  = nullptr;
     }
 
     _ral_program_callback_shader_attach_callback_argument(ral_program in_program,
@@ -203,7 +203,10 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_index(ral_program     
                                                                 uint32_t                     n_variable,
                                                                 const ral_program_variable** out_variable_ptr_ptr);
 
-/** TODO */
+/** TODO
+ *
+ *  Note: This function also returns output variables IF block_name is set to default empty HAS
+ **/
 PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program                  program,
                                                                system_hashed_ansi_string    block_name,
                                                                system_hashed_ansi_string    variable_name,
@@ -217,7 +220,7 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_offset(ral_program    
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_program_get_output_variable_by_name(ral_program                  program,
-                                                                system_hashed_ansi_string    output_variable_name,
+                                                                system_hashed_ansi_string    variable_name,
                                                                 const ral_program_variable** out_variable_ptr_ptr);
 
 /** TODO */
