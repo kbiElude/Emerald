@@ -12,6 +12,7 @@
 #include "demo/demo_timeline_segment_node.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "ral/ral_types.h"
 #include "ral/ral_utils.h"
 #include "system/system_assertions.h"
@@ -68,7 +69,8 @@ typedef struct _demo_timeline_segment_io_connection
 
 typedef struct _demo_timeline_segment_node_item
 {
-    system_resizable_vector            cached_texture_memory_allocations;
+    system_resizable_vector            cached_texture_allocations; /* holds ral_texture instances */
+    // todo system_resizable_vector            cached_texture_view_allocations; /* holds ral_texture instances */
     system_dag_node                    dag_node;
     uint32_t                           id;
     demo_timeline_segment_node         node;               /* owned */
@@ -82,31 +84,31 @@ typedef struct _demo_timeline_segment_node_item
                                      _demo_timeline_segment*         in_parent_segment_ptr,
                                      demo_timeline_segment_node_type in_type)
     {
-        cached_texture_memory_allocations = system_resizable_vector_create(sizeof(ral_texture) );
-        dag_node                          = nullptr;
-        id                                = in_id;
-        node                              = in_node;
-        node_internal                     = nullptr;
-        outgoing_connections              = system_resizable_vector_create(sizeof(_demo_timeline_segment_io_connection*));
-        parent_segment_ptr                = in_parent_segment_ptr;
-        type                              = in_type;
+        cached_texture_allocations = system_resizable_vector_create(sizeof(ral_texture) );
+        dag_node                   = nullptr;
+        id                         = in_id;
+        node                       = in_node;
+        node_internal              = nullptr;
+        outgoing_connections       = system_resizable_vector_create(sizeof(_demo_timeline_segment_io_connection*));
+        parent_segment_ptr         = in_parent_segment_ptr;
+        type                       = in_type;
     }
 
     ~_demo_timeline_segment_node_item()
     {
-        if (cached_texture_memory_allocations != nullptr)
+        if (cached_texture_allocations != nullptr)
         {
             uint32_t n_cached_items = 0;
 
-            system_resizable_vector_get_property(cached_texture_memory_allocations,
+            system_resizable_vector_get_property(cached_texture_allocations,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_cached_items);
 
             ASSERT_DEBUG_SYNC(n_cached_items == 0,
                               "RAL textures not cached prior to destruction");
 
-            system_resizable_vector_release(cached_texture_memory_allocations);
-            cached_texture_memory_allocations = nullptr;
+            system_resizable_vector_release(cached_texture_allocations);
+            cached_texture_allocations = nullptr;
         }
 
         if (node != nullptr)
@@ -338,6 +340,8 @@ typedef struct
 static const _node_data node_data[] =
 {
     /* DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER */
+#if 0
+    TODO: Remove me
     {
         "Pass renderer node",
         DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
@@ -350,6 +354,7 @@ static const _node_data node_data[] =
         nodes_video_pass_renderer_set_property,
         nodes_video_pass_renderer_set_texture_memory_allocation,
     },
+#endif
 
     {
         "Output node",
@@ -391,27 +396,27 @@ PRIVATE bool _demo_timeline_segment_enumerate_io                                
                                                                                   uint32_t*                       out_n_ios_ptr,
                                                                                   demo_timeline_segment_node_io** out_segment_node_ios_ptr);
 PRIVATE void _demo_timeline_segment_on_postprocessing_segment_added              (const void*                     postprocessing_segment_id_void_ptr,
-                                                                                        void*                     timeline_void_ptr);
+                                                                                  void*                           timeline_void_ptr);
 PRIVATE void _demo_timeline_segment_on_postprocessing_segment_deleted            (const void*                     postprocessing_segment,
-                                                                                        void*                     timeline);
-PRIVATE void _demo_timeline_segment_on_texture_attached_to_node                  (const void*                     callback_arg_ptr,
-                                                                                        void*                     segment);
-PRIVATE void _demo_timeline_segment_on_texture_deleted                           (const void*                     callback_arg_ptr,
-                                                                                        void*                     segment);
-PRIVATE void _demo_timeline_segment_on_texture_detached_from_node                (const void*                     callback_arg_ptr,
-                                                                                        void*                     segment);
-PRIVATE void _demo_timeline_segment_on_texture_output_added_to_node              (const void*                     segment_void_ptr,
-                                                                                        void*                     new_output_id);
-PRIVATE void _demo_timeline_segment_on_texture_output_deleted_from_node          (const void*                     segment_void_ptr,
-                                                                                        void*                     former_output_id);
+                                                                                  void*                           timeline);
+PRIVATE void _demo_timeline_segment_on_texture_view_attached_to_node             (const void*                     callback_arg_ptr,
+                                                                                  void*                           segment);
+PRIVATE void _demo_timeline_segment_on_texture_view_deleted                      (const void*                     callback_arg_ptr,
+                                                                                  void*                           segment);
+PRIVATE void _demo_timeline_segment_on_texture_view_detached_from_node           (const void*                     callback_arg_ptr,
+                                                                                  void*                           segment);
+PRIVATE void _demo_timeline_segment_on_texture_view_output_added_to_node         (const void*                     segment_void_ptr,
+                                                                                  void*                           new_output_id);
+PRIVATE void _demo_timeline_segment_on_texture_view_output_deleted_from_node     (const void*                     segment_void_ptr,
+                                                                                  void*                           former_output_id);
 PRIVATE void _demo_timeline_segment_on_video_segment_added                       (const void*                     video_segment_id_void_ptr,
-                                                                                        void*                     timeline_void_ptr);
+                                                                                  void*                           timeline_void_ptr);
 PRIVATE void _demo_timeline_segment_on_video_segment_deleted                     (const void*                     video_segment,
-                                                                                        void*                     timeline);
+                                                                                  void*                           timeline);
 PRIVATE void _demo_timeline_segment_on_video_segment_moved                       (const void*                     video_segment,
-                                                                                        void*                     timeline);
+                                                                                  void*                           timeline);
 PRIVATE void _demo_timeline_segment_on_video_segment_resized                     (const void*                     video_segment,
-                                                                                        void*                     timeline);
+                                                                                  void*                           timeline);
 PRIVATE void _demo_timeline_segment_release                                      (void*                           segment);
 PRIVATE void _demo_timeline_segment_update_global_subscriptions                  (_demo_timeline_segment*         segment_ptr,
                                                                                   bool                            should_subscribe);
@@ -652,18 +657,18 @@ PRIVATE void _demo_timeline_segment_on_postprocessing_segment_deleted(const void
 }
 
 /** TODO */
-PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* callback_arg,
-                                                                      void* segment)
+PRIVATE void _demo_timeline_segment_on_texture_view_attached_to_node(const void* callback_arg,
+                                                                     void*       segment)
 {
-    const demo_timeline_segment_node_callback_texture_attached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_attached_callback_argument*>(callback_arg);
-    _demo_timeline_segment*                                                       segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                      (segment);
+    const demo_timeline_segment_node_callback_texture_view_attached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_attached_callback_argument*>(callback_arg);
+    _demo_timeline_segment*                                                            segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                           (segment);
 
     /* TODO: We now have all info in the callback arg to perform this action much more efficiently */
 
     ASSERT_DEBUG_SYNC(segment_ptr != nullptr,
                       "Input segment instance is NULL");
-    ASSERT_DEBUG_SYNC(callback_arg_ptr->texture != nullptr,
-                      "Input texture instance is NULL");
+    ASSERT_DEBUG_SYNC(callback_arg_ptr->texture_view != nullptr,
+                      "Input texture view instance is NULL");
 
     LOG_INFO("Performance warning: new texture attached to the node.");
 
@@ -713,17 +718,17 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* call
                       n_input_id < n_current_destination_node_input_ids;
                     ++n_input_id)
         {
-            ral_texture                         bound_texture                = nullptr;
-            demo_timeline_segment_node_input_id current_destination_input_id = current_destination_node_input_ids[n_input_id];
-            bool                                has_bound_texture_to_input   = false;
+            ral_texture_view                    bound_texture_view              = nullptr;
+            demo_timeline_segment_node_input_id current_destination_input_id    = current_destination_node_input_ids[n_input_id];
+            bool                                has_bound_texture_view_to_input = false;
 
             demo_timeline_segment_node_get_io_property(current_destination_node_ptr->node,
                                                        true, /* is_input_io */
                                                        current_destination_input_id,
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
-                                                      &bound_texture);
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
+                                                      &bound_texture_view);
 
-            if (bound_texture != nullptr)
+            if (bound_texture_view != nullptr)
             {
                 /* Nothing to do for this input */
                 continue;
@@ -732,7 +737,7 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* call
             /* Look through defined connections and see if a connection binding this input with any other segment node output is defined.
              * If so, check if a texture is attached to that output and - if that's the case - attach it to the input. */
             for (uint32_t n_source_node = 0;
-                          n_source_node < n_nodes && !has_bound_texture_to_input;
+                          n_source_node < n_nodes && !has_bound_texture_view_to_input;
                         ++n_source_node)
             {
                 uint32_t                          n_connections_defined = 0;
@@ -760,7 +765,7 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* call
                                                     &n_connections_defined);
 
                 for (uint32_t n_connection = 0;
-                              n_connection < n_connections_defined && !has_bound_texture_to_input;
+                              n_connection < n_connections_defined && !has_bound_texture_view_to_input;
                             ++n_connection)
                 {
                     _demo_timeline_segment_io_connection* connection_ptr = nullptr;
@@ -779,31 +784,31 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* call
                     if (connection_ptr->dst_node == current_destination_node_ptr)
                     {
                         /* OK, we have a matching connection. Does the source node expose a texture? */
-                        ral_texture source_node_bound_texture = nullptr;
+                        ral_texture_view source_node_bound_texture_view = nullptr;
 
                         demo_timeline_segment_node_get_io_property(connection_ptr->src_node->node,
                                                                    false, /* is_input_io */
                                                                    connection_ptr->src_node_output_id,
-                                                                   DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
-                                                                  &source_node_bound_texture);
+                                                                   DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
+                                                                  &source_node_bound_texture_view);
 
-                        if (source_node_bound_texture != nullptr)
+                        if (source_node_bound_texture_view != nullptr)
                         {
                             /* Bind that texture to the currently processed destination node and then move on to the next destination node. */
-                            demo_texture_attachment_declaration new_texture_attachment;
+                            demo_texture_view_attachment_declaration new_texture_view_attachment;
 
-                            new_texture_attachment.texture_ral = source_node_bound_texture;
+                            new_texture_view_attachment.texture_view_ral = source_node_bound_texture_view;
 
-                            if (!demo_timeline_segment_node_attach_texture_to_texture_io(current_destination_node_ptr->node,
-                                                                                         false, /* is_input_id */
-                                                                                         current_destination_input_id,
-                                                                                        &new_texture_attachment) )
+                            if (!demo_timeline_segment_node_attach_texture_view_to_texture_view_io(current_destination_node_ptr->node,
+                                                                                                   false, /* is_input_id */
+                                                                                                   current_destination_input_id,
+                                                                                                  &new_texture_view_attachment) )
                             {
                                 ASSERT_DEBUG_SYNC(false,
-                                                  "Could not attach a texture to the destination node's input ID");
+                                                  "Could not attach a texture view to the destination node's input ID");
                             }
 
-                            has_bound_texture_to_input = true;
+                            has_bound_texture_view_to_input = true;
                         }
                     }
                 }
@@ -813,13 +818,13 @@ PRIVATE void _demo_timeline_segment_on_texture_attached_to_node(const void* call
 
     /* Notify any subscribers about the event */
     system_callback_manager_call_back(segment_ptr->callback_manager,
-                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_ATTACHED_TO_NODE,
+                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_ATTACHED_TO_NODE,
                                       callback_arg_ptr);
 }
 
 /** TODO */
-PRIVATE void _demo_timeline_segment_on_texture_deleted(const void* callback_arg,
-                                                             void* segment)
+PRIVATE void _demo_timeline_segment_on_texture_view_deleted(const void* callback_arg,
+                                                            void*       segment)
 {
     const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr = reinterpret_cast<const ral_context_callback_objects_deleted_callback_arg*>(callback_arg);
     uint32_t                                                 n_node_items     = 0;
@@ -839,7 +844,7 @@ PRIVATE void _demo_timeline_segment_on_texture_deleted(const void* callback_arg,
                 ++n_node_item)
     {
         size_t                            deleted_texture_index = ITEM_NOT_FOUND;
-        uint32_t                          n_cached_textures     = 0;
+        uint32_t                          n_cached_texture_     = 0;
         _demo_timeline_segment_node_item* current_node_item_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(segment_ptr->nodes,
@@ -853,27 +858,33 @@ PRIVATE void _demo_timeline_segment_on_texture_deleted(const void* callback_arg,
             continue;
         }
 
-        for (uint32_t n_deleted_texture = 0;
-                      n_deleted_texture < callback_arg_ptr->n_objects;
-                    ++n_deleted_texture)
+        for (uint32_t n_deleted_texture_view = 0;
+                      n_deleted_texture_view < callback_arg_ptr->n_objects;
+                    ++n_deleted_texture_view)
         {
-            deleted_texture_index = system_resizable_vector_find(current_node_item_ptr->cached_texture_memory_allocations,
-                                                                 callback_arg_ptr->deleted_objects[n_deleted_texture]);
+            ral_texture deleted_texture_view_parent_texture = nullptr;
+
+            ral_texture_view_get_property(reinterpret_cast<ral_texture_view>(callback_arg_ptr->deleted_objects[n_deleted_texture_view]),
+                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                         &deleted_texture_view_parent_texture);
+
+            deleted_texture_index = system_resizable_vector_find(current_node_item_ptr->cached_texture_allocations,
+                                                                 deleted_texture_view_parent_texture);
 
             if (deleted_texture_index != ITEM_NOT_FOUND)
             {
                 system_hashed_ansi_string segment_name = segment_ptr->name;
                 system_hashed_ansi_string texture_name = nullptr;
 
-                ral_texture_get_property((ral_texture) callback_arg_ptr->deleted_objects[n_deleted_texture],
+                ral_texture_get_property(deleted_texture_view_parent_texture,
                                          RAL_TEXTURE_PROPERTY_NAME,
                                         &texture_name);
 
-                LOG_INFO("Removed texture [%s] from cached texture memory allocations for segment [%s]",
+                LOG_INFO("Removed texture view [%s] from cached texture view memory allocations for segment [%s]",
                          system_hashed_ansi_string_get_buffer(texture_name) ,
                          system_hashed_ansi_string_get_buffer(segment_name) );
 
-                system_resizable_vector_delete_element_at(current_node_item_ptr->cached_texture_memory_allocations,
+                system_resizable_vector_delete_element_at(current_node_item_ptr->cached_texture_allocations,
                                                           deleted_texture_index);
             }
         }
@@ -881,21 +892,26 @@ PRIVATE void _demo_timeline_segment_on_texture_deleted(const void* callback_arg,
 }
 
 /** TODO */
-PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* callback_arg,
-                                                                        void* segment)
+PRIVATE void _demo_timeline_segment_on_texture_view_detached_from_node(const void* callback_arg,
+                                                                       void*       segment)
 {
-    const demo_timeline_segment_node_callback_texture_detached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_detached_callback_argument*>(callback_arg);
-    uint32_t                                                                      n_nodes          = 0;
-    _demo_timeline_segment_node_item*                                             node_item_ptr    = nullptr;
-    _demo_timeline_segment*                                                       segment_ptr      = reinterpret_cast<_demo_timeline_segment*>(segment);
+    const demo_timeline_segment_node_callback_texture_view_detached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_detached_callback_argument*>(callback_arg);
+    uint32_t                                                                           n_nodes          = 0;
+    _demo_timeline_segment_node_item*                                                  node_item_ptr    = nullptr;
+    _demo_timeline_segment*                                                            segment_ptr      = reinterpret_cast<_demo_timeline_segment*>(segment);
+    ral_texture                                                                        texture_view_parent_texture;
+
+    ral_texture_view_get_property(callback_arg_ptr->texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                 &texture_view_parent_texture);
 
     /* TODO: We now have all info in the callback arg to perform this action much more efficiently */
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(segment_ptr != nullptr,
                       "Input segment instance is NULL");
-    ASSERT_DEBUG_SYNC(callback_arg_ptr->texture != nullptr,
-                      "Input texture instance is NULL");
+    ASSERT_DEBUG_SYNC(callback_arg_ptr->texture_view != nullptr,
+                      "Input texture view instance is NULL");
 
     /* This call-back func will be invoked in two cases:
      *
@@ -944,19 +960,19 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
                       n_node_output_id < n_node_outputs;
                     ++n_node_output_id)
         {
-            ral_texture                          current_node_bound_texture = nullptr;
-            uint32_t                             current_node_n_connections = 0;
-            demo_timeline_segment_node_output_id current_node_output_id     = node_output_ids[n_node_output_id];
+            ral_texture_view                     current_node_bound_texture_view = nullptr;
+            uint32_t                             current_node_n_connections      = 0;
+            demo_timeline_segment_node_output_id current_node_output_id          = node_output_ids[n_node_output_id];
 
             demo_timeline_segment_node_get_io_property(current_node_ptr->node,
                                                        false, /* is_input_io */
                                                        current_node_output_id,
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
-                                                      &current_node_bound_texture);
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
+                                                      &current_node_bound_texture_view);
 
-            if (current_node_bound_texture != callback_arg_ptr->texture)
+            if (current_node_bound_texture_view != callback_arg_ptr->texture_view)
             {
-                /* The about-to-be-detached texture is not exposed by this node output. Move on */
+                /* The about-to-be-detached texture view is not exposed by this node output. Move on */
                 continue;
             }
 
@@ -986,29 +1002,29 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
                 if (current_connection_ptr->src_node           == current_node_ptr       &&
                     current_connection_ptr->src_node_output_id == current_node_output_id)
                 {
-                    ral_texture dst_node_bound_texture = nullptr;
+                    ral_texture_view dst_node_bound_texture_view = nullptr;
 
                     /* Sanity check.. */
                     demo_timeline_segment_node_get_io_property(current_connection_ptr->dst_node->node,
                                                                true, /* is_input_io */
                                                                current_connection_ptr->dst_node_input_id,
-                                                               DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
-                                                              &dst_node_bound_texture);
+                                                               DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
+                                                              &dst_node_bound_texture_view);
 
-                    ASSERT_DEBUG_SYNC(dst_node_bound_texture == callback_arg_ptr->texture,
-                                      "Invalid bound texture detected at connection destination");
+                    ASSERT_DEBUG_SYNC(dst_node_bound_texture_view == callback_arg_ptr->texture_view,
+                                      "Invalid bound texture view detected at connection destination");
 
                     /* Detach the texture */
-                    demo_timeline_segment_node_attach_texture_to_texture_io(current_connection_ptr->dst_node->node,
-                                                                            true, /* is_input_id */
-                                                                            current_connection_ptr->dst_node_input_id,
-                                                                            nullptr); /* texture_attachment_ptr */
+                    demo_timeline_segment_node_attach_texture_view_to_texture_view_io(current_connection_ptr->dst_node->node,
+                                                                                      true, /* is_input_id */
+                                                                                      current_connection_ptr->dst_node_input_id,
+                                                                                      nullptr); /* texture_attachment_ptr */
                 }
             }
         }
     }
 
-    /* If the detached texture was part of the texture cache associated with the node, remove it from there. */
+    /* If the detached texture view was part of the texture cache associated with the node, remove it from there. */
     uint32_t n_current_node_item = -1;
     uint32_t n_total_nodes       = 0;
 
@@ -1030,12 +1046,12 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
         {
             size_t find_result;
 
-            find_result = system_resizable_vector_find(current_node_item_ptr->cached_texture_memory_allocations,
-                                                       callback_arg_ptr->texture);
+            find_result = system_resizable_vector_find(current_node_item_ptr->cached_texture_allocations,
+                                                       texture_view_parent_texture);
 
             if (find_result != ITEM_NOT_FOUND)
             {
-                system_resizable_vector_delete_element_at(current_node_item_ptr->cached_texture_memory_allocations,
+                system_resizable_vector_delete_element_at(current_node_item_ptr->cached_texture_allocations,
                                                           find_result);
             }
 
@@ -1054,37 +1070,41 @@ PRIVATE void _demo_timeline_segment_on_texture_detached_from_node(const void* ca
     ral_context_delete_objects(segment_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                1, /* n_objects */
-                               reinterpret_cast<void* const*>(&callback_arg_ptr->texture) );
+                               reinterpret_cast<void* const*>(&texture_view_parent_texture) );
+    ral_context_delete_objects(segment_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&callback_arg_ptr->texture_view) );
 
     /* Notify any subscribers about the event */
     system_callback_manager_call_back(segment_ptr->callback_manager,
-                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_DETACHED_FROM_NODE,
+                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_DETACHED_FROM_NODE,
                                       callback_arg);
 }
 
 /** TODO */
-PRIVATE void _demo_timeline_segment_on_texture_output_added_to_node(const void* callback_data_ptr,
-                                                                          void* segment_void_ptr)
+PRIVATE void _demo_timeline_segment_on_texture_view_output_added_to_node(const void* callback_data_ptr,
+                                                                         void*       segment_void_ptr)
 {
-    const demo_timeline_segment_node_callback_texture_output_added_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_output_added_callback_argument*>(callback_data_ptr);
-    _demo_timeline_segment*                                                           segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                          (segment_void_ptr);
+    const demo_timeline_segment_node_callback_texture_view_output_added_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_output_added_callback_argument*>(callback_data_ptr);
+    _demo_timeline_segment*                                                                segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                               (segment_void_ptr);
 
     /* Forward the request to other nodes which signed up for the notification */
     system_callback_manager_call_back(segment_ptr->callback_manager,
-                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_OUTPUT_ADDED_TO_NODE,
+                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_ADDED_TO_NODE,
                                       callback_data_ptr);
 }
 
 /** TODO */
-PRIVATE void _demo_timeline_segment_on_texture_output_deleted_from_node(const void* callback_data_ptr,
-                                                                              void* segment_void_ptr)
+PRIVATE void _demo_timeline_segment_on_texture_view_output_deleted_from_node(const void* callback_data_ptr,
+                                                                             void*       segment_void_ptr)
 {
-    const demo_timeline_segment_node_callback_texture_output_deleted_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_output_deleted_callback_argument*>(callback_data_ptr);
-    _demo_timeline_segment*                                                             segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                            (segment_void_ptr);
+    const demo_timeline_segment_node_callback_texture_view_output_deleted_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_output_deleted_callback_argument*>(callback_data_ptr);
+    _demo_timeline_segment*                                                                  segment_ptr      = reinterpret_cast<_demo_timeline_segment*>                                                                 (segment_void_ptr);
 
     /* Forward the request to other nodes which signed up for the notification */
     system_callback_manager_call_back(segment_ptr->callback_manager,
-                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_OUTPUT_DELETED_FROM_NODE,
+                                      DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_DELETED_FROM_NODE,
                                       callback_data_ptr);
 }
 
@@ -1290,9 +1310,9 @@ PRIVATE void _demo_timeline_segment_update_global_subscriptions(_demo_timeline_s
 
         /* Hook up to context notifications, so that we know when context objects go out of scope. */
         system_callback_manager_subscribe_for_callbacks(context_callback_manager,
-                                                        RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
+                                                        RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_DELETED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _demo_timeline_segment_on_texture_deleted,
+                                                        _demo_timeline_segment_on_texture_view_deleted,
                                                         segment_ptr);
     }
     else
@@ -1329,8 +1349,8 @@ PRIVATE void _demo_timeline_segment_update_global_subscriptions(_demo_timeline_s
                                                            segment_ptr->timeline);
 
         system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
-                                                          RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
-                                                          _demo_timeline_segment_on_texture_deleted,
+                                                          RAL_CONTEXT_CALLBACK_ID_TEXTURE_VIEWS_DELETED,
+                                                          _demo_timeline_segment_on_texture_view_deleted,
                                                           segment_ptr);
     }
 }
@@ -1349,43 +1369,43 @@ PRIVATE void _demo_timeline_segment_update_node_subscriptions(_demo_timeline_seg
     if (should_subscribe)
     {
         system_callback_manager_subscribe_for_callbacks(new_segment_node_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_ADDED,
+                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_ADDED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _demo_timeline_segment_on_texture_output_added_to_node,
+                                                        _demo_timeline_segment_on_texture_view_output_added_to_node,
                                                         segment_ptr);
         system_callback_manager_subscribe_for_callbacks(new_segment_node_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_DELETED,
+                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_DELETED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _demo_timeline_segment_on_texture_output_deleted_from_node,
+                                                        _demo_timeline_segment_on_texture_view_output_deleted_from_node,
                                                         segment_ptr);
         system_callback_manager_subscribe_for_callbacks(new_segment_node_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
+                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_DETACHED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _demo_timeline_segment_on_texture_detached_from_node,
+                                                        _demo_timeline_segment_on_texture_view_detached_from_node,
                                                         segment_ptr);
         system_callback_manager_subscribe_for_callbacks(new_segment_node_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_ATTACHED,
+                                                        DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_ATTACHED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _demo_timeline_segment_on_texture_attached_to_node,
+                                                        _demo_timeline_segment_on_texture_view_attached_to_node,
                                                         segment_ptr);
     }
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(new_segment_node_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_ADDED,
-                                                           _demo_timeline_segment_on_texture_output_added_to_node,
+                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_ADDED,
+                                                           _demo_timeline_segment_on_texture_view_output_added_to_node,
                                                            segment_ptr);
         system_callback_manager_unsubscribe_from_callbacks(new_segment_node_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_DELETED,
-                                                           _demo_timeline_segment_on_texture_output_deleted_from_node,
+                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_DELETED,
+                                                           _demo_timeline_segment_on_texture_view_output_deleted_from_node,
                                                            segment_ptr);
         system_callback_manager_unsubscribe_from_callbacks(new_segment_node_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
-                                                           _demo_timeline_segment_on_texture_detached_from_node,
+                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_DETACHED,
+                                                           _demo_timeline_segment_on_texture_view_detached_from_node,
                                                            segment_ptr);
         system_callback_manager_unsubscribe_from_callbacks(new_segment_node_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_ATTACHED,
-                                                           _demo_timeline_segment_on_texture_attached_to_node,
+                                                           DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_ATTACHED,
+                                                           _demo_timeline_segment_on_texture_view_attached_to_node,
                                                            segment_ptr);
     }
 }
@@ -1557,7 +1577,7 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
 
         /* Cache the texture allocated to the node. We need this to automatically release all textures
          * the moment the node goes out of scope and needs to be destroyed. */
-        system_resizable_vector_push(node_ptr->cached_texture_memory_allocations,
+        system_resizable_vector_push(node_ptr->cached_texture_allocations,
                                      new_texture);
     }
 
@@ -1731,23 +1751,23 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
     if (segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO && is_output_node)
     {
         demo_timeline_segment_node_input_id output_segment_node_input_id = -1;
-        demo_texture_io_declaration         output_segment_node_input_info;
+        demo_texture_view_io_declaration    output_segment_node_input_info;
 
         output_segment_node_input_info.is_attachment_required = true;
+        output_segment_node_input_info.format                 = segment_ptr->output_texture_format;
         output_segment_node_input_info.name                   = system_hashed_ansi_string_create("Result");
-        output_segment_node_input_info.texture_format         = segment_ptr->output_texture_format;
-        output_segment_node_input_info.texture_n_components   = 4;
-        output_segment_node_input_info.texture_n_layers       = 1;
-        output_segment_node_input_info.texture_n_samples      = 1;
-        output_segment_node_input_info.texture_type           = RAL_TEXTURE_TYPE_2D;
+        output_segment_node_input_info.n_components           = 4;
+        output_segment_node_input_info.n_layers               = 1;
+        output_segment_node_input_info.n_samples              = 1;
+        output_segment_node_input_info.type                   = RAL_TEXTURE_TYPE_2D;
 
         ral_utils_get_format_property(segment_ptr->output_texture_format,
                                       RAL_FORMAT_PROPERTY_N_COMPONENTS,
-                                     &output_segment_node_input_info.texture_n_components);
+                                     &output_segment_node_input_info.n_components);
 
-        if (!demo_timeline_segment_node_add_texture_input(new_segment_node,
-                                                         &output_segment_node_input_info,
-                                                         &output_segment_node_input_id) )
+        if (!demo_timeline_segment_node_add_texture_view_input(new_segment_node,
+                                                              &output_segment_node_input_info,
+                                                              &output_segment_node_input_id) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not add texture input to the output node.");
@@ -1770,11 +1790,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
         }
     }
 
-    /* For each texture memory allocation, make sure a texture object is provided.
-     *
-     * TODO: This is TEMPORARY and will be delegated to the rendering back-end. For OpenGL, we could use sparse textures.
-     *       For other APIs, well.. :)
-     */
+    /* For each texture memory allocation, make sure a texture object is provided. */
     _demo_timeline_segment_update_node_texture_memory_allocations(new_node_ptr);
 
     /* Inform subscribers about the event */
@@ -1984,32 +2000,32 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
 
         switch (src_node_output_interface_type)
         {
-            case DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE:
+            case DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE_VIEW:
             {
-                demo_texture_attachment_declaration new_attachment;
-                ral_texture                         src_output_texture = nullptr;
+                demo_texture_view_attachment_declaration new_attachment;
+                ral_texture_view                         src_output_texture_view = nullptr;
 
                 demo_timeline_segment_node_get_io_property(src_node_ptr->node,
                                                            false, /* is_input_io */
                                                            src_node_output_id,
-                                                           DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
-                                                          &src_output_texture);
+                                                           DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
+                                                          &src_output_texture_view);
 
-                if (src_output_texture == nullptr)
+                if (src_output_texture_view == nullptr)
                 {
-                    ASSERT_DEBUG_SYNC(src_output_texture != nullptr,
-                                      "No texture bound to a node output");
+                    ASSERT_DEBUG_SYNC(src_output_texture_view != nullptr,
+                                      "No texture view bound to a node output");
 
                     break;
                 }
 
                 /* Attach the texture attachment to the node input */
-                new_attachment.texture_ral = src_output_texture;
+                new_attachment.texture_view_ral = src_output_texture_view;
 
-                demo_timeline_segment_node_attach_texture_to_texture_io(dst_node_ptr->node,
-                                                                        true, /* is_input_id */
-                                                                        dst_node_input_id,
-                                                                       &new_attachment);
+                demo_timeline_segment_node_attach_texture_view_to_texture_view_io(dst_node_ptr->node,
+                                                                                  true, /* is_input_id */
+                                                                                  dst_node_input_id,
+                                                                                 &new_attachment);
 
                 break;
             }
@@ -2262,10 +2278,10 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
                           n_node_output_id < n_node_output_ids;
                         ++n_node_output_id)
             {
-                if (!demo_timeline_segment_node_attach_texture_to_texture_io(node_ptr->node,
-                                                                             false, /* is_input_id */
-                                                                             node_output_ids[n_node_output_id],
-                                                                             nullptr /* texture_attachment_ptr */) )
+                if (!demo_timeline_segment_node_attach_texture_view_to_texture_view_io(node_ptr->node,
+                                                                                       false, /* is_input_id */
+                                                                                       node_output_ids[n_node_output_id],
+                                                                                       nullptr /* texture_attachment_ptr */) )
                 {
                     ASSERT_DEBUG_SYNC(false,
                                       "Could not detach a texture attachment");
@@ -2284,10 +2300,10 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
                                       node_ptr->dag_node); /* src */
 
         /* Release texture attachments assigned to the node */
-        system_resizable_vector_get_property(node_ptr->cached_texture_memory_allocations,
+        system_resizable_vector_get_property(node_ptr->cached_texture_allocations,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                             &n_cached_texture_attachments);
-        system_resizable_vector_get_property(node_ptr->cached_texture_memory_allocations,
+        system_resizable_vector_get_property(node_ptr->cached_texture_allocations,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
                                             &cached_texture_attachments);
 
@@ -2300,7 +2316,7 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
                               "Texture attachment release process failed.");
         }
 
-        system_resizable_vector_clear(node_ptr->cached_texture_memory_allocations);
+        system_resizable_vector_clear(node_ptr->cached_texture_allocations);
 
         #ifdef _DEBUG
         {
@@ -3077,7 +3093,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_render(demo_timeline_segment segme
                       n_node_input_id < n_node_input_ids;
                     ++n_node_input_id)
         {
-            ral_texture bound_texture          = nullptr;
+            ral_texture bound_texture_view     = nullptr;
             bool        is_attachment_required = false;
 
             demo_timeline_segment_node_get_io_property(node_ptr->node,
@@ -3095,10 +3111,10 @@ PUBLIC EMERALD_API bool demo_timeline_segment_render(demo_timeline_segment segme
             demo_timeline_segment_node_get_io_property(node_ptr->node,
                                                        true, /* is_input_io */
                                                        node_input_ids[n_node_input_id],
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
-                                                      &bound_texture);
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
+                                                      &bound_texture_view);
 
-            if (bound_texture == nullptr)
+            if (bound_texture_view == nullptr)
             {
                 /* Sound the bugle! */
                 system_callback_manager_call_back(node_ptr->parent_segment_ptr->callback_manager,
@@ -3192,12 +3208,12 @@ PUBLIC EMERALD_API bool demo_timeline_segment_set_node_io_property(demo_timeline
     /* If this is a segment-specific request, handle it now. Otherwise, pass it to the general node handler */
     switch (property)
     {
-        case DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL:
+        case DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL:
         {
-            demo_timeline_segment_node_attach_texture_to_texture_io(node_ptr->node,
-                                                                    is_input_io,
-                                                                    io_id,
-                                                                   *reinterpret_cast<const demo_texture_attachment_declaration* const*>(data) );
+            demo_timeline_segment_node_attach_texture_view_to_texture_view_io(node_ptr->node,
+                                                                              is_input_io,
+                                                                              io_id,
+                                                                             *reinterpret_cast<const demo_texture_view_attachment_declaration* const*>(data) );
 
             break;
         }

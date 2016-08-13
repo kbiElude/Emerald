@@ -6,7 +6,7 @@
  * a postprocessing or a video segment.
  *
  * Each node can take zero or more inputs, and can expose zero or more outputs. The actual
- * functionality is implemented in command buffers.
+ * functionality is implemented with command buffers.
  *
  * This functionality is considered internal and should not be used by client apps. External interfaces
  * will call this code directly whenever necessary.
@@ -32,45 +32,45 @@ typedef enum
      *
      * Synchronous call-backs only.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_attached_callback_argument instance.
+     * @param arg demo_timeline_segment_node_callback_texture_view_attached_callback_argument instance.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_ATTACHED,
+    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_ATTACHED,
 
     /* A texture is about to be detached from node input or output.
      *
      * Synchronous call-backs only.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_detached_callback_argument instance.
+     * @param arg demo_timeline_segment_node_callback_texture_view_detached_callback_argument instance.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_DETACHED,
+    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_DETACHED,
 
     /* A new texture input has been added to the node.
      *
      * @param arg New input's ID
      */
-    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_INPUT_ADDED,
+    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_INPUT_ADDED,
 
     /* An existing texture input has just been deleted.
      *
      * @param arg Former input ID.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_INPUT_DELETED,
+    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_INPUT_DELETED,
 
     /* A new texture output has been added to the node.
      *
      * Only supports synchronous call-backs.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_output_added_callback_argument instance.
+     * @param arg demo_timeline_segment_node_callback_texture_view_output_added_callback_argument instance.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_ADDED,
+    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_ADDED,
 
     /* An existing texture input has just been deleted.
      *
      * Only supports synchronous call-backs.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_output_deleted_callback_argument instance.
+     * @param arg demo_timeline_segment_node_callback_texture_view_output_deleted_callback_argument instance.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_OUTPUT_DELETED,
+    DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_DELETED,
 
     /* Always last */
     DEMO_TIMELINE_SEGMENT_NODE_CALLBACK_ID_COUNT
@@ -82,7 +82,7 @@ typedef struct
     demo_timeline_segment_node           node;
     demo_timeline_segment_node_output_id output_id;
 
-} demo_timeline_segment_node_callback_texture_output_added_callback_argument;
+} demo_timeline_segment_node_callback_texture_view_output_added_callback_argument;
 
 typedef struct
 {
@@ -90,12 +90,12 @@ typedef struct
     uint32_t                   id;
     bool                       is_input_id;
     demo_timeline_segment_node node;
-    ral_texture                texture;
+    ral_texture_view           texture_view;
 
-} demo_timeline_segment_node_callback_texture_attached_callback_argument;
+} demo_timeline_segment_node_callback_texture_view_attached_callback_argument;
 
-typedef demo_timeline_segment_node_callback_texture_output_added_callback_argument demo_timeline_segment_node_callback_texture_output_deleted_callback_argument;
-typedef demo_timeline_segment_node_callback_texture_attached_callback_argument     demo_timeline_segment_node_callback_texture_detached_callback_argument;
+typedef demo_timeline_segment_node_callback_texture_view_output_added_callback_argument demo_timeline_segment_node_callback_texture_view_output_deleted_callback_argument;
+typedef demo_timeline_segment_node_callback_texture_view_attached_callback_argument     demo_timeline_segment_node_callback_texture_view_detached_callback_argument;
 
 typedef enum
 {
@@ -133,11 +133,11 @@ typedef enum
 
 
 /** TODO */
-PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_node           node,
-                                                         const demo_texture_io_declaration*   new_input_declaration_ptr,
-                                                         demo_timeline_segment_node_input_id* out_opt_input_id_ptr);
+PUBLIC bool demo_timeline_segment_node_add_texture_view_input(demo_timeline_segment_node              node,
+                                                              const demo_texture_view_io_declaration* new_input_declaration_ptr,
+                                                              demo_timeline_segment_node_input_id*    out_opt_input_id_ptr);
 
-/** Adds a new texture output to the segment node.
+/** Adds a new texture view output to the segment node.
  *
  *  @param segment                   Video segment to add a texture output to.
  *  @param new_output_properties_ptr Properties of the new output. Must not be NULL.
@@ -146,11 +146,11 @@ PUBLIC bool demo_timeline_segment_node_add_texture_input(demo_timeline_segment_n
  *
  *  @return true if the output was added successfully, false otherwise.
  */
-PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_node            node,
-                                                          const demo_texture_io_declaration*    new_output_declaration_ptr,
-                                                          demo_timeline_segment_node_output_id* out_opt_output_id_ptr);
+PUBLIC bool demo_timeline_segment_node_add_texture_view_output(demo_timeline_segment_node              node,
+                                                               const demo_texture_view_io_declaration* new_output_declaration_ptr,
+                                                               demo_timeline_segment_node_output_id*   out_opt_output_id_ptr);
 
-/** Replaces existing attachment of a texture input/output with a new texture, or just detaches existing attachment from
+/** Replaces existing attachment of a texture view input/output with a new texture view, or just detaches existing attachment from
  *  the specified segment node input/output.
  *
  *  @param node                   Segment node to update.
@@ -162,10 +162,10 @@ PUBLIC bool demo_timeline_segment_node_add_texture_output(demo_timeline_segment_
  *
  *  @return TODO.
  */
-PUBLIC bool demo_timeline_segment_node_attach_texture_to_texture_io(demo_timeline_segment_node                 node,
-                                                                    bool                                       is_input_id,
-                                                                    uint32_t                                   id,
-                                                                    const demo_texture_attachment_declaration* texture_attachment_ptr);
+PUBLIC bool demo_timeline_segment_node_attach_texture_view_to_texture_view_io(demo_timeline_segment_node                      node,
+                                                                              bool                                            is_input_id,
+                                                                              uint32_t                                        id,
+                                                                              const demo_texture_view_attachment_declaration* texture_view_attachment_ptr);
 
 /** TODO */
 PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(ral_context                                         context,
@@ -182,12 +182,12 @@ PUBLIC demo_timeline_segment_node demo_timeline_segment_node_create(ral_context 
                                                                     system_hashed_ansi_string                           node_name);
 
 /** TODO */
-PUBLIC bool demo_timeline_segment_node_delete_texture_input(demo_timeline_segment_node          node,
-                                                            demo_timeline_segment_node_input_id input_id);
+PUBLIC bool demo_timeline_segment_node_delete_texture_view_input(demo_timeline_segment_node          node,
+                                                                 demo_timeline_segment_node_input_id input_id);
 
 /** TODO */
-PUBLIC bool demo_timeline_segment_node_delete_texture_output(demo_timeline_segment_node           node,
-                                                             demo_timeline_segment_node_output_id output_id);
+PUBLIC bool demo_timeline_segment_node_delete_texture_view_output(demo_timeline_segment_node           node,
+                                                                  demo_timeline_segment_node_output_id output_id);
 
 /** TODO */
 PUBLIC void demo_timeline_segment_node_get_io_property(demo_timeline_segment_node             node,
@@ -215,10 +215,10 @@ PUBLIC void demo_timeline_segment_node_get_property(demo_timeline_segment_node  
                                                     void*                               out_result_ptr);
 
 /** TODO */
-PUBLIC bool demo_timeline_segment_node_get_texture_attachment(demo_timeline_segment_node node,
-                                                              bool                       is_input_id,
-                                                              uint32_t                   id,
-                                                              ral_texture*               out_attached_texture_ptr);
+PUBLIC bool demo_timeline_segment_node_get_texture_view_attachment(demo_timeline_segment_node node,
+                                                                   bool                       is_input_id,
+                                                                   uint32_t                   id,
+                                                                   ral_texture_view*          out_attached_texture_view_ptr);
 
 /** TODO */
 PUBLIC bool demo_timeline_segment_node_is_node_output_compatible_with_node_input(demo_timeline_segment_node           src_node,

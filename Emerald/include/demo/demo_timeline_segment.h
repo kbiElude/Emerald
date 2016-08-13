@@ -75,37 +75,37 @@ typedef enum
      */
     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_NEW_OUTPUT_EXPOSED,
 
-    /* A texture attachment has been added to one of the owned nodes.
+    /* A texture view attachment has been added to one of the owned nodes.
      *
      * Synchronous call-backs only.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_attached_callback_argument instance
+     * @param arg demo_timeline_segment_node_callback_texture_view_attached_callback_argument instance
      */
-    DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_ATTACHED_TO_NODE,
+    DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_ATTACHED_TO_NODE,
 
     /* A texture attachment has been removed from one of the owned nodes.
      *
      * Synchronous call-backs only.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_attached_callback_argument instance
+     * @param arg demo_timeline_segment_node_callback_texture_view_detached_callback_argument instance
      */
-     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_DETACHED_FROM_NODE,
+     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_DETACHED_FROM_NODE,
 
     /* A new texture output has been added to one of the segment nodes
      *
      * Synchronous call-back only.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_output_added_callback_argument instance.
+     * @param arg demo_timeline_segment_node_callback_texture_view_output_added_callback_argument instance.
      **/
-     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_OUTPUT_ADDED_TO_NODE,
+     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_ADDED_TO_NODE,
 
      /* A texture output has been removed from one of the segment nodes
      *
      * Synchronous call-back only.
      *
-     * @param arg demo_timeline_segment_node_callback_texture_output_deleted_callback_argument instance.
+     * @param arg demo_timeline_segment_node_callback_texture_view_output_deleted_callback_argument instance.
      **/
-     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_OUTPUT_DELETED_FROM_NODE,
+     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_OUTPUT_DELETED_FROM_NODE,
 
     /* Always last */
     DEMO_TIMELINE_SEGMENT_CALLBACK_ID_COUNT

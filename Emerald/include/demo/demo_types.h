@@ -22,10 +22,9 @@ DECLARE_HANDLE(demo_window);
 
 typedef struct
 {
-    // TODO: stuff like n_start_layer, n_start_mipmap, etc. should be added here one day */
+    ral_texture_view texture_view_ral;
 
-    ral_texture  texture_ral;
-} demo_texture_attachment_declaration;
+} demo_texture_view_attachment_declaration;
 
 /** Structure used to describe a new texture input. Should only be used at creation time */
 typedef struct
@@ -34,25 +33,25 @@ typedef struct
     system_hashed_ansi_string name;
 
     /** Type of the texture that will be accepted by IO. */
-    ral_texture_type texture_type;
+    ral_texture_type type;
 
     /** Format of the texture accepted by the new IO. */
-    ral_format texture_format;
+    ral_format format;
 
     /** Number of texture data components expected at the input, or exposed by the output. */
-    unsigned int texture_n_components;
+    unsigned int n_components;
 
     /** Number of layers expected at the input, or exposed by the output. */
-    unsigned int texture_n_layers;
+    unsigned int n_layers;
 
     /** Number of samples the input texture must contain (input IO),
      *  or number of samples the output texture will contain (output IO). */
-    unsigned int texture_n_samples;
+    unsigned int n_samples;
 
     /** For input IOs:  tells if a texture is required in order for the parent segment/node to render.
      *  For output IOs: ignored */
     bool is_attachment_required;
-} demo_texture_io_declaration;
+} demo_texture_view_io_declaration;
 
 /* Specifies representation of texture dimensions */
 typedef enum
@@ -102,8 +101,8 @@ typedef enum
 {
     // TODO: DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_BUFFER
 
-    /* A texture input */
-    DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE,
+    /* A texture view input */
+    DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE_VIEW,
 
     DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_UNKNOWN
 } demo_timeline_segment_node_interface_type;
@@ -123,13 +122,13 @@ typedef struct
 
 typedef enum
 {
-    /* not settable; ral_texture.
+    /* not settable; ral_texture_view.
      *
-     * Tells what texture attachment is bound to the output.
+     * Tells what texture view attachment is bound to the output.
      *
-     * Query only valid for texture interfaces.
+     * Query only valid for texture view interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
 
     /* not settable; demo_timeline_segment_node_interface_type.
      *
@@ -147,50 +146,50 @@ typedef enum
      *
      * Tells the texture format of the output texture.
      *
-     * Query only valid for texture interfaces.
+     * Query only valid for texture view interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_FORMAT,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_FORMAT,
 
     /* not settable; uint32_t
      *
      * Tells the number of components the output exposes.
      *
-     * Query only valid for texture interfaces.
+     * Query only valid for texture view interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_N_COMPONENTS,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_N_COMPONENTS,
 
     /* not settable; uint32_t
      *
      * Tells the number of layers the output exposes.
      *
-     * Query only valid for texture interfaces.
+     * Query only valid for texture view interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_N_LAYERS,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_N_LAYERS,
 
     /* not settable; uint32_t
      *
      * Tells the number of samples the output exposes.
      *
-     * Query only valid for texture interfaces.
+     * Query only valid for texture view interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_N_SAMPLES,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_N_SAMPLES,
 
     /* not settable; ral_texture_type
      *
      * Tells the type of the texture the output exposes.
      *
-     * Query only valid for texture interfaces.
+     * Query only valid for texture view interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_TYPE,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_TYPE,
 
     /* not settable; bool
      *
      * Tells if the output exposes full mipmap chain. If not, only one base mipmap
      * is going to be used.
      *
-     * Query only valid for texture interfaces.
+     * Query only valid for texture view interfaces.
      */
-    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_USES_FULL_MIPMAP_CHAIN,
+    DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_USES_FULL_MIPMAP_CHAIN,
 } demo_timeline_segment_node_io_property;
 
 /* Segment type */
@@ -215,7 +214,7 @@ typedef enum
 
     /* NOTE: Update the node_data array in demo_timeline_video_segment.cc, if you move/add/remove any entries
      *       defined by this enum. */
-    DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
+    // REMOVEME: DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
 
 
     /*** VIDEO SEGMENT NODES: ***/
@@ -246,7 +245,8 @@ typedef demo_timeline_segment_node_private (*PFNSEGMENTNODEINITCALLBACKPROC)    
 typedef bool                               (*PFNSEGMENTNODERENDERCALLBACKPROC)                   (demo_timeline_segment_node_private node,
                                                                                                   uint32_t                           frame_index,
                                                                                                   system_time                        frame_time,
-                                                                                                  const int32_t*                     rendering_area_px_topdown);
+                                                                                                  const int32_t*                     rendering_area_px_topdown,
+                                                                                                  ral_present_job                    present_job);
 typedef bool                               (*PFNSEGMENTNODESETPROPERTYCALLBACKPROC)              (demo_timeline_segment_node_private node,
                                                                                                   int                                property,
                                                                                                   const void*                        data);

@@ -3,17 +3,11 @@
  * Emerald (kbi/elude @2015-2016)
  *
  */
-#if 0
-
-TODO
-
 #include "shared.h"
 #include "demo/nodes/nodes_postprocessing_output.h"
 #include "demo/demo_timeline_segment.h"
-#include "ogl/ogl_context.h"
-#include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
-#include "ral/ral_texture.h"
+#include "ral/ral_present_job.h"
 #include "ral/ral_utils.h"
 #include "system/system_callback_manager.h"
 
@@ -22,7 +16,7 @@ typedef struct _nodes_postprocessing_output
 {
     demo_timeline_segment_node_input_id color_data_node_input_id;
     ral_context                         context;
-    ral_texture                         data_texture;
+    ral_texture_view                    input_data_texture_view;
     demo_timeline_segment_node          node;
     demo_timeline_segment               segment;
 
@@ -33,7 +27,7 @@ typedef struct _nodes_postprocessing_output
     {
         color_data_node_input_id = in_color_data_node_input_id;
         context                  = in_context;
-        data_texture             = nullptr;
+        input_data_texture_view  = nullptr;
         node                     = in_node;
         segment                  = in_segment;
     }
@@ -41,64 +35,60 @@ typedef struct _nodes_postprocessing_output
 
 
 /* Forward declarations */
-PRIVATE void _nodes_postprocessing_on_texture_attached_callback(const void*                   callback_data,
-                                                                      void*                   user_arg);
-PRIVATE void _nodes_postprocessing_on_texture_detached_callback(const void*                   callback_data,
-                                                                      void*                   user_arg);
-PRIVATE bool _nodes_postprocessing_output_update_subscriptions (_nodes_postprocessing_output* node_ptr,
-                                                                bool                          should_subscribe);
+PRIVATE void _nodes_postprocessing_on_texture_view_attached_callback(const void*                   callback_data,
+                                                                     void*                         user_arg);
+PRIVATE void _nodes_postprocessing_on_texture_view_detached_callback(const void*                   callback_data,
+                                                                     void*                         user_arg);
+PRIVATE bool _nodes_postprocessing_output_update_subscriptions      (_nodes_postprocessing_output* node_ptr,
+                                                                     bool                          should_subscribe);
 
 
 /** TODO */
 PRIVATE void _nodes_postprocessing_on_texture_attached_callback(const void* callback_data,
-                                                                      void* user_arg)
+                                                                void*       user_arg)
 {
-    demo_timeline_segment_node_callback_texture_attached_callback_argument* callback_data_ptr = (demo_timeline_segment_node_callback_texture_attached_callback_argument*) callback_data;
-    _nodes_postprocessing_output*                                           node_data_ptr     = (_nodes_postprocessing_output*)                                           user_arg;
+    const demo_timeline_segment_node_callback_texture_view_attached_callback_argument* callback_data_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_attached_callback_argument*>(callback_data);
+    _nodes_postprocessing_output*                                                      node_data_ptr     = reinterpret_cast<_nodes_postprocessing_output*>                                                     (user_arg);
 
     if (callback_data_ptr->is_input_id                                            &&
         callback_data_ptr->id          == node_data_ptr->color_data_node_input_id &&
         callback_data_ptr->node        == node_data_ptr->node)
     {
         /* Cache the texture */
-        ASSERT_DEBUG_SYNC(callback_data_ptr->texture != nullptr,
-                          "NULL texture attached to a post-processing output node");
-        ASSERT_DEBUG_SYNC(node_data_ptr->data_texture == nullptr,
-                          "Texture attached to a node input with another texture attachment already defined");
+        ASSERT_DEBUG_SYNC(callback_data_ptr->texture_view != nullptr,
+                          "NULL texture view attached to a post-processing output node");
+        ASSERT_DEBUG_SYNC(node_data_ptr->input_data_texture_view == nullptr,
+                          "Texture view attached to a node input with another texture attachment already defined");
 
-        node_data_ptr->data_texture = callback_data_ptr->texture;
+        node_data_ptr->input_data_texture_view = callback_data_ptr->texture_view;
 
-        /* Update the blit source framebuffer */
-        ral_framebuffer_set_attachment_2D(node_data_ptr->blit_src_fb,
-                                          RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
-                                          0, /* index */
-                                          callback_data_ptr->texture,
-                                          0 /* n_mipmap */);
+        ral_context_retain_object(node_data_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  node_data_ptr->input_data_texture_view);
     }
 }
 
 /** TODO */
 PRIVATE void _nodes_postprocessing_on_texture_detached_callback(const void* callback_data,
-                                                                      void* user_arg)
+                                                                void*       user_arg)
 {
-    demo_timeline_segment_node_callback_texture_detached_callback_argument* callback_data_ptr = (demo_timeline_segment_node_callback_texture_detached_callback_argument*) callback_data;
-    _nodes_postprocessing_output*                                           node_data_ptr     = (_nodes_postprocessing_output*)                                           user_arg;
+    const demo_timeline_segment_node_callback_texture_view_detached_callback_argument* callback_data_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_detached_callback_argument*>(callback_data);
+    _nodes_postprocessing_output*                                                      node_data_ptr     = reinterpret_cast<_nodes_postprocessing_output*>                                                     (user_arg);
 
-    if (callback_data_ptr->is_input_id                                            &&
-        callback_data_ptr->id == node_data_ptr->color_data_node_input_id &&
+    if (callback_data_ptr->is_input_id                                     &&
+        callback_data_ptr->id   == node_data_ptr->color_data_node_input_id &&
         callback_data_ptr->node == node_data_ptr->node)
     {
         /* Drop the attachment */
-        ASSERT_DEBUG_SYNC(node_data_ptr->data_texture != nullptr,
-                          "Texture attached to a node input with another texture attachment already defined");
+        ASSERT_DEBUG_SYNC(node_data_ptr->input_data_texture_view != nullptr,
+                          "No texture view attached to a node input, for which a \"texture detached\" callback was received");
 
-        node_data_ptr->data_texture = nullptr;
+        ral_context_delete_objects(node_data_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&node_data_ptr->input_data_texture_view) );
 
-        ral_framebuffer_set_attachment_2D(node_data_ptr->blit_src_fb,
-                                          RAL_FRAMEBUFFER_ATTACHMENT_TYPE_COLOR,
-                                          0,       /* index      */
-                                          nullptr, /* texture_2d */
-                                          0        /* n_mipmap   */);
+        node_data_ptr->input_data_texture_view = nullptr;
     }
 }
 
@@ -115,25 +105,25 @@ PRIVATE bool _nodes_postprocessing_output_update_subscriptions(_nodes_postproces
     if (should_subscribe)
     {
         system_callback_manager_subscribe_for_callbacks(segment_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_ATTACHED_TO_NODE,
+                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_ATTACHED_TO_NODE,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _nodes_postprocessing_on_texture_attached_callback,
+                                                        _nodes_postprocessing_on_texture_view_attached_callback,
                                                         node_ptr);
         system_callback_manager_subscribe_for_callbacks(segment_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_DETACHED_FROM_NODE,
+                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_DETACHED_FROM_NODE,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _nodes_postprocessing_on_texture_detached_callback,
+                                                        _nodes_postprocessing_on_texture_view_detached_callback,
                                                         node_ptr);
     }
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(segment_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_ATTACHED_TO_NODE,
-                                                           _nodes_postprocessing_on_texture_attached_callback,
+                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_ATTACHED_TO_NODE,
+                                                           _nodes_postprocessing_on_texture_view_attached_callback,
                                                            node_ptr);
         system_callback_manager_unsubscribe_from_callbacks(segment_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_DETACHED_FROM_NODE,
-                                                           _nodes_postprocessing_on_texture_detached_callback,
+                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_DETACHED_FROM_NODE,
+                                                           _nodes_postprocessing_on_texture_view_detached_callback,
                                                            node_ptr);
     }
 
@@ -141,37 +131,37 @@ PRIVATE bool _nodes_postprocessing_output_update_subscriptions(_nodes_postproces
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL void nodes_postprocessing_output_deinit(demo_timeline_segment_node_private node)
+PUBLIC void nodes_postprocessing_output_deinit(demo_timeline_segment_node_private node)
 {
-    _nodes_postprocessing_output* node_ptr = (_nodes_postprocessing_output*) node;
-
-    if (node_ptr->blit_src_fb != nullptr)
-    {
-        ral_context_delete_objects(node_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
-                                   1, /* n_objects */
-                                   (const void**) &node_ptr->blit_src_fb);
-
-        node_ptr->blit_src_fb = nullptr;
-    }
+    _nodes_postprocessing_output* node_ptr = reinterpret_cast<_nodes_postprocessing_output*>(node);
 
     _nodes_postprocessing_output_update_subscriptions(node_ptr,
                                                       false /* should_subscribe */);
+
+    if (node_ptr->input_data_texture_view != nullptr)
+    {
+        ral_context_delete_objects(node_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&node_ptr->input_data_texture_view) );
+
+        node_ptr->input_data_texture_view = nullptr;
+    }
 
     delete node_ptr;
     node_ptr = nullptr;
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postprocessing_output_init(demo_timeline_segment      segment,
-                                                                                                  demo_timeline_segment_node node,
-                                                                                                  ral_context                context)
+PUBLIC demo_timeline_segment_node_private nodes_postprocessing_output_init(demo_timeline_segment      segment,
+                                                                           demo_timeline_segment_node node,
+                                                                           ral_context                context)
 {
-    ral_format                    color_texture_format;
-    _nodes_postprocessing_output* new_node_data_ptr = nullptr;
-    demo_texture_io_declaration   new_node_input_declaration;
-    bool                          result;
-    demo_timeline_segment_node_id texture_input_id;
+    ral_format                       color_texture_format;
+    _nodes_postprocessing_output*    new_node_data_ptr = nullptr;
+    demo_texture_view_io_declaration new_node_input_declaration;
+    bool                             result;
+    demo_timeline_segment_node_id    texture_input_id;
 
     /* Determine texture format of the system framebuffer's color output. */
     ral_context_get_property(context,
@@ -179,20 +169,20 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
                             &color_texture_format);
 
     /* Add a new input to the node we own */
+    new_node_input_declaration.format                 = color_texture_format;
     new_node_input_declaration.is_attachment_required = true;
     new_node_input_declaration.name                   = system_hashed_ansi_string_create("Color data");
-    new_node_input_declaration.texture_format         = color_texture_format;
-    new_node_input_declaration.texture_n_layers       = 1;
-    new_node_input_declaration.texture_n_samples      = 1;
-    new_node_input_declaration.texture_type           = RAL_TEXTURE_TYPE_2D;
+    new_node_input_declaration.n_layers               = 1;
+    new_node_input_declaration.n_samples              = 1;
+    new_node_input_declaration.type                   = RAL_TEXTURE_TYPE_2D;
 
     ral_utils_get_format_property(color_texture_format,
                                   RAL_FORMAT_PROPERTY_N_COMPONENTS,
-                                 &new_node_input_declaration.texture_n_components);
+                                 &new_node_input_declaration.n_components);
 
-    result = demo_timeline_segment_node_add_texture_input(node,
-                                                         &new_node_input_declaration,
-                                                         &texture_input_id);
+    result = demo_timeline_segment_node_add_texture_view_input(node,
+                                                              &new_node_input_declaration,
+                                                              &texture_input_id);
 
     ASSERT_DEBUG_SYNC(result,
                       "Could not add a new texture input to the post-processing output node.");
@@ -203,10 +193,6 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
                                                          node,
                                                          texture_input_id);
 
-    ral_context_create_framebuffers(context,
-                                    1, /* n_framebuffers */
-                                   &new_node_data_ptr->blit_src_fb);
-
     _nodes_postprocessing_output_update_subscriptions(new_node_data_ptr,
                                                       true /* should_subscribe */);
 
@@ -215,66 +201,15 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_postproce
 }
 
 /** Please see header for specification */
-PUBLIC RENDERING_CONTEXT_CALL bool nodes_postprocessing_output_render(demo_timeline_segment_node_private node,
-                                                                      uint32_t                           frame_index,
-                                                                      system_time                        frame_time,
-                                                                      const int32_t*                     rendering_area_px_topdown)
+PUBLIC bool nodes_postprocessing_output_render(demo_timeline_segment_node_private node,
+                                               uint32_t                           frame_index,
+                                               system_time                        frame_time,
+                                               const int32_t*                     rendering_area_px_topdown,
+                                               ral_present_job                    present_job)
 {
-    raGL_framebuffer                  blit_src_fb_raGL    = nullptr;
-    GLuint                            blit_src_fb_raGL_id = -1;
-    ogl_context                       context_gl          = nullptr;
-    const ogl_context_gl_entrypoints* entrypoints_ptr     = nullptr;
-    uint32_t                          fb_size[2];
-    _nodes_postprocessing_output*     node_ptr            = (_nodes_postprocessing_output*) node;
-    ral_framebuffer                   system_fb           = nullptr; 
-    raGL_framebuffer                  system_fb_raGL      = nullptr;
-    GLuint                            system_fb_raGL_id   = -1;
+    _nodes_postprocessing_output* node_ptr = reinterpret_cast<_nodes_postprocessing_output*>(node);
 
-    context_gl = ral_context_get_gl_context(node_ptr->context);
-
-    ogl_context_get_property(context_gl,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    ral_context_get_property(node_ptr->context,
-                             RAL_CONTEXT_PROPERTY_SYSTEM_FRAMEBUFFERS,
-                            &system_fb);
-
-    blit_src_fb_raGL = ral_context_get_framebuffer_gl(node_ptr->context,
-                                                      node_ptr->blit_src_fb);
-    system_fb_raGL   = ral_context_get_framebuffer_gl(node_ptr->context,
-                                                      system_fb);
-
-    raGL_framebuffer_get_property(blit_src_fb_raGL,
-                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                 &blit_src_fb_raGL_id);
-    raGL_framebuffer_get_property(system_fb_raGL,
-                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                 &system_fb_raGL_id);
-
-    ral_context_get_property(node_ptr->context,
-                             RAL_CONTEXT_PROPERTY_SYSTEM_FB_SIZE,
-                             fb_size);
-
-    /* Blit the data we were provided to the system FB.
-     *
-     * TODO: This could actually be a copy op, unless we're going to supersample one day. */
-    entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                        system_fb_raGL_id);
-    entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                        blit_src_fb_raGL_id);
-
-    entrypoints_ptr->pGLBlitFramebuffer(0, /* srcX0 */
-                                        0, /* srcY0 */
-                                        fb_size[0],
-                                        fb_size[1],
-                                        0, /* dstX0 */
-                                        0, /* dstY0 */
-                                        fb_size[0],
-                                        fb_size[1],
-                                        GL_COLOR_BUFFER_BIT,
-                                        GL_NEAREST);
+    todo;
 
     return true;
 }
-#endif

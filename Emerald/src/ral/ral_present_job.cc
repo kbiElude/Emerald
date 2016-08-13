@@ -10,6 +10,7 @@
 #include "ral/ral_utils.h"
 #include "system/system_dag.h"
 #include "system/system_hash64map.h"
+#include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 
 typedef struct _ral_present_job_connection
@@ -535,6 +536,10 @@ PUBLIC bool ral_present_job_get_sorted_tasks(ral_present_job    present_job,
                                              out_tasks);
     }
 
+    if (!result)
+    {
+        LOG_ERROR("ral_present_job_get_sorted_tasks() failed: Specified graph is invalid.");
+    }
     return result;
 }
 

@@ -1,3 +1,7 @@
+#if 0
+
+TODO: Remove. Video passes are deprecated.
+
 /**
  *
  *  Emerald (kbi/elude @ 2015-2016)
@@ -6,18 +10,14 @@
 #ifndef NODES_VIDEO_PASS_RENDERER_H
 #define NODES_VIDEO_PASS_RENDERER_H
 
+#include "demo/demo_timeline_segment_node.h"
 #include "demo/demo_types.h"
 #include "ral/ral_types.h"
 
 
 typedef enum
 {
-    /** settable; uint32_t
-     *
-     *  Defines the rendering pipeline's stage ID to render. The node uses timeline's rendering pipeline namespace.
-     **/
-    NODES_VIDEO_PASS_RENDERER_PROPERTY_RENDERING_PIPELINE_STAGE_ID,
-
+    /* TODO */
 } nodes_video_pass_renderer_property;
 
 
@@ -56,3 +56,5 @@ PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timelin
                                                                     ral_texture                        texture);
 
 #endif /* NODES_VIDEO_PASS_RENDERER_H */
+
+#endif

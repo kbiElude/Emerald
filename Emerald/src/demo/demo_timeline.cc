@@ -1588,8 +1588,7 @@ PUBLIC ral_present_job demo_timeline_render(demo_timeline timeline,
         }
 
         /* Render the segment */
-        ASSERT_DEBUG_SYNC(false,
-                          "TODO");
+        todo;
 
         result = demo_timeline_segment_render(postprocessing_segment,
                                               frame_index,

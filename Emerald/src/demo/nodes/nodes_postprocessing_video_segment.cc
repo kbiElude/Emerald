@@ -109,28 +109,28 @@ typedef struct _nodes_postprocessing_video_segment_node_data
 
 
 /* Forward declarations */
-PRIVATE void _nodes_postprocessing_video_segment_on_input_exposed             (const void*                                    unused,
-                                                                               void*                                          node_data);
-PRIVATE void _nodes_postprocessing_video_segment_on_input_no_longer_exposed   (const void*                                    unused,
-                                                                               void*                                          node_data);
-PRIVATE void _nodes_postprocessing_video_segment_on_output_exposed            (const void*                                    unused,
-                                                                               void*                                          node_data);
-PRIVATE void _nodes_postprocessing_video_segment_on_output_no_longer_exposed  (const void*                                    unused,
-                                                                               void*                                          node_data);
-PRIVATE void _nodes_postprocessing_video_segment_on_texture_attached_to_node  (const void*                                    callback_arg,
-                                                                               void*                                          node_data);
-PRIVATE void _nodes_postprocessing_video_segment_on_texture_detached_from_node(const void*                                    callback_arg,
-                                                                               void*                                          node_data);
-PRIVATE void _nodes_postprocessing_video_segment_on_video_segment_releasing   (const void*                                    segment,
-                                                                               void*                                          node_data);
-PRIVATE void _nodes_postprocessing_video_segment_sync_io                      (_nodes_postprocessing_video_segment_node_data* node_data_ptr,
-                                                                               bool                                           should_process_inputs);
-PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments      (_nodes_postprocessing_video_segment_node_data* node_data_ptr,
-                                                                               demo_timeline_segment_node_id                  node_id,
-                                                                               demo_timeline_segment_output_id                node_output_id,
-                                                                               ral_texture                                    new_texture_attachment);
-PRIVATE void _nodes_postprocessing_video_segment_update_callbacks             (_nodes_postprocessing_video_segment_node_data* node_data_ptr,
-                                                                               bool                                           should_subscribe);
+PRIVATE void _nodes_postprocessing_video_segment_on_input_exposed                  (const void*                                    unused,
+                                                                                    void*                                          node_data);
+PRIVATE void _nodes_postprocessing_video_segment_on_input_no_longer_exposed        (const void*                                    unused,
+                                                                                    void*                                          node_data);
+PRIVATE void _nodes_postprocessing_video_segment_on_output_exposed                 (const void*                                    unused,
+                                                                                    void*                                          node_data);
+PRIVATE void _nodes_postprocessing_video_segment_on_output_no_longer_exposed       (const void*                                    unused,
+                                                                                    void*                                          node_data);
+PRIVATE void _nodes_postprocessing_video_segment_on_texture_view_attached_to_node  (const void*                                    callback_arg,
+                                                                                    void*                                          node_data);
+PRIVATE void _nodes_postprocessing_video_segment_on_texture_view_detached_from_node(const void*                                    callback_arg,
+                                                                                    void*                                          node_data);
+PRIVATE void _nodes_postprocessing_video_segment_on_video_segment_releasing        (const void*                                    segment,
+                                                                                    void*                                          node_data);
+PRIVATE void _nodes_postprocessing_video_segment_sync_io                           (_nodes_postprocessing_video_segment_node_data* node_data_ptr,
+                                                                                    bool                                           should_process_inputs);
+PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments           (_nodes_postprocessing_video_segment_node_data* node_data_ptr,
+                                                                                    demo_timeline_segment_node_id                  node_id,
+                                                                                    demo_timeline_segment_output_id                node_output_id,
+                                                                                    ral_texture_view                               new_texture_attachment);
+PRIVATE void _nodes_postprocessing_video_segment_update_callbacks                  (_nodes_postprocessing_video_segment_node_data* node_data_ptr,
+                                                                                    bool                                           should_subscribe);
 
 
 /** TODO */
@@ -190,11 +190,11 @@ PRIVATE void _nodes_postprocessing_video_segment_on_output_no_longer_exposed(con
 }
 
 /** TODO */
-PRIVATE void _nodes_postprocessing_video_segment_on_texture_attached_to_node(const void* callback_arg,
-                                                                             void*       node_data)
+PRIVATE void _nodes_postprocessing_video_segment_on_texture_view_attached_to_node(const void* callback_arg,
+                                                                                  void*       node_data)
 {
-    const demo_timeline_segment_node_callback_texture_attached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_attached_callback_argument*>(callback_arg);
-    _nodes_postprocessing_video_segment_node_data*                                node_data_ptr    = reinterpret_cast<_nodes_postprocessing_video_segment_node_data*>                               (node_data);
+    const demo_timeline_segment_node_callback_texture_view_attached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_attached_callback_argument*>(callback_arg);
+    _nodes_postprocessing_video_segment_node_data*                                     node_data_ptr    = reinterpret_cast<_nodes_postprocessing_video_segment_node_data*>                                    (node_data);
 
     if (callback_arg_ptr->is_input_id == false)
     {
@@ -208,16 +208,16 @@ PRIVATE void _nodes_postprocessing_video_segment_on_texture_attached_to_node(con
         _nodes_postprocessing_video_segment_sync_output_attachments(node_data_ptr,
                                                                     node_id,
                                                                     callback_arg_ptr->id,
-                                                                    callback_arg_ptr->texture);
+                                                                    callback_arg_ptr->texture_view);
     }
 }
 
 /** TODO */
-PRIVATE void _nodes_postprocessing_video_segment_on_texture_detached_from_node(const void* callback_arg,
-                                                                               void*       node_data)
+PRIVATE void _nodes_postprocessing_video_segment_on_texture_view_detached_from_node(const void* callback_arg,
+                                                                                    void*       node_data)
 {
-    const demo_timeline_segment_node_callback_texture_attached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_attached_callback_argument*>(callback_arg);
-    _nodes_postprocessing_video_segment_node_data*                                node_data_ptr    = reinterpret_cast<_nodes_postprocessing_video_segment_node_data*>                               (node_data);
+    const demo_timeline_segment_node_callback_texture_view_attached_callback_argument* callback_arg_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_attached_callback_argument*>(callback_arg);
+    _nodes_postprocessing_video_segment_node_data*                                     node_data_ptr    = reinterpret_cast<_nodes_postprocessing_video_segment_node_data*>                                    (node_data);
 
     if (callback_arg_ptr->is_input_id == false)
     {
@@ -231,7 +231,7 @@ PRIVATE void _nodes_postprocessing_video_segment_on_texture_detached_from_node(c
         _nodes_postprocessing_video_segment_sync_output_attachments(node_data_ptr,
                                                                     node_id,
                                                                     callback_arg_ptr->id,
-                                                                    nullptr /* new_texture_attachment */);
+                                                                    static_cast<ral_texture_view>(nullptr) );  /* new_texture_view_attachment */
     }
 }
 
@@ -320,15 +320,15 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                   n_video_segment_io < n_video_segment_result_node_ios;
                 ++n_video_segment_io)
     {
-        ral_texture                               io_bound_texture        = nullptr;
-        demo_timeline_segment_node_interface_type io_interface_type       = DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_UNKNOWN;
-        bool                                      io_is_required          = false;
-        system_hashed_ansi_string                 io_name                 = nullptr;
-        ral_format                                io_texture_format       = RAL_FORMAT_UNKNOWN;
-        uint32_t                                  io_texture_n_components = 0;
-        uint32_t                                  io_texture_n_layers     = 0;
-        uint32_t                                  io_texture_n_samples    = 0;
-        ral_texture_type                          io_texture_type         = RAL_TEXTURE_TYPE_UNKNOWN;
+        ral_texture_view                          io_bound_texture_view        = nullptr;
+        demo_timeline_segment_node_interface_type io_interface_type            = DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_UNKNOWN;
+        bool                                      io_is_required               = false;
+        system_hashed_ansi_string                 io_name                      = nullptr;
+        ral_format                                io_texture_view_format       = RAL_FORMAT_UNKNOWN;
+        uint32_t                                  io_texture_view_n_components = 0;
+        uint32_t                                  io_texture_view_n_layers     = 0;
+        uint32_t                                  io_texture_view_n_samples    = 0;
+        ral_texture_type                          io_texture_view_type         = RAL_TEXTURE_TYPE_UNKNOWN;
 
         demo_timeline_segment_get_node_io_property_by_node_id(node_data_ptr->video_segment,
                                                               video_segment_node_ios_ptr[n_video_segment_io].node_id,
@@ -337,7 +337,7 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                                                               DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_INTERFACE_TYPE,
                                                              &io_interface_type);
 
-        if (io_interface_type != DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE)
+        if (io_interface_type != DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE_VIEW)
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized input/output interface type.");
@@ -352,13 +352,13 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
             void*                                  result_ptr;
         } properties[] =
         {
-            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_RAL,    &io_bound_texture},
-            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_IS_REQUIRED,          &io_is_required},
-            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_FORMAT,       &io_texture_format},
-            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_N_COMPONENTS, &io_texture_n_components},
-            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_N_LAYERS,     &io_texture_n_layers},
-            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_N_SAMPLES,    &io_texture_n_samples},
-            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_TYPE,         &io_texture_type}
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,    &io_bound_texture_view},
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_IS_REQUIRED,               &io_is_required},
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_FORMAT,       &io_texture_view_format},
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_N_COMPONENTS, &io_texture_view_n_components},
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_N_LAYERS,     &io_texture_view_n_layers},
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_N_SAMPLES,    &io_texture_view_n_samples},
+            {DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_TEXTURE_VIEW_TYPE,         &io_texture_view_type}
         };
         const uint32_t n_properties = sizeof(properties) / sizeof(properties[0]);
 
@@ -375,51 +375,51 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
         }
 
         /* Create a new PS VS node IO */
-        uint32_t                    new_texture_io_id = -1;
-        demo_texture_io_declaration new_texture_io;
-        bool                        result            = false;
+        uint32_t                         new_texture_view_io_id = -1;
+        demo_texture_view_io_declaration new_texture_view_io;
+        bool                             result            = false;
 
-        new_texture_io.is_attachment_required = io_is_required;
-        new_texture_io.name                   = io_name;
-        new_texture_io.texture_format         = io_texture_format;
-        new_texture_io.texture_n_components   = io_texture_n_components;
-        new_texture_io.texture_n_layers       = io_texture_n_layers;
-        new_texture_io.texture_n_samples      = io_texture_n_samples;
-        new_texture_io.texture_type           = io_texture_type;
+        new_texture_view_io.is_attachment_required = io_is_required;
+        new_texture_view_io.format                 = io_texture_view_format;
+        new_texture_view_io.n_components           = io_texture_view_n_components;
+        new_texture_view_io.n_layers               = io_texture_view_n_layers;
+        new_texture_view_io.n_samples              = io_texture_view_n_samples;
+        new_texture_view_io.name                   = io_name;
+        new_texture_view_io.type                   = io_texture_view_type;
 
         if (should_process_inputs)
         {
-            result = demo_timeline_segment_node_add_texture_input(node_data_ptr->node,
-                                                                 &new_texture_io,
-                                                                 &new_texture_io_id);
+            result = demo_timeline_segment_node_add_texture_view_input(node_data_ptr->node,
+                                                                      &new_texture_view_io,
+                                                                      &new_texture_view_io_id);
 
             ASSERT_DEBUG_SYNC(result,
-                              "Could not create a new node texture input");
+                              "Could not create a new node texture view input");
         }
         else
         {
-            result = demo_timeline_segment_node_add_texture_output(node_data_ptr->node,
-                                                                  &new_texture_io,
-                                                                  &new_texture_io_id);
+            result = demo_timeline_segment_node_add_texture_view_output(node_data_ptr->node,
+                                                                       &new_texture_view_io,
+                                                                       &new_texture_view_io_id);
 
             ASSERT_DEBUG_SYNC(result,
-                              "Could not create a new node texture output");
+                              "Could not create a new node texture view output");
         }
 
-        /* Attach the currently bound texture to the new IO */
-        if (io_bound_texture != nullptr)
+        /* Attach the currently bound texture view to the new IO */
+        if (io_bound_texture_view != nullptr)
         {
-            demo_texture_attachment_declaration bound_texture_attachment_declaration;
+            demo_texture_view_attachment_declaration bound_texture_view_attachment_declaration;
 
-            bound_texture_attachment_declaration.texture_ral = io_bound_texture;
+            bound_texture_view_attachment_declaration.texture_view_ral = io_bound_texture_view;
 
-            if (!demo_timeline_segment_node_attach_texture_to_texture_io(node_data_ptr->node,
-                                                                         should_process_inputs,
-                                                                         new_texture_io_id,
-                                                                        &bound_texture_attachment_declaration) )
+            if (!demo_timeline_segment_node_attach_texture_view_to_texture_view_io(node_data_ptr->node,
+                                                                                   should_process_inputs,
+                                                                                   new_texture_view_io_id,
+                                                                                  &bound_texture_view_attachment_declaration) )
             {
                 ASSERT_DEBUG_SYNC(false,
-                                  "Could not attach the exposed node IO texture to a video segment node IO.");
+                                  "Could not attach the exposed node IO texture view to a video segment node IO.");
             }
         }
 
@@ -429,7 +429,7 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_io(_nodes_postprocessing_v
                                                &node_id);
 
         _exposed_vs_node_io* new_io_ptr = new _exposed_vs_node_io(node_id,
-                                                                  new_texture_io_id,
+                                                                  new_texture_view_io_id,
                                                                   video_segment_node_ios_ptr[n_video_segment_io].node_id,
                                                                   video_segment_node_ios_ptr[n_video_segment_io].is_input,
                                                                   video_segment_node_ios_ptr[n_video_segment_io].node_io_id);
@@ -456,7 +456,7 @@ end:
 PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments(_nodes_postprocessing_video_segment_node_data* node_data_ptr,
                                                                          demo_timeline_segment_node_id                  node_id,
                                                                          demo_timeline_segment_output_id                node_output_id,
-                                                                         ral_texture                                    new_texture_attachment)
+                                                                         ral_texture_view                               new_texture_view_attachment)
 {
     uint32_t             n_exposed_vs_outputs = 0;
     _exposed_vs_node_io* ps_vs_node_io_ptr    = nullptr;
@@ -500,15 +500,15 @@ PRIVATE void _nodes_postprocessing_video_segment_sync_output_attachments(_nodes_
         goto end;
     }
 
-    /* Update the PS VS texture attachment */
-    demo_texture_attachment_declaration new_attachment;
+    /* Update the PS VS texture view attachment */
+    demo_texture_view_attachment_declaration new_attachment;
 
-    new_attachment.texture_ral = new_texture_attachment;
+    new_attachment.texture_view_ral = new_texture_view_attachment;
 
-    demo_timeline_segment_node_attach_texture_to_texture_io(node_data_ptr->node,
-                                                            false, /* is_input_id */
-                                                            ps_vs_node_io_ptr->ps_vs_io_id,
-                                                           &new_attachment);
+    demo_timeline_segment_node_attach_texture_view_to_texture_view_io(node_data_ptr->node,
+                                                                      false, /* is_input_id */
+                                                                      ps_vs_node_io_ptr->ps_vs_io_id,
+                                                                     &new_attachment);
 
 end:
     ;
@@ -552,14 +552,14 @@ PRIVATE void _nodes_postprocessing_video_segment_update_callbacks(_nodes_postpro
                                                         _nodes_postprocessing_video_segment_on_output_no_longer_exposed,
                                                         node_data_ptr);
         system_callback_manager_subscribe_for_callbacks(video_segment_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_ATTACHED_TO_NODE,
+                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_ATTACHED_TO_NODE,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _nodes_postprocessing_video_segment_on_texture_attached_to_node,
+                                                        _nodes_postprocessing_video_segment_on_texture_view_attached_to_node,
                                                         node_data_ptr);
         system_callback_manager_subscribe_for_callbacks(video_segment_callback_manager,
-                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_DETACHED_FROM_NODE,
+                                                        DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_DETACHED_FROM_NODE,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _nodes_postprocessing_video_segment_on_texture_detached_from_node,
+                                                        _nodes_postprocessing_video_segment_on_texture_view_detached_from_node,
                                                         node_data_ptr);
     }
     else
@@ -585,12 +585,12 @@ PRIVATE void _nodes_postprocessing_video_segment_update_callbacks(_nodes_postpro
                                                            _nodes_postprocessing_video_segment_on_output_no_longer_exposed,
                                                            node_data_ptr);
         system_callback_manager_unsubscribe_from_callbacks(video_segment_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_ATTACHED_TO_NODE,
-                                                           _nodes_postprocessing_video_segment_on_texture_attached_to_node,
+                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_ATTACHED_TO_NODE,
+                                                           _nodes_postprocessing_video_segment_on_texture_view_attached_to_node,
                                                            node_data_ptr);
         system_callback_manager_unsubscribe_from_callbacks(video_segment_callback_manager,
-                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_DETACHED_FROM_NODE,
-                                                           _nodes_postprocessing_video_segment_on_texture_detached_from_node,
+                                                           DEMO_TIMELINE_SEGMENT_CALLBACK_ID_TEXTURE_VIEW_DETACHED_FROM_NODE,
+                                                           _nodes_postprocessing_video_segment_on_texture_view_detached_from_node,
                                                            node_data_ptr);
     }
 }

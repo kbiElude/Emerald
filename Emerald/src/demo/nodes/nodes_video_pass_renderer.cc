@@ -1,6 +1,6 @@
 #if 0
 
-TODO
+TODO: Remove. ogl_pipeline is deprecated.
 
 /**
  *
@@ -34,13 +34,10 @@ typedef struct _nodes_video_pass_renderer
     ral_context                 context;
     demo_timeline_segment_node  node;           /* DO NOT release */
     demo_timeline_segment       parent_segment; /* DO NOT release */
-    ogl_pipeline                pipeline;
     demo_timeline               timeline;       /* DO NOT release */
 
     demo_timeline_segment_node_output_id output_id;
     ral_texture                          output_texture;
-    ral_framebuffer                      rendering_framebuffer;
-    uint32_t                             rendering_pipeline_stage_id;
 
 
     _nodes_video_pass_renderer(ral_context                in_context,
@@ -55,16 +52,11 @@ typedef struct _nodes_video_pass_renderer
         node                        = in_node;
         output_id                   = -1;
         output_texture              = nullptr;
-        parent_segment              = (demo_timeline_segment) in_segment;
-        rendering_framebuffer       = nullptr;
-        rendering_pipeline_stage_id = -1;
+        parent_segment              = reinterpret_cast<demo_timeline_segment>(in_segment);
 
         demo_timeline_segment_get_property(parent_segment,
                                            DEMO_TIMELINE_SEGMENT_PROPERTY_TIMELINE,
                                           &timeline);
-        demo_timeline_get_property        (timeline,
-                                           DEMO_TIMELINE_PROPERTY_RENDERING_PIPELINE,
-                                          &pipeline);
     }
 
     ~_nodes_video_pass_renderer()
@@ -80,28 +72,14 @@ typedef struct _nodes_video_pass_renderer
 
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void nodes_video_pass_renderer_deinit(demo_timeline_segment_node_private node)
+PUBLIC void nodes_video_pass_renderer_deinit(demo_timeline_segment_node_private node)
 {
-    _nodes_video_pass_renderer* node_ptr = (_nodes_video_pass_renderer*) node;
+    _nodes_video_pass_renderer* node_ptr = reinterpret_cast<_nodes_video_pass_renderer*>(node);
 
     ASSERT_DEBUG_SYNC(node != nullptr,
                       "Input node is NULL");
 
-    system_critical_section_enter(node_ptr->cs);
-    {
-        if (node_ptr->rendering_framebuffer != nullptr)
-        {
-            ral_context_delete_objects(node_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_FRAMEBUFFER,
-                                       1, /* n_objects */
-                                       (const void**) &node_ptr->rendering_framebuffer);
-
-            node_ptr->rendering_framebuffer = nullptr;
-        }
-    }
-    system_critical_section_leave(node_ptr->cs);
-
-    delete (_nodes_video_pass_renderer*) node;
+    delete reinterpret_cast<_nodes_video_pass_renderer*>(node);
 }
 
 /** Please see header for spec */
@@ -109,7 +87,7 @@ PUBLIC bool nodes_video_pass_renderer_get_property(demo_timeline_segment_node_pr
                                                    int                                property,
                                                    void*                              out_result_ptr)
 {
-    _nodes_video_pass_renderer* node_ptr = (_nodes_video_pass_renderer*) node;
+    _nodes_video_pass_renderer* node_ptr = reinterpret_cast<_nodes_video_pass_renderer*>(node);
     bool                        result   = false;
 
     /* Sanity checks */
@@ -126,13 +104,6 @@ PUBLIC bool nodes_video_pass_renderer_get_property(demo_timeline_segment_node_pr
 
     switch (property)
     {
-        case NODES_VIDEO_PASS_RENDERER_PROPERTY_RENDERING_PIPELINE_STAGE_ID:
-        {
-            *(uint32_t*) out_result_ptr = node_ptr->rendering_pipeline_stage_id;
-
-            break;
-        }
-
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -157,7 +128,7 @@ PUBLIC bool nodes_video_pass_renderer_get_texture_memory_allocation_details(demo
                                                                             uint32_t                           n_allocation,
                                                                             demo_texture_memory_allocation*    out_memory_allocation_data_ptr)
 {
-    _nodes_video_pass_renderer* node_data_ptr = (_nodes_video_pass_renderer*) node;
+    _nodes_video_pass_renderer* node_data_ptr = reinterpret_cast<_nodes_video_pass_renderer*>(node);
     bool                        result        = true;
 
     if (node == NULL)
@@ -208,9 +179,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pass_renderer_init(demo_timeline_segment      segment,
-                                                                                                demo_timeline_segment_node node,
-                                                                                                ral_context                context)
+PUBLIC demo_timeline_segment_node_private nodes_video_pass_renderer_init(demo_timeline_segment      segment,
+                                                                         demo_timeline_segment_node node,
+                                                                         ral_context                context)
 {
     _nodes_video_pass_renderer* new_node_ptr = new (std::nothrow) _nodes_video_pass_renderer(context,
                                                                                              segment,
@@ -221,19 +192,6 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pas
 
     if (new_node_ptr != nullptr)
     {
-        /* Initialize the rendering framebuffer.
-         *
-         * NOTE: We will configure the attachments later, when we are provided the texture to use
-         *       via a nodes_video_pass_renderer_set_texture_memory_allocation() call-back.
-         */
-        if (!ral_context_create_framebuffers(new_node_ptr->context,
-                                             1, /* n_framebuffers */
-                                            &new_node_ptr->rendering_framebuffer) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not initialize a rendering framebuffer!");
-        }
-
         /* Add an output which uses the same color texture format as the rendering context. */
         ral_format                  fb_color_format = RAL_FORMAT_UNKNOWN;
         demo_texture_io_declaration texture_output_info;
@@ -265,12 +223,12 @@ PUBLIC RENDERING_CONTEXT_CALL demo_timeline_segment_node_private nodes_video_pas
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL bool nodes_video_pass_renderer_render(demo_timeline_segment_node_private node,
-                                                                    uint32_t                           frame_index,
-                                                                    system_time                        frame_time,
-                                                                    const int32_t*                     rendering_area_px_topdown)
+PUBLIC bool nodes_video_pass_renderer_render(demo_timeline_segment_node_private node,
+                                             uint32_t                           frame_index,
+                                             system_time                        frame_time,
+                                             const int32_t*                     rendering_area_px_topdown)
 {
-    _nodes_video_pass_renderer* node_ptr = (_nodes_video_pass_renderer*) node;
+    _nodes_video_pass_renderer* node_ptr = reinterpret_cast<_nodes_video_pass_renderer*>(node);
     bool                        result   = false;
 
     /* Sanity checks */
@@ -287,9 +245,6 @@ PUBLIC RENDERING_CONTEXT_CALL bool nodes_video_pass_renderer_render(demo_timelin
 
     if (node_ptr->rendering_pipeline_stage_id != -1)
     {
-        ASSERT_DEBUG_SYNC(node_ptr->rendering_framebuffer != nullptr,
-                          "Rendering framebuffer is NULL");
-
         /* TODO: This will be made API-agnostic once we have command buffers support in RAL */
         ogl_context                       context_gl      = ral_context_get_gl_context(node_ptr->context);
         const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
@@ -332,7 +287,7 @@ PUBLIC bool nodes_video_pass_renderer_set_property(demo_timeline_segment_node_pr
                                                    int                                property,
                                                    const void*                        data)
 {
-    _nodes_video_pass_renderer* node_ptr = (_nodes_video_pass_renderer*) node;
+    _nodes_video_pass_renderer* node_ptr = reinterpret_cast<_nodes_video_pass_renderer*>(node);
     bool                        result   = false;
 
     /* Sanity checks */
@@ -349,13 +304,6 @@ PUBLIC bool nodes_video_pass_renderer_set_property(demo_timeline_segment_node_pr
 
     switch (property)
     {
-        case NODES_VIDEO_PASS_RENDERER_PROPERTY_RENDERING_PIPELINE_STAGE_ID:
-        {
-            node_ptr->rendering_pipeline_stage_id = *(uint32_t*) data;
-
-            break;
-        }
-
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -380,7 +328,7 @@ PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timelin
                                                                     uint32_t                           n_allocation,
                                                                     ral_texture                        texture)
 {
-    _nodes_video_pass_renderer* node_ptr = (_nodes_video_pass_renderer*) node;
+    _nodes_video_pass_renderer* node_ptr = reinterpret_cast<_nodes_video_pass_renderer*>(node);
 
     if (node_ptr == NULL)
     {
@@ -419,4 +367,5 @@ PUBLIC void nodes_video_pass_renderer_set_texture_memory_allocation(demo_timelin
 end:
     ;
 }
+
 #endif
