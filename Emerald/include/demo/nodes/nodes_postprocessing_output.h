@@ -23,6 +23,6 @@ PUBLIC bool nodes_postprocessing_output_render(demo_timeline_segment_node_privat
                                                uint32_t                           frame_index,
                                                system_time                        frame_time,
                                                const int32_t*                     rendering_area_px_topdown,
-                                               ral_present_job                    present_job);
+                                               ral_present_task*                  out_present_task_ptr);
 
 #endif /* NODES_POSTPROCESSING_OUTPUT_H */

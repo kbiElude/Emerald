@@ -44,8 +44,8 @@ PRIVATE bool _nodes_postprocessing_output_update_subscriptions      (_nodes_post
 
 
 /** TODO */
-PRIVATE void _nodes_postprocessing_on_texture_attached_callback(const void* callback_data,
-                                                                void*       user_arg)
+PRIVATE void _nodes_postprocessing_on_texture_view_attached_callback(const void* callback_data,
+                                                                     void*       user_arg)
 {
     const demo_timeline_segment_node_callback_texture_view_attached_callback_argument* callback_data_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_attached_callback_argument*>(callback_data);
     _nodes_postprocessing_output*                                                      node_data_ptr     = reinterpret_cast<_nodes_postprocessing_output*>                                                     (user_arg);
@@ -69,8 +69,8 @@ PRIVATE void _nodes_postprocessing_on_texture_attached_callback(const void* call
 }
 
 /** TODO */
-PRIVATE void _nodes_postprocessing_on_texture_detached_callback(const void* callback_data,
-                                                                void*       user_arg)
+PRIVATE void _nodes_postprocessing_on_texture_view_detached_callback(const void* callback_data,
+                                                                     void*       user_arg)
 {
     const demo_timeline_segment_node_callback_texture_view_detached_callback_argument* callback_data_ptr = reinterpret_cast<const demo_timeline_segment_node_callback_texture_view_detached_callback_argument*>(callback_data);
     _nodes_postprocessing_output*                                                      node_data_ptr     = reinterpret_cast<_nodes_postprocessing_output*>                                                     (user_arg);
@@ -205,11 +205,11 @@ PUBLIC bool nodes_postprocessing_output_render(demo_timeline_segment_node_privat
                                                uint32_t                           frame_index,
                                                system_time                        frame_time,
                                                const int32_t*                     rendering_area_px_topdown,
-                                               ral_present_job                    present_job)
+                                               ral_present_task*                  out_present_task_ptr)
 {
     _nodes_postprocessing_output* node_ptr = reinterpret_cast<_nodes_postprocessing_output*>(node);
 
-    todo;
+    /* Nothing to do. demo_timeline_segment will take this node's input and present it on screen. */
 
     return true;
 }

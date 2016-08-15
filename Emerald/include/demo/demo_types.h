@@ -217,7 +217,7 @@ typedef enum
     // REMOVEME: DEMO_TIMELINE_VIDEO_SEGMENT_NODE_TYPE_PASS_RENDERER,
 
 
-    /*** VIDEO SEGMENT NODES: ***/
+    /*** POSTPROCESSING SEGMENT NODES: ***/
     DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT,
     DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_VIDEO_SEGMENT,
 
@@ -246,7 +246,7 @@ typedef bool                               (*PFNSEGMENTNODERENDERCALLBACKPROC)  
                                                                                                   uint32_t                           frame_index,
                                                                                                   system_time                        frame_time,
                                                                                                   const int32_t*                     rendering_area_px_topdown,
-                                                                                                  ral_present_job                    present_job);
+                                                                                                  ral_present_task*                  out_present_task_ptr);
 typedef bool                               (*PFNSEGMENTNODESETPROPERTYCALLBACKPROC)              (demo_timeline_segment_node_private node,
                                                                                                   int                                property,
                                                                                                   const void*                        data);

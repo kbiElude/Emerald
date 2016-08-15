@@ -11,6 +11,8 @@
 #include "demo/demo_timeline_segment.h"
 #include "demo/demo_timeline_segment_node.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_job.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "ral/ral_types.h"
@@ -18,7 +20,6 @@
 #include "system/system_assertions.h"
 #include "system/system_atomics.h"
 #include "system/system_callback_manager.h"
-#include "system/system_dag.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
@@ -45,8 +46,6 @@ typedef struct _demo_timeline_segment_io
 /** Defines a single src node output ID -> dst node input ID connection */
 typedef struct _demo_timeline_segment_io_connection
 {
-    system_dag_connection                    dag_connection;
-
     struct _demo_timeline_segment_node_item* dst_node;
     demo_timeline_segment_input_id           dst_node_input_id;
 
@@ -56,10 +55,8 @@ typedef struct _demo_timeline_segment_io_connection
     _demo_timeline_segment_io_connection(_demo_timeline_segment_node_item* in_dst_node,
                                          demo_timeline_segment_input_id    in_dst_node_input_id,
                                          _demo_timeline_segment_node_item* in_src_node,
-                                         demo_timeline_segment_output_id   in_src_node_output_id,
-                                         system_dag_connection             in_dag_connection)
+                                         demo_timeline_segment_output_id   in_src_node_output_id)
     {
-        dag_connection     = in_dag_connection;
         dst_node           = in_dst_node;
         dst_node_input_id  = in_dst_node_input_id;
         src_node           = in_src_node;
@@ -71,7 +68,6 @@ typedef struct _demo_timeline_segment_node_item
 {
     system_resizable_vector            cached_texture_allocations; /* holds ral_texture instances */
     // todo system_resizable_vector            cached_texture_view_allocations; /* holds ral_texture instances */
-    system_dag_node                    dag_node;
     uint32_t                           id;
     demo_timeline_segment_node         node;               /* owned */
     demo_timeline_segment_node_private node_internal;
@@ -85,7 +81,6 @@ typedef struct _demo_timeline_segment_node_item
                                      demo_timeline_segment_node_type in_type)
     {
         cached_texture_allocations = system_resizable_vector_create(sizeof(ral_texture) );
-        dag_node                   = nullptr;
         id                         = in_id;
         node                       = in_node;
         node_internal              = nullptr;
@@ -142,7 +137,7 @@ typedef struct _demo_timeline_segment
     float                             aspect_ratio;       /* AR to use for a video segment */
     system_callback_manager           callback_manager;
     ral_context                       context;
-    system_hash64map                  dag_node_to_node_descriptor_map; /* does NOT own the stored _demo_timeline_segment_node instances */
+    system_hash64map                  node_to_present_task_index_map;
     demo_timeline_segment_id          id;
     bool                              is_teardown_in_process;
     system_hashed_ansi_string         name;
@@ -159,11 +154,6 @@ typedef struct _demo_timeline_segment
 
     system_time             end_time;
     system_time             start_time;
-
-    /* Handles DAG-related computations. The DAG operates on segment nodes, not individual inputs or outputs.
-     * Input->output dependencies need to be defined layer above, in demo_timeline_segment */
-    system_dag              dag;
-    system_resizable_vector dag_sorted_nodes;
 
     system_resizable_vector exposed_input_ios;  /* owns _demo_timeline_segment_io instances */
     system_resizable_vector exposed_output_ios; /* owns _demo_timeline_segment_io instances */
@@ -183,8 +173,6 @@ typedef struct _demo_timeline_segment
         aspect_ratio           = 1.0f;
         callback_manager       = system_callback_manager_create( static_cast<_callback_id>(DEMO_TIMELINE_SEGMENT_CALLBACK_ID_COUNT) );
         context                = in_context;
-        dag                    = system_dag_create();
-        dag_sorted_nodes       = system_resizable_vector_create(16 /* capacity */);
         end_time               = in_end_time;
         id                     = in_id;
         is_teardown_in_process = false;
@@ -198,8 +186,8 @@ typedef struct _demo_timeline_segment
         timeline               = in_timeline;
         type                   = in_type;
 
-        dag_node_to_node_descriptor_map = system_hash64map_create(sizeof(_demo_timeline_segment_node_item*) );
-        node_id_to_node_descriptor_map  = system_hash64map_create(sizeof(_demo_timeline_segment_node_item*) );
+        node_id_to_node_descriptor_map = system_hash64map_create(sizeof(_demo_timeline_segment_node_item*) );
+        node_to_present_task_index_map = system_hash64map_create(sizeof(uint32_t) );
 
         exposed_input_ios  = system_resizable_vector_create(sizeof(_demo_timeline_segment_io*) );
         exposed_output_ios = system_resizable_vector_create(sizeof(_demo_timeline_segment_io*) );
@@ -258,20 +246,6 @@ typedef struct _demo_timeline_segment
         }
 
         /* Release the owned objects */
-        if (dag != nullptr)
-        {
-            system_dag_release(dag);
-
-            dag = nullptr;
-        }
-
-        if (dag_node_to_node_descriptor_map != nullptr)
-        {
-            system_hash64map_release(dag_node_to_node_descriptor_map);
-
-            dag_node_to_node_descriptor_map = nullptr;
-        }
-
         if (exposed_input_ios != nullptr)
         {
             _demo_timeline_segment_io* current_io_ptr = nullptr;
@@ -311,6 +285,13 @@ typedef struct _demo_timeline_segment
             system_hash64map_release(node_id_to_node_descriptor_map);
 
             node_id_to_node_descriptor_map = nullptr;
+        }
+
+        if (node_to_present_task_index_map != nullptr)
+        {
+            system_hash64map_release(node_to_present_task_index_map);
+
+            node_to_present_task_index_map = nullptr;
         }
 
         if (callback_manager != nullptr)
@@ -1248,6 +1229,430 @@ PRIVATE void _demo_timeline_segment_release(void* segment)
     /* Actual tear-down will be handled by the destructor. */
 }
 
+/* TODO */
+PRIVATE bool _demo_timeline_segment_render_segment(demo_timeline_segment segment,
+                                                   uint32_t              frame_index,
+                                                   system_time           rendering_pipeline_time,
+                                                   const int*            rendering_area_px_topdown,
+                                                   void*                 result_object)
+{
+    uint32_t                             n_filled_connections               = 0;
+    uint32_t                             n_nodes                            = 0;
+    uint32_t                             n_result_present_task_in_mappings  = 0;
+    uint32_t                             n_result_present_task_out_mappings = 0;
+    ral_present_task*                    node_present_tasks                 = nullptr;
+    ral_present_task_id*                 node_present_task_ids              = nullptr;
+    bool                                 result                             = false;
+    ral_present_job                      result_present_job                 = reinterpret_cast<ral_present_job>  (result_object); /* only used when processing postprocessing segments */
+    ral_present_task*                    result_present_task_ptr            = reinterpret_cast<ral_present_task*>(result_object); /* only used when processing video segments */
+    ral_present_task_ingroup_connection* result_present_task_connections    = nullptr;
+    ral_present_task_group_mapping*      result_present_task_in_mappings    = nullptr;
+    ral_present_task_group_mapping*      result_present_task_out_mappings   = nullptr;
+    _demo_timeline_segment*              segment_ptr                        = reinterpret_cast<_demo_timeline_segment*>(segment);
+    uint32_t                             total_n_connections                = 0;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(segment != nullptr,
+                      "Input video segment is NULL");
+
+    /* Convert timeline-based node representation to a RAL present job.
+     *
+     * For each node, before calling the render call-back, make sure that:
+     *
+     *    a) all inputs that require a bound texture view actually have one attached. If not, the render func
+     *       ptr should not be called and we should signal a problem.
+     *    b) if the node offers one or more outputs, make sure at least one output is connected to another
+     *       node. Otherwise, do not render the node if we're dealing with a post-processing segment; for video
+     *       segments, this case is skipped since there's no output node there and all nodes are assumed to be
+     *       important.
+     *    c) if the node does not offer any outputs and it's not an output node, skip it.
+     *
+     *       This case is especially important for post-processing segment's video segment nodes.
+     *
+     *  TODO: The result of the checks below could be cached and only re-done whenever the graph changes.
+     */
+    system_resizable_vector_get_property(segment_ptr->nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                         &n_nodes);
+
+    node_present_task_ids = reinterpret_cast<ral_present_task_id*>(_malloca(n_nodes * sizeof(ral_present_task_id) ));
+    node_present_tasks    = reinterpret_cast<ral_present_task*>   (_malloca(n_nodes * sizeof(ral_present_task) ));
+
+    for (uint32_t n_node = 0;
+                  n_node < n_nodes;
+                ++n_node)
+    {
+        bool                                 can_render          = true;
+        uint32_t                             n_node_input_ids    = 0;
+        uint32_t                             n_node_output_ids   = 0;
+        demo_timeline_segment_node_input_id  node_input_ids [32]; /* TODO: we may need something more fancy.. */
+        demo_timeline_segment_node_output_id node_output_ids[32]; /* TODO: we may need something more fancy.. */
+        _demo_timeline_segment_node_item*    node_ptr            = nullptr;
+
+        if (!system_resizable_vector_get_element_at(segment_ptr->nodes,
+                                                    n_node,
+                                                    &node_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve node descriptor for a node at index [%d]",
+                              n_node);
+
+            continue;
+        }
+
+        /* Do all inputs, which require an attachment, actually have one? */
+        demo_timeline_segment_node_get_inputs(node_ptr->node,
+                                              sizeof(node_input_ids),
+                                              &n_node_input_ids,
+                                              node_input_ids);
+
+        ASSERT_DEBUG_SYNC(n_node_input_ids < sizeof(node_input_ids) / sizeof(node_input_ids[0]),
+                          "TODO");
+
+        for (uint32_t n_node_input_id = 0;
+                      n_node_input_id < n_node_input_ids;
+                    ++n_node_input_id)
+        {
+            ral_texture bound_texture_view     = nullptr;
+            bool        is_attachment_required = false;
+
+            demo_timeline_segment_node_get_io_property(node_ptr->node,
+                                                       true, /* is_input_io */
+                                                       node_input_ids[n_node_input_id],
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_IS_REQUIRED,
+                                                      &is_attachment_required);
+
+            if (!is_attachment_required)
+            {
+                /* Meh */
+                continue;
+            }
+
+            demo_timeline_segment_node_get_io_property(node_ptr->node,
+                                                       true, /* is_input_io */
+                                                       node_input_ids[n_node_input_id],
+                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
+                                                      &bound_texture_view);
+
+            if (bound_texture_view == nullptr)
+            {
+                /* Sound the bugle! */
+                system_callback_manager_call_back(node_ptr->parent_segment_ptr->callback_manager,
+                                                  DEMO_TIMELINE_SEGMENT_CALLBACK_ID_INPUT_LACKS_ATTACHMENT,
+                                                  reinterpret_cast<void*>(node_input_ids[n_node_input_id]));
+
+                /* This node cannot be rendered. */
+                can_render = false;
+
+                break;
+            }
+        }
+
+        /* If the node offers outputs, is any of them actually used? */
+        demo_timeline_segment_node_get_outputs(node_ptr->node,
+                                               sizeof(node_output_ids),
+                                              &n_node_output_ids,
+                                               node_output_ids);
+
+        ASSERT_DEBUG_SYNC(n_node_output_ids < sizeof(node_output_ids) / sizeof(node_output_ids[0]),
+                          "TODO");
+
+        if (n_node_output_ids >  0                                         &&
+            segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING)
+        {
+            uint32_t n_node_outgoing_connections = 0;
+
+            system_resizable_vector_get_property(node_ptr->outgoing_connections,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_node_outgoing_connections);
+
+            if (n_node_outgoing_connections == 0)
+            {
+                can_render = false;
+            }
+        }
+        else
+        if (n_node_output_ids == 0                                                     &&
+            segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING             &&
+            node_ptr->type    != DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT)
+        {
+            can_render = false;
+        }
+
+        if (can_render)
+        {
+            PFNSEGMENTNODERENDERCALLBACKPROC render_func_ptr = nullptr;
+
+            demo_timeline_segment_node_get_property(node_ptr->node,
+                                                    DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_RENDER_FUNC_PTR,
+                                                   &render_func_ptr);
+
+            if (render_func_ptr != nullptr)
+            {
+                node_present_tasks[n_node] = nullptr;
+
+                render_func_ptr(node_ptr->node_internal,
+                                frame_index,
+                                rendering_pipeline_time,
+                                rendering_area_px_topdown,
+                                node_present_tasks + n_node);
+
+                ASSERT_DEBUG_SYNC(node_present_tasks[n_node] != nullptr,
+                                  "No present task generated by node's render() impl");
+
+                switch (segment_ptr->type)
+                {
+                    case DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING:
+                    {
+                        ral_present_job_add_task(result_present_job,
+                                                 node_present_tasks[n_node],
+                                                 node_present_task_ids + n_node);
+
+                        break;
+                    }
+
+                    case DEMO_TIMELINE_SEGMENT_TYPE_VIDEO:
+                    {
+                        ASSERT_DEBUG_SYNC(!system_hash64map_contains(segment_ptr->node_to_present_task_index_map,
+                                                                     reinterpret_cast<system_hash64>(node_ptr->node) ),
+                                          "Node->present task index map already recognizes the specified demo timeline segment node.");
+
+                        system_hash64map_insert(segment_ptr->node_to_present_task_index_map,
+                                                reinterpret_cast<system_hash64>(node_ptr->node),
+                                                reinterpret_cast<void*>(n_node),
+                                                nullptr,  /* on_removal_callback          */
+                                                nullptr); /* on_removal_callback_user_arg */
+
+                        break;
+                    }
+
+                    default:
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unrecognized segment type");
+                    }
+                }
+            }
+            else
+            {
+                node_present_task_ids[n_node] = -1;
+                node_present_tasks   [n_node] = nullptr;
+            }
+        }
+
+        /* For video segments, we're going to need to cache all connections. Before we can allocate
+         * the array on stack, we need to know what the total number of conn's in this segment is. */
+        if (segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO)
+        {
+            uint32_t n_node_out_connections = 0;
+
+            system_resizable_vector_get_property(node_ptr->outgoing_connections,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_node_out_connections);
+
+            total_n_connections += n_node_out_connections;
+
+        }
+    }
+
+    if (segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO)
+    {
+        system_resizable_vector_get_property(segment_ptr->exposed_input_ios,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_result_present_task_in_mappings);
+        system_resizable_vector_get_property(segment_ptr->exposed_output_ios,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_result_present_task_out_mappings);
+
+        if (total_n_connections > 0)
+        {
+            result_present_task_connections = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(sizeof(ral_present_task_ingroup_connection) * total_n_connections) );
+        }
+
+        if (n_result_present_task_in_mappings > 0)
+        {
+            result_present_task_in_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_result_present_task_in_mappings));
+        }
+
+        if (n_result_present_task_out_mappings > 0)
+        {
+            result_present_task_out_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_result_present_task_out_mappings));
+        }
+
+        for (uint32_t mapping_type = 0;
+                      mapping_type < 2; /* in, out */
+                    ++mapping_type)
+        {
+            ral_present_task_group_mapping* const mappings   = (mapping_type == 0) ? result_present_task_in_mappings
+                                                                                   : result_present_task_out_mappings;
+            const uint32_t                        n_mappings = (mapping_type == 0) ? n_result_present_task_in_mappings
+                                                                                   : n_result_present_task_out_mappings;
+
+            for (uint32_t n_mapping = 0;
+                          n_mapping < n_result_present_task_in_mappings;
+                        ++n_mapping)
+            {
+                const _demo_timeline_segment_io* current_io_ptr  = nullptr;
+                ral_present_task_group_mapping&  current_mapping = mappings[n_mapping];
+
+                system_resizable_vector_get_element_at(segment_ptr->exposed_input_ios,
+                                                       n_mapping,
+                                                      &current_io_ptr);
+
+                ASSERT_DEBUG_SYNC(current_io_ptr->is_input_io,
+                                  "Input mapping must be assigned an input IO");
+
+                if (!system_hash64map_get(segment_ptr->node_to_present_task_index_map,
+                                          reinterpret_cast<system_hash64>(current_io_ptr->node),
+                                          &current_mapping.n_present_task) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve present task IO index");
+                }
+
+                current_mapping.group_task_io_index   = current_io_ptr->io_id;
+                current_mapping.present_task_io_index = n_mapping;
+            }
+        }
+    }
+
+    /* Walk through the nodes one more time.. */
+    for (uint32_t n_node = 0;
+                  n_node < n_nodes;
+                ++n_node)
+    {
+        /* Store segment-level connections in the present job */
+        uint32_t                          n_outgoing_connections = 0;
+        _demo_timeline_segment_node_item* src_node_ptr           = nullptr;
+
+        if (node_present_tasks[n_node] == nullptr)
+        {
+            continue;
+        }
+
+        system_resizable_vector_get_element_at(segment_ptr->nodes,
+                                               n_node,
+                                              &src_node_ptr);
+        system_resizable_vector_get_property  (src_node_ptr->outgoing_connections,
+                                               SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                              &n_outgoing_connections);
+
+        for (uint32_t n_outgoing_connection = 0;
+                      n_outgoing_connection < n_outgoing_connections;
+                    ++n_outgoing_connection)
+        {
+            const _demo_timeline_segment_io_connection* connection_ptr = nullptr;
+
+            system_resizable_vector_get_element_at(src_node_ptr->outgoing_connections,
+                                                   n_outgoing_connection,
+                                                  &connection_ptr);
+
+            ASSERT_DEBUG_SYNC(node_present_tasks[connection_ptr->dst_node->id] != node_present_tasks[n_node],
+                              "Destination present task is the same as the source present task");
+            ASSERT_DEBUG_SYNC(node_present_tasks[connection_ptr->dst_node->id] != nullptr,
+                              "No present task associated with node source node is connected to");
+
+            switch (segment_ptr->type)
+            {
+                case DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING:
+                {
+                    result &= ral_present_job_connect_tasks(result_present_job,
+                                                            node_present_task_ids[src_node_ptr->id],
+                                                            connection_ptr->src_node_output_id,
+                                                            node_present_task_ids[connection_ptr->dst_node->id],
+                                                            connection_ptr->dst_node_input_id,
+                                                            nullptr); /* out_connection_id_ptr */
+
+                    break;
+                }
+
+                case DEMO_TIMELINE_SEGMENT_TYPE_VIDEO:
+                {
+                    ral_present_task_ingroup_connection& current_ral_connection = result_present_task_connections[n_filled_connections++];
+
+                    current_ral_connection.input_present_task_index     = connection_ptr->dst_node->id;
+                    current_ral_connection.input_present_task_io_index  = connection_ptr->dst_node_input_id;
+                    current_ral_connection.output_present_task_index    = connection_ptr->src_node->id;
+                    current_ral_connection.output_present_task_io_index = connection_ptr->src_node_output_id;
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized segment type");
+                }
+            }
+
+            ASSERT_DEBUG_SYNC(result,
+                              "Failed to create a RAL present task->present task connection");
+        }
+
+        /* If this is a PS "output" segment node, mark its only output as presentable, so that it is actually
+         * presented on screen at buffer swap time */
+        if (segment_ptr->type  == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING             &&
+            src_node_ptr->type == DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT)
+        {
+            #ifdef _DEBUG
+            {
+                /* Some additional sanity checks: */
+                demo_timeline_segment_node_interface_type input_interface_type = DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_UNKNOWN;
+                uint32_t                                  n_input_ids          = 0;
+
+                demo_timeline_segment_node_get_inputs     (src_node_ptr->node,
+                                                           0, /* n_input_ids */
+                                                           &n_input_ids,
+                                                           nullptr); /* out_opt_input_ids_ptr */
+                demo_timeline_segment_node_get_io_property(src_node_ptr->node,
+                                                           true, /* is_input_io */
+                                                           0, /* io_id */
+                                                           DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_INTERFACE_TYPE,
+                                                          &input_interface_type);
+
+                ASSERT_DEBUG_SYNC(input_interface_type == DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_TEXTURE_VIEW,
+                                  "Invalid interface accepted by PS output segment node input");
+                ASSERT_DEBUG_SYNC(n_input_ids == 1,
+                                  "PS output segment node must expose exactly 1 input.");
+            }
+            #endif
+
+            ral_present_job_set_presentable_output(result_present_job,
+                                                   node_present_task_ids[src_node_ptr->id],
+                                                   true, /* is_input_io */
+                                                   0);   /* n_io        */
+        }
+    }
+
+    /* If we're rendering a video segment, we now have all info to create a group RAL present task. */
+    if (segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO)
+    {
+        ral_present_task_group_create_info result_task_create_info;
+
+        result_task_create_info.ingroup_connections                      = result_present_task_connections;
+        result_task_create_info.n_ingroup_connections                    = total_n_connections;
+        result_task_create_info.n_present_tasks                          = n_nodes;
+        result_task_create_info.n_total_unique_inputs                    = n_result_present_task_in_mappings;
+        result_task_create_info.n_total_unique_outputs                   = n_result_present_task_out_mappings;
+        result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_result_present_task_in_mappings;
+        result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_result_present_task_out_mappings;
+        result_task_create_info.present_tasks                            = node_present_tasks;
+        result_task_create_info.unique_input_to_ingroup_task_mapping     = result_present_task_in_mappings;
+        result_task_create_info.unique_output_to_ingroup_task_mapping    = result_present_task_out_mappings;
+
+        *result_present_task_ptr = ral_present_task_create_group(segment_ptr->name,
+                                                                &result_task_create_info);
+    }
+
+    /* All done */
+    result = true;
+
+    system_hash64map_clear(segment_ptr->node_to_present_task_index_map);
+
+    return result;
+
+}
+
 /** TODO */
 PRIVATE void _demo_timeline_segment_update_global_subscriptions(_demo_timeline_segment* segment_ptr,
                                                                 bool                    should_subscribe)
@@ -1700,28 +2105,6 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
                                                      new_segment_node,
                                                      true /* should_subscribe */);
 
-    /* Create a DAG node for the new video segment node and store it */
-    new_node_ptr->dag_node = system_dag_add_node(segment_ptr->dag,
-                                                 static_cast<system_dag_node_value>(new_node_ptr) );
-
-    if (new_node_ptr->dag_node == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not create a DAG node");
-
-        goto end;
-    }
-
-    ASSERT_DEBUG_SYNC(!system_hash64map_contains(segment_ptr->dag_node_to_node_descriptor_map,
-                                                 reinterpret_cast<system_hash64>(new_node_ptr->dag_node) ),
-                      "DAG node is already recognized by the DAG node->node descriptor map.");
-
-    system_hash64map_insert(segment_ptr->dag_node_to_node_descriptor_map,
-                            reinterpret_cast<system_hash64>(new_node_ptr->dag_node),
-                            new_node_ptr,
-                            nullptr,  /* on_removal_callback */
-                            nullptr); /* callback_argument */
-
     /* Store the node descriptor */
     ASSERT_DEBUG_SYNC(!system_hash64map_contains(segment_ptr->node_id_to_node_descriptor_map,
                                                  new_node_id),
@@ -1842,7 +2225,6 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
     _demo_timeline_segment_node_item*     dst_node_ptr       = nullptr;
     bool                                  need_to_update     = true;
     _demo_timeline_segment_io_connection* new_connection_ptr = nullptr;
-    system_dag_connection                 new_dag_connection = nullptr;
     bool                                  result             = false;
     _demo_timeline_segment*               segment_ptr        = reinterpret_cast<_demo_timeline_segment*>(segment);
     _demo_timeline_segment_node_item*     src_node_ptr       = nullptr;
@@ -1893,98 +2275,58 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
      * be defined for different input ID & output ID pairs. If that's the case, make sure the user is not
      * trying to redefine the same connection (which is worrying, so we should definitely log a message if we
      * detect it and then bail out). Otherwise, don't add a new connection to the DAG. */
-    if (system_dag_is_connection_defined(segment_ptr->dag,
-                                         src_node_ptr->dag_node,
-                                         dst_node_ptr->dag_node) )
+    bool     is_connection_already_defined   = false;
+    uint32_t n_dst_node_outgoing_connections = 0;
+    uint32_t n_src_node_outgoing_connections = 0;
+
+    system_resizable_vector_get_property(src_node_ptr->outgoing_connections,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_src_node_outgoing_connections);
+
+    for (uint32_t n_outgoing_connection = 0;
+                  n_outgoing_connection < n_src_node_outgoing_connections;
+                ++n_outgoing_connection)
     {
-        bool     is_connection_already_defined = false;
-        uint32_t n_outgoing_connections        = 0;
+        _demo_timeline_segment_io_connection* current_connection_ptr = nullptr;
 
-        system_resizable_vector_get_property(src_node_ptr->outgoing_connections,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_outgoing_connections);
-
-        for (uint32_t n_outgoing_connection = 0;
-                      n_outgoing_connection < n_outgoing_connections;
-                    ++n_outgoing_connection)
+        if (!system_resizable_vector_get_element_at(src_node_ptr->outgoing_connections,
+                                                    n_outgoing_connection,
+                                                   &current_connection_ptr) )
         {
-            _demo_timeline_segment_io_connection* current_connection_ptr = nullptr;
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve connection descriptor at index [%d]",
+                              n_outgoing_connection);
 
-            if (!system_resizable_vector_get_element_at(src_node_ptr->outgoing_connections,
-                                                        n_outgoing_connection,
-                                                       &current_connection_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve connection descriptor at index [%d]",
-                                  n_outgoing_connection);
-
-                continue;
-            }
-
-            if (current_connection_ptr->dst_node           == dst_node_ptr      &&
-                current_connection_ptr->dst_node_input_id  == dst_node_input_id &&
-                current_connection_ptr->src_node           == src_node_ptr      &&
-                current_connection_ptr->src_node_output_id == src_node_output_id)
-            {
-                new_dag_connection            = current_connection_ptr->dag_connection;
-                is_connection_already_defined = true;
-
-                break;
-            }
+            continue;
         }
 
-        if (is_connection_already_defined)
+        if (current_connection_ptr->dst_node           == dst_node_ptr      &&
+            current_connection_ptr->dst_node_input_id  == dst_node_input_id &&
+            current_connection_ptr->src_node           == src_node_ptr      &&
+            current_connection_ptr->src_node_output_id == src_node_output_id)
         {
-            LOG_FATAL("Cannot add a new video segment node->video segment node connection: specified connection is already defined");
+            is_connection_already_defined = true;
 
-            goto end;
+            break;
         }
-        else
-        {
-            /* The segments are already connected - no need to update the DAG, as well as attach output's attachment
-             * to the specified input. */
-            need_to_update = false;
-        }
+    }
+
+    if (is_connection_already_defined)
+    {
+        LOG_FATAL("Cannot add a new video segment node->video segment node connection: specified connection is already defined");
+
+        goto end;
+    }
+    else
+    {
+        /* The segments are already connected - no need to update the DAG, as well as attach output's attachment
+         * to the specified input. */
+        need_to_update = false;
     }
 
     if (need_to_update)
     {
         demo_timeline_segment_node_interface_type src_node_output_interface_type = DEMO_TIMELINE_SEGMENT_NODE_INTERFACE_TYPE_UNKNOWN;
-
-        /* Check if the DAG is still acyclic after we include the new connection */
-        #ifdef _DEBUG
-        {
-            bool dag_solves_ok = system_dag_solve(segment_ptr->dag);
-
-            ASSERT_DEBUG_SYNC(dag_solves_ok,
-                              "DAG does not solve OK even without the new connection!");
-        }
-        #endif
-
-        new_dag_connection = system_dag_add_connection(segment_ptr->dag,
-                                                       src_node_ptr->dag_node,
-                                                       dst_node_ptr->dag_node);
-
-        if (new_dag_connection == nullptr)
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not create a new DAG connection");
-
-            goto end;
-        }
-
-        if (!system_dag_solve(segment_ptr->dag) )
-        {
-            /* Whoops, the DAG does not solve now. Remove the new connection, ensure it solves correct again,
-             * report an error and quit */
-            system_dag_delete_connection(segment_ptr->dag,
-                                         new_dag_connection);
-
-            ASSERT_ALWAYS_SYNC(system_dag_solve(segment_ptr->dag),
-                               "DAG does not solve after a new connection was removed");
-
-            goto end;
-        }
 
         /* The output's attachment needs to be bound to the specified input
          *
@@ -2042,8 +2384,7 @@ PUBLIC EMERALD_API bool demo_timeline_segment_connect_nodes(demo_timeline_segmen
     new_connection_ptr = new (std::nothrow) _demo_timeline_segment_io_connection(dst_node_ptr,
                                                                                  dst_node_input_id,
                                                                                  src_node_ptr,
-                                                                                 src_node_output_id,
-                                                                                 new_dag_connection);
+                                                                                 src_node_output_id);
 
     if (new_connection_ptr == nullptr)
     {
@@ -2292,13 +2633,6 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
             node_output_ids = nullptr;
         }
 
-        system_dag_delete_connections(segment_ptr->dag,
-                                      node_ptr->dag_node, /* src */
-                                      nullptr);           /* dst */
-        system_dag_delete_connections(segment_ptr->dag,
-                                      nullptr,             /* dst */
-                                      node_ptr->dag_node); /* src */
-
         /* Release texture attachments assigned to the node */
         system_resizable_vector_get_property(node_ptr->cached_texture_allocations,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -2317,25 +2651,6 @@ PUBLIC bool demo_timeline_segment_delete_nodes(demo_timeline_segment            
         }
 
         system_resizable_vector_clear(node_ptr->cached_texture_allocations);
-
-        #ifdef _DEBUG
-        {
-            /* At this point, the node must not be a part of any existing DAG connections */
-            if (system_dag_is_connection_defined(segment_ptr->dag,
-                                                 node_ptr->dag_node,
-                                                 nullptr) ||          /* dst */
-                system_dag_is_connection_defined(segment_ptr->dag,
-                                                 nullptr,             /* src */
-                                                 node_ptr->dag_node) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Node ID [%d] forms one or more DAG connections.",
-                                  node_ids[n_node]);
-
-                goto end;
-            }
-        }
-        #endif /* _DEBUG */
     }
 
     /* Good to delete the nodes */
@@ -2497,18 +2812,6 @@ PUBLIC bool demo_timeline_segment_disconnect_nodes(demo_timeline_segment        
                           "Specified node connection was not found");
 
         goto end;
-    }
-
-    /* Two DAG nodes are only connected if there's one or more connections between segment nodes represented by those DAG nodes.
-     * Two video segment nodes are only connected if there's at least one outgoing connection from source node to the destination node.
-     *
-     * Therefore, we can only destroy the DAG connection if there's only one outgoing connections that go from the source node
-     * to the destination node.
-     */
-    if (n_src_dst_connections == 1)
-    {
-        system_dag_delete_connection(segment_ptr->dag,
-                                     connection_ptr->dag_connection);
     }
 
     /* Inform subscribers about the event */
@@ -3018,172 +3321,41 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool demo_timeline_segment_render(demo_timeline_segment segment,
-                                                     uint32_t              frame_index,
-                                                     system_time           rendering_pipeline_time,
-                                                     const int*            rendering_area_px_topdown)
+PUBLIC bool demo_timeline_segment_render_postprocessing_segment(demo_timeline_segment segment,
+                                                                uint32_t              frame_index,
+                                                                system_time           rendering_pipeline_time,
+                                                                const int*            rendering_area_px_topdown,
+                                                                ral_present_job       present_job)
 {
-    uint32_t                n_sorted_nodes = 0;
-    bool                    result         = false;
-    _demo_timeline_segment* segment_ptr    = reinterpret_cast<_demo_timeline_segment*>(segment);
+    _demo_timeline_segment* segment_ptr = reinterpret_cast<_demo_timeline_segment*>(segment);
 
-    /* Sanity checks */
-    ASSERT_DEBUG_SYNC(segment != nullptr,
-                      "Input video segment is NULL");
+    ASSERT_DEBUG_SYNC(segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING,
+                      "Invalid segment specified for the \"render postprocessing segment\" call");
 
-    /* 1. Retrieve a list of nodes, sorted topogically, in which we should proceed with the rendering process */
-    if (!system_dag_get_topologically_sorted_node_values(segment_ptr->dag,
-                                                         segment_ptr->dag_sorted_nodes) )
-    {
-        LOG_ERROR("Segment DAG failed to solve. No output will be produced.");
+    return _demo_timeline_segment_render_segment(segment,
+                                                 frame_index,
+                                                 rendering_pipeline_time,
+                                                 rendering_area_px_topdown,
+                                                 reinterpret_cast<void*>(present_job) );
+}
 
-        goto end;
-    }
+/** Please see header for specification */
+PUBLIC bool demo_timeline_segment_render_video_segment(demo_timeline_segment segment,
+                                                      uint32_t              frame_index,
+                                                      system_time           rendering_pipeline_time,
+                                                      const int*            rendering_area_px_topdown,
+                                                      ral_present_task*     out_present_task_ptr)
+{
+    _demo_timeline_segment* segment_ptr = reinterpret_cast<_demo_timeline_segment*>(segment);
 
-    /* 2. Perform the rendering process. For each node, before calling the render call-back, make sure that:
-     *
-     *    a) all inputs that require a bound texture actually have one attached. If not, the render func
-     *       ptr should not be called and we should signal a problem.
-     *    b) if the node offers one or more outputs, make sure at least one output is connected to another
-     *       node. Otherwise, do not render the node if we're dealing with a post-processing segment; for video
-     *       segments, this case is skipped since there's no output node there and all nodes are assumed to be
-     *       important.
-     *    c) if the node does not offer any outputs and it's not an output node, skip it.
-     *
-     *       This case is especially important for post-processing segment's video segment nodes.
-     *
-     *  TODO: The result of the checks below could be cached and only re-done whenever the graph changes.
-     */
-    system_resizable_vector_get_property(segment_ptr->dag_sorted_nodes,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                         &n_sorted_nodes);
+    ASSERT_DEBUG_SYNC(segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_VIDEO,
+                      "Invalid segment specified for the \"render video segment\" call");
 
-    for (uint32_t n_sorted_node = 0;
-                  n_sorted_node < n_sorted_nodes;
-                ++n_sorted_node)
-    {
-        bool                                 can_render          = true;
-        uint32_t                             n_node_input_ids    = 0;
-        uint32_t                             n_node_output_ids   = 0;
-        demo_timeline_segment_node_input_id  node_input_ids [32]; /* TODO: we may need something more fancy.. */
-        demo_timeline_segment_node_output_id node_output_ids[32]; /* TODO: we may need something more fancy.. */
-        _demo_timeline_segment_node_item*    node_ptr            = nullptr;
-
-        if (!system_resizable_vector_get_element_at(segment_ptr->dag_sorted_nodes,
-                                                    n_sorted_node,
-                                                    &node_ptr) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve node descriptor from DAG-sorted nodes vector at index [%d]",
-                              n_sorted_node);
-
-            continue;
-        }
-
-        /* Do all inputs which require an attachment, actually have one? */
-        demo_timeline_segment_node_get_inputs(node_ptr->node,
-                                              sizeof(node_input_ids),
-                                              &n_node_input_ids,
-                                              node_input_ids);
-
-        ASSERT_DEBUG_SYNC(n_node_input_ids < sizeof(node_input_ids) / sizeof(node_input_ids[0]),
-                          "TODO");
-
-        for (uint32_t n_node_input_id = 0;
-                      n_node_input_id < n_node_input_ids;
-                    ++n_node_input_id)
-        {
-            ral_texture bound_texture_view     = nullptr;
-            bool        is_attachment_required = false;
-
-            demo_timeline_segment_node_get_io_property(node_ptr->node,
-                                                       true, /* is_input_io */
-                                                       node_input_ids[n_node_input_id],
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_IS_REQUIRED,
-                                                      &is_attachment_required);
-
-            if (!is_attachment_required)
-            {
-                /* Meh */
-                continue;
-            }
-
-            demo_timeline_segment_node_get_io_property(node_ptr->node,
-                                                       true, /* is_input_io */
-                                                       node_input_ids[n_node_input_id],
-                                                       DEMO_TIMELINE_SEGMENT_NODE_IO_PROPERTY_BOUND_TEXTURE_VIEW_RAL,
-                                                      &bound_texture_view);
-
-            if (bound_texture_view == nullptr)
-            {
-                /* Sound the bugle! */
-                system_callback_manager_call_back(node_ptr->parent_segment_ptr->callback_manager,
-                                                  DEMO_TIMELINE_SEGMENT_CALLBACK_ID_INPUT_LACKS_ATTACHMENT,
-                                                  reinterpret_cast<void*>(node_input_ids[n_node_input_id]));
-
-                /* This node cannot be rendered. */
-                can_render = false;
-
-                break;
-            }
-        }
-
-        /* If the node offers outputs, is any of them actually used? */
-        demo_timeline_segment_node_get_outputs(node_ptr->node,
-                                               sizeof(node_output_ids),
-                                              &n_node_output_ids,
-                                               node_output_ids);
-
-        ASSERT_DEBUG_SYNC(n_node_output_ids < sizeof(node_output_ids) / sizeof(node_output_ids[0]),
-                          "TODO");
-
-        if (n_node_output_ids >  0                                         &&
-            segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING)
-        {
-            uint32_t n_node_outgoing_connections = 0;
-
-            system_dag_get_connections(segment_ptr->dag,
-                                       node_ptr->dag_node, /* src */
-                                       nullptr,            /* dst */
-                                       &n_node_outgoing_connections,
-                                       nullptr);           /* out_opt_connections_ptr */
-
-            if (n_node_outgoing_connections == 0)
-            {
-                can_render = false;
-            }
-        }
-        else
-        if (n_node_output_ids == 0                                                     &&
-            segment_ptr->type == DEMO_TIMELINE_SEGMENT_TYPE_POSTPROCESSING             &&
-            node_ptr->type    != DEMO_TIMELINE_POSTPROCESSING_SEGMENT_NODE_TYPE_OUTPUT)
-        {
-            can_render = false;
-        }
-
-        if (can_render)
-        {
-            PFNSEGMENTNODERENDERCALLBACKPROC render_func_ptr = nullptr;
-
-            demo_timeline_segment_node_get_property(node_ptr->node,
-                                                    DEMO_TIMELINE_SEGMENT_NODE_PROPERTY_RENDER_FUNC_PTR,
-                                                   &render_func_ptr);
-
-            if (render_func_ptr != nullptr)
-            {
-                render_func_ptr(node_ptr->node_internal,
-                                frame_index,
-                                rendering_pipeline_time,
-                                rendering_area_px_topdown);
-            }
-        }
-    }
-
-    /* All done */
-    result = true;
-end:
-    return result;
-
+    return _demo_timeline_segment_render_segment(segment,
+                                                 frame_index,
+                                                 rendering_pipeline_time,
+                                                 rendering_area_px_topdown,
+                                                 reinterpret_cast<void*>(out_present_task_ptr) );
 }
 
 /** Please see header for specification */

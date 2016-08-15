@@ -17,7 +17,9 @@
 #include "ral/ral_present_task.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
+#include "system/system_dag.h"
 #include "system/system_event.h"
+#include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
@@ -37,9 +39,11 @@ enum
 
 typedef struct _raGL_rendering_handler
 {
-    ral_context           context_ral;
-    system_window         context_window;
-    ral_rendering_handler rendering_handler_ral;
+    ral_context             context_ral;
+    system_window           context_window;
+    system_hash64map        dag_present_task_to_node_map;
+    system_resizable_vector ordered_present_tasks;
+    ral_rendering_handler   rendering_handler_ral;
 
     ral_rendering_handler_custom_wait_event_handler* handlers;
 
@@ -92,6 +96,36 @@ typedef struct _raGL_rendering_handler
     {
         system_critical_section_release(ral_callback_cs);
 
+        if (dag_present_task_to_node_map != nullptr)
+        {
+            uint32_t n_map_entries = 0;
+
+            system_hash64map_get_property(dag_present_task_to_node_map,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_map_entries);
+
+            ASSERT_DEBUG_SYNC(n_map_entries == 0,
+                              "DAG present task->DAG node map contains entries at destruction time");
+
+            system_hash64map_release(dag_present_task_to_node_map);
+            dag_present_task_to_node_map = nullptr;
+        }
+
+        if (ordered_present_tasks != nullptr)
+        {
+            uint32_t n_present_tasks = 0;
+
+            system_resizable_vector_get_property(ordered_present_tasks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_present_tasks);
+
+            ASSERT_DEBUG_SYNC(n_present_tasks == 0,
+                              "ordered_present_tasks vector contains entries at destruction time");
+
+            system_resizable_vector_release(ordered_present_tasks);
+            ordered_present_tasks = nullptr;
+        }
+
         system_event_release(bind_context_request_event);
         system_event_release(bind_context_request_ack_event);
         system_event_release(callback_request_ack_event);
@@ -108,10 +142,12 @@ typedef struct _raGL_rendering_handler
     }
 } _raGL_rendering_handler;
 
-PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_handler(uint32_t ignored,
-                                                                                       void*    rendering_handler_raBackend);
-PRIVATE void _raGL_rendering_handler_context_sharing_setup_request_event_handler      (uint32_t ignored,
-                                                                                       void*    rendering_handler_raBackend);
+PRIVATE void       _raGL_rendering_handler_rendering_thread_callback_requested_event_handler(uint32_t                 ignored,
+                                                                                             void*                    rendering_handler_raBackend);
+PRIVATE void       _raGL_rendering_handler_context_sharing_setup_request_event_handler      (uint32_t                 ignored,
+                                                                                             void*                    rendering_handler_raBackend);
+PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job                      (_raGL_rendering_handler* rendering_handler_ptr,
+                                                                                             ral_present_job          present_job);
 
 
 static const ral_rendering_handler_custom_wait_event_handler ref_handlers[] =
@@ -125,6 +161,7 @@ static const uint32_t n_ref_handlers = sizeof(ref_handlers) / sizeof(ref_handler
 _raGL_rendering_handler::_raGL_rendering_handler(ral_rendering_handler in_rendering_handler_ral)
 {
     context_ral           = nullptr;
+    ordered_present_tasks = system_resizable_vector_create(16); /* capacity */
     rendering_handler_ral = in_rendering_handler_ral;
 
     call_passthrough_context = nullptr;
@@ -193,6 +230,112 @@ PRIVATE void _raGL_rendering_handler_context_sharing_setup_request_event_handler
     ogl_context_bind_to_current_thread(rendering_handler_ptr->context_gl);
 
     system_event_set(rendering_handler_ptr->bind_context_request_ack_event);
+}
+
+/** TODO */
+PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_rendering_handler* rendering_handler_ptr,
+                                                                       ral_present_job          present_job)
+{
+    uint32_t   n_connections   = 0;
+    uint32_t   n_present_tasks = 0;
+    system_dag result          = nullptr;
+
+    ral_present_job_get_property(present_job,
+                                 RAL_PRESENT_JOB_PROPERTY_N_CONNECTIONS,
+                                &n_connections);
+    ral_present_job_get_property(present_job,
+                                 RAL_PRESENT_JOB_PROPERTY_N_PRESENT_TASKS,
+                                &n_present_tasks);
+
+    if (n_present_tasks == 0)
+    {
+        goto end;
+    }
+
+    result = system_dag_create();
+
+    for (uint32_t n_present_task = 0;
+                  n_present_task < n_present_tasks;
+                ++n_present_task)
+    {
+        ral_present_task present_task      = nullptr;
+        system_dag_node  present_task_node = nullptr;
+
+        ral_present_job_get_task_at_index(present_job,
+                                          n_present_task,
+                                         &present_task);
+
+        ASSERT_DEBUG_SYNC(present_task != nullptr,
+                          "Null present task reported at index [%d]",
+                          n_present_task);
+
+        present_task_node = system_dag_add_node(result,
+                                                reinterpret_cast<system_dag_node_value>(present_task) );
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(rendering_handler_ptr->dag_present_task_to_node_map,
+                                                     reinterpret_cast<system_hash64>(present_task) ),
+                          "Present task->DAG node map already holds a DAG node for the newly spawned present task");
+        ASSERT_DEBUG_SYNC(present_task_node != nullptr,
+                          "NULL DAG node created for a present task");
+
+        system_hash64map_insert(rendering_handler_ptr->dag_present_task_to_node_map,
+                                reinterpret_cast<system_hash64>(present_task),
+                                present_task_node,
+                                nullptr,  /* on_removal_callback          */
+                                nullptr); /* on_removal_callback_user_arg */
+    }
+
+    for (uint32_t n_connection = 0;
+                  n_connection < n_connections;
+                ++n_connection)
+    {
+        ral_present_job_connection_id connection_id             = -1;
+        ral_present_task              dst_present_task          = nullptr;
+        system_dag_node               dst_present_task_dag_node = nullptr;
+        ral_present_task_id           dst_present_task_id       = -1;
+        ral_present_task              src_present_task          = nullptr;
+        system_dag_node               src_present_task_dag_node = nullptr;
+        ral_present_task_id           src_present_task_id       = -1;
+
+        ral_present_job_get_connection_id_at_index(present_job,
+                                                   n_connection,
+                                                  &connection_id);
+        ral_present_job_get_connection_property   (present_job,
+                                                   connection_id,
+                                                   RAL_PRESENT_JOB_CONNECTION_PROPERTY_DST_TASK_ID,
+                                                  &dst_present_task_id);
+        ral_present_job_get_connection_property   (present_job,
+                                                   connection_id,
+                                                   RAL_PRESENT_JOB_CONNECTION_PROPERTY_SRC_TASK_ID,
+                                                  &src_present_task_id);
+
+        ral_present_job_get_task_with_id(present_job,
+                                         dst_present_task_id,
+                                        &dst_present_task);
+        ral_present_job_get_task_with_id(present_job,
+                                         src_present_task_id,
+                                        &src_present_task);
+
+        system_hash64map_get(rendering_handler_ptr->dag_present_task_to_node_map,
+                             reinterpret_cast<system_hash64>(dst_present_task),
+                            &dst_present_task_dag_node);
+        system_hash64map_get(rendering_handler_ptr->dag_present_task_to_node_map,
+                             reinterpret_cast<system_hash64>(src_present_task),
+                            &src_present_task_dag_node);
+
+        if (!system_dag_is_connection_defined(result,
+                                              src_present_task_dag_node,
+                                              dst_present_task_dag_node) )
+        {
+            system_dag_add_connection(result,
+                                      src_present_task_dag_node,
+                                      dst_present_task_dag_node);
+        }
+    }
+end:
+    system_hash64map_clear(rendering_handler_ptr->dag_present_task_to_node_map);
+
+    return result;
 }
 
 /** TODO */
@@ -327,54 +470,83 @@ PUBLIC void raGL_rendering_handler_enumerate_custom_wait_event_handlers(void*   
 PUBLIC void raGL_rendering_handler_execute_present_job(void*           rendering_handler_raGL,
                                                        ral_present_job present_job)
 {
-    uint32_t                 n_present_job_tasks   = 0;
-    ral_present_task*        present_job_tasks     = nullptr;
-    _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler_raGL);
+    uint32_t                 n_ordered_present_tasks = 0;
+    system_dag               present_job_dag         = nullptr;
+    _raGL_rendering_handler* rendering_handler_ptr   = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler_raGL);
 
-    if (ral_present_job_get_sorted_tasks(present_job,
-                                        &n_present_job_tasks,
-                                        &present_job_tasks))
-    {
-        /* Present tasks need to be executed one-after-another. We theoretically could distribute these to
-         * separate worker rendering threads, but context sharing is defined pretty loosely and GL implementations
-         * are pretty crap at supporting it.
-         */
-        for (uint32_t n_present_task = 0;
-                      n_present_task < n_present_job_tasks;
-                    ++n_present_task)
-        {
-            /* NOTE: GL back-end doesn't really care about inputs & output synchronization, since GL
-             *       does not support buffer-/image-based region sync, as eg. Vulkan does.
-             */
-            raGL_command_buffer task_cmd_buffer_raGL = nullptr;
-            ral_command_buffer  task_cmd_buffer_ral  = nullptr;
+    /* Create a DAG from the present job. */
+    present_job_dag = _raGL_rendering_handler_create_dag_from_present_job(rendering_handler_ptr,
+                                                                          present_job);
 
-            ral_present_task_get_property(present_job_tasks[n_present_task],
-                                          RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER,
-                                         &task_cmd_buffer_ral);
-
-            raGL_backend_get_command_buffer(rendering_handler_ptr->backend,
-                                            task_cmd_buffer_ral,
-                                           &task_cmd_buffer_raGL);
-
-            raGL_command_buffer_execute(task_cmd_buffer_raGL,
-                                        rendering_handler_ptr->dep_tracker);
-        }
-
-        ral_present_job_get_property(present_job,
-                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
-                                    &rendering_handler_ptr->ral_callback_buffer_swap_needed);
-
-        if (rendering_handler_ptr->call_passthrough_mode)
-        {
-            ASSERT_DEBUG_SYNC(!rendering_handler_ptr->ral_callback_buffer_swap_needed,
-                              "Cannot swap buffers");
-        }
-    }
-    else
+    if (!system_dag_solve(present_job_dag))
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Could not retrieve a sorted list of present tasks");
+                          "Could not solve a DAG created from the submitted present job");
+
+        goto end;
+    }
+
+    if (!system_dag_get_topologically_sorted_node_values(present_job_dag,
+                                                         rendering_handler_ptr->ordered_present_tasks) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve topologically sorted present tasks");
+
+        goto end;
+    }
+
+    /* Present tasks need to be executed one-after-another. We theoretically could distribute these to
+     * separate worker rendering threads, but context sharing is defined pretty loosely and GL implementations
+     * are pretty crap at supporting it.
+     */
+    system_resizable_vector_get_property(rendering_handler_ptr->ordered_present_tasks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_ordered_present_tasks);
+
+    for (uint32_t n_present_task = 0;
+                  n_present_task < n_ordered_present_tasks;
+                ++n_present_task)
+    {
+        ral_present_task    task                 = nullptr;
+        raGL_command_buffer task_cmd_buffer_raGL = nullptr;
+        ral_command_buffer  task_cmd_buffer_ral  = nullptr;
+
+        system_resizable_vector_get_element_at(rendering_handler_ptr->ordered_present_tasks,
+                                               n_present_task,
+                                              &task);
+
+        ral_present_task_get_property(task,
+                                      RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER,
+                                     &task_cmd_buffer_ral);
+
+        raGL_backend_get_command_buffer(rendering_handler_ptr->backend,
+                                        task_cmd_buffer_ral,
+                                       &task_cmd_buffer_raGL);
+
+        raGL_command_buffer_execute(task_cmd_buffer_raGL,
+                                    rendering_handler_ptr->dep_tracker);
+
+        ral_present_task_release(task);
+    }
+
+    ral_present_job_get_property(present_job,
+                                 RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
+                                &rendering_handler_ptr->ral_callback_buffer_swap_needed);
+
+    if (rendering_handler_ptr->call_passthrough_mode)
+    {
+        ASSERT_DEBUG_SYNC(!rendering_handler_ptr->ral_callback_buffer_swap_needed,
+                          "Cannot swap buffers");
+    }
+
+end:
+    system_resizable_vector_clear(rendering_handler_ptr->ordered_present_tasks);
+
+    if (present_job_dag != nullptr)
+    {
+        system_dag_release(present_job_dag);
+
+        present_job_dag = nullptr;
     }
 }
 

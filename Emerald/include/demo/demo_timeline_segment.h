@@ -196,6 +196,11 @@ PUBLIC EMERALD_API bool demo_timeline_segment_add_node(demo_timeline_segment    
                                                        demo_timeline_segment_node_id*  out_opt_node_id_ptr,
                                                        demo_timeline_segment_node*     out_opt_node_ptr);
 
+/** TODO */
+PUBLIC bool demo_timeline_segment_are_nodes_connected(demo_timeline_segment         segment,
+                                                      demo_timeline_segment_node_id src_node_id,
+                                                      demo_timeline_segment_node_id dst_node_id);
+
 /** Connects one node's output with another node's input.
  *
  *  @param segment            Timeline segment both source and destination nodes are in.
@@ -345,10 +350,21 @@ PUBLIC EMERALD_API bool demo_timeline_segment_get_video_segment_node_id_for_ps_a
                                                                                                demo_timeline_segment_node_id* out_node_id_ptr);
 
 /** TODO */
-PUBLIC EMERALD_API bool demo_timeline_segment_render(demo_timeline_segment segment,
-                                                     uint32_t              frame_index,
-                                                     system_time           rendering_pipeline_time,
-                                                     const int*            rendering_area_px_topdown);
+PUBLIC bool demo_timeline_segment_render_postprocessing_segment(demo_timeline_segment segment,
+                                                                uint32_t              frame_index,
+                                                                system_time           rendering_pipeline_time,
+                                                                const int*            rendering_area_px_topdown,
+                                                                ral_present_job       present_job);
+
+/** TODO
+ *
+ *  NOTE: It is caller's responsibility to release *out_present_task_ptr when no longer needed.
+ **/
+PUBLIC bool demo_timeline_segment_render_video_segment(demo_timeline_segment segment,
+                                                      uint32_t              frame_index,
+                                                      system_time           rendering_pipeline_time,
+                                                      const int*            rendering_area_px_topdown,
+                                                      ral_present_task*     out_present_task_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool demo_timeline_segment_set_node_io_property(demo_timeline_segment_node             node,

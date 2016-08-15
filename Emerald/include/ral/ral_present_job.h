@@ -20,6 +20,12 @@ typedef enum
 
 typedef enum
 {
+    /* not settable; uint32_t */
+    RAL_PRESENT_JOB_PROPERTY_N_CONNECTIONS,
+
+    /* not settable; uint32_t */
+    RAL_PRESENT_JOB_PROPERTY_N_PRESENT_TASKS,
+
     /* set to true with first ral_present_job_set_presentable_output() invocation; bool */
     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
 
@@ -27,7 +33,10 @@ typedef enum
     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_ID,
 
     /* settable with ral_present_job_set_presentable_output(); uint32_t */
-    RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_OUTPUT_INDEX,
+    RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_INDEX,
+
+    /* settable with ral_present_job_set_presentable_output(); uint32_t */
+    RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE,
 } ral_present_job_property;
 
 /** TODO
@@ -44,7 +53,7 @@ PUBLIC bool ral_present_job_connect_tasks(ral_present_job                job,
                                           uint32_t                       n_src_task_output,
                                           ral_present_task_id            dst_task_id,
                                           uint32_t                       n_dst_task_input,
-                                          ral_present_job_connection_id* out_connection_id_ptr);
+                                          ral_present_job_connection_id* out_opt_connection_id_ptr);
 
 /** TODO */
 PUBLIC ral_present_job ral_present_job_create();
@@ -66,9 +75,14 @@ PUBLIC void ral_present_job_get_property(ral_present_job          job,
                                          void*                    out_result_ptr);
 
 /** TODO */
-PUBLIC bool ral_present_job_get_sorted_tasks(ral_present_job    present_job,
-                                             uint32_t*          out_n_tasks,
-                                             ral_present_task** out_tasks);
+PUBLIC bool ral_present_job_get_task_at_index(ral_present_job   job,
+                                              uint32_t          index,
+                                              ral_present_task* out_task_ptr);
+
+/** TODO */
+PUBLIC bool ral_present_job_get_task_with_id(ral_present_job     present_job,
+                                             ral_present_task_id task_id,
+                                             ral_present_task*   out_result_task_ptr);
 
 /** TODO */
 PUBLIC void ral_present_job_release(ral_present_job job);
@@ -76,6 +90,7 @@ PUBLIC void ral_present_job_release(ral_present_job job);
 /** TODO */
 PUBLIC bool ral_present_job_set_presentable_output(ral_present_job     job,
                                                    ral_present_task_id task_id,
-                                                   uint32_t            n_output);
+                                                   bool                is_input_io,
+                                                   uint32_t            n_io);
 
 #endif /* RAL_PRESENT_JOB_H */

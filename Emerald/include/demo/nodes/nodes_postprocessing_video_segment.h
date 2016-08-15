@@ -46,7 +46,7 @@ PUBLIC bool nodes_postprocessing_video_segment_render(demo_timeline_segment_node
                                                       uint32_t                           frame_index,
                                                       system_time                        frame_time,
                                                       const int32_t*                     rendering_area_px_topdown,
-                                                      ral_present_job                    present_job);
+                                                      ral_present_task*                  out_present_task_ptr);
 
 /** TODO */
 PUBLIC bool nodes_postprocessing_video_segment_set_property(demo_timeline_segment_node_private node,

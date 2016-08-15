@@ -1587,13 +1587,15 @@ PUBLIC ral_present_job demo_timeline_render(demo_timeline timeline,
             }
         }
 
-        /* Render the segment */
-        todo;
+        /* Schedule rendering of the segment */
+        result = demo_timeline_segment_render_postprocessing_segment(postprocessing_segment,
+                                                                     frame_index,
+                                                                     rendering_pipeline_time,
+                                                                     rendering_area_px_topdown,
+                                                                     result_present_job);
 
-        result = demo_timeline_segment_render(postprocessing_segment,
-                                              frame_index,
-                                              rendering_pipeline_time,
-                                              rendering_area_px_topdown);
+        ASSERT_DEBUG_SYNC(result,
+                          "Segment failed to render");
     }
 
     /* All done */

@@ -728,7 +728,8 @@ end:
 PUBLIC bool nodes_postprocessing_video_segment_render(demo_timeline_segment_node_private node,
                                                       uint32_t                           frame_index,
                                                       system_time                        frame_time,
-                                                      const int32_t*                     rendering_area_px_topdown)
+                                                      const int32_t*                     rendering_area_px_topdown,
+                                                      ral_present_task*                  out_present_task_ptr)
 {
     _nodes_postprocessing_video_segment_node_data* node_data_ptr = reinterpret_cast<_nodes_postprocessing_video_segment_node_data*>(node);
     bool                                           result        = false;
@@ -740,10 +741,11 @@ PUBLIC bool nodes_postprocessing_video_segment_render(demo_timeline_segment_node
     }
     else
     {
-        result = demo_timeline_segment_render(node_data_ptr->video_segment,
-                                              frame_index,
-                                              frame_time,
-                                              rendering_area_px_topdown);
+        result = demo_timeline_segment_render_video_segment(node_data_ptr->video_segment,
+                                                            frame_index,
+                                                            frame_time,
+                                                            rendering_area_px_topdown,
+                                                            out_present_task_ptr);
     }
 
     return result;
