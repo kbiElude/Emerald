@@ -519,10 +519,10 @@ typedef enum
  *
  *  TODO
  **/
-PUBLIC void ral_command_buffer_append_commands_from_command_buffer(ral_command_buffer recording_command_buffer,
-                                                                   ral_command_buffer src_command_buffer,
-                                                                   uint32_t           n_start_command,
-                                                                   uint32_t           n_commands);
+PUBLIC EMERALD_API void ral_command_buffer_append_commands_from_command_buffer(ral_command_buffer recording_command_buffer,
+                                                                               ral_command_buffer src_command_buffer,
+                                                                               uint32_t           n_start_command,
+                                                                               uint32_t           n_commands);
 
 /** TODO */
 PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                           context,
@@ -532,9 +532,9 @@ PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                 
 PUBLIC void ral_command_buffer_deinit();
 
 /** TODO */
-PUBLIC void ral_command_buffer_get_property(ral_command_buffer          command_buffer,
-                                            ral_command_buffer_property property,
-                                            void*                       out_result_ptr);
+PUBLIC EMERALD_API void ral_command_buffer_get_property(ral_command_buffer          command_buffer,
+                                                        ral_command_buffer_property property,
+                                                        void*                       out_result_ptr);
 
 /** TODO */
 PUBLIC bool ral_command_buffer_get_recorded_command(ral_command_buffer command_buffer,
@@ -546,113 +546,114 @@ PUBLIC bool ral_command_buffer_get_recorded_command(ral_command_buffer command_b
 PUBLIC void ral_command_buffer_init();
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buffer                                      recording_command_buffer,
-                                                                 uint32_t                                                n_clear_ops,
-                                                                 const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buffer                                      recording_command_buffer,
+                                                                             uint32_t                                                n_clear_ops,
+                                                                             const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_copy_buffer_to_buffer(ral_command_buffer                                           recording_command_buffer,
-                                                            uint32_t                                                     n_copy_ops,
-                                                            const ral_command_buffer_copy_buffer_to_buffer_command_info* copy_op_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_copy_buffer_to_buffer(ral_command_buffer                                           recording_command_buffer,
+                                                                        uint32_t                                                     n_copy_ops,
+                                                                        const ral_command_buffer_copy_buffer_to_buffer_command_info* copy_op_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer                                             recording_command_buffer,
-                                                              uint32_t                                                       n_copy_ops,
-                                                              const ral_command_buffer_copy_texture_to_texture_command_info* copy_op_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_command_buffer                                             recording_command_buffer,
+                                                                          uint32_t                                                       n_copy_ops,
+                                                                          const ral_command_buffer_copy_texture_to_texture_command_info* copy_op_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_dispatch(ral_command_buffer recording_command_buffer,
-                                               const uint32_t*    xyz);
+PUBLIC EMERALD_API void ral_command_buffer_record_dispatch(ral_command_buffer recording_command_buffer,
+                                                           const uint32_t*    xyz);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_draw_call_indexed(ral_command_buffer                                       recording_command_buffer,
-                                                        uint32_t                                                 n_draw_calls,
-                                                        const ral_command_buffer_draw_call_indexed_command_info* draw_call_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_draw_call_indexed(ral_command_buffer                                       recording_command_buffer,
+                                                                    uint32_t                                                 n_draw_calls,
+                                                                    const ral_command_buffer_draw_call_indexed_command_info* draw_call_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buffer                                        recording_command_buffer,
-                                                                 uint32_t                                                  n_draw_calls,
-                                                                 const ral_command_buffer_draw_call_indirect_command_info* draw_call_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_draw_call_indirect_regular(ral_command_buffer                                        recording_command_buffer,
+                                                                             uint32_t                                                  n_draw_calls,
+                                                                             const ral_command_buffer_draw_call_indirect_command_info* draw_call_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_draw_call_regular(ral_command_buffer                                       recording_command_buffer,
-                                                        uint32_t                                                 n_draw_calls,
-                                                        const ral_command_buffer_draw_call_regular_command_info* draw_call_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_draw_call_regular(ral_command_buffer                                       recording_command_buffer,
+                                                                    uint32_t                                                 n_draw_calls,
+                                                                    const ral_command_buffer_draw_call_regular_command_info* draw_call_ptrs);
 
 /** TODO
  *
  *  NOTE: All scheduled command buffers must be created for the same context.
  **/
-PUBLIC void ral_command_buffer_record_execute_command_buffer(ral_command_buffer                                            recording_command_buffer,
-                                                             uint32_t                                                      n_commands,
-                                                             const ral_command_buffer_execute_command_buffer_command_info* command_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_execute_command_buffer(ral_command_buffer                                            recording_command_buffer,
+                                                                         uint32_t                                                      n_commands,
+                                                                         const ral_command_buffer_execute_command_buffer_command_info* command_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_fill_buffer(ral_command_buffer                                 recording_command_buffer,
-                                                  uint32_t                                           n_fill_ops,
-                                                  const ral_command_buffer_fill_buffer_command_info* fill_ops_ptr);
+PUBLIC EMERALD_API void ral_command_buffer_record_fill_buffer(ral_command_buffer                                 recording_command_buffer,
+                                                              uint32_t                                           n_fill_ops,
+                                                              const ral_command_buffer_fill_buffer_command_info* fill_ops_ptr);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_invalidate_texture(ral_command_buffer recording_command_buffer,
-                                                         ral_texture        texture,
-                                                         uint32_t           n_start_mip,
-                                                         uint32_t           n_mips);
+PUBLIC EMERALD_API void ral_command_buffer_record_invalidate_texture(ral_command_buffer recording_command_buffer,
+                                                                     ral_texture        texture,
+                                                                     uint32_t           n_start_mip,
+                                                                     uint32_t           n_mips);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_bindings(ral_command_buffer                           recording_command_buffer,
-                                                   uint32_t                                     n_bindings,
-                                                   ral_command_buffer_set_binding_command_info* binding_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_set_bindings(ral_command_buffer                           recording_command_buffer,
+                                                               uint32_t                                     n_bindings,
+                                                               ral_command_buffer_set_binding_command_info* binding_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_gfx_state(ral_command_buffer recording_command_buffer,
-                                                    ral_gfx_state      gfx_state);
-
-PUBLIC void ral_command_buffer_record_set_program(ral_command_buffer recording_command_buffer,
-                                                  ral_program        program);
+PUBLIC EMERALD_API void ral_command_buffer_record_set_gfx_state(ral_command_buffer recording_command_buffer,
+                                                                ral_gfx_state      gfx_state);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer                                            recording_command_buffer,
-                                                              uint32_t                                                      n_rendertargets,
-                                                              const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_set_program(ral_command_buffer recording_command_buffer,
+                                                              ral_program        program);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_depth_rendertarget(ral_command_buffer recording_command_buffer,
-                                                             ral_texture_view   depth_rt);
+PUBLIC EMERALD_API void ral_command_buffer_record_set_color_rendertargets(ral_command_buffer                                            recording_command_buffer,
+                                                                          uint32_t                                                      n_rendertargets,
+                                                                          const ral_command_buffer_set_color_rendertarget_command_info* rendertarget_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
-                                                        uint32_t                                               n_scissor_boxes,
-                                                        const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_set_depth_rendertarget(ral_command_buffer recording_command_buffer,
+                                                                         ral_texture_view   depth_rt);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_vertex_buffers(ral_command_buffer                                       recording_command_buffer,
-                                                         uint32_t                                                 n_vertex_buffers,
-                                                         const ral_command_buffer_set_vertex_buffer_command_info* vertex_buffer_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_set_scissor_boxes(ral_command_buffer                                     recording_command_buffer,
+                                                                    uint32_t                                               n_scissor_boxes,
+                                                                    const ral_command_buffer_set_scissor_box_command_info* scissor_box_ptrs);
 
 /** TODO */
-PUBLIC void ral_command_buffer_record_set_viewports(ral_command_buffer                                  recording_command_buffer,
-                                                    uint32_t                                            n_viewports,
-                                                    const ral_command_buffer_set_viewport_command_info* viewport_ptrs);
+PUBLIC EMERALD_API void ral_command_buffer_record_set_vertex_buffers(ral_command_buffer                                       recording_command_buffer,
+                                                                     uint32_t                                                 n_vertex_buffers,
+                                                                     const ral_command_buffer_set_vertex_buffer_command_info* vertex_buffer_ptrs);
+
+/** TODO */
+PUBLIC EMERALD_API void ral_command_buffer_record_set_viewports(ral_command_buffer                                  recording_command_buffer,
+                                                                uint32_t                                            n_viewports,
+                                                                const ral_command_buffer_set_viewport_command_info* viewport_ptrs);
 
 /** TODO
  *
  *  @param data Data to update with. Will be cached at call time, so that @param data
  *              can be freed after the call leaves.
  */
-PUBLIC void ral_command_buffer_record_update_buffer(ral_command_buffer recording_command_buffer,
-                                                    ral_buffer         buffer,
-                                                    uint32_t           start_offset,
-                                                    uint32_t           n_data_bytes,
-                                                    const void*        data);
+PUBLIC EMERALD_API void ral_command_buffer_record_update_buffer(ral_command_buffer recording_command_buffer,
+                                                                ral_buffer         buffer,
+                                                                uint32_t           start_offset,
+                                                                uint32_t           n_data_bytes,
+                                                                const void*        data);
 
 /** TODO */
 PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer);
 
 /** TODO */
-PUBLIC bool ral_command_buffer_start_recording(ral_command_buffer command_buffer);
+PUBLIC EMERALD_API bool ral_command_buffer_start_recording(ral_command_buffer command_buffer);
 
 /** TODO */
-PUBLIC bool ral_command_buffer_stop_recording(ral_command_buffer command_buffer);
+PUBLIC EMERALD_API bool ral_command_buffer_stop_recording(ral_command_buffer command_buffer);
 
 
 #endif /* RAL_COMMAND_BUFFER_H */

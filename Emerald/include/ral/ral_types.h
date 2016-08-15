@@ -1543,4 +1543,7 @@ typedef struct ral_texture_view_create_info
     }
 } ral_texture_view_create_info;
 
+/** TODO */
+PUBLIC EMERALD_API ral_texture_view_create_info ral_texture_view_create_info_from_ral_texture(ral_texture in_texture);
+
 #endif /* RAL_TYPES_H */

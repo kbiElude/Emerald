@@ -41,9 +41,6 @@ typedef enum
 PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_info* create_info_ptr);
 
 /** TODO */
-PUBLIC ral_texture_view_create_info ral_texture_view_get_create_info_from_texture(ral_texture texture);
-
-/** TODO */
 PUBLIC EMERALD_API bool ral_texture_view_get_mipmap_property(ral_texture_view            texture_view,
                                                              uint32_t                    n_layer,
                                                              uint32_t                    n_mipmap,

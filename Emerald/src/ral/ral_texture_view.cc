@@ -474,7 +474,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture_view_create_info ral_texture_view_get_create_info_from_texture(ral_texture texture)
+PUBLIC EMERALD_API ral_texture_view_create_info ral_texture_view_create_info_from_ral_texture(ral_texture texture)
 {
     ral_texture_view_create_info create_info;
     ral_format                   texture_format;

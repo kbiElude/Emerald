@@ -763,8 +763,8 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
 #endif
 
 /** Please see header for specification */
-PUBLIC ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
-                                                    const ral_present_task_cpu_create_info* create_info_ptr)
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
+                                                                const ral_present_task_cpu_create_info* create_info_ptr)
 
 {
     _ral_present_task* result_ptr = nullptr;
@@ -826,8 +826,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
-                                                    const ral_present_task_gpu_create_info* create_info_ptr)
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
+                                                                const ral_present_task_gpu_create_info* create_info_ptr)
 {
     ral_command_buffer_status command_buffer_status        = RAL_COMMAND_BUFFER_STATUS_UNDEFINED;
     bool                      is_command_buffer_resettable = false;
@@ -885,8 +885,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_present_task ral_present_task_create_group(system_hashed_ansi_string                 name,
-                                                      const ral_present_task_group_create_info* create_info_ptr)
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_group(system_hashed_ansi_string                 name,
+                                                                  const ral_present_task_group_create_info* create_info_ptr)
 {
     _ral_present_task* result_ptr = nullptr;
 
@@ -947,11 +947,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_present_task_get_io_mapping_property(ral_present_task                     task,
-                                                     ral_present_task_io_type             io_type,
-                                                     uint32_t                             n_io_mapping,
-                                                     ral_present_task_io_mapping_property property,
-                                                     void**                               out_result_ptr)
+PUBLIC EMERALD_API bool ral_present_task_get_io_mapping_property(ral_present_task                     task,
+                                                                 ral_present_task_io_type             io_type,
+                                                                 uint32_t                             n_io_mapping,
+                                                                 ral_present_task_io_mapping_property property,
+                                                                 void**                               out_result_ptr)
 {
     const ral_present_task_group_mapping* mappings_ptr = nullptr;
     bool                                  result       = false;
@@ -1066,11 +1066,11 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
-                                             ral_present_task_io_type     io_type,
-                                             uint32_t                     n_io,
-                                             ral_present_task_io_property property,
-                                             void**                       out_result_ptr)
+PUBLIC EMERALD_API bool ral_present_task_get_io_property(ral_present_task             task,
+                                                         ral_present_task_io_type     io_type,
+                                                         uint32_t                     n_io,
+                                                         ral_present_task_io_property property,
+                                                         void**                       out_result_ptr)
 {
     const ral_present_task_io* ios_ptr  = nullptr;
     bool                       result   = false;
@@ -1178,9 +1178,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_present_task_get_property(ral_present_task          task,
-                                          ral_present_task_property property,
-                                          void*                     out_result_ptr)
+PUBLIC EMERALD_API void ral_present_task_get_property(ral_present_task          task,
+                                                      ral_present_task_property property,
+                                                      void*                     out_result_ptr)
 {
     _ral_present_task* task_ptr = (_ral_present_task*) task;
 
@@ -1271,7 +1271,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_present_task_release(ral_present_task task)
+PUBLIC EMERALD_API void ral_present_task_release(ral_present_task task)
 {
     volatile uint32_t& ref_counter = reinterpret_cast<_ral_present_task*>(task)->ref_counter;
 

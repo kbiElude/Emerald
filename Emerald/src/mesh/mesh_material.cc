@@ -896,7 +896,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                 if (texture != nullptr)
                 {
                     ral_texture_view             texture_view             = nullptr;
-                    ral_texture_view_create_info texture_view_create_info = ral_texture_view_get_create_info_from_texture(texture);
+                    ral_texture_view_create_info texture_view_create_info = ral_texture_view_create_info_from_ral_texture(texture);
 
                     ral_context_create_texture_views(context_ral,
                                                      1, /* n_texture_views */

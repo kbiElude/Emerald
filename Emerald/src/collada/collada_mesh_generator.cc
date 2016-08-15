@@ -264,7 +264,7 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
 
                         /* We now know everything we need to configure the material */
                         ral_texture_view                   shading_factor_texture_view = nullptr;
-                        const ral_texture_view_create_info tv_create_info              = ral_texture_view_get_create_info_from_texture(shading_factor_texture);
+                        const ral_texture_view_create_info tv_create_info              = ral_texture_view_create_info_from_ral_texture(shading_factor_texture);
 
                         ral_context_create_texture_views(context,
                                                          1, /* n_texture_views */

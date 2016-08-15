@@ -140,9 +140,9 @@ typedef struct _ral_present_job
 
 
 /** Please see header for spec */
-PUBLIC bool ral_present_job_add_task(ral_present_job      job,
-                                     ral_present_task     task,
-                                     ral_present_task_id* out_task_id_ptr)
+PUBLIC EMERALD_API bool ral_present_job_add_task(ral_present_job      job,
+                                                 ral_present_task     task,
+                                                 ral_present_task_id* out_task_id_ptr)
 {
     _ral_present_job*      job_ptr           = reinterpret_cast<_ral_present_job*>(job);
     system_dag_node        new_task_dag_node = nullptr;
@@ -199,7 +199,7 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC bool ral_present_job_connect_tasks(ral_present_job                job,
+PUBLIC EMERALD_API bool ral_present_job_connect_tasks(ral_present_job                job,
                                           ral_present_task_id            src_task_id,
                                           uint32_t                       n_src_task_output,
                                           ral_present_task_id            dst_task_id,
@@ -301,7 +301,7 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC ral_present_job ral_present_job_create()
+PUBLIC EMERALD_API ral_present_job ral_present_job_create()
 {
     _ral_present_job* new_job_ptr = nullptr;
 
@@ -317,9 +317,9 @@ PUBLIC ral_present_job ral_present_job_create()
 }
 
 /** Please see header for spec */
-PUBLIC bool ral_present_job_get_connection_id_at_index(ral_present_job                job,
-                                                       uint32_t                       n_connection,
-                                                       ral_present_job_connection_id* out_result_ptr)
+PUBLIC EMERALD_API bool ral_present_job_get_connection_id_at_index(ral_present_job                job,
+                                                                   uint32_t                       n_connection,
+                                                                   ral_present_job_connection_id* out_result_ptr)
 {
     _ral_present_job* job_ptr               = reinterpret_cast<_ral_present_job*>(job);
     uint32_t          n_connections_defined = 0;
@@ -356,10 +356,10 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC bool ral_present_job_get_connection_property(ral_present_job                     job,
-                                                    ral_present_job_connection_id       connection_id,
-                                                    ral_present_job_connection_property property,
-                                                    void*                               out_result_ptr)
+PUBLIC EMERALD_API bool ral_present_job_get_connection_property(ral_present_job                     job,
+                                                                ral_present_job_connection_id       connection_id,
+                                                                ral_present_job_connection_property property,
+                                                                void*                               out_result_ptr)
 {
     _ral_present_job_connection* connection_ptr = nullptr;
     _ral_present_job*            job_ptr        = reinterpret_cast<_ral_present_job*>(job);
@@ -430,9 +430,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void ral_present_job_get_property(ral_present_job          job,
-                                         ral_present_job_property property,
-                                         void*                    out_result_ptr)
+PUBLIC EMERALD_API void ral_present_job_get_property(ral_present_job          job,
+                                                     ral_present_job_property property,
+                                                     void*                    out_result_ptr)
 {
     _ral_present_job* job_ptr = reinterpret_cast<_ral_present_job*>(job);
 
@@ -513,9 +513,9 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC bool ral_present_job_get_task_at_index(ral_present_job   job,
-                                              uint32_t          index,
-                                              ral_present_task* out_task_ptr)
+PUBLIC EMERALD_API bool ral_present_job_get_task_at_index(ral_present_job   job,
+                                                          uint32_t          index,
+                                                          ral_present_task* out_task_ptr)
 {
     _ral_present_job* job_ptr = reinterpret_cast<_ral_present_job*>(job);
     bool              result;
@@ -529,9 +529,9 @@ PUBLIC bool ral_present_job_get_task_at_index(ral_present_job   job,
 }
 
 /** Please see header for spec */
-PUBLIC bool ral_present_job_get_task_with_id(ral_present_job     present_job,
-                                             ral_present_task_id task_id,
-                                             ral_present_task*   out_result_task_ptr)
+PUBLIC EMERALD_API bool ral_present_job_get_task_with_id(ral_present_job     present_job,
+                                                         ral_present_task_id task_id,
+                                                         ral_present_task*   out_result_task_ptr)
 {
     _ral_present_job* job_ptr = reinterpret_cast<_ral_present_job*>(present_job);
     bool              result;
@@ -544,16 +544,16 @@ PUBLIC bool ral_present_job_get_task_with_id(ral_present_job     present_job,
 }
 
 /** Please see header for spec */
-PUBLIC void ral_present_job_release(ral_present_job job)
+PUBLIC EMERALD_API void ral_present_job_release(ral_present_job job)
 {
     delete reinterpret_cast<_ral_present_job*>(job);
 }
 
 /** Please see header for spec */
-PUBLIC bool ral_present_job_set_presentable_output(ral_present_job     job,
-                                                   ral_present_task_id task_id,
-                                                   bool                is_input_io,
-                                                   uint32_t            n_io)
+PUBLIC EMERALD_API bool ral_present_job_set_presentable_output(ral_present_job     job,
+                                                               ral_present_task_id task_id,
+                                                               bool                is_input_io,
+                                                               uint32_t            n_io)
 {
     _ral_present_job*              job_ptr          = reinterpret_cast<_ral_present_job*>(job);
     bool                           result           = false;

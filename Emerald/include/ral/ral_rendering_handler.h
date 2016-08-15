@@ -78,8 +78,6 @@ typedef enum
     /* settable, PFNRALRENDERINGHANDLERRENDERINGCALLBACK.
      *
      * Rendering call-back to use when play-back is in progress.
-     *
-     * TODO: To be replaced with "submit frame jobs" callback.
      */
     RAL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
 

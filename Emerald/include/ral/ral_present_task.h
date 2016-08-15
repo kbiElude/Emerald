@@ -188,15 +188,15 @@ typedef enum
 } ral_present_task_type;
 
 /** TODO */
-PUBLIC ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
-                                                    const ral_present_task_cpu_create_info* create_info_ptr);
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
+                                                                const ral_present_task_cpu_create_info* create_info_ptr);
 
 /** TODO
  *
  *  Specified ral_present_tasks are retained.
  */
-PUBLIC ral_present_task ral_present_task_create_group(system_hashed_ansi_string                 name,
-                                                      const ral_present_task_group_create_info* create_info_ptr);
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_group(system_hashed_ansi_string                 name,
+                                                                  const ral_present_task_group_create_info* create_info_ptr);
 
 /** Wraps a RAL command buffer inside a RAL present task. The command buffer is processed
  *  and information about read & modified RAL objects is extracted & cached.
@@ -204,36 +204,36 @@ PUBLIC ral_present_task ral_present_task_create_group(system_hashed_ansi_string 
  *  NOTE: Support for resettable command buffers is TODO.
  *
  ***/
-PUBLIC ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
-                                                    const ral_present_task_gpu_create_info* create_info_ptr);
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
+                                                                const ral_present_task_gpu_create_info* create_info_ptr);
 
 /** TODO
  *
  *  NOTE: Only valid for group present tasks.
  **/
-PUBLIC bool ral_present_task_get_io_mapping_property(ral_present_task                     task,
-                                                     ral_present_task_io_type             io_type,
-                                                     uint32_t                             n_io_mapping,
-                                                     ral_present_task_io_mapping_property property,
-                                                     void**                               out_result_ptr);
+PUBLIC EMERALD_API bool ral_present_task_get_io_mapping_property(ral_present_task                     task,
+                                                                 ral_present_task_io_type             io_type,
+                                                                 uint32_t                             n_io_mapping,
+                                                                 ral_present_task_io_mapping_property property,
+                                                                 void**                               out_result_ptr);
 
 /** TODO
  *
  *  NOTE: Group tasks do not have inputs & outputs defined! You need to query individual mappings instead.
  **/
-PUBLIC bool ral_present_task_get_io_property(ral_present_task             task,
-                                             ral_present_task_io_type     io_type,
-                                             uint32_t                     n_io,
-                                             ral_present_task_io_property property,
-                                             void**                       out_result_ptr);
+PUBLIC EMERALD_API bool ral_present_task_get_io_property(ral_present_task             task,
+                                                         ral_present_task_io_type     io_type,
+                                                         uint32_t                     n_io,
+                                                         ral_present_task_io_property property,
+                                                         void**                       out_result_ptr);
 
 /** TODO */
-PUBLIC void ral_present_task_get_property(ral_present_task          task,
-                                          ral_present_task_property property,
-                                          void*                     out_result_ptr);
+PUBLIC EMERALD_API void ral_present_task_get_property(ral_present_task          task,
+                                                      ral_present_task_property property,
+                                                      void*                     out_result_ptr);
 
 /** TODO */
-PUBLIC void ral_present_task_release(ral_present_task task);
+PUBLIC EMERALD_API void ral_present_task_release(ral_present_task task);
 
 /** TODO */
 PUBLIC void ral_present_task_retain(ral_present_task task);
