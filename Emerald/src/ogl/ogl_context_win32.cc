@@ -142,6 +142,9 @@ PUBLIC void ogl_context_win32_bind_to_current_thread(ogl_context_win32 context_w
 
     if (win32_ptr != nullptr)
     {
+        ASSERT_DEBUG_SYNC(win32_ptr->wgl_rendering_context != nullptr,
+                          "WGL rendering context is null");
+
         ::wglMakeCurrent(win32_ptr->device_context_handle,
                          win32_ptr->wgl_rendering_context);
     }
@@ -424,6 +427,8 @@ PUBLIC void ogl_context_win32_init(ogl_context                     context,
 
         goto end_error;
     }
+
+    ogl_context_bind_to_current_thread(new_win32_ptr->context);
 
     /* Initialize WGL extensions */
     _ogl_context_win32_initialize_wgl_extensions(new_win32_ptr);

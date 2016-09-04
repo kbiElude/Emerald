@@ -51,10 +51,9 @@ typedef struct _ral_program_metadata_block
         name                             = in_name;
         size                             = in_size;
         type                             = in_type;
+        variable_vector_by_class_hashmap = system_hash64map_create       (sizeof(system_resizable_vector) );
         variables                        = system_resizable_vector_create(4 /* capacity */);
         variables_by_name_hashmap        = system_hash64map_create       (sizeof(ral_program_variable*) );
-        variable_vector_by_class_hashmap = system_hash64map_create       (sizeof(system_resizable_vector) );
-        variables_by_name_hashmap        = nullptr;
         variables_by_offset_hashmap      = nullptr;
 
         if (system_hashed_ansi_string_get_length(in_name) > 0)

@@ -133,7 +133,7 @@ PUBLIC EMERALD_API system_dag_connection system_dag_add_connection(system_dag   
                                                                    system_dag_node src,
                                                                    system_dag_node dst)
 {
-    _system_dag* dag_ptr = (_system_dag*) dag;
+    _system_dag* dag_ptr = reinterpret_cast<_system_dag*>(dag);
 
     /* Create new descriptor */
     _system_dag_connection* new_connection = new (std::nothrow) _system_dag_connection;
@@ -162,7 +162,7 @@ end:
 PUBLIC EMERALD_API system_dag_node system_dag_add_node(system_dag            dag,
                                                        system_dag_node_value value)
 {
-    _system_dag* dag_ptr = (_system_dag*) dag;
+    _system_dag* dag_ptr = reinterpret_cast<_system_dag*>(dag);
 
     /* Create new descriptor */
     _system_dag_node* new_node = new (std::nothrow) _system_dag_node;
@@ -219,7 +219,7 @@ PUBLIC EMERALD_API void system_dag_delete_connection(system_dag            dag,
                                                      system_dag_connection connection)
 {
     size_t       connection_index = -1;
-    _system_dag* dag_ptr          = (_system_dag*) dag;
+    _system_dag* dag_ptr          = reinterpret_cast<_system_dag*>(dag);
 
     /* Sanity checks */
     if (connection == nullptr)
@@ -252,7 +252,7 @@ PUBLIC EMERALD_API void system_dag_delete_connection(system_dag            dag,
     system_resizable_vector_delete_element_at(dag_ptr->connections,
                                               connection_index);
 
-    delete (_system_dag_connection*) connection;
+    delete reinterpret_cast<_system_dag_connection*>(connection);
     connection = nullptr;
 
     dag_ptr->dirty = true;
@@ -267,7 +267,7 @@ PUBLIC EMERALD_API bool system_dag_delete_connections(system_dag      dag,
                                                       system_dag_node dst)
 {
     _system_dag_connection* connection_ptr        = nullptr;
-    _system_dag*            dag_ptr               = (_system_dag*) dag;
+    _system_dag*            dag_ptr               = reinterpret_cast<_system_dag*>(dag);
     uint32_t                n_connections_defined = 0;
     bool                    result                = false;
 
@@ -341,7 +341,7 @@ PUBLIC EMERALD_API bool system_dag_get_connections(system_dag             dag,
                                                    uint32_t*              out_opt_n_connections_ptr,
                                                    system_dag_connection* out_opt_connections_ptr)
 {
-    _system_dag* dag_ptr             = (_system_dag*) dag;
+    _system_dag* dag_ptr             = reinterpret_cast<_system_dag*>(dag);
     uint32_t     n_connections       = 0;
     uint32_t     n_found_connections = 0;
     bool         result              = false;
@@ -410,7 +410,7 @@ end:
 PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(system_dag              dag,
                                                                         system_resizable_vector result)
 {
-    _system_dag* dag_ptr        = (_system_dag*) dag;
+    _system_dag* dag_ptr        = reinterpret_cast<_system_dag*>(dag);
     unsigned int n_result_nodes = 0;
     bool         result_bool    = false;
 
@@ -441,7 +441,7 @@ PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(system_d
                                                    n_result_node,
                                                   &node) )
         {
-            _system_dag_node* node_ptr = (_system_dag_node*) node;
+            _system_dag_node* node_ptr = reinterpret_cast<_system_dag_node*>(node);
 
             system_resizable_vector_push(result,
                                          node_ptr->value);
@@ -468,7 +468,7 @@ PUBLIC EMERALD_API bool system_dag_is_connection_defined(system_dag      dag,
                                                          system_dag_node src,
                                                          system_dag_node dst)
 {
-    _system_dag* dag_ptr       = (_system_dag*) dag;
+    _system_dag* dag_ptr       = reinterpret_cast<_system_dag*>(dag);
     uint32_t     n_connections = 0;
     bool         result        = false;
 
@@ -506,7 +506,7 @@ PUBLIC EMERALD_API bool system_dag_is_dirty(system_dag dag)
 /** TODO */
 PUBLIC EMERALD_API void system_dag_release(system_dag dag)
 {
-    _system_dag* dag_ptr = (_system_dag*) dag;
+    _system_dag* dag_ptr = reinterpret_cast<_system_dag*>(dag);
 
     if (dag_ptr->connections != nullptr)
     {
@@ -558,7 +558,7 @@ PUBLIC EMERALD_API void system_dag_release(system_dag dag)
 /** TODO */
 PUBLIC EMERALD_API void system_dag_reset_connections(system_dag dag)
 {
-    _system_dag*            dag_ptr        = (_system_dag*) dag;
+    _system_dag*            dag_ptr        = reinterpret_cast<_system_dag*>(dag);
     _system_dag_connection* connection_ptr = nullptr;
 
     while (!system_resizable_vector_pop(dag_ptr->connections,
@@ -574,7 +574,7 @@ PUBLIC EMERALD_API void system_dag_reset_connections(system_dag dag)
 PUBLIC EMERALD_API bool system_dag_solve(system_dag dag)
 {
     _system_dag_node* current_node_ptr = nullptr;
-    _system_dag*      dag_ptr          = (_system_dag*) dag;
+    _system_dag*      dag_ptr          = reinterpret_cast<_system_dag*>(dag);
     unsigned int      n_connections    = 0;
     unsigned int      n_nodes          = 0;
     bool              result           = false;
@@ -628,8 +628,8 @@ PUBLIC EMERALD_API bool system_dag_solve(system_dag dag)
                                                    n_connection,
                                                   &connection_ptr) )
         {
-            _system_dag_node* dst_node_ptr = (_system_dag_node*) connection_ptr->dst;
-            _system_dag_node* src_node_ptr = (_system_dag_node*) connection_ptr->src;
+            _system_dag_node* dst_node_ptr = reinterpret_cast<_system_dag_node*>(connection_ptr->dst);
+            _system_dag_node* src_node_ptr = reinterpret_cast<_system_dag_node*>(connection_ptr->src);
 
             system_resizable_vector_push(src_node_ptr->adjacent_nodes,
                                          dst_node_ptr);

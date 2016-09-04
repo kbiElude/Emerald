@@ -172,7 +172,7 @@ typedef struct _ral_present_task
             ral_context_delete_objects(context,
                                        RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                        1, /* n_objects */
-                                       reinterpret_cast<void* const*>(command_buffer) );
+                                       reinterpret_cast<void* const*>(&command_buffer) );
 
             command_buffer = nullptr;
         }
@@ -1182,7 +1182,7 @@ PUBLIC EMERALD_API void ral_present_task_get_property(ral_present_task          
                                                       ral_present_task_property property,
                                                       void*                     out_result_ptr)
 {
-    _ral_present_task* task_ptr = (_ral_present_task*) task;
+    _ral_present_task* task_ptr = reinterpret_cast<_ral_present_task*>(task);
 
     /* Sanity checks */
     if (task_ptr == nullptr)

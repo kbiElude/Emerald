@@ -123,42 +123,49 @@ PUBLIC EMERALD_API bool ral_utils_get_format_property(ral_format          format
     {
         case RAL_FORMAT_PROPERTY_FORMAT_TYPE:
         {
-            *(ral_format_type*) out_result_ptr = format_data[format].format_type;
+            *reinterpret_cast<ral_format_type*>(out_result_ptr) = format_data[format].format_type;
+
+            break;
+        }
+
+        case RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS:
+        {
+            *reinterpret_cast<bool*>(out_result_ptr) = format_data[format].has_color_data;
 
             break;
         }
 
         case RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS:
         {
-            *(bool*) out_result_ptr = format_data[format].has_depth_data;
+            *reinterpret_cast<bool*>(out_result_ptr) = format_data[format].has_depth_data;
 
             break;
         }
 
         case RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS:
         {
-            *(bool*) out_result_ptr = format_data[format].has_stencil_data;
+            *reinterpret_cast<bool*>(out_result_ptr) = format_data[format].has_stencil_data;
 
             break;
         }
 
         case RAL_FORMAT_PROPERTY_IS_COMPRESSED:
         {
-            *(bool*) out_result_ptr = format_data[format].is_compressed;
+            *reinterpret_cast<bool*>(out_result_ptr) = format_data[format].is_compressed;
 
             break;
         }
 
         case RAL_FORMAT_PROPERTY_N_COMPONENTS:
         {
-            *(uint32_t*) out_result_ptr = format_data[format].n_components;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = format_data[format].n_components;
 
             break;
         }
 
         case RAL_FORMAT_PROPERTY_NAME:
         {
-            *(const char**) out_result_ptr = format_data[format].name;
+            *reinterpret_cast<const char**>(out_result_ptr) = format_data[format].name;
 
             break;
         }
@@ -195,7 +202,7 @@ PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_class_property(r
     {
         case RAL_PROGRAM_VARIABLE_TYPE_CLASS_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = results[variable_type_class].name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[variable_type_class].name;
 
             break;
         }
@@ -324,14 +331,14 @@ PUBLIC EMERALD_API void ral_utils_get_ral_program_variable_type_property(ral_pro
     {
         case RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_CLASS:
         {
-            *(ral_program_variable_type_class*) out_result_ptr = results[variable_type].type_class;
+            *reinterpret_cast<ral_program_variable_type_class*>(out_result_ptr) = results[variable_type].type_class;
 
             break;
         }
 
         case RAL_PROGRAM_VARIABLE_TYPE_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = results[variable_type].name;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[variable_type].name;
 
             break;
         }
@@ -471,7 +478,7 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_type_property(ral_texture_type    
             ASSERT_DEBUG_SYNC(results[texture_type].image_layout_float_qualifier != nullptr,
                               "Image layout unavailable in glsl 450");
 
-            *(system_hashed_ansi_string*) out_result_ptr = results[texture_type].image_layout_float_qualifier;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[texture_type].image_layout_float_qualifier;
 
             break;
         }
@@ -481,7 +488,7 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_type_property(ral_texture_type    
             ASSERT_DEBUG_SYNC(results[texture_type].image_layout_sint_qualifier != nullptr,
                               "Image layout unavailable in glsl 450");
 
-            *(system_hashed_ansi_string*) out_result_ptr = results[texture_type].image_layout_sint_qualifier;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[texture_type].image_layout_sint_qualifier;
 
             break;
         }
@@ -491,7 +498,7 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_type_property(ral_texture_type    
             ASSERT_DEBUG_SYNC(results[texture_type].image_layout_uint_qualifier != nullptr,
                               "Image layout unavailable in glsl 450");
 
-            *(system_hashed_ansi_string*) out_result_ptr = results[texture_type].image_layout_uint_qualifier;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[texture_type].image_layout_uint_qualifier;
 
             break;
         }
@@ -501,7 +508,7 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_type_property(ral_texture_type    
             ASSERT_DEBUG_SYNC(results[texture_type].sampler_float != nullptr,
                               "Sampler type unavailable in glsl 450");
 
-            *(system_hashed_ansi_string*) out_result_ptr = results[texture_type].sampler_float;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[texture_type].sampler_float;
 
             break;
         }
@@ -511,7 +518,7 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_type_property(ral_texture_type    
             ASSERT_DEBUG_SYNC(results[texture_type].sampler_sint != nullptr,
                               "Sampler type unavailable in glsl 450");
 
-            *(system_hashed_ansi_string*) out_result_ptr = results[texture_type].sampler_sint;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[texture_type].sampler_sint;
 
             break;
         }
@@ -521,14 +528,14 @@ PUBLIC EMERALD_API bool ral_utils_get_texture_type_property(ral_texture_type    
             ASSERT_DEBUG_SYNC(results[texture_type].sampler_uint != nullptr,
                               "Sampler type unavailable in glsl 450");
 
-            *(system_hashed_ansi_string*) out_result_ptr = results[texture_type].sampler_uint;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = results[texture_type].sampler_uint;
 
             break;
         }
 
         case RAL_TEXTURE_TYPE_PROPERTY_N_DIMENSIONS:
         {
-            *(uint32_t*) out_result_ptr = results[texture_type].n_dimensions;
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = results[texture_type].n_dimensions;
 
             break;
         }

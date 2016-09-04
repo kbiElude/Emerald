@@ -1420,8 +1420,10 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
         command_buffer_create_info.is_resettable                           = false;
         command_buffer_create_info.is_transient                            = false;
 
-        command_buffer = ral_command_buffer_create(mesh_ptr->context,
-                                                  &command_buffer_create_info);
+        ral_context_create_command_buffers(mesh_ptr->context,
+                                           1, /* n_command_buffers */
+                                          &command_buffer_create_info,
+                                          &command_buffer);
 
         ral_command_buffer_start_recording(command_buffer);
         {

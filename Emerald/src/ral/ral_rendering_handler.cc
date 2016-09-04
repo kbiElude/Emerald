@@ -129,7 +129,7 @@ PRIVATE void _ral_rendering_handler_get_frame_properties(_ral_rendering_handler*
             int32_t     new_frame_time_msec;
 
             system_time_get_msec_for_time(frame_time,
-                                          (uint32_t*) &frame_time_msec);
+                                          reinterpret_cast<uint32_t*>(&frame_time_msec) );
 
             frame_index = frame_time_msec * handler_ptr->fps / 1000 /* ms in s */;
 
@@ -176,7 +176,7 @@ PRIVATE bool _ral_rendering_handler_key_down_callback(system_window window,
                                                       unsigned int  keycode,
                                                       void*         user_arg)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) user_arg;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(user_arg);
     bool                    result                = rendering_handler_ptr->runtime_time_adjustment_mode;
     const system_time       time_now              = system_time_now();
 
@@ -287,14 +287,14 @@ PRIVATE bool _ral_rendering_handler_key_down_callback(system_window window,
                     {
                         rendering_handler_ptr->runtime_time_adjustment = 0;
 
-                        ral_rendering_handler_play( (ral_rendering_handler) rendering_handler_ptr,
+                        ral_rendering_handler_play(reinterpret_cast<ral_rendering_handler>(rendering_handler_ptr),
                                                    rendering_handler_ptr->runtime_time_adjustment_paused_frame_time);
 
                         rendering_handler_ptr->runtime_time_adjustment_is_paused = false;
                     }
                     else
                     {
-                        ral_rendering_handler_stop( (ral_rendering_handler) rendering_handler_ptr);
+                        ral_rendering_handler_stop(reinterpret_cast<ral_rendering_handler>(rendering_handler_ptr) );
 
                         rendering_handler_ptr->runtime_time_adjustment_is_paused         = true;
                         rendering_handler_ptr->runtime_time_adjustment_paused_frame_time = rendering_handler_ptr->last_frame_time;
@@ -324,7 +324,7 @@ PRIVATE bool _ral_rendering_handler_key_up_callback(system_window window,
                                                     void*         user_arg)
 {
     /* Please see _ral_rendering_handler_key_down_callback() documentation for more details */
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) user_arg;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(user_arg);
     bool                    result                = rendering_handler_ptr->runtime_time_adjustment_mode;
     const system_time       time_now              = system_time_now();
 
@@ -488,10 +488,10 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                 snprintf(temp_buffer,
                          sizeof(temp_buffer),
                          "[%02d:%02d:%02d.%03d frame:%d]",
-                         (int) frame_time_hour,
-                         (int) frame_time_minute,
-                         (int) frame_time_second,
-                         (int) frame_time_msec,
+                         static_cast<int>(frame_time_hour),
+                         static_cast<int>(frame_time_minute),
+                         static_cast<int>(frame_time_second),
+                         static_cast<int>(frame_time_msec),
                          frame_index);
 
 #if 0
@@ -529,7 +529,7 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
              */
             {
                 const int rendering_area_width  = window_size[0];
-                const int rendering_area_height = (unsigned int) (float(rendering_area_width) / aspect_ratio);
+                const int rendering_area_height = static_cast<unsigned int>(float(rendering_area_width) / aspect_ratio);
 
                 rendering_area[0] = 0;
                 rendering_area[1] = (window_size[1] - rendering_area_height) / 2;
@@ -631,7 +631,7 @@ PRIVATE void _ral_rendering_handler_shutdown_request_callback_handler(uint32_t i
 /** TODO */
 PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) in_arg;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(in_arg);
 
     {
         rendering_handler_ptr->thread_id = system_threads_get_thread_id();
@@ -704,7 +704,7 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
 
         /* Let the back-end initialize as well. */
         rendering_handler_ptr->pfn_init_raBackend_rendering_handler_proc(rendering_handler_ptr->context,
-                                                                         (ral_rendering_handler) rendering_handler_ptr,
+                                                                         reinterpret_cast<ral_rendering_handler>(rendering_handler_ptr),
                                                                          rendering_handler_ptr->rendering_handler_backend);
 
         /* On with the loop */
@@ -768,7 +768,7 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
 /** TODO */
 PRIVATE void _ral_rendering_handler_release(void* in_arg)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) in_arg;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(in_arg);
 
     /* Release the timeline, if one was assigned. */
     if (rendering_handler_ptr->timeline != nullptr)
@@ -789,12 +789,12 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
 
         system_window_delete_callback_func(window,
                                            SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                           (void*) &_ral_rendering_handler_key_down_callback,
+                                           reinterpret_cast<void*>(&_ral_rendering_handler_key_down_callback),
                                            rendering_handler_ptr);
 
         system_window_delete_callback_func(window,
                                            SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                           (void*) &_ral_rendering_handler_key_up_callback,
+                                           reinterpret_cast<void*>(&_ral_rendering_handler_key_up_callback),
                                            rendering_handler_ptr);
 
         /* Release the context. Do NOT NULLify it yet, as the rendering thread we're looking after
@@ -867,7 +867,7 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
 PUBLIC bool ral_rendering_handler_bind_to_context(ral_rendering_handler rendering_handler,
                                                   ral_context           context)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
     bool                    result                = false;
 
     ASSERT_DEBUG_SYNC(rendering_handler_ptr->context == nullptr,
@@ -901,12 +901,12 @@ PUBLIC bool ral_rendering_handler_bind_to_context(ral_rendering_handler renderin
         if (!system_window_add_callback_func(context_window,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                             (void*) _ral_rendering_handler_key_down_callback,
+                                             reinterpret_cast<void*>(_ral_rendering_handler_key_down_callback),
                                              rendering_handler_ptr)                       ||
             !system_window_add_callback_func(context_window,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW,
                                              SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                             (void*) _ral_rendering_handler_key_up_callback,
+                                             reinterpret_cast<void*>(_ral_rendering_handler_key_up_callback),
                                              rendering_handler_ptr) )
         {
             ASSERT_DEBUG_SYNC(false,
@@ -1074,7 +1074,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
                              system_hashed_ansi_string_create("RAL rendering handler thread") );
     }
 
-    return (ral_rendering_handler) new_handler_ptr;
+    return reinterpret_cast<ral_rendering_handler>(new_handler_ptr);
 }
 
 /** Please see header for specification */
@@ -1125,62 +1125,69 @@ PUBLIC void ral_rendering_handler_get_property(ral_rendering_handler          re
                                                ral_rendering_handler_property property,
                                                void*                          out_result_ptr)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
 
     switch (property)
     {
         case RAL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO:
         {
-            *(float*) out_result_ptr = rendering_handler_ptr->aspect_ratio;
+            *reinterpret_cast<float*>(out_result_ptr) = rendering_handler_ptr->aspect_ratio;
+
+            break;
+        }
+
+        case RAL_RENDERING_HANDLER_PROPERTY_CONTEXT:
+        {
+            *reinterpret_cast<ral_context*>(out_result_ptr) = rendering_handler_ptr->context;
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_IN_PROGRESS_EVENT:
         {
-            *(system_event*) out_result_ptr = rendering_handler_ptr->playback_in_progress_event;
+            *reinterpret_cast<system_event*>(out_result_ptr) = rendering_handler_ptr->playback_in_progress_event;
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STOPPED_EVENT:
         {
-            *(system_event*) out_result_ptr = rendering_handler_ptr->playback_stopped_event;
+            *reinterpret_cast<system_event*>(out_result_ptr) = rendering_handler_ptr->playback_stopped_event;
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS:
         {
-            *(ral_rendering_handler_playback_status*) out_result_ptr = rendering_handler_ptr->playback_status;
+            *reinterpret_cast<ral_rendering_handler_playback_status*>(out_result_ptr) = rendering_handler_ptr->playback_status;
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_POLICY:
         {
-            *(ral_rendering_handler_policy*) out_result_ptr = rendering_handler_ptr->policy;
+            *reinterpret_cast<ral_rendering_handler_policy*>(out_result_ptr) = rendering_handler_ptr->policy;
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_RENDERING_HANDLER_BACKEND:
         {
-            *(void**) out_result_ptr = rendering_handler_ptr->rendering_handler_backend;
+            *reinterpret_cast<void**>(out_result_ptr) = rendering_handler_ptr->rendering_handler_backend;
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE:
         {
-            *(bool*) out_result_ptr = rendering_handler_ptr->runtime_time_adjustment_mode;
+            *reinterpret_cast<bool*>(out_result_ptr) = rendering_handler_ptr->runtime_time_adjustment_mode;
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_TIMELINE:
         {
-            *(demo_timeline*) out_result_ptr = rendering_handler_ptr->timeline;
+            *reinterpret_cast<demo_timeline*>(out_result_ptr) = rendering_handler_ptr->timeline;
 
             break;
         }
@@ -1196,7 +1203,7 @@ PUBLIC void ral_rendering_handler_get_property(ral_rendering_handler          re
 /** Please see header for specification */
 PUBLIC bool ral_rendering_handler_is_current_thread_rendering_thread(ral_rendering_handler rendering_handler)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
 
     return (system_threads_get_thread_id() == rendering_handler_ptr->thread_id);
 }
@@ -1206,7 +1213,7 @@ PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
                                        system_time           start_time)
 {
     unsigned int            pre_n_frames_rendered = 0;
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
     bool                    result                = false;
 
     ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != nullptr,
@@ -1351,13 +1358,13 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
                                                            ral_rendering_handler_property property,
                                                            const void*                    value)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
 
     switch (property)
     {
         case RAL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO:
         {
-            rendering_handler_ptr->aspect_ratio = *(float*) value;
+            rendering_handler_ptr->aspect_ratio = *reinterpret_cast<const float*>(value);
 
             ASSERT_DEBUG_SYNC(rendering_handler_ptr->aspect_ratio > 0.0f,
                               "Invalid aspect ratio value (%.4f) assigned.",
@@ -1373,7 +1380,7 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
 
             if (rendering_handler_ptr->pfn_rendering_callback == nullptr)
             {
-                rendering_handler_ptr->pfn_rendering_callback = *(PFNRALRENDERINGHANDLERRENDERINGCALLBACK*) value;
+                rendering_handler_ptr->pfn_rendering_callback = *reinterpret_cast<const PFNRALRENDERINGHANDLERRENDERINGCALLBACK*>(value);
             }
 
             break;
@@ -1384,27 +1391,27 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
             ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status != RAL_RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
                               "OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK_USER_ARGUMENT property set attempt while rendering play-back in progress");
 
-            rendering_handler_ptr->rendering_callback_user_arg = *(void**) value;
+            rendering_handler_ptr->rendering_callback_user_arg = *reinterpret_cast<void* const*>(value);
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_RUNTIME_TIME_ADJUSTMENT_MODE:
         {
-            rendering_handler_ptr->runtime_time_adjustment_mode = *(bool*) value;
+            rendering_handler_ptr->runtime_time_adjustment_mode = *reinterpret_cast<const bool*>(value);
 
             break;
         }
 
         case RAL_RENDERING_HANDLER_PROPERTY_TIMELINE:
         {
-            ASSERT_DEBUG_SYNC(rendering_handler_ptr->timeline == nullptr                ||
-                              rendering_handler_ptr->timeline == *(demo_timeline*) value,
+            ASSERT_DEBUG_SYNC(rendering_handler_ptr->timeline == nullptr                                        ||
+                              rendering_handler_ptr->timeline == *reinterpret_cast<const demo_timeline*>(value),
                               "Another timeline instance is already assigned to the rendering handler!");
 
-            if (rendering_handler_ptr->timeline != *(demo_timeline*) value)
+            if (rendering_handler_ptr->timeline != *reinterpret_cast<const demo_timeline*>(value) )
             {
-                rendering_handler_ptr->timeline = *(demo_timeline*) value;
+                rendering_handler_ptr->timeline = *reinterpret_cast<const demo_timeline*>(value);
 
                 demo_timeline_retain(rendering_handler_ptr->timeline);
             }
@@ -1423,7 +1430,7 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
 /** Please see header for specification */
 PUBLIC bool ral_rendering_handler_stop(ral_rendering_handler rendering_handler)
 {
-    _ral_rendering_handler* rendering_handler_ptr = (_ral_rendering_handler*) rendering_handler;
+    _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
     bool                    result                = false;
 
     ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != nullptr,

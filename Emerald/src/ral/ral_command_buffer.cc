@@ -574,6 +574,13 @@ PUBLIC EMERALD_API void ral_command_buffer_get_property(ral_command_buffer      
 
     switch (property)
     {
+        case RAL_COMMAND_BUFFER_PROPERTY_CALLBACK_MANAGER:
+        {
+            *reinterpret_cast<system_callback_manager*>(out_result_ptr) = command_buffer_ptr->callback_manager;
+
+            break;
+        }
+
         case RAL_COMMAND_BUFFER_PROPERTY_COMPATIBLE_QUEUES:
         {
             *reinterpret_cast<ral_queue_bits*>(out_result_ptr) = command_buffer_ptr->compatible_queues;

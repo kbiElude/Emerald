@@ -183,9 +183,12 @@ typedef struct _scene_renderer_uber_mesh_data_material
         command_buffer_create_info.is_resettable                           = true;
         command_buffer_create_info.is_transient                            = false;
 
+        ral_context_create_command_buffers(in_context,
+                                           1, /* n_command_buffers */
+                                           &command_buffer_create_info,
+                                           &command_buffer);
+
         color_rt                    = nullptr;
-        command_buffer              = ral_command_buffer_create(in_context,
-                                                               &command_buffer_create_info);
         depth_rt                    = nullptr;
         material                    = in_material;
         mesh_data_ptr               = in_mesh_data_ptr;
@@ -313,8 +316,10 @@ _scene_renderer_uber::_scene_renderer_uber(ral_context               in_context,
     preamble_cmd_buffer_create_info.is_resettable                           = true;
     preamble_cmd_buffer_create_info.is_transient                            = true;
 
-    preamble_command_buffer = ral_command_buffer_create(context,
-                                                       &preamble_cmd_buffer_create_info);
+    ral_context_create_command_buffers(context,
+                                       1, /* n_command_buffers */
+                                       &preamble_cmd_buffer_create_info,
+                                       &preamble_command_buffer);
 }
 
 /** TODO */

@@ -39,7 +39,6 @@ enum
 
 typedef struct _raGL_rendering_handler
 {
-    ral_context             context_ral;
     system_window           context_window;
     system_hash64map        dag_present_task_to_node_map;
     system_resizable_vector ordered_present_tasks;
@@ -47,8 +46,8 @@ typedef struct _raGL_rendering_handler
 
     ral_rendering_handler_custom_wait_event_handler* handlers;
 
-    ral_context  call_passthrough_context;
-    bool         call_passthrough_mode;
+    ogl_context call_passthrough_context;
+    bool        call_passthrough_mode;
 
     system_event bind_context_request_event;
     system_event bind_context_request_ack_event;
@@ -61,10 +60,10 @@ typedef struct _raGL_rendering_handler
     void*                                       callback_request_user_arg;
     PFNRAGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc;
 
-    bool                                    ral_callback_buffer_swap_needed;
-    system_critical_section                 ral_callback_cs;
-    PFNRALRENDERINGHANDLERRENDERINGCALLBACK ral_callback_pfn_callback_proc;
-    void*                                   ral_callback_user_arg;
+    bool                                             ral_callback_buffer_swap_needed;
+    system_critical_section                          ral_callback_cs;
+    volatile PFNRALRENDERINGHANDLERRENDERINGCALLBACK ral_callback_pfn_callback_proc;
+    volatile void*                                   ral_callback_user_arg;
 
     raGL_backend     backend;
     ral_backend_type backend_type;
@@ -73,7 +72,6 @@ typedef struct _raGL_rendering_handler
     bool             default_fb_has_stencil_attachment;
     bool             default_fb_id_set;
     GLuint           default_fb_raGL_id;
-    raGL_dep_tracker dep_tracker;
     bool             is_helper_context;
     bool             is_multisample_pf;
     bool             is_vsync_enabled;
@@ -160,9 +158,9 @@ static const uint32_t n_ref_handlers = sizeof(ref_handlers) / sizeof(ref_handler
 
 _raGL_rendering_handler::_raGL_rendering_handler(ral_rendering_handler in_rendering_handler_ral)
 {
-    context_ral           = nullptr;
-    ordered_present_tasks = system_resizable_vector_create(16); /* capacity */
-    rendering_handler_ral = in_rendering_handler_ral;
+    dag_present_task_to_node_map = system_hash64map_create(sizeof(system_dag_node) );
+    ordered_present_tasks        = system_resizable_vector_create(16); /* capacity */
+    rendering_handler_ral        = in_rendering_handler_ral;
 
     call_passthrough_context = nullptr;
     call_passthrough_mode    = false;
@@ -186,11 +184,11 @@ _raGL_rendering_handler::_raGL_rendering_handler(ral_rendering_handler in_render
     backend                           = nullptr;
     backend_type                      = RAL_BACKEND_TYPE_UNKNOWN;
     context_gl                        = nullptr;
+    context_window                    = nullptr;
     default_fb_has_depth_attachment   = false;
     default_fb_has_stencil_attachment = false;
     default_fb_id_set                 = false;
     default_fb_raGL_id                = -1;
-    dep_tracker                       = nullptr;
 
     pGLBindFramebuffer = nullptr;
     pGLBlitFramebuffer = nullptr;
@@ -208,7 +206,7 @@ _raGL_rendering_handler::_raGL_rendering_handler(ral_rendering_handler in_render
     memcpy(handlers,
            ref_handlers,
            n_ref_handlers * sizeof(ral_rendering_handler_custom_wait_event_handler) );
-    
+
     handlers[RAGL_RENDERING_HANDLER_RENDERING_THREAD_CALLBACK_REQUEST_ID].event = callback_request_event;
     handlers[RAGL_RENDERING_HANDLER_CONTEXT_SHARING_SETUP_REQUEST_ID].event     = unbind_context_request_event;
 }
@@ -339,27 +337,56 @@ end:
 }
 
 /** TODO */
+PRIVATE void _raGL_rendering_handler_ral_based_rendering_callback_handler_internal(ogl_context                             context,
+                                                                                   _raGL_rendering_handler*                rendering_handler_ptr,
+                                                                                   PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc,
+                                                                                   volatile void*                          callback_user_arg)
+{
+    ral_context     context_ral;
+    ral_present_job present_job;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
+                            &context_ral);
+
+    ASSERT_DEBUG_SYNC(context_ral != nullptr,
+                      "ogl_context uses a null RAL context");
+
+    raGL_backend_sync();
+
+    present_job = pfn_callback_proc(context_ral,
+                                    const_cast<void*>(callback_user_arg),
+                                    nullptr); /* frame_data_ptr */
+
+    if (present_job != nullptr)
+    {
+        raGL_rendering_handler_execute_present_job(reinterpret_cast<ral_rendering_handler>(rendering_handler_ptr),
+                                                   present_job);
+
+        ral_present_job_release(present_job);
+    }
+}
+
+/** TODO */
 PRIVATE void _raGL_rendering_handler_ral_based_rendering_callback_handler(ogl_context context,
                                                                           void*       rendering_handler)
 {
-    ral_present_job          present_job;
     _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler);
 
+    _raGL_rendering_handler_ral_based_rendering_callback_handler_internal(context,
+                                                                          rendering_handler_ptr,
+                                                                          rendering_handler_ptr->ral_callback_pfn_callback_proc,
+                                                                          rendering_handler_ptr->ral_callback_user_arg);
 
-    present_job = rendering_handler_ptr->ral_callback_pfn_callback_proc(rendering_handler_ptr->context_ral,
-                                                                        rendering_handler_ptr->ral_callback_user_arg,
-                                                                        nullptr); /* frame_data_ptr */
-
-    raGL_rendering_handler_execute_present_job(reinterpret_cast<ral_rendering_handler>(rendering_handler),
-                                               present_job);
-
-    ral_present_job_release(present_job);
+    rendering_handler_ptr->ral_callback_pfn_callback_proc = nullptr;
+    rendering_handler_ptr->ral_callback_user_arg          = nullptr;
 }
 
 /** TODO */
 PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_handler(uint32_t ignored,
                                                                                        void*    rendering_handler_raBackend)
 {
+    raGL_dep_tracker         dep_tracker           = nullptr;
     bool                     needs_buffer_swap     = true;
     _raGL_rendering_handler* rendering_handler_ptr = static_cast<_raGL_rendering_handler*>(rendering_handler_raBackend);
 
@@ -371,7 +398,11 @@ PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_h
      * are exclusive to back-end usage (CPU->GPU transfers, GL object creation & set-up, etc.), so this
      * should not hurt performance too much, but will keep us safe.
      */
-    raGL_dep_tracker_reset(rendering_handler_ptr->dep_tracker);
+    raGL_backend_get_private_property(rendering_handler_ptr->backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
+                                     &dep_tracker);
+
+    raGL_dep_tracker_reset(dep_tracker);
 
     rendering_handler_ptr->pGLMemoryBarrier (GL_ALL_BARRIER_BITS);
 
@@ -470,9 +501,14 @@ PUBLIC void raGL_rendering_handler_enumerate_custom_wait_event_handlers(void*   
 PUBLIC void raGL_rendering_handler_execute_present_job(void*           rendering_handler_raGL,
                                                        ral_present_job present_job)
 {
+    raGL_dep_tracker         dep_tracker             = nullptr;
     uint32_t                 n_ordered_present_tasks = 0;
     system_dag               present_job_dag         = nullptr;
     _raGL_rendering_handler* rendering_handler_ptr   = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler_raGL);
+
+    raGL_backend_get_private_property(rendering_handler_ptr->backend,
+                                      RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
+                                     &dep_tracker);
 
     /* Create a DAG from the present job. */
     present_job_dag = _raGL_rendering_handler_create_dag_from_present_job(rendering_handler_ptr,
@@ -524,7 +560,7 @@ PUBLIC void raGL_rendering_handler_execute_present_job(void*           rendering
                                        &task_cmd_buffer_raGL);
 
         raGL_command_buffer_execute(task_cmd_buffer_raGL,
-                                    rendering_handler_ptr->dep_tracker);
+                                    dep_tracker);
 
         ral_present_task_release(task);
     }
@@ -565,23 +601,30 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
     ral_context_get_property (context_ral,
                               RAL_CONTEXT_PROPERTY_BACKEND,
                              &rendering_handler_ptr->backend);
-    raGL_backend_get_property(rendering_handler_ptr->backend,
-                              RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                             &rendering_handler_ptr->context_gl);
 
-    raGL_backend_get_private_property(rendering_handler_ptr->backend,
-                                      RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
-                                     &rendering_handler_ptr->dep_tracker);
+    /* Spin until rendering context becomes available. It will be set up shortly in the same thread
+     * that created the window. */
+    while (rendering_handler_ptr->context_gl == nullptr)
+    {
+        raGL_backend_get_property(rendering_handler_ptr->backend,
+                                  RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                 &rendering_handler_ptr->context_gl);
+
+        #ifdef _WIN32
+        {
+            Sleep(0);
+        }
+        #else
+        {
+            sched_yield();
+        }
+        #endif
+    }
 
     ASSERT_DEBUG_SYNC(rendering_handler_ptr->context_gl != nullptr,
                       "raGL_context instance is NULL");
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->dep_tracker != nullptr,
-                      "NULL dep tracker retrieved.");
 
-    rendering_handler_ptr->context_ral = context_ral;
-
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context_gl != nullptr,
-                      "Active GL context is NULL");
+    ogl_context_wait_till_inited(rendering_handler_ptr->context_gl);
 
     ogl_context_get_property(rendering_handler_ptr->context_gl,
                              OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
@@ -617,6 +660,8 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
     rendering_handler_ptr->default_fb_has_depth_attachment   = (context_window_n_depth_bits   >  0);
     rendering_handler_ptr->default_fb_has_stencil_attachment = (context_window_n_stencil_bits >  0);
     rendering_handler_ptr->is_multisample_pf                 = (context_window_n_samples      >  1);
+
+    ogl_context_bind_to_current_thread(rendering_handler_ptr->context_gl);
 
     if (rendering_handler_ptr->backend_type == RAL_BACKEND_TYPE_ES)
     {
@@ -659,8 +704,6 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
         rendering_handler_ptr->pGLScissor         = entrypoints_ptr->pGLScissor;
         rendering_handler_ptr->pGLViewport        = entrypoints_ptr->pGLViewport;
     }
-
-    ogl_context_bind_to_current_thread(rendering_handler_ptr->context_gl);
 }
 
 /** TODO */
@@ -672,6 +715,8 @@ PUBLIC void raGL_rendering_handler_lock_bound_context(raGL_rendering_handler ren
     {
         system_event_set        (rendering_handler_ptr->unbind_context_request_event);
         system_event_wait_single(rendering_handler_ptr->unbind_context_request_ack_event);
+
+        ogl_context_bind_to_current_thread(rendering_handler_ptr->context_gl);
     }
 }
 
@@ -812,26 +857,22 @@ PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(vo
                                                                               bool                                    present_after_executed,
                                                                               ral_rendering_handler_execution_mode    execution_mode)
 {
-    _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler_backend);
+    bool                     dispatch_to_rendering_thread = false;
+    _raGL_rendering_handler* rendering_handler_ptr        = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler_backend);
     bool                     result;
 
-    system_critical_section_enter(rendering_handler_ptr->ral_callback_cs);
+
+    dispatch_to_rendering_thread = !(ral_rendering_handler_is_current_thread_rendering_thread(rendering_handler_ptr->rendering_handler_ral) ||
+                                     rendering_handler_ptr->call_passthrough_mode);
+
+    if (dispatch_to_rendering_thread)
     {
-        rendering_handler_ptr->ral_callback_buffer_swap_needed = present_after_executed;
-        rendering_handler_ptr->ral_callback_pfn_callback_proc  = pfn_callback_proc;
-        rendering_handler_ptr->ral_callback_user_arg           = user_arg;
-
-        if (ral_rendering_handler_is_current_thread_rendering_thread(rendering_handler_ptr->rendering_handler_ral) ||
-            rendering_handler_ptr->call_passthrough_mode)
-        {
-            _raGL_rendering_handler_ral_based_rendering_callback_handler(rendering_handler_ptr->context_gl,
-                                                                         user_arg);
-
-            result = true;
-        }
-        else
+        system_critical_section_enter(rendering_handler_ptr->ral_callback_cs);
         {
             bool should_continue = false;
+
+            rendering_handler_ptr->ral_callback_pfn_callback_proc = pfn_callback_proc;
+            rendering_handler_ptr->ral_callback_user_arg          = user_arg;
 
             if (execution_mode != RAL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED)
             {
@@ -846,7 +887,13 @@ PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(vo
 
             if (should_continue)
             {
-                rendering_handler_ptr->callback_request_user_arg = user_arg;
+                while (rendering_handler_ptr->callback_request_user_arg != nullptr ||
+                       rendering_handler_ptr->pfn_callback_proc         != nullptr)
+                {
+                    /* Spin until we can cache a new call-back request */
+                }
+
+                rendering_handler_ptr->callback_request_user_arg = rendering_handler_ptr;
                 rendering_handler_ptr->pfn_callback_proc         = _raGL_rendering_handler_ral_based_rendering_callback_handler;
 
                 system_event_set(rendering_handler_ptr->callback_request_event);
@@ -861,11 +908,36 @@ PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(vo
 
             result = should_continue;
         }
-
-        rendering_handler_ptr->ral_callback_pfn_callback_proc = nullptr;
-        rendering_handler_ptr->ral_callback_user_arg          = nullptr;
+        system_critical_section_leave(rendering_handler_ptr->ral_callback_cs);
     }
-    system_critical_section_leave(rendering_handler_ptr->ral_callback_cs);
+    else
+    {
+        volatile void*                          cached_callback_user_arg = nullptr;
+        ogl_context                             cached_context           = nullptr;
+        PFNRALRENDERINGHANDLERRENDERINGCALLBACK cached_pfn_callback_proc = nullptr;
+
+        cached_callback_user_arg = user_arg;
+        cached_pfn_callback_proc = pfn_callback_proc;
+
+        if (rendering_handler_ptr->call_passthrough_mode)
+        {
+            cached_context = rendering_handler_ptr->call_passthrough_context;
+
+            ASSERT_DEBUG_SYNC(cached_context != nullptr,
+                              "No ogl_context assigned to RAL context");
+        }
+        else
+        {
+            cached_context = rendering_handler_ptr->context_gl;
+        }
+
+        _raGL_rendering_handler_ral_based_rendering_callback_handler_internal(cached_context,
+                                                                              rendering_handler_ptr,
+                                                                              cached_pfn_callback_proc,
+                                                                              cached_callback_user_arg);
+
+        result = true;
+    }
 
     return result;
 }
@@ -881,14 +953,19 @@ PUBLIC void raGL_rendering_handler_set_property(raGL_rendering_handler          
     {
         case RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_CONTEXT:
         {
-            rendering_handler_ptr->call_passthrough_context = *reinterpret_cast<const ral_context*>(value);
+            rendering_handler_ptr->call_passthrough_context = *reinterpret_cast<const ogl_context*>(value);
 
             break;
         }
 
         case RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_MODE:
         {
-            rendering_handler_ptr->call_passthrough_mode = *reinterpret_cast<const bool*>(value);
+            const bool new_status = *reinterpret_cast<const bool*>(value);
+
+            rendering_handler_ptr->call_passthrough_mode = new_status;
+
+            ogl_context_set_passthrough_context(new_status ? rendering_handler_ptr->context_gl
+                                                           : nullptr);
 
             break;
         }
@@ -909,6 +986,8 @@ PUBLIC void raGL_rendering_handler_unlock_bound_context(raGL_rendering_handler r
 
     if (!ral_rendering_handler_is_current_thread_rendering_thread(rendering_handler_ptr->rendering_handler_ral) )
     {
+        ogl_context_unbind_from_current_thread(rendering_handler_ptr->context_gl);
+
         system_event_set        (rendering_handler_ptr->bind_context_request_event);
         system_event_wait_single(rendering_handler_ptr->bind_context_request_ack_event);
     }

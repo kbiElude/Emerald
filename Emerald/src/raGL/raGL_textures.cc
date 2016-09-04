@@ -379,6 +379,7 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
         {
             /* Nope. Need to alloc it now. */
             _raGL_textures_alloc_texture_rendering_thread_callback_arg callback_arg;
+            ogl_context                                                context_gl    = textures_ptr->context;
             ral_context                                                context_ral   = nullptr;
             ral_rendering_handler                                      context_rh    = nullptr;
 
@@ -386,7 +387,7 @@ PUBLIC raGL_texture raGL_textures_get_texture_from_pool(raGL_textures textures,
             callback_arg.texture_ral    = texture_ral;
             callback_arg.textures_ptr   = textures_ptr;
 
-            ogl_context_get_property(textures_ptr->context,
+            ogl_context_get_property(context_gl,
                                      OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
                                     &context_ral);
             ral_context_get_property(context_ral,

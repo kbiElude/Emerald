@@ -763,8 +763,10 @@ PUBLIC EMERALD_API ral_present_task postprocessing_motion_blur_get_present_task(
         dispatch_command_buffer_create_info.is_resettable                           = true;
         dispatch_command_buffer_create_info.is_transient                            = false;
 
-        motion_blur_ptr->cached_command_buffer = ral_command_buffer_create(motion_blur_ptr->context,
-                                                                          &dispatch_command_buffer_create_info);
+        ral_context_create_command_buffers(motion_blur_ptr->context,
+                                           1, /* n_command_buffers */
+                                           &dispatch_command_buffer_create_info,
+                                           &motion_blur_ptr->cached_command_buffer);
     }
 
     dispatch_command_buffer = motion_blur_ptr->cached_command_buffer;

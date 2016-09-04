@@ -667,8 +667,10 @@ PUBLIC ral_present_task ui_button_get_present_task(void*            internal_ins
             draw_command_buffer_create_info.is_resettable                           = true;
             draw_command_buffer_create_info.is_transient                            = false;
 
-            button_ptr->cached_command_buffer = ral_command_buffer_create(button_ptr->context,
-                                                                         &draw_command_buffer_create_info);
+            ral_context_create_command_buffers(button_ptr->context,
+                                               1, /* n_command_buffers */
+                                               &draw_command_buffer_create_info,
+                                               &button_ptr->cached_command_buffer);
         }
 
         draw_command_buffer = button_ptr->cached_command_buffer;

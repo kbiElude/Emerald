@@ -476,6 +476,11 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program           pro
         variable_raGL_ptr->name = system_hashed_ansi_string_create(final_variable_name);
     }
 
+    if (variable_ral_ptr != nullptr)
+    {
+        variable_ral_ptr->name = system_hashed_ansi_string_create(final_variable_name);
+    }
+
     if (!is_temp_variable_defined)
     {
         delete [] temp_variable_name_storage;
@@ -932,7 +937,7 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                                              &n_output_variables);
         program_ptr->pGLGetProgramInterfaceiv(program_ptr->id,
                                               GL_PROGRAM_OUTPUT,
-                                              GL_NAME_LENGTH,
+                                              GL_MAX_NAME_LENGTH,
                                              &output_variable_max_length);
 
         /* Allocate temporary name buffers */
@@ -1116,7 +1121,7 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                 {
                     new_uniform_raGL_ptr->texture_unit = n_texture_units_assigned++;
 
-                    ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->image_unit < static_cast<uint32_t>(limits_ptr->max_combined_texture_image_units),
+                    ASSERT_DEBUG_SYNC(new_uniform_raGL_ptr->texture_unit < static_cast<uint32_t>(limits_ptr->max_combined_texture_image_units),
                                       "Too many samplers declared in the shader.");
 
                     program_ptr->pGLProgramUniform1i(program_ptr->id,

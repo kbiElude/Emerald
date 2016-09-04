@@ -399,8 +399,10 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
         cmd_buffer_create_info.is_resettable                           = true;
         cmd_buffer_create_info.is_transient                            = false;
 
-        poisson_ptr->cached_command_buffer = ral_command_buffer_create(poisson_ptr->context,
-                                                                      &cmd_buffer_create_info);
+        ral_context_create_command_buffers(poisson_ptr->context,
+                                           1, /* n_command_buffers */
+                                           &cmd_buffer_create_info,
+                                           &poisson_ptr->cached_command_buffer);
 
         ASSERT_DEBUG_SYNC(poisson_ptr->cached_command_buffer != nullptr,
                           "Could not create a command buffer");

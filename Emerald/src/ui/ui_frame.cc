@@ -290,8 +290,10 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
         cmd_buffer_create_info.is_resettable                           = true;
         cmd_buffer_create_info.is_transient                            = false;
 
-        frame_ptr->last_cached_command_buffer = ral_command_buffer_create(frame_ptr->context,
-                                                                         &cmd_buffer_create_info);
+        ral_context_create_command_buffers(frame_ptr->context,
+                                           1, /* n_command_buffers */
+                                          &cmd_buffer_create_info,
+                                          &frame_ptr->last_cached_command_buffer);
     }
 
     ral_command_buffer_start_recording(frame_ptr->last_cached_command_buffer);

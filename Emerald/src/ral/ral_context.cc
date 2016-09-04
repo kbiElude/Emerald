@@ -12,6 +12,7 @@
 #include "ral/ral_context.h"
 #include "ral/ral_gfx_state.h"
 #include "ral/ral_program.h"
+#include "ral/ral_rendering_handler.h"
 #include "ral/ral_sampler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
@@ -1394,11 +1395,15 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
     if (new_context_ptr != nullptr)
     {
         /* Instantiate the rendering back-end */
-        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+        ral_backend_type      backend_type      = RAL_BACKEND_TYPE_UNKNOWN;
+        ral_rendering_handler rendering_handler = nullptr;
 
         demo_window_get_property(window,
                                  DEMO_WINDOW_PROPERTY_BACKEND_TYPE,
                                 &backend_type);
+        demo_window_get_property(window,
+                                 DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                &rendering_handler);
 
         switch (backend_type)
         {
@@ -1430,6 +1435,9 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
         /* Initialize the context */
+        ral_rendering_handler_bind_to_context(rendering_handler,
+                                              reinterpret_cast<ral_context>(new_context_ptr) );
+
         _ral_context_init(new_context_ptr);
     }
 

@@ -1441,8 +1441,10 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
         draw_command_buffer_create_info.is_resettable                           = true;
         draw_command_buffer_create_info.is_transient                            = false;
 
-        dropdown_ptr->last_cached_command_buffer = ral_command_buffer_create(dropdown_ptr->context,
-                                                                            &draw_command_buffer_create_info);
+        ral_context_create_command_buffers(dropdown_ptr->context,
+                                           1, /* n_command_buffers */
+                                          &draw_command_buffer_create_info,
+                                          &dropdown_ptr->last_cached_command_buffer);
     }
 
     draw_command_buffer = dropdown_ptr->last_cached_command_buffer;
@@ -1674,8 +1676,10 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
         dummy_cmd_buffer_create_info.is_resettable                           = false;
         dummy_cmd_buffer_create_info.is_transient                            = false;
 
-        dropdown_ptr->last_cached_command_buffer_dummy = ral_command_buffer_create(dropdown_ptr->context,
-                                                                                  &dummy_cmd_buffer_create_info);
+        ral_context_create_command_buffers(dropdown_ptr->context,
+                                           1, /* n_command_buffers */
+                                          &dummy_cmd_buffer_create_info,
+                                          &dropdown_ptr->last_cached_command_buffer_dummy);
 
         ral_command_buffer_start_recording(dropdown_ptr->last_cached_command_buffer_dummy);
         ral_command_buffer_stop_recording (dropdown_ptr->last_cached_command_buffer_dummy);

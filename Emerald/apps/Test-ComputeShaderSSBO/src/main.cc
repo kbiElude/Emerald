@@ -232,11 +232,11 @@ void _init()
         bindings[1].storage_buffer_binding.offset = 0;
         bindings[1].storage_buffer_binding.size   = sizeof(uint32_t);
 
+        ral_command_buffer_record_set_program (_cmd_buffer_preamble,
+                                               _program);
         ral_command_buffer_record_set_bindings(_cmd_buffer_preamble,
                                                sizeof(bindings) / sizeof(bindings[0]),
                                                bindings);
-        ral_command_buffer_record_set_program (_cmd_buffer_preamble,
-                                               _program);
     }
     ral_command_buffer_stop_recording(_cmd_buffer_preamble);
 

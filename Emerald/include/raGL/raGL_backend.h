@@ -90,6 +90,11 @@ PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
                                            raGL_program* out_program_raGL_ptr);
 
 /** TODO */
+PUBLIC bool raGL_backend_get_renderbuffer_by_id(raGL_backend  backend,
+                                                GLuint        rb_id,
+                                                raGL_texture* out_texture_raGL_ptr);
+
+/** TODO */
 PUBLIC bool raGL_backend_get_sampler(raGL_backend  backend,
                                      ral_sampler   sampler_ral,
                                      raGL_sampler* out_sampler_raGL_ptr);
@@ -104,7 +109,12 @@ PUBLIC bool raGL_backend_get_texture(raGL_backend  backend,
                                      ral_texture   texture_ral,
                                      raGL_texture* out_texture_raGL_ptr);
 
-/** TODO */
+/** TODO
+ *
+ *  NOTE: Don't forget a raGL_texture can either hold a GL renderbuffer OR a GL texture!
+ *        This func should be used for GL textures ONLY (namespaces are disjoint for the
+ *        two in GL)
+ */
 PUBLIC bool raGL_backend_get_texture_by_id(raGL_backend  backend,
                                            GLuint        texture_id,
                                            raGL_texture* out_texture_raGL_ptr);

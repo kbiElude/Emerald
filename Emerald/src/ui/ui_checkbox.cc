@@ -641,8 +641,10 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
         draw_command_buffer_create_info.is_resettable                           = true;
         draw_command_buffer_create_info.is_transient                            = false;
 
-        checkbox_ptr->cached_command_buffer = ral_command_buffer_create(checkbox_ptr->context,
-                                                                       &draw_command_buffer_create_info);
+        ral_context_create_command_buffers(checkbox_ptr->context,
+                                           1, /* n_command_buffers */
+                                           &draw_command_buffer_create_info,
+                                           &checkbox_ptr->cached_command_buffer);
     }
 
     ral_command_buffer_start_recording(checkbox_ptr->cached_command_buffer);

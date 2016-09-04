@@ -670,8 +670,10 @@ PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            int
         command_buffer_create_info.is_resettable                           = true;
         command_buffer_create_info.is_transient                            = false;
 
-        texture_preview_ptr->last_cached_command_buffer = ral_command_buffer_create(texture_preview_ptr->context,
-                                                                                   &command_buffer_create_info);
+        ral_context_create_command_buffers(texture_preview_ptr->context,
+                                           1, /* n_command_buffers */
+                                          &command_buffer_create_info,
+                                          &texture_preview_ptr->last_cached_command_buffer);
     }
 
     ral_command_buffer_start_recording(texture_preview_ptr->last_cached_command_buffer);

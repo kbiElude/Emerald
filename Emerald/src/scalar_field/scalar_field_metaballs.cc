@@ -417,8 +417,10 @@ PRIVATE void _scalar_field_metaballs_init_present_tasks(_scalar_field_metaballs*
         command_buffer_create_info.is_resettable                           = false;
         command_buffer_create_info.is_transient                            = false;
 
-        command_buffer = ral_command_buffer_create(metaballs_ptr->context,
-                                                  &command_buffer_create_info);
+        ral_context_create_command_buffers(metaballs_ptr->context,
+                                           1, /* n_command_buffers */
+                                           &command_buffer_create_info,
+                                           &command_buffer);
 
         ral_command_buffer_start_recording(command_buffer);
         {

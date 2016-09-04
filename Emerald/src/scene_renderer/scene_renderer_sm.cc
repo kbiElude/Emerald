@@ -1276,8 +1276,10 @@ PRIVATE ral_command_buffer _scene_renderer_sm_start(_scene_renderer_sm*         
         ASSERT_DEBUG_SYNC(handler_ptr->current_command_buffer == nullptr,
                           "A command buffer is already being recorded");
 
-        handler_ptr->current_command_buffer = ral_command_buffer_create(handler_ptr->context,
-                                                                       &command_buffer_create_info);
+        ral_context_create_command_buffers(handler_ptr->context,
+                                           1, /* n_command_buffers */
+                                           &command_buffer_create_info,
+                                           &handler_ptr->current_command_buffer);
 
         ral_command_buffer_start_recording(handler_ptr->current_command_buffer);
 

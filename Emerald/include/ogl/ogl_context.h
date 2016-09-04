@@ -195,11 +195,11 @@ typedef void (*PFNINITCONTEXTAFTERCREATIONPROC)( ogl_context context);
 PUBLIC void ogl_context_bind_to_current_thread( ogl_context);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(system_hashed_ansi_string name,
-                                                                     ral_context               context,
-                                                                     raGL_backend              backend,
-                                                                     system_window             window,
-                                                                     ogl_context               parent_context);
+PUBLIC void ogl_context_create_from_system_window(system_hashed_ansi_string name,
+                                                  ral_context               context,
+                                                  raGL_backend              backend,
+                                                  system_window             window,
+                                                  ogl_context               parent_context);
 
 /** TODO
  *
@@ -257,6 +257,9 @@ PUBLIC bool ogl_context_is_extension_supported(ogl_context,
 /** TODO */
 PUBLIC bool ogl_context_release_managers(ogl_context);
 
+/** TODO */
+PUBLIC void ogl_context_set_passthrough_context(ogl_context passthrough_context);
+
 /** TODO.
  *
  *  This setter will NOT throw an assertion failure if @param property is not recognized.
@@ -270,5 +273,8 @@ PUBLIC void ogl_context_swap_buffers(ogl_context context);
 
 /** TODO */
 PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context);
+
+/** TODO */
+PUBLIC void ogl_context_wait_till_inited(ogl_context context);
 
 #endif /* OGL_CONTEXT_H */

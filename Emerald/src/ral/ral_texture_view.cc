@@ -155,8 +155,8 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
         goto end;
     }
 
-    if ( create_info_ptr->n_base_mip                            <  parent_texture_n_mips &&
-        (create_info_ptr->n_base_mip + create_info_ptr->n_mips) <= parent_texture_n_mips)
+    if (!(create_info_ptr->n_base_mip                            <  parent_texture_n_mips &&
+         (create_info_ptr->n_base_mip + create_info_ptr->n_mips) <= parent_texture_n_mips))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Parent texture contains %d mips, but the requested texture view is to hold <%d, %d) mipmaps.",

@@ -51,6 +51,9 @@ typedef enum
      * assigned to the renering handler instance. */
     RAL_RENDERING_HANDLER_PROPERTY_ASPECT_RATIO,
 
+    /* not settable, ral_context */
+    RAL_RENDERING_HANDLER_PROPERTY_CONTEXT,
+
     /* not settable, system_event.
      *
      * System event which remains set while rendering playback is in progress.

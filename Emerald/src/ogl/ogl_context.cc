@@ -75,6 +75,7 @@ typedef struct
 #endif
 
     ral_backend_type     backend_type;
+    system_event         inited_event;
     bool                 is_amd_driver;
     bool                 is_helper_context;
     bool                 is_intel_driver;
@@ -161,9 +162,11 @@ struct func_ptr_table_entry
 
 
 #ifdef _WIN32
-    __declspec(thread) ogl_context _current_context = nullptr;
+    __declspec(thread) ogl_context _current_context     = nullptr;
+    __declspec(thread) ogl_context _passthrough_context = nullptr;
 #else
-    __thread ogl_context _current_context = nullptr;
+    __thread ogl_context _current_context     = nullptr;
+    __thread ogl_context _passthrough_context = nullptr;
 #endif
 
 
@@ -185,8 +188,6 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback          (GLenum   
                                                                        const GLchar*             message,
                                                                        const void*               userParam);
 
-PRIVATE void _ogl_context_enumerate_msaa_samples_rendering_thread_callback      (ogl_context                  context,
-                                                                                 void*                        user_arg);
 PRIVATE bool _ogl_context_get_attachment_formats_for_system_pixel_format        (const system_pixel_format    pf,
                                                                                  ral_format*                  out_color_attachment_internalformat_ptr,
                                                                                  ral_format*                  out_depth_stencil_attachment_internalformat_ptr);
@@ -228,12 +229,12 @@ PRIVATE bool _ogl_context_sort_descending                                       
 
 
 /** TODO */
-PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_ansi_string name,
-                                                                  ral_context               context,
-                                                                  raGL_backend              backend,
-                                                                  system_window             window,
-                                                                  system_pixel_format       in_pfd,
-                                                                  ogl_context               parent_context)
+PRIVATE void _ogl_context_create_from_system_window_shared(system_hashed_ansi_string name,
+                                                           ral_context               context,
+                                                           raGL_backend              backend,
+                                                           system_window             window,
+                                                           system_pixel_format       in_pfd,
+                                                           ogl_context               parent_context)
 {
     /* Create the ogl_context instance. */
     _ogl_context*             new_context_ptr = new (std::nothrow) _ogl_context;
@@ -261,6 +262,7 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
     new_context_ptr->context                                = context;
     new_context_ptr->context_platform                       = nullptr;
     new_context_ptr->fbo                                    = nullptr;
+    new_context_ptr->inited_event                           = system_event_create(true); /* manual_reset */
     new_context_ptr->is_helper_context                      = system_hashed_ansi_string_contains(window_name,
                                                                                                  system_hashed_ansi_string_create("Helper") );
     new_context_ptr->msaa_enumeration_color_samples         = nullptr;
@@ -323,8 +325,6 @@ PRIVATE ogl_context _ogl_context_create_from_system_window_shared(system_hashed_
 
     new_context_ptr->pfn_init( (ogl_context) new_context_ptr,
                                _ogl_context_init_context_after_creation);
-
-    return (ogl_context) new_context_ptr;
 }
 
 /** TODO */
@@ -414,10 +414,8 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
         LOG_INFO("%s",
                  local_message);
 
-#if 0
         ASSERT_DEBUG_SYNC(type != GL_DEBUG_TYPE_ERROR_ARB,
                           "GL error detected");
-#endif
     }
 }
 
@@ -984,10 +982,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     }
     #endif
 
-    /* Bind the context to the running thread for a few seconds.. */
-    ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);
-    ogl_context_bind_to_current_thread    ( (ogl_context) context_ptr);
-
     /* OpenGL ES support is supposed to be low-level. For OpenGL, we use additional tools like
      * state caching to improve rendering efficiency.
      */
@@ -1018,14 +1012,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
 
         /* Retrieve GL context info */
         _ogl_context_retrieve_GL_info(context_ptr);
-
-        /* Initialize state caching mechanisms */
-        context_ptr->bo_bindings         = ogl_context_bo_bindings_create        ( (ogl_context) context_ptr);
-        context_ptr->sampler_bindings    = ogl_context_sampler_bindings_create   ( (ogl_context) context_ptr);
-        context_ptr->state_cache         = ogl_context_state_cache_create        ( (ogl_context) context_ptr);
-        context_ptr->texture_compression = ogl_context_texture_compression_create( (ogl_context) context_ptr);
-        context_ptr->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) context_ptr);
-        context_ptr->vaos                = ogl_context_vaos_create               ( (ogl_context) context_ptr);
 
         /* If GL_ARB_bufffer_storage is supported, initialize func pointers */
         if (ogl_context_is_extension_supported( (ogl_context) context_ptr,
@@ -1092,6 +1078,14 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
             context_ptr->entry_points_private.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         }
         #endif
+
+        /* Initialize state caching mechanisms */
+        context_ptr->bo_bindings         = ogl_context_bo_bindings_create        ( (ogl_context) context_ptr);
+        context_ptr->sampler_bindings    = ogl_context_sampler_bindings_create   ( (ogl_context) context_ptr);
+        context_ptr->state_cache         = ogl_context_state_cache_create        ( (ogl_context) context_ptr);
+        context_ptr->texture_compression = ogl_context_texture_compression_create( (ogl_context) context_ptr);
+        context_ptr->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) context_ptr);
+        context_ptr->vaos                = ogl_context_vaos_create               ( (ogl_context) context_ptr);
 
         /* Set up cache storage */
         ogl_context_bo_bindings_init        (context_ptr->bo_bindings,
@@ -1197,6 +1191,8 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
 
     /* Unbind the thread from the context. It is to be picked up by rendering thread */
     ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);
+
+    system_event_set(context_ptr->inited_event);
 }
 
 /** TODO */
@@ -1315,6 +1311,9 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
                                           RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
                                          &fbos);
 
+        ASSERT_DEBUG_SYNC(fbos != nullptr,
+                          "No raGL_framebuffers instance associated with raGL backend");
+
         if (format_color != RAL_FORMAT_UNKNOWN)
         {
             ral_texture_create_info color_to_create_info;
@@ -1389,7 +1388,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
 
             raGL_texture_get_property(depth_stencil_to_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                      (void**) &depth_stencil_to_is_rb);
+                                      reinterpret_cast<void**>(&depth_stencil_to_is_rb) );
 
             ASSERT_DEBUG_SYNC(depth_stencil_to_is_rb,
                               "Default FB's depth/stencil texture is not a RB");
@@ -1561,12 +1560,19 @@ PRIVATE void _ogl_context_release(void* ptr)
     ogl_context_release_managers( (ogl_context) ptr);
     _ogl_context_gl_info_deinit (&context_ptr->info);
 
-    /* Release the platform-specific bits */
+    /* Release various miscelleanous stuff */
     if (context_ptr->context_platform != nullptr)
     {
         context_ptr->pfn_deinit(context_ptr->context_platform);
 
         context_ptr->context_platform = nullptr;
+    }
+
+    if (context_ptr->inited_event != nullptr)
+    {
+        system_event_release(context_ptr->inited_event);
+
+        context_ptr->inited_event = nullptr;
     }
 }
 
@@ -3089,11 +3095,11 @@ PUBLIC void ogl_context_unbind_from_current_thread(ogl_context context)
  *
  *  @return A new ogl_context instance, if successful, or nullptr otherwise.
 */
-PUBLIC ogl_context ogl_context_create_from_system_window(system_hashed_ansi_string name,
-                                                         ral_context               context,
-                                                         raGL_backend              backend,
-                                                         system_window             window,
-                                                         ogl_context               parent_context)
+PUBLIC void ogl_context_create_from_system_window(system_hashed_ansi_string name,
+                                                  ral_context               context,
+                                                  raGL_backend              backend,
+                                                  system_window             window,
+                                                  ogl_context               parent_context)
 {
     system_pixel_format window_pf      = nullptr;
     system_pixel_format window_pf_copy = nullptr;
@@ -3105,12 +3111,12 @@ PUBLIC ogl_context ogl_context_create_from_system_window(system_hashed_ansi_stri
     window_pf_copy = system_pixel_format_create_copy(window_pf);
 
     /* The new context takes over the ownership of the duplicate pixel format object instance */
-    return _ogl_context_create_from_system_window_shared(name,
-                                                         context,
-                                                         backend,
-                                                         window,
-                                                         window_pf,
-                                                         parent_context);
+    _ogl_context_create_from_system_window_shared(name,
+                                                  context,
+                                                  backend,
+                                                  window,
+                                                  window_pf,
+                                                  parent_context);
 }
 
 /* Please see header for spec */
@@ -3229,7 +3235,7 @@ PUBLIC void ogl_context_enumerate_msaa_samples(ral_backend_type    backend_type,
         {
             /* Only store the matches */
             if (system_resizable_vector_find(depth_stencil_samples_vector,
-                                             (void*) root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]) != ITEM_NOT_FOUND)
+                                             reinterpret_cast<void*>(root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample])) != ITEM_NOT_FOUND)
             {
                 system_resizable_vector_push(result_vector,
                                              reinterpret_cast<void*>(root_context_gl_ptr->msaa_enumeration_color_samples[n_result_sample]));
@@ -3313,7 +3319,8 @@ end:
 /* Please see header for spec */
 PUBLIC ogl_context ogl_context_get_current_context()
 {
-    return  _current_context;
+    return  (_passthrough_context != nullptr) ? _passthrough_context
+                                              : _current_context;
 }
 
 /** Please see header for specification */
@@ -3471,8 +3478,6 @@ PUBLIC void ogl_context_get_property(const ogl_context    context,
 
         case OGL_CONTEXT_PROPERTY_IS_HELPER_CONTEXT:
         {
-            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->is_helper_context;
-
             break;
         }
 
@@ -3670,7 +3675,7 @@ PUBLIC bool ogl_context_is_extension_supported(ogl_context               context
                ++n_extension)
     {
         if (system_hashed_ansi_string_is_equal_to_raw_string(extension_name,
-                                                             (const char*) context_ptr->info.extensions[n_extension]) )
+                                                             reinterpret_cast<const char*>(context_ptr->info.extensions[n_extension])) )
         {
             result = true;
 
@@ -3694,6 +3699,17 @@ PUBLIC bool ogl_context_release_managers(ogl_context context)
     }
 
     return true;
+}
+
+/** Please see header for specification */
+PUBLIC void ogl_context_set_passthrough_context(ogl_context passthrough_context)
+{
+    ogl_context priv_functions_context = (passthrough_context != nullptr) ? passthrough_context
+                                                                          : _current_context;
+    _passthrough_context = passthrough_context;
+
+    ogl_context_wrappers_set_private_functions((priv_functions_context != nullptr) ? &reinterpret_cast<_ogl_context*>(priv_functions_context)->entry_points_private
+                                                                                   : nullptr);
 }
 
 /** Please see header for specification */
@@ -3743,4 +3759,12 @@ PUBLIC void ogl_context_swap_buffers(ogl_context context)
                       "Input argument is nullptr");
 
     context_ptr->pfn_swap_buffers(context_ptr->context_platform);
+}
+
+/** Please see header for specification */
+PUBLIC void ogl_context_wait_till_inited(ogl_context context)
+{
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
+
+    system_event_wait_single(context_ptr->inited_event);
 }

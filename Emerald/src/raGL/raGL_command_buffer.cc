@@ -921,7 +921,7 @@ typedef struct _raGL_command_buffer
     const ogl_context_gl_limits*                              limits_ptr;
 
 
-    explicit _raGL_command_buffer(ogl_context in_context)
+    void init(ogl_context in_context)
     {
         raGL_backend backend = nullptr;
 
@@ -3822,6 +3822,8 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
             /* Update internal bake state */
             bake_state.active_image_bindings[variable_ptr->image_unit] = parent_texture_raGL;
+
+            break;
         }
 
         default:
@@ -3876,6 +3878,8 @@ void _raGL_command_buffer::process_set_program_command(const ral_command_buffer_
 
     system_resizable_vector_push(commands,
                                  gl_command_ptr);
+
+    bake_state.active_program = program_raGL;
 }
 
 /** TODO */
@@ -4102,6 +4106,7 @@ PUBLIC raGL_command_buffer raGL_command_buffer_create(ral_command_buffer command
         goto end;
     }
 
+    new_command_buffer_ptr->init          (context);
     new_command_buffer_ptr->clear_commands();
 
     new_command_buffer_ptr->command_buffer_ral = command_buffer_ral;

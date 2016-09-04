@@ -557,8 +557,10 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
         command_buffer_create_info.is_resettable                           = true;
         command_buffer_create_info.is_transient                            = false;
 
-        scrollbar_ptr->last_cached_command_buffer = ral_command_buffer_create(scrollbar_ptr->context,
-                                                                             &command_buffer_create_info);
+        ral_context_create_command_buffers(scrollbar_ptr->context,
+                                           1, /* n_command_buffers */
+                                          &command_buffer_create_info,
+                                          &scrollbar_ptr->last_cached_command_buffer);
     }
 
     /* Record commands */

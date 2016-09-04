@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -350,7 +350,7 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
 /** TODO */
 PRIVATE void _system_window_thread_entrypoint(void* in_arg)
 {
-    _system_window* window_ptr = (_system_window*) in_arg;
+    _system_window* window_ptr = reinterpret_cast<_system_window*>(in_arg);
 
     /* Open the window */
     static bool is_first_window = true;
@@ -411,7 +411,7 @@ PUBLIC bool system_window_add_callback_func(system_window                       
 {
     _callback_descriptor* new_descriptor_ptr = new (std::nothrow) _callback_descriptor;
     bool                  result             = false;
-    _system_window*       window_ptr         = (_system_window*) window;
+    _system_window*       window_ptr         = reinterpret_cast<_system_window*>(window);
 
     if (new_descriptor_ptr != nullptr)
     {
@@ -633,7 +633,7 @@ PUBLIC bool system_window_add_callback_func(system_window                       
 /** Please see header for specification */
 PUBLIC bool system_window_close(system_window window)
 {
-    _system_window* window_ptr = (_system_window*) window;
+    _system_window* window_ptr = reinterpret_cast<_system_window*>(window);
 
     /* If there is a rendering handler and it is active, stop it before we continue */
     if (window_ptr->rendering_handler != nullptr)
@@ -955,7 +955,7 @@ PUBLIC bool system_window_delete_callback_func(system_window               windo
                                                void*                       user_arg)
 {
     bool            result     = false;
-    _system_window* window_ptr = (_system_window*) window_instance;
+    _system_window* window_ptr = reinterpret_cast<_system_window*>(window_instance);
 
     if (window_ptr != nullptr)
     {
@@ -1138,7 +1138,7 @@ PUBLIC void system_window_execute_callback_funcs(system_window               win
     system_resizable_vector callback_vector  = nullptr;
     unsigned int            n_callback_funcs = 0;
     bool                    needs_cursor_pos = false;
-    _system_window*         window_ptr       = (_system_window*) window;
+    _system_window*         window_ptr       = reinterpret_cast<_system_window*>(window);
 
     switch (func)
     {
@@ -1549,7 +1549,7 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
                                                    system_window_property property,
                                                    void*                  out_result_ptr)
 {
-    _system_window* window_ptr = (_system_window*) window;
+    _system_window* window_ptr = reinterpret_cast<_system_window*>(window);
 
     if (window_ptr->window_platform != nullptr)
     {
@@ -1568,113 +1568,113 @@ PUBLIC EMERALD_API void system_window_get_property(system_window          window
     {
         case SYSTEM_WINDOW_PROPERTY_AUDIO_STREAM:
         {
-            *(audio_stream*) out_result_ptr = window_ptr->audio_strm;
+            *reinterpret_cast<audio_stream*>(out_result_ptr) = window_ptr->audio_strm;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_BACKEND_TYPE:
         {
-            *(ral_backend_type*) out_result_ptr = window_ptr->backend_type;
+            *reinterpret_cast<ral_backend_type*>(out_result_ptr) = window_ptr->backend_type;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_DIMENSIONS:
         {
-            ((int*) out_result_ptr)[0] = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
-            ((int*) out_result_ptr)[1] = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
+            reinterpret_cast<int*>(out_result_ptr)[0] = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
+            reinterpret_cast<int*>(out_result_ptr)[1] = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_CLOSED:
         {
-            *(bool*) out_result_ptr = system_event_wait_single_peek(window_ptr->window_safe_to_release_event);
+            *reinterpret_cast<bool*>(out_result_ptr) = system_event_wait_single_peek(window_ptr->window_safe_to_release_event);
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_CLOSING:
         {
-            *(bool*) out_result_ptr = window_ptr->is_closing;
+            *reinterpret_cast<bool*>(out_result_ptr) = window_ptr->is_closing;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN:
         {
-            *(bool*) out_result_ptr = window_ptr->is_fullscreen;
+            *reinterpret_cast<bool*>(out_result_ptr) = window_ptr->is_fullscreen;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_SCALABLE:
         {
-            *(bool*) out_result_ptr = window_ptr->is_scalable;
+            *reinterpret_cast<bool*>(out_result_ptr) = window_ptr->is_scalable;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_VISIBLE:
         {
-            *(bool*) out_result_ptr = window_ptr->visible;
+            *reinterpret_cast<bool*>(out_result_ptr) = window_ptr->visible;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED:
         {
-            *(bool*) out_result_ptr = window_ptr->vsync_enabled;
+            *reinterpret_cast<bool*>(out_result_ptr) = window_ptr->vsync_enabled;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_NAME:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = window_ptr->title;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = window_ptr->title;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE:
         {
-            *(system_window_handle*) out_result_ptr = window_ptr->parent_window_handle;
+            *reinterpret_cast<system_window_handle*>(out_result_ptr) = window_ptr->parent_window_handle;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT:
         {
-            *(system_pixel_format*) out_result_ptr = window_ptr->pf;
+            *reinterpret_cast<system_pixel_format*>(out_result_ptr) = window_ptr->pf;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL:
         {
-            *(ral_context*) out_result_ptr = window_ptr->rendering_context;
+            *reinterpret_cast<ral_context*>(out_result_ptr) = window_ptr->rendering_context;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
         {
-            *(ral_rendering_handler*) out_result_ptr = window_ptr->rendering_handler;
+            *reinterpret_cast<ral_rendering_handler*>(out_result_ptr) = window_ptr->rendering_handler;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_SCREEN_MODE:
         {
-            *(system_screen_mode*) out_result_ptr = window_ptr->screen_mode;
+            *reinterpret_cast<system_screen_mode*>(out_result_ptr) = window_ptr->screen_mode;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_TITLE:
         {
-            *(system_hashed_ansi_string*) out_result_ptr = window_ptr->title;
+            *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = window_ptr->title;
 
             break;
         }
@@ -1703,7 +1703,7 @@ end:
 PUBLIC bool system_window_set_cursor(system_window              window,
                                      system_window_mouse_cursor cursor)
 {
-    _system_window* window_ptr = (_system_window*) window;
+    _system_window* window_ptr = reinterpret_cast<_system_window*>(window);
     bool            result     = true;
 
     /* Redirect to platform-specific handler */
@@ -1725,7 +1725,7 @@ PUBLIC bool system_window_set_property(system_window          window,
                                        const void*            data)
 {
     bool            result     = false;
-    _system_window* window_ptr = (_system_window*) window;
+    _system_window* window_ptr = reinterpret_cast<_system_window*>(window);
 
     result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
                                                  property,
@@ -1757,7 +1757,7 @@ PUBLIC bool system_window_set_property(system_window          window,
                     ASSERT_DEBUG_SYNC(window_ptr->audio_strm == nullptr,
                                       "TODO: Support for switching audio streams in system_window.");
 
-                    window_ptr->audio_strm = *(audio_stream*) data;
+                    window_ptr->audio_strm = *reinterpret_cast<const audio_stream*>(data);
 
                     ASSERT_DEBUG_SYNC(window_ptr->audio_strm != nullptr,
                                       "A NULL audio stream was assigned to a window instance");
@@ -1796,14 +1796,14 @@ PUBLIC bool system_window_set_property(system_window          window,
             case SYSTEM_WINDOW_PROPERTY_IS_CLOSING:
             {
                 result                 = true;
-                window_ptr->is_closing = *(bool*) data;
+                window_ptr->is_closing = *reinterpret_cast<const bool*>(data);
 
                 break;
             }
 
             case SYSTEM_WINDOW_PROPERTY_POSITION:
             {
-                const int* xy = (const int*) data;
+                const int* xy = reinterpret_cast<const int*>(data);
 
                 result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
                                                              SYSTEM_WINDOW_PROPERTY_POSITION,
@@ -1828,7 +1828,7 @@ PUBLIC bool system_window_set_property(system_window          window,
                     ral_context_release(window_ptr->rendering_context);
                 }
 
-                window_ptr->rendering_context = *(ral_context*) data;
+                window_ptr->rendering_context = *reinterpret_cast<const ral_context*>(data);
 
                 ASSERT_DEBUG_SYNC(window_ptr->rendering_context == nullptr,
                                   "SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL property should only be used for internal purposes");
@@ -1837,7 +1837,7 @@ PUBLIC bool system_window_set_property(system_window          window,
 
             case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
             {
-                ral_rendering_handler new_rendering_handler = *(ral_rendering_handler*) data;
+                ral_rendering_handler new_rendering_handler = *reinterpret_cast<const ral_rendering_handler*>(data);
 
                 ASSERT_DEBUG_SYNC(new_rendering_handler != nullptr,
                                   "Cannot set a null rendering buffer!");
@@ -1850,7 +1850,7 @@ PUBLIC bool system_window_set_property(system_window          window,
 
                     ral_rendering_handler_retain(new_rendering_handler);
 
-                    /* With a rendering handle in place, we can now create a rendering context for the window */
+                    /* With a rendering handler in place, we can now create a rendering context for the window */
                     ASSERT_DEBUG_SYNC(window_ptr->rendering_context == nullptr,
                                       "Rendering context already assigned to the window");
 
@@ -1862,10 +1862,6 @@ PUBLIC bool system_window_set_property(system_window          window,
                         LOG_FATAL("Could not create OGL context for window [%s]",
                                   system_hashed_ansi_string_get_buffer(window_ptr->title) );
                     }
-
-                    /* Resume the rendering thread - everything is now set up. */
-                    ral_rendering_handler_bind_to_context(window_ptr->rendering_handler,
-                                                          ((_system_window*)window)->rendering_context);
                 }
 
                 break;
@@ -1873,7 +1869,7 @@ PUBLIC bool system_window_set_property(system_window          window,
 
             case SYSTEM_WINDOW_PROPERTY_DIMENSIONS:
             {
-                const int* width_height = (const int*) data;
+                const int* width_height = reinterpret_cast<const int*>(data);
 
                 /* Update internal representation */
                 window_ptr->x1y1x2y2[2] = window_ptr->x1y1x2y2[0] + width_height[0];
@@ -1901,7 +1897,7 @@ PUBLIC bool system_window_set_property(system_window          window,
 /** Please see header for specification */
 PUBLIC void system_window_wait_until_closed(system_window window)
 {
-    _system_window* window_ptr = (_system_window*) window;
+    _system_window* window_ptr = reinterpret_cast<_system_window*>(window);
 
     system_event_wait_single(window_ptr->window_safe_to_release_event);
 }

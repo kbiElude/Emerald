@@ -1194,8 +1194,10 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         cmd_buffer_create_info.is_resettable                           = true;
         cmd_buffer_create_info.is_transient                            = false;
 
-        blur_ptr->cached_command_buffer = ral_command_buffer_create(blur_ptr->context,
-                                                                   &cmd_buffer_create_info);
+        ral_context_create_command_buffers(blur_ptr->context,
+                                           1, /* n_command_buffers */
+                                          &cmd_buffer_create_info,
+                                          &blur_ptr->cached_command_buffer);
     }
 
     cmd_buffer = blur_ptr->cached_command_buffer;

@@ -200,11 +200,11 @@ end:
 
 /** Please see header for spec */
 PUBLIC EMERALD_API bool ral_present_job_connect_tasks(ral_present_job                job,
-                                          ral_present_task_id            src_task_id,
-                                          uint32_t                       n_src_task_output,
-                                          ral_present_task_id            dst_task_id,
-                                          uint32_t                       n_dst_task_input,
-                                          ral_present_job_connection_id* out_opt_connection_id_ptr)
+                                                      ral_present_task_id            src_task_id,
+                                                      uint32_t                       n_src_task_output,
+                                                      ral_present_task_id            dst_task_id,
+                                                      uint32_t                       n_dst_task_input,
+                                                      ral_present_job_connection_id* out_opt_connection_id_ptr)
 {
     _ral_present_job_task*        dst_task_ptr         = nullptr;
     ral_context_object_type       dst_task_input_type;
@@ -517,13 +517,19 @@ PUBLIC EMERALD_API bool ral_present_job_get_task_at_index(ral_present_job   job,
                                                           uint32_t          index,
                                                           ral_present_task* out_task_ptr)
 {
-    _ral_present_job* job_ptr = reinterpret_cast<_ral_present_job*>(job);
-    bool              result;
+    _ral_present_job*      job_ptr      = reinterpret_cast<_ral_present_job*>(job);
+    _ral_present_job_task* job_task_ptr = nullptr;
+    bool                   result;
 
     result = system_hash64map_get_element_at(job_ptr->tasks,
                                              index,
-                                             out_task_ptr,
+                                            &job_task_ptr,
                                              nullptr); /* result_hash_ptr */
+
+    if (result)
+    {
+        *out_task_ptr = job_task_ptr->task;
+    }
 
     return result;
 }
@@ -533,12 +539,18 @@ PUBLIC EMERALD_API bool ral_present_job_get_task_with_id(ral_present_job     pre
                                                          ral_present_task_id task_id,
                                                          ral_present_task*   out_result_task_ptr)
 {
-    _ral_present_job* job_ptr = reinterpret_cast<_ral_present_job*>(present_job);
-    bool              result;
+    _ral_present_job*      job_ptr      = reinterpret_cast<_ral_present_job*>(present_job);
+    _ral_present_job_task* job_task_ptr = nullptr;
+    bool                   result;
 
     result = system_hash64map_get(job_ptr->tasks,
                                   static_cast<system_hash64>(task_id),
-                                  out_result_task_ptr);
+                                 &job_task_ptr);
+
+    if (result)
+    {
+        *out_result_task_ptr = job_task_ptr->task;
+    }
 
     return result;
 }
