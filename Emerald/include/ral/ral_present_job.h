@@ -35,7 +35,7 @@ typedef enum
     /* settable with ral_present_job_set_presentable_output(); uint32_t */
     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_INDEX,
 
-    /* settable with ral_present_job_set_presentable_output(); uint32_t */
+    /* settable with ral_present_job_set_presentable_output(); ral_present_task_io_type */
     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE,
 } ral_present_job_property;
 

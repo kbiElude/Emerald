@@ -21,25 +21,9 @@ typedef struct _raGL_framebuffer
     /* NOTE: Draw / read buffers are managed externally */
 
     ogl_context context;
-    GLint       id; /* NOT owned */
+    GLuint      id;
 
-
-    _raGL_framebuffer(ogl_context in_context,
-                      GLint       in_fb_id)
-    {
-        context = in_context;
-        id      = in_fb_id;
-
-        /* NOTE: Only GL is supported at the moment. */
-        ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-
-        ogl_context_get_property(in_context,
-                                 OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                                &backend_type);
-
-        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
-                          "TODO");
-    }
+    _raGL_framebuffer(ogl_context in_context);
 
     ~_raGL_framebuffer()
     {
@@ -69,6 +53,25 @@ typedef struct _raGL_framebuffer_init_rendering_thread_callback_data
 
 
 /** TODO */
+_raGL_framebuffer::_raGL_framebuffer(ogl_context in_context)
+{
+    context = in_context;
+    id      = -1;           /* will be set later */
+
+    /* NOTE: Only GL is supported at the moment. */
+    ral_backend_type backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+
+    ogl_context_get_property(in_context,
+                             OGL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                            &backend_type);
+
+    ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                      "TODO");
+
+}
+
+
+/** TODO */
 PRIVATE ral_present_job _raGL_framebuffer_deinit_rendering_thread_calback(ral_context                                                context_ral,
                                                                           void*                                                      user_arg,
                                                                           const ral_rendering_handler_rendering_callback_frame_data* unused)
@@ -86,6 +89,8 @@ PRIVATE ral_present_job _raGL_framebuffer_deinit_rendering_thread_calback(ral_co
 
     entrypoints_ptr->pGLDeleteFramebuffers(1, /* n */
                                            reinterpret_cast<const GLuint*>(&fb_ptr->id) );
+
+    fb_ptr->id = 0;
 
     /* We issue GL calls directly from this entrypoint, so we don't need a present job */
     return nullptr;
@@ -122,6 +127,11 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &entrypoints_dsa_ptr);
 
+    /* Generate a new FB id */
+    entrypoints_ptr->pGLGenFramebuffers(1, /* n */
+                                       &args_ptr->fbo_ptr->id);
+
+    /* Configure the attachments */
     for (uint32_t n_iteration = 0;
                   n_iteration < 2; /* color, & depth/stencil attachment. */
                 ++n_iteration)
@@ -274,13 +284,11 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
 
 /** Please see header for specification */
 PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
-                                                GLint                   fb_id,
                                                 uint32_t                n_color_attachments,
                                                 const ral_texture_view* color_attachments,
                                                 ral_texture_view        opt_ds_attachment)
 {
-    _raGL_framebuffer* new_fb_ptr = new (std::nothrow) _raGL_framebuffer(context,
-                                                                         fb_id);
+    _raGL_framebuffer* new_fb_ptr = new (std::nothrow) _raGL_framebuffer(context);
 
     ASSERT_ALWAYS_SYNC(new_fb_ptr != nullptr,
                        "Out of memory");

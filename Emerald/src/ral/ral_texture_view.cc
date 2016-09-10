@@ -231,7 +231,36 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
             break;
         }
 
+        /* 40-bit */
+        case RAL_FORMAT_DEPTH32F_STENCIL8:
+        {
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_DEPTH32F_STENCIL8);
+
+            break;
+        }
+
         /* 32-bit */
+        case RAL_FORMAT_DEPTH24_STENCIL8:
+        {
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_DEPTH24_STENCIL8);
+
+            break;
+        }
+
+        case RAL_FORMAT_DEPTH32_FLOAT:
+        {
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_DEPTH32_FLOAT);
+
+            break;
+        }
+
+        case RAL_FORMAT_DEPTH32_SNORM:
+        {
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_DEPTH32_SNORM);
+
+            break;
+        }
+
         case RAL_FORMAT_R11FG11FB10F:
         case RAL_FORMAT_R32_FLOAT:
         case RAL_FORMAT_R32_SINT:
@@ -272,6 +301,13 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
         }
 
         /* 24-bit */
+        case RAL_FORMAT_DEPTH24_SNORM:
+        {
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_DEPTH24_SNORM);
+
+            break;
+        }
+
         case RAL_FORMAT_RGB8_SINT:
         case RAL_FORMAT_RGB8_SNORM:
         case RAL_FORMAT_RGB8_UINT:
@@ -288,6 +324,13 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
         }
 
         /* 16-bit */
+        case RAL_FORMAT_DEPTH16_SNORM:
+        {
+            texture_format_valid = (parent_texture_format == RAL_FORMAT_DEPTH16_SNORM);
+
+            break;
+        }
+
         case RAL_FORMAT_R16_FLOAT:
         case RAL_FORMAT_RG8_UINT:
         case RAL_FORMAT_R16_UINT:

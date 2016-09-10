@@ -30,7 +30,8 @@ typedef struct _raGL_framebuffers_fbo
     }
 
 
-    explicit _raGL_framebuffers_fbo(const ral_texture_view* in_color_attachments,
+    explicit _raGL_framebuffers_fbo(ogl_context             in_context_gl,
+                                    const ral_texture_view* in_color_attachments,
                                     uint32_t                in_n_color_attachments,
                                     ral_texture_view        in_ds_attachment)
     {
@@ -51,6 +52,10 @@ typedef struct _raGL_framebuffers_fbo
         }
 
         ds_attachment       = in_ds_attachment;
+        fbo                 = raGL_framebuffer_create(in_context_gl,
+                                                      in_n_color_attachments,
+                                                      in_color_attachments,
+                                                      in_ds_attachment);
         n_color_attachments = in_n_color_attachments;
     }
 
@@ -153,7 +158,8 @@ PUBLIC void raGL_framebuffers_get_framebuffer(raGL_framebuffers       in_framebu
 
     if (result_fbo_ptr == nullptr)
     {
-        result_fbo_ptr = new _raGL_framebuffers_fbo(in_opt_color_attachments,
+        result_fbo_ptr = new _raGL_framebuffers_fbo(framebuffers_ptr->context_gl,
+                                                    in_opt_color_attachments,
                                                     in_n_attachments,
                                                     in_opt_ds_attachment);
 
@@ -164,7 +170,7 @@ PUBLIC void raGL_framebuffers_get_framebuffer(raGL_framebuffers       in_framebu
                                      result_fbo_ptr);
     }
 
-    *out_framebuffer_ptr = reinterpret_cast<raGL_framebuffer>(result_fbo_ptr);
+    *out_framebuffer_ptr = reinterpret_cast<raGL_framebuffer>(result_fbo_ptr->fbo);
 }
 
 

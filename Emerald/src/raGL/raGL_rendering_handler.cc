@@ -10,11 +10,13 @@
 #include "raGL/raGL_command_buffer.h"
 #include "raGL/raGL_dep_tracker.h"
 #include "raGL/raGL_framebuffer.h"
+#include "raGL/raGL_framebuffers.h"
 #include "raGL/raGL_rendering_handler.h"
 #include "raGL/raGL_types.h"
 #include "ral/ral_context.h"
 #include "ral/ral_present_job.h"
 #include "ral/ral_present_task.h"
+#include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_dag.h"
@@ -70,8 +72,6 @@ typedef struct _raGL_rendering_handler
     ogl_context      context_gl;
     bool             default_fb_has_depth_attachment;
     bool             default_fb_has_stencil_attachment;
-    bool             default_fb_id_set;
-    GLuint           default_fb_raGL_id;
     bool             is_helper_context;
     bool             is_multisample_pf;
     bool             is_vsync_enabled;
@@ -187,8 +187,6 @@ _raGL_rendering_handler::_raGL_rendering_handler(ral_rendering_handler in_render
     context_window                    = nullptr;
     default_fb_has_depth_attachment   = false;
     default_fb_has_stencil_attachment = false;
-    default_fb_id_set                 = false;
-    default_fb_raGL_id                = -1;
 
     pGLBindFramebuffer = nullptr;
     pGLBlitFramebuffer = nullptr;
@@ -412,25 +410,12 @@ PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_h
 
     if (rendering_handler_ptr->ral_callback_buffer_swap_needed)
     {
+#if 0
         uint32_t window_size    [2];
         uint32_t window_x1y1x2y2[4];
 
         ASSERT_DEBUG_SYNC(!rendering_handler_ptr->is_helper_context,
                           "Buffer swaps are unavailable for helper contexts");
-
-        if (rendering_handler_ptr->default_fb_raGL_id == -1)
-        {
-            ral_context      context_ral     = nullptr;
-            raGL_framebuffer default_fb_raGL = nullptr;
-
-            ogl_context_get_property(rendering_handler_ptr->context_gl,
-                                     OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
-                                    &default_fb_raGL);
-
-            raGL_framebuffer_get_property(default_fb_raGL,
-                                          RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                         &rendering_handler_ptr->default_fb_raGL_id);
-        }
 
         /* Blit the context FBO's contents to the back buffer */
         system_window_get_property(rendering_handler_ptr->context_window,
@@ -457,6 +442,11 @@ PRIVATE void _raGL_rendering_handler_rendering_thread_callback_requested_event_h
                                                   GL_NEAREST);
 
         ogl_context_swap_buffers(rendering_handler_ptr->context_gl);
+#else
+        /* TODO: is this path still needed? */
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO");
+#endif
     }
 
     /* Reset callback data */
@@ -721,30 +711,98 @@ PUBLIC void raGL_rendering_handler_lock_bound_context(raGL_rendering_handler ren
 }
 
 /** TODO */
-PUBLIC void raGL_rendering_handler_post_draw_frame(void* rendering_handler_raBackend,
-                                                   bool  has_rendered_frame)
+PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_handler_raBackend,
+                                                   ral_present_job present_job)
 {
     _raGL_rendering_handler* rendering_handler_ptr = reinterpret_cast<_raGL_rendering_handler*>(rendering_handler_raBackend);
-    uint32_t                 window_size[2];
-    uint32_t                 window_x1y1x2y2[4];
 
-    system_window_get_property(rendering_handler_ptr->context_window,
-                               SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
-                               window_x1y1x2y2);
-
-    window_size[0] = window_x1y1x2y2[2] - window_x1y1x2y2[0];
-    window_size[1] = window_x1y1x2y2[3] - window_x1y1x2y2[1];
-
-    if (!has_rendered_frame)
+    if (present_job != nullptr)
     {
-        /* Well, if we get here, we're in trouble. Clear the color buffer with red color
-         * to indicate utter disaster. */
-        rendering_handler_ptr->pGLClearColor(1.0f,  /* red   */
-                                             0.0f,  /* green */
-                                             0.0f,  /* blue  */
-                                             1.0f); /* alpha */
+        ral_context_object_type  presentable_output_object_type;
+        ral_present_task         presentable_output_task         = nullptr;
+        uint32_t                 presentable_output_task_index   = -1;
+        uint32_t                 presentable_output_task_io      = -1;
+        ral_present_task_io_type presentable_output_task_io_type;
+        ral_texture_view         presentable_texture_view         = nullptr;
+        uint32_t                 presentable_texture_view_size[2] = {0};
 
-        rendering_handler_ptr->pGLClear(GL_COLOR_BUFFER_BIT);
+        ral_present_job_get_property(present_job,
+                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_ID,
+                                    &presentable_output_task_index);
+        ral_present_job_get_property(present_job,
+                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_INDEX,
+                                    &presentable_output_task_io);
+        ral_present_job_get_property(present_job,
+                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE,
+                                    &presentable_output_task_io_type);
+
+        ral_present_job_get_task_with_id(present_job,
+                                         presentable_output_task_index,
+                                        &presentable_output_task);
+
+        ral_present_task_get_io_property(presentable_output_task,
+                                         presentable_output_task_io_type,
+                                         presentable_output_task_io,
+                                         RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                         reinterpret_cast<void**>(&presentable_texture_view) );
+
+        #ifdef _DEBUG
+        {
+            ral_present_task_get_io_property(presentable_output_task,
+                                             presentable_output_task_io_type,
+                                             presentable_output_task_io,
+                                             RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                             reinterpret_cast<void**>(&presentable_output_object_type) );
+
+            ASSERT_DEBUG_SYNC(presentable_output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                              "Invalid presentable output object's type");
+        }
+        #endif
+
+        ral_texture_view_get_mipmap_property(presentable_texture_view,
+                                             0, /* n_layer  */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                             presentable_texture_view_size + 0);
+        ral_texture_view_get_mipmap_property(presentable_texture_view,
+                                             0, /* n_layer  */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                             presentable_texture_view_size + 1);
+
+        /* Blit the context FBO's contents to the back buffer */
+        raGL_framebuffers fbos            = nullptr;
+        raGL_framebuffer  read_fb_raGL    = nullptr;
+        GLuint            read_fb_raGL_id = -1;
+
+        raGL_backend_get_private_property(rendering_handler_ptr->backend,
+                                          RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
+                                         &fbos);
+
+        raGL_framebuffers_get_framebuffer(fbos,
+                                          1, /* in_n_attachments */
+                                         &presentable_texture_view,
+                                          nullptr, /* in_opt_ds_attachment */
+                                         &read_fb_raGL);
+        raGL_framebuffer_get_property    (read_fb_raGL,
+                                          RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                         &read_fb_raGL_id);
+
+        rendering_handler_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                  0);
+        rendering_handler_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                                  read_fb_raGL_id);
+
+        rendering_handler_ptr->pGLBlitFramebuffer(0,                                /* srcX0 */
+                                                  0,                                /* srcY0 */
+                                                  presentable_texture_view_size[0], /* srcX1 */
+                                                  presentable_texture_view_size[1], /* srcY1 */
+                                                  0,                                /* dstX0 */
+                                                  0,                                /* dstY0 */
+                                                  presentable_texture_view_size[0], /* dstX1 */
+                                                  presentable_texture_view_size[1], /* dstY1 */
+                                                  GL_COLOR_BUFFER_BIT,
+                                                  GL_NEAREST);
     }
 
     if (rendering_handler_ptr->is_multisample_pf                   &&
@@ -752,23 +810,6 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void* rendering_handler_raBac
     {
         rendering_handler_ptr->pGLDisable(GL_MULTISAMPLE);
     }
-
-    /* Blit the context FBO's contents to the back buffer */
-    rendering_handler_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                              0);
-    rendering_handler_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                              rendering_handler_ptr->default_fb_raGL_id);
-
-    rendering_handler_ptr->pGLBlitFramebuffer(0,              /* srcX0 */
-                                              0,              /* srcY0 */
-                                              window_size[0], /* srcX1 */
-                                              window_size[1], /* srcY1 */
-                                              0,              /* dstX0 */
-                                              0,              /* dstY0 */
-                                              window_size[0], /* dstX1 */
-                                              window_size[1], /* dstY1 */
-                                              GL_COLOR_BUFFER_BIT,
-                                              GL_NEAREST);
 }
 
 /** TODO */
@@ -781,35 +822,6 @@ PUBLIC void raGL_rendering_handler_pre_draw_frame(void* rendering_handler_raBack
 
     /* Sync with other contexts.. */
     raGL_backend_sync();
-
-    /* Bind the context's default FBO and call the user app's call-back */
-    if (!rendering_handler_ptr->default_fb_id_set)
-    {
-        raGL_framebuffer default_fb_raGL = nullptr;
-
-        ogl_context_get_property(rendering_handler_ptr->context_gl,
-                                 OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
-                                &default_fb_raGL);
-
-        raGL_framebuffer_get_property(default_fb_raGL,
-                                      RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                     &rendering_handler_ptr->default_fb_raGL_id);
-
-        rendering_handler_ptr->default_fb_id_set = true;
-    }
-
-   rendering_handler_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                              rendering_handler_ptr->default_fb_raGL_id);
-
-    /* Clear the attachments before we head on. Disable any rendering modes which
-     * would affect the process */
-    rendering_handler_ptr->pGLClearColor(0.0f,
-                                         0.0f,
-                                         0.0f,
-                                         1.0f);
-    rendering_handler_ptr->pGLClear     (GL_COLOR_BUFFER_BIT                                                                   |
-                                        (rendering_handler_ptr->default_fb_has_depth_attachment   ? GL_DEPTH_BUFFER_BIT   : 0) |
-                                        (rendering_handler_ptr->default_fb_has_stencil_attachment ? GL_STENCIL_BUFFER_BIT : 0) );
 
     /* Enable multisampling if needed */
     if (rendering_handler_ptr->is_multisample_pf && rendering_handler_ptr->backend_type == RAL_BACKEND_TYPE_GL)

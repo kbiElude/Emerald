@@ -10,6 +10,7 @@
 #include "raGL/raGL_rendering_handler.h"
 #include "ral/ral_context.h"
 #include "ral/ral_present_job.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -571,7 +572,7 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                  }
 
                  rendering_handler_ptr->pfn_post_draw_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
-                                                                           (frame_present_job != nullptr) );
+                                                                           frame_present_job);
             }
 
             if (frame_present_job != nullptr)
@@ -590,12 +591,12 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                                              text_renderer);
                 #endif
 
-                /* Swap back buffer with the front buffer now */
                 rendering_handler_ptr->last_frame_index = frame_index;
                 rendering_handler_ptr->last_frame_time  = new_frame_time;
 
                 if (should_swap_buffers)
                 {
+                    /* OK to present the frame now */
                     rendering_handler_ptr->pfn_present_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
                                                                             rendering_handler_ptr->rendering_cs);
                 }

@@ -18,7 +18,7 @@ typedef void  (*PFNRALRENDERINGHANDLERINITRABACKENDRENDERINGHANDLERPROC)  (ral_c
                                                                            ral_rendering_handler                   rendering_handler_ral,
                                                                            void*                                   rendering_handler_raBackend);
 typedef void  (*PFNRALRENDERINGHANDLERPOSTDRAWFRAMECALLBACKPROC)          (void*                                   rendering_handler_raBackend,
-                                                                           bool                                    has_rendered_frame);
+                                                                           ral_present_job                         present_job);
 typedef void  (*PFNRALRENDERINGHANDLERPREDRAWFRAMECALLBACKPROC)           (void*                                   rendering_handler_raBackend);
 typedef void  (*PFNRALRENDERINGHANDLERPRESENTFRAMECALLBACKPROC)           (void*                                   rendering_handler_raBackend,
                                                                            system_critical_section                 rendering_cs);

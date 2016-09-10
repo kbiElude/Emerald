@@ -61,15 +61,11 @@ typedef struct _raGL_texture
     }
 
     _raGL_texture(ogl_context      in_context,
-                  GLuint           in_id,
                   ral_texture_view in_texture_view)
     {
-        ASSERT_DEBUG_SYNC(in_id != 0,
-                          "Zero texture ID specified for a texture view");
-
         context         = in_context;
-        id              = in_id;
-        is_renderbuffer = false;
+        id              = 0;     /* set later */
+        is_renderbuffer = false; /* changed later, if necessary*/
         texture         = nullptr;
         texture_view    = in_texture_view;
     }
@@ -379,24 +375,30 @@ PRIVATE ral_present_job _raGL_texture_deinit_storage_rendering_callback(ral_cont
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
-    if (texture_ptr->is_renderbuffer)
+    /* Renderbuffer views are faked by GL back-end. Do NOT release any GL objects in their case */
+    if ( texture_ptr->texture_view    != nullptr &&
+        !texture_ptr->is_renderbuffer            ||
+         texture_ptr->texture_view    == nullptr)
     {
-        LOG_INFO("[GL back-end]: Deleting texture storage (GL renderbuffer ID [%u])",
-             texture_ptr->id);
-
-        entrypoints_ptr->pGLDeleteRenderbuffers(1,
-                                               &texture_ptr->id);
-    }
-    else
-    {
-        LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%u])",
+        if (texture_ptr->is_renderbuffer)
+        {
+            LOG_INFO("[GL back-end]: Deleting texture storage (GL renderbuffer ID [%u])",
                  texture_ptr->id);
 
-        entrypoints_ptr->pGLDeleteTextures(1,
-                                          &texture_ptr->id);
-    }
+            entrypoints_ptr->pGLDeleteRenderbuffers(1,
+                                                   &texture_ptr->id);
+        }
+        else
+        {
+            LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%u])",
+                     texture_ptr->id);
 
-    raGL_backend_enqueue_sync();
+            entrypoints_ptr->pGLDeleteTextures(1,
+                                              &texture_ptr->id);
+        }
+
+        raGL_backend_enqueue_sync();
+    }
 
     texture_ptr->id = 0;
 
@@ -834,35 +836,48 @@ PRIVATE ral_present_job _raGL_texture_init_view_renderer_callback(ral_context   
                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                               reinterpret_cast<void**>(&parent_texture_raGL_is_rb) );
 
-    /* Assign a texture view to the ID */
-    const GLenum texture_target = raGL_utils_get_ogl_enum_for_ral_texture_type(texture_view_type);
-
-    ASSERT_DEBUG_SYNC(!texture_ptr->is_renderbuffer && !parent_texture_raGL_is_rb,
-                      "Cannot create a texture view from a renderbuffer");
-    ASSERT_DEBUG_SYNC(texture_ptr->id != parent_texture_raGL_id,
-                      "Cannot create a texture view from a texture with the same ID");
-
-    entrypoints_ptr->pGLTextureView(texture_ptr->id,
-                                    texture_target,
-                                    parent_texture_raGL_id,
-                                    raGL_utils_get_ogl_enum_for_ral_format(texture_view_format),
-                                    n_texture_view_base_level,
-                                    n_texture_view_levels,
-                                    n_texture_view_base_layer,
-                                    n_texture_view_layers);
-
-    /* Configure aspect for the view */
-    if ((texture_view_aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) == 0)
+    /* There is no such thing as renderbuffer views in GL, so we're going to work around this
+     * by caching parent renderbuffer's ID in the raGL_texture view instance and making sure
+     * we do not release the object when the view goes out-of-scope. */
+    if (parent_texture_raGL_is_rb)
     {
-        entrypoints_dsa_ptr->pGLTextureParameteriEXT(texture_ptr->id,
-                                                     texture_target,
-                                                     GL_DEPTH_STENCIL_TEXTURE_MODE,
-                                                     raGL_utils_get_ogl_enum_for_ral_texture_aspect(texture_view_aspect) );
+        texture_ptr->id              = parent_texture_raGL_id;
+        texture_ptr->is_renderbuffer = true;
     }
     else
     {
-        ASSERT_DEBUG_SYNC(texture_view_aspect == RAL_TEXTURE_ASPECT_COLOR_BIT,
-                          "Invalid texture view aspect requested");
+        /* Assign a texture view to the ID */
+        const GLenum texture_target = raGL_utils_get_ogl_enum_for_ral_texture_type(texture_view_type);
+
+        ASSERT_DEBUG_SYNC(!texture_ptr->is_renderbuffer && !parent_texture_raGL_is_rb,
+                          "Cannot create a texture view from a renderbuffer");
+        ASSERT_DEBUG_SYNC(texture_ptr->id != parent_texture_raGL_id,
+                          "Cannot create a texture view from a texture with the same ID");
+
+        entrypoints_ptr->pGLGenTextures(1, /* n */
+                                       &texture_ptr->id);
+        entrypoints_ptr->pGLTextureView(texture_ptr->id,
+                                        texture_target,
+                                        parent_texture_raGL_id,
+                                        raGL_utils_get_ogl_enum_for_ral_format(texture_view_format),
+                                        n_texture_view_base_level,
+                                        n_texture_view_levels,
+                                        n_texture_view_base_layer,
+                                        n_texture_view_layers);
+
+        /* Configure aspect for the view */
+        if ((texture_view_aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) == 0)
+        {
+            entrypoints_dsa_ptr->pGLTextureParameteriEXT(texture_ptr->id,
+                                                         texture_target,
+                                                         GL_DEPTH_STENCIL_TEXTURE_MODE,
+                                                         raGL_utils_get_ogl_enum_for_ral_texture_aspect(texture_view_aspect) );
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(texture_view_aspect == RAL_TEXTURE_ASPECT_COLOR_BIT,
+                              "Invalid texture view aspect requested");
+        }
     }
 
     /* We speak GL here, no need for a present job */
@@ -1121,7 +1136,6 @@ end:
 
 /** Please see header for specification */
 PUBLIC raGL_texture raGL_texture_create_view(ogl_context      context,
-                                             GLuint           texture_id,
                                              ral_texture_view texture_view)
 {
     ral_context           context_ral = nullptr;
@@ -1147,7 +1161,6 @@ PUBLIC raGL_texture raGL_texture_create_view(ogl_context      context,
 
     /* Spawn a new descriptor. */
     result_ptr = new (std::nothrow) _raGL_texture(context,
-                                                  texture_id,
                                                   texture_view);
 
     if (result_ptr == nullptr)

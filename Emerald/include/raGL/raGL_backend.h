@@ -90,11 +90,6 @@ PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
                                            raGL_program* out_program_raGL_ptr);
 
 /** TODO */
-PUBLIC bool raGL_backend_get_renderbuffer_by_id(raGL_backend  backend,
-                                                GLuint        rb_id,
-                                                raGL_texture* out_texture_raGL_ptr);
-
-/** TODO */
 PUBLIC bool raGL_backend_get_sampler(raGL_backend  backend,
                                      ral_sampler   sampler_ral,
                                      raGL_sampler* out_sampler_raGL_ptr);

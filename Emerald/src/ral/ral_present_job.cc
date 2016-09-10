@@ -497,7 +497,7 @@ PUBLIC EMERALD_API void ral_present_job_get_property(ral_present_job          jo
             ASSERT_DEBUG_SYNC(job_ptr->presentable_output_defined,
                              "RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE property value queried, even though presentable output was not defined.");
 
-            *reinterpret_cast<uint32_t*>(out_result_ptr) = job_ptr->presentable_output_io_type;
+            *reinterpret_cast<ral_present_task_io_type*>(out_result_ptr) = job_ptr->presentable_output_io_type;
 
             break;
         }

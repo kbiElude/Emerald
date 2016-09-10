@@ -42,7 +42,6 @@ PUBLIC raGL_texture raGL_texture_create(ogl_context context,
 
 /** TODO */
 PUBLIC raGL_texture raGL_texture_create_view(ogl_context      context,
-                                             GLuint           texture_id,
                                              ral_texture_view texture_view);
 
 /** TODO */

@@ -15,7 +15,6 @@ typedef enum
 
 /** TODO */
 PUBLIC raGL_framebuffer raGL_framebuffer_create(ogl_context             context,
-                                                GLint                   fb_id,
                                                 uint32_t                n_color_attachments,
                                                 const ral_texture_view* color_attachments,
                                                 ral_texture_view        opt_ds_attachment);

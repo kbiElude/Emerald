@@ -7,6 +7,7 @@
 #include "gfx/gfx_image.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "ral/ral_types.h"
 #include "ral/ral_utils.h"
 #include "system/system_assertions.h"
@@ -68,6 +69,7 @@ typedef struct _ral_texture
     uint32_t                  base_mipmap_size[3];
     system_callback_manager   callback_manager;
     ral_context               context;
+    ral_texture_view          default_texture_view;
     system_hashed_ansi_string file_name;
     bool                      fixed_sample_locations;
     ral_format                format;
@@ -103,6 +105,7 @@ typedef struct _ral_texture
         base_mipmap_size[2]    = in_base_mipmap_depth;
         callback_manager       = system_callback_manager_create( (_callback_id) RAL_TEXTURE_CALLBACK_ID_COUNT);
         context                = in_context;
+        default_texture_view   = nullptr;
         file_name              = nullptr;
         fixed_sample_locations = in_fixed_sample_locations;
         format                 = in_format;
@@ -124,6 +127,16 @@ typedef struct _ral_texture
             callback_manager = nullptr;
         }
 
+        if (default_texture_view != nullptr)
+        {
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void**>(&default_texture_view) );
+
+            default_texture_view = nullptr;
+        }
+
         if (layers != nullptr)
         {
             _ral_texture_layer* current_layer_ptr = nullptr;
@@ -142,6 +155,49 @@ typedef struct _ral_texture
     }
 } _ral_texture;
 
+
+/** TODO */
+PRIVATE void _ral_texture_init_default_texture_view(_ral_texture* texture_ptr)
+{
+    ral_texture_view_create_info create_info;
+    bool                         format_has_c_data;
+    bool                         format_has_d_data;
+    bool                         format_has_s_data;
+    bool                         result;
+
+    ral_utils_get_format_property(texture_ptr->format,
+                                  RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                 &format_has_c_data);
+    ral_utils_get_format_property(texture_ptr->format,
+                                  RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                 &format_has_d_data);
+    ral_utils_get_format_property(texture_ptr->format,
+                                  RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                 &format_has_s_data);
+
+    create_info.aspect             = static_cast<ral_texture_aspect>(((format_has_c_data) ? RAL_TEXTURE_ASPECT_COLOR_BIT   : 0) |
+                                                                     ((format_has_d_data) ? RAL_TEXTURE_ASPECT_DEPTH_BIT   : 0) |
+                                                                     ((format_has_s_data) ? RAL_TEXTURE_ASPECT_STENCIL_BIT : 0));
+    create_info.component_order[0] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    create_info.component_order[1] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    create_info.component_order[2] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    create_info.component_order[3] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    create_info.format             = texture_ptr->format;
+    create_info.n_base_layer       = 0;
+    create_info.n_base_mip         = 0;
+    create_info.n_layers           = texture_ptr->n_layers;
+    create_info.n_mips             = texture_ptr->n_mipmaps_per_layer;
+    create_info.texture            = reinterpret_cast<ral_texture>(texture_ptr);
+    create_info.type               = texture_ptr->type;
+
+    result = ral_context_create_texture_views(texture_ptr->context,
+                                              1, /* n_texture_views */
+                                             &create_info,
+                                             &texture_ptr->default_texture_view);
+
+    ASSERT_DEBUG_SYNC(result,
+                      "Failed to create a default texture view");
+}
 
 /** TODO */
 PRIVATE void _ral_texture_init_mipmap_chain(_ral_texture* texture_ptr)
@@ -968,6 +1024,24 @@ PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
             create_info_ptr->type                   = texture_ptr->type;
             create_info_ptr->usage                  = texture_ptr->usage;
             create_info_ptr->use_full_mipmap_chain  = (texture_ptr->n_mipmaps_per_layer > 1);
+
+            break;
+        }
+
+        case RAL_TEXTURE_PROPERTY_DEFAULT_TEXTURE_VIEW:
+        {
+            /* Default texture view is not create at init time, so make sure one is available. If not,
+             * need to spawn it.
+             */
+            if (texture_ptr->default_texture_view == nullptr)
+            {
+                _ral_texture_init_default_texture_view(texture_ptr);
+
+                ASSERT_DEBUG_SYNC(texture_ptr->default_texture_view != nullptr,
+                                  "Failed to create default texture view.");
+            }
+
+            *reinterpret_cast<ral_texture_view*>(out_result_ptr) = texture_ptr->default_texture_view;
 
             break;
         }

@@ -1352,6 +1352,14 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
 
             ASSERT_DEBUG_SYNC(color_to_is_rb,
                               "Default FB's color texture is not a RB");
+
+            ral_texture_get_property(context_ptr->fbo_color_texture,
+                                     RAL_TEXTURE_PROPERTY_DEFAULT_TEXTURE_VIEW,
+                                    &context_ptr->fbo_color_texture_view);
+
+            ral_context_retain_object(context_ptr->context,
+                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                      context_ptr->fbo_color_texture_view);
         }
 
         if (format_depth_stencil != RAL_FORMAT_UNKNOWN)
@@ -1392,6 +1400,14 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
 
             ASSERT_DEBUG_SYNC(depth_stencil_to_is_rb,
                               "Default FB's depth/stencil texture is not a RB");
+
+            ral_texture_get_property(context_ptr->fbo_ds_texture,
+                                     RAL_TEXTURE_PROPERTY_DEFAULT_TEXTURE_VIEW,
+                                    &context_ptr->fbo_ds_texture_view);
+
+            ral_context_retain_object(context_ptr->context,
+                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                      context_ptr->fbo_ds_texture_view);
         }
 
         /* Retrieve a framebuffer wrapper whose underlying GL object uses the attachments

@@ -69,7 +69,6 @@ typedef struct _raGL_backend
     bool                    programs_map_owner;
 
     /* NOTE: Textures and texture views are handled by raGL_texture */
-    system_hash64map        rb_id_to_raGL_texture_map;      /* maps GLid to raGL_texture instance (it's a GL renderbuffer); does NOT own the mapped raGL_texture instances; lock textures_map_cs before usage.*/
     system_hash64map        texture_id_to_raGL_texture_map; /* maps GLid to raGL_texture instance (it's a GL texture); does NOT own the mapepd raGL_texture instances; lock textures_map_cs before usage. */
     system_hash64map        textures_map;                   /* maps ral_texture to raGL_texture instance; owns the mapped raGL_texture instances */
     bool                    textures_map_owner;
@@ -425,7 +424,6 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         programs_map                   = root_backend_ptr->programs_map;
         programs_map_owner             = false;
         programs_map_rw_mutex          = root_backend_ptr->programs_map_rw_mutex;
-        rb_id_to_raGL_texture_map      = root_backend_ptr->rb_id_to_raGL_texture_map;
         samplers_map                   = root_backend_ptr->samplers_map;
         samplers_map_owner             = false;
         samplers_map_rw_mutex          = root_backend_ptr->samplers_map_rw_mutex;
@@ -450,7 +448,6 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         programs_map                   = system_hash64map_create       (sizeof(raGL_program) );
         programs_map_rw_mutex          = system_read_write_mutex_create();
         programs_map_owner             = true;
-        rb_id_to_raGL_texture_map      = system_hash64map_create       (sizeof(raGL_texture) );
         samplers_map                   = system_hash64map_create       (sizeof(raGL_sampler) );
         samplers_map_rw_mutex          = system_read_write_mutex_create();
         samplers_map_owner             = true;
@@ -592,14 +589,6 @@ _raGL_backend::~_raGL_backend()
 
         system_hash64map_release(*objects_map_ptr);
         *objects_map_ptr = nullptr;
-    }
-
-    if (rb_id_to_raGL_texture_map != nullptr &&
-        textures_map_owner)
-    {
-        system_hash64map_release(rb_id_to_raGL_texture_map);
-
-        rb_id_to_raGL_texture_map = nullptr;
     }
 
     if (texture_id_to_raGL_texture_map != nullptr &&
@@ -1362,9 +1351,7 @@ PRIVATE ral_present_job _raGL_backend_on_objects_created_rendering_callback(ral_
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
-            entrypoints_ptr->pGLGenTextures(n_objects_to_initialize,
-                                            result_object_ids_ptr);
-
+            /* IDs are associated by raGL_texture */
             break;
         }
         default:
@@ -1451,11 +1438,9 @@ PRIVATE ral_present_job _raGL_backend_on_objects_created_rendering_callback(ral_
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
             {
-                GLuint           current_object_id = result_object_ids_ptr[n_object_id];
-                ral_texture_view texture_view_ral  = (ral_texture_view) callback_arg_ptr->ral_callback_arg_ptr->created_objects[n_object_id];
+                ral_texture_view texture_view_ral = (ral_texture_view) callback_arg_ptr->ral_callback_arg_ptr->created_objects[n_object_id];
 
                 new_object = raGL_texture_create_view(context,
-                                                      current_object_id,
                                                       texture_view_ral);
 
                 break;
@@ -1518,7 +1503,6 @@ PRIVATE ral_present_job _raGL_backend_on_objects_created_rendering_callback(ral_
                 case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
                 case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
                 {
-                    system_hash64map dst_hashmap      = nullptr;
                     GLuint           new_texture_id   = 0;
                     bool             new_texture_is_rb;
                     raGL_texture     new_texture_raGL = (raGL_texture) new_object;
@@ -1530,21 +1514,26 @@ PRIVATE ral_present_job _raGL_backend_on_objects_created_rendering_callback(ral_
                                               RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                                               reinterpret_cast<void**>(&new_texture_is_rb) );
 
-                    dst_hashmap = (new_texture_is_rb) ? callback_arg_ptr->backend_ptr->rb_id_to_raGL_texture_map
-                                                      : callback_arg_ptr->backend_ptr->texture_id_to_raGL_texture_map;
+                    if (!new_texture_is_rb)
+                    {
+                        ASSERT_DEBUG_SYNC(new_texture_id != 0,
+                                          "New raGL_texture's GL id is 0");
+                        ASSERT_DEBUG_SYNC(!system_hash64map_contains(callback_arg_ptr->backend_ptr->texture_id_to_raGL_texture_map,
+                                                                     (system_hash64) new_texture_id) ,
+                                          "raGL_texture ID [%d] is already recognized",
+                                          new_texture_id);
 
-                    ASSERT_DEBUG_SYNC(new_texture_id != 0,
-                                      "New raGL_texture's GL id is 0");
-                    ASSERT_DEBUG_SYNC(!system_hash64map_contains(dst_hashmap,
-                                                                 (system_hash64) new_texture_id) ,
-                                      "raGL_texture ID [%d] is already recognized",
-                                      new_texture_id);
-
-                    system_hash64map_insert(dst_hashmap,
-                                            (system_hash64) new_texture_id,
-                                            new_object,
-                                            nullptr,  /* on_remove_callback          */
-                                            nullptr); /* on_remove_callback_user_arg */
+                        system_hash64map_insert(callback_arg_ptr->backend_ptr->texture_id_to_raGL_texture_map,
+                                                (system_hash64) new_texture_id,
+                                                new_object,
+                                                nullptr,  /* on_remove_callback          */
+                                                nullptr); /* on_remove_callback_user_arg */
+                    }
+                    else
+                    {
+                        /* Do NOT cache RBs by ID. Renderbuffer views are faked by re-using the same ID
+                         * over multiple raGL_texture instances, so we can't cache them with a plain hash-map. */
+                    }
 
                     break;
                 }
@@ -1766,9 +1755,8 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                 case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
                 case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
                 {
-                    GLuint           object_id    = 0;
-                    bool             object_is_rb;
-                    system_hash64map src_hashmap;
+                    GLuint object_id    = 0;
+                    bool   object_is_rb;
 
                     raGL_texture_get_property((raGL_texture) object_raGL,
                                               RAGL_TEXTURE_PROPERTY_ID,
@@ -1780,15 +1768,16 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                     ASSERT_DEBUG_SYNC(object_id != 0,
                                       "raGL_texture's GL id is 0");
 
-                    src_hashmap = (object_is_rb) ? backend_ptr->rb_id_to_raGL_texture_map
-                                                 : backend_ptr->texture_id_to_raGL_texture_map;
+                    if (!object_is_rb)
+                    {
 
-                    ASSERT_DEBUG_SYNC(system_hash64map_contains(src_hashmap,
-                                                                (system_hash64) object_id),
-                                      "GL renderbuffer/texture/texture view not found in the source hashmap.");
+                        ASSERT_DEBUG_SYNC(system_hash64map_contains(backend_ptr->texture_id_to_raGL_texture_map,
+                                                                    (system_hash64) object_id),
+                                          "GL renderbuffer/texture/texture view not found in the source hashmap.");
 
-                    system_hash64map_remove(src_hashmap,
-                                            (system_hash64) object_id);
+                        system_hash64map_remove(backend_ptr->texture_id_to_raGL_texture_map,
+                                                (system_hash64) object_id);
+                    }
 
                     break;
                 }
@@ -2853,64 +2842,6 @@ PUBLIC bool raGL_backend_get_program_by_id(raGL_backend  backend,
         }
     }
     system_read_write_mutex_unlock(backend_ptr->programs_map_rw_mutex,
-                                   ACCESS_READ);
-
-    /* All done */
-end:
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC bool raGL_backend_get_renderbuffer_by_id(raGL_backend  backend,
-                                                GLuint        rb_id,
-                                                raGL_texture* out_texture_raGL_ptr)
-{
-    _raGL_backend* backend_ptr = reinterpret_cast<_raGL_backend*>(backend);
-    bool           result      = false;
-
-    /* Sanity checks*/
-    if (backend == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input raGL_backend instance is NULL");
-
-        goto end;
-    }
-
-    if (rb_id == 0)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input rb_id is 0");
-
-        goto end;
-    }
-
-    if (out_texture_raGL_ptr == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Output variable is NULL");
-
-        goto end;
-    }
-
-    /* Retrieve the requested texture object */
-    result = true;
-
-    system_read_write_mutex_lock(backend_ptr->textures_map_rw_mutex,
-                                 ACCESS_READ);
-    {
-        if (!system_hash64map_get(backend_ptr->rb_id_to_raGL_texture_map,
-                                  (system_hash64) rb_id,
-                                  out_texture_raGL_ptr) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "GL renderbuffer id [%d] is not recognized.",
-                              rb_id);
-
-            result = false;
-        }
-    }
-    system_read_write_mutex_unlock(backend_ptr->textures_map_rw_mutex,
                                    ACCESS_READ);
 
     /* All done */

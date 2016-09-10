@@ -36,8 +36,8 @@ PUBLIC void raGL_rendering_handler_init_from_rendering_thread(ral_context       
 PUBLIC void raGL_rendering_handler_lock_bound_context(raGL_rendering_handler rendering_handler);
 
 /** TODO */
-PUBLIC void raGL_rendering_handler_post_draw_frame(void* rendering_handler_raBackend,
-                                                   bool  has_rendered_frame);
+PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_handler_raBackend,
+                                                   ral_present_job present_job);
 
 /** TODO */
 PUBLIC void raGL_rendering_handler_pre_draw_frame(void* rendering_handler_raBackend);
