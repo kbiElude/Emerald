@@ -1,6 +1,8 @@
 #include "shared.h"
 #include "ral/ral_types.h"
 #include "ral/ral_command_buffer.h"
+#include "ral/ral_texture.h"
+#include "ral/ral_utils.h"
 
 /** Please see header for spec */
 PUBLIC ral_gfx_state_create_info* ral_gfx_state_create_info::clone(const ral_gfx_state_create_info* in_gfx_state_ptr,
@@ -92,4 +94,54 @@ PUBLIC void ral_gfx_state_create_info::release(ral_gfx_state_create_info* in_gfx
     }
 
     delete in_gfx_state_ptr;
+}
+
+EMERALD_API ral_texture_view_create_info::ral_texture_view_create_info(ral_texture in_texture)
+{
+    ral_format       texture_format;
+    bool             texture_format_has_color_data;
+    bool             texture_format_has_depth_data;
+    bool             texture_format_has_stencil_data;
+    uint32_t         texture_n_layers = 0;
+    uint32_t         texture_n_mips   = 0;
+    ral_texture_type texture_type;
+
+    ral_texture_get_property(in_texture,
+                             RAL_TEXTURE_PROPERTY_FORMAT,
+                            &texture_format);
+    ral_texture_get_property(in_texture,
+                             RAL_TEXTURE_PROPERTY_N_LAYERS,
+                            &texture_n_layers);
+    ral_texture_get_property(in_texture,
+                             RAL_TEXTURE_PROPERTY_N_MIPMAPS,
+                            &texture_n_mips);
+    ral_texture_get_property(in_texture,
+                             RAL_TEXTURE_PROPERTY_TYPE,
+                            &texture_type);
+
+    ral_utils_get_format_property(texture_format,
+                                  RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                 &texture_format_has_color_data);
+    ral_utils_get_format_property(texture_format,
+                                  RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                 &texture_format_has_depth_data);
+    ral_utils_get_format_property(texture_format,
+                                  RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                 &texture_format_has_stencil_data);
+
+    /* Fill relevant fields */
+    this->aspect             = static_cast<ral_texture_aspect>(((texture_format_has_color_data)   ? RAL_TEXTURE_ASPECT_COLOR_BIT   : 0) |
+                                                               ((texture_format_has_depth_data)   ? RAL_TEXTURE_ASPECT_DEPTH_BIT   : 0) |
+                                                               ((texture_format_has_stencil_data) ? RAL_TEXTURE_ASPECT_STENCIL_BIT : 0));
+    this->component_order[0] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    this->component_order[1] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    this->component_order[2] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    this->component_order[3] = RAL_TEXTURE_COMPONENT_IDENTITY;
+    this->format             = texture_format;
+    this->n_base_layer       = 0;
+    this->n_base_mip         = 0;
+    this->n_layers           = texture_n_layers;
+    this->n_mips             = texture_n_mips;
+    this->texture            = in_texture;
+    this->type               = texture_type;
 }

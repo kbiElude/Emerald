@@ -489,6 +489,20 @@ _raGL_backend::~_raGL_backend()
         buffers = nullptr;
     }
 
+    if (textures != nullptr)
+    {
+        raGL_textures_release(textures);
+
+        textures = nullptr;
+    }
+
+    if (vaos != nullptr)
+    {
+        raGL_vaos_release(vaos);
+
+        vaos = nullptr;
+    }
+
     if (enqueued_syncs != nullptr)
     {
         system_read_write_mutex_lock(enqueued_syncs_rw_mutex,
@@ -512,27 +526,6 @@ _raGL_backend::~_raGL_backend()
 
         system_read_write_mutex_release(enqueued_syncs_rw_mutex);
         enqueued_syncs_rw_mutex = nullptr;
-    }
-
-    if (textures != nullptr)
-    {
-        raGL_textures_release(textures);
-
-        textures = nullptr;
-    }
-
-    if (vaos != nullptr)
-    {
-        raGL_vaos_release(vaos);
-
-        vaos = nullptr;
-    }
-
-    if (context_gl != nullptr)
-    {
-        ogl_context_release(context_gl);
-
-        context_gl = nullptr;
     }
 
     for (uint32_t n_object_type = 0;
@@ -585,6 +578,9 @@ _raGL_backend::~_raGL_backend()
 
             LOG_ERROR("%s",
                       temp);
+
+            ASSERT_DEBUG_SYNC(false,
+                              "Object leak detected");
         }
 
         system_hash64map_release(*objects_map_ptr);
@@ -602,6 +598,13 @@ _raGL_backend::~_raGL_backend()
     /* Unsubscribe from notifications */
     _raGL_backend_subscribe_for_notifications(this,
                                               false); /* should_subscribe */
+
+    if (context_gl != nullptr)
+    {
+        ogl_context_release(context_gl);
+
+        context_gl = nullptr;
+    }
 
     /* Release the critical sections */
     if (buffers_map_owner)
@@ -1638,12 +1641,6 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
             break;
         }
 
-        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
-        {
-            /* No call-backs for these yet.. */
-            break;
-        }
-
         case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
         {
             for (uint32_t n_deleted_object = 0;
@@ -1655,6 +1652,13 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                                                                  false); /* should_subscribe */
             }
 
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
+        {
+            /* No call-backs for these yet.. */
             break;
         }
 
@@ -1673,7 +1677,6 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
-        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
             for (uint32_t n_deleted_texture = 0;
                           n_deleted_texture < callback_arg_ptr->n_objects;
@@ -2255,6 +2258,16 @@ PRIVATE void _raGL_backend_subscribe_for_notifications(_raGL_backend* backend_pt
                                                            backend_ptr);
         system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
                                                            RAL_CONTEXT_CALLBACK_ID_BUFFERS_DELETED,
+                                                           _raGL_backend_on_objects_deleted,
+                                                           backend_ptr);
+
+        /* Command buffer notifications */
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_COMMAND_BUFFERS_CREATED,
+                                                           _raGL_backend_on_objects_created,
+                                                           backend_ptr);
+        system_callback_manager_unsubscribe_from_callbacks(context_callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_COMMAND_BUFFERS_DELETED,
                                                            _raGL_backend_on_objects_deleted,
                                                            backend_ptr);
 
@@ -3044,6 +3057,15 @@ PUBLIC void raGL_backend_get_property(void*                backend,
                                     &limits_ptr);
 
             *reinterpret_cast<uint32_t*>(out_result_ptr) = limits_ptr->max_uniform_block_size;
+
+            break;
+        }
+
+        case RAL_CONTEXT_PROPERTY_RENDERING_HANDLER:
+        {
+            ral_context_get_property(backend_ptr->context_ral,
+                                     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
+                                     out_result_ptr);
 
             break;
         }

@@ -517,55 +517,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ral_texture_view_create_info ral_texture_view_create_info_from_ral_texture(ral_texture texture)
-{
-    ral_texture_view_create_info create_info;
-    ral_format                   texture_format;
-    bool                         texture_format_has_color_data;
-    bool                         texture_format_has_depth_data;
-    bool                         texture_format_has_stencil_data;
-    uint32_t                     texture_n_layers = 0;
-    uint32_t                     texture_n_mips   = 0;
-    ral_texture_type             texture_type;
-
-    ral_texture_get_property(texture,
-                             RAL_TEXTURE_PROPERTY_FORMAT,
-                            &texture_format);
-    ral_texture_get_property(texture,
-                             RAL_TEXTURE_PROPERTY_N_LAYERS,
-                            &texture_n_layers);
-    ral_texture_get_property(texture,
-                             RAL_TEXTURE_PROPERTY_N_MIPMAPS,
-                            &texture_n_mips);
-    ral_texture_get_property(texture,
-                             RAL_TEXTURE_PROPERTY_TYPE,
-                            &texture_type);
-
-    ral_utils_get_format_property(texture_format,
-                                  RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
-                                 &texture_format_has_color_data);
-    ral_utils_get_format_property(texture_format,
-                                  RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
-                                 &texture_format_has_depth_data);
-    ral_utils_get_format_property(texture_format,
-                                  RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
-                                 &texture_format_has_stencil_data);
-
-    create_info.aspect       = static_cast<ral_texture_aspect>(((texture_format_has_color_data)   ? RAL_TEXTURE_ASPECT_COLOR_BIT   : 0) |
-                                                               ((texture_format_has_depth_data)   ? RAL_TEXTURE_ASPECT_DEPTH_BIT   : 0) |
-                                                               ((texture_format_has_stencil_data) ? RAL_TEXTURE_ASPECT_STENCIL_BIT : 0));
-    create_info.format       = texture_format;
-    create_info.n_base_layer = 0;
-    create_info.n_base_mip   = 0;
-    create_info.n_layers     = texture_n_layers;
-    create_info.n_mips       = texture_n_mips;
-    create_info.texture      = texture;
-    create_info.type         = texture_type;
-
-    return create_info;
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          texture_view,
                                                       ral_texture_view_property property,
                                                       void*                     out_result_ptr)

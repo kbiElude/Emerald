@@ -883,8 +883,9 @@ PUBLIC bool raGL_rendering_handler_request_callback_for_ral_rendering_handler(vo
         {
             bool should_continue = false;
 
-            rendering_handler_ptr->ral_callback_pfn_callback_proc = pfn_callback_proc;
-            rendering_handler_ptr->ral_callback_user_arg          = user_arg;
+            rendering_handler_ptr->ral_callback_buffer_swap_needed = present_after_executed;
+            rendering_handler_ptr->ral_callback_pfn_callback_proc  = pfn_callback_proc;
+            rendering_handler_ptr->ral_callback_user_arg           = user_arg;
 
             if (execution_mode != RAL_RENDERING_HANDLER_EXECUTION_MODE_ONLY_IF_IDLE_BLOCK_TILL_FINISHED)
             {

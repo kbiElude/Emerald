@@ -2001,8 +2001,13 @@ end:
 /** Please see header for specification */
 PUBLIC void ral_command_buffer_release(ral_command_buffer command_buffer)
 {
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(command_buffer);
+
     ASSERT_DEBUG_SYNC(command_buffer != nullptr,
                       "Input ral_command_buffer instance is NULL");
+
+    command_buffer_ptr->clear_commands();
+    command_buffer_ptr->status = RAL_COMMAND_BUFFER_STATUS_UNDEFINED;
 
     system_resource_pool_return_to_pool(command_buffer_pool,
                                         reinterpret_cast<system_resource_pool_block>(command_buffer) );

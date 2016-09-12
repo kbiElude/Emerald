@@ -55,12 +55,6 @@ typedef enum
     /* not settable, ral_texture_create_info. */
     RAL_TEXTURE_PROPERTY_CREATE_INFO,
 
-    /* not settable, ral_texture_view
-     *
-     * A texture view encapsulating all layers & mipmaps exposed by the texture
-     */
-    RAL_TEXTURE_PROPERTY_DEFAULT_TEXTURE_VIEW,
-
     /* not settable, bool */
     RAL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
 

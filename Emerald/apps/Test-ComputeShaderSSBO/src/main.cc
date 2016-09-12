@@ -196,7 +196,7 @@ void _init()
                                &texture_create_info,
                                &_texture);
 
-    texture_view_create_info = ral_texture_view_create_info_from_ral_texture(_texture);
+    texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_texture);
 
     ral_context_create_texture_views(_context,
                                      1, /* n_texture_views */
@@ -323,7 +323,7 @@ ral_present_job _rendering_handler(ral_context                                  
     present_task_create_info.unique_outputs   = &present_task_unique_output;
 
     present_task = ral_present_task_create_gpu(system_hashed_ansi_string_create("Visuals"),
-                                             &present_task_create_info);
+                                              &present_task_create_info);
 
     /* Configure the result present job */
     ral_present_job_add_task(result_job,
@@ -335,6 +335,13 @@ ral_present_job _rendering_handler(ral_context                                  
                                            false, /* is_input_io */
                                            0);    /* n_io        */
 
+    /* Release the command buffer */
+    ral_context_delete_objects(context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               1, /* n_oobjects */
+                               reinterpret_cast<void**>(&command_buffer) );
+
+    /* All done */
     return result_job;
 }
 

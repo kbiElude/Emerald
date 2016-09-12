@@ -580,8 +580,6 @@ PUBLIC EMERALD_API bool system_dag_solve(system_dag dag)
     bool              result           = false;
     unsigned int      time             = 0;
 
-    LOG_INFO("Performance warning: system_dag_solve() call.");
-
     system_resizable_vector_get_property(dag_ptr->connections,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_connections);

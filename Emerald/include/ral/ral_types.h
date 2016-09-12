@@ -720,7 +720,7 @@ typedef enum
      */
     RAL_CONTEXT_PROPERTY_MAX_UNIFORM_BLOCK_SIZE,
 
-    /* not settable; ral_rendering_handler */
+    /* not settable, ral_rendering_handler */
     RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
 
     /* not settable, uint32_t.
@@ -1541,9 +1541,8 @@ typedef struct ral_texture_view_create_info
         texture            = nullptr;
         type               = RAL_TEXTURE_TYPE_UNKNOWN;
     }
-} ral_texture_view_create_info;
 
-/** TODO */
-PUBLIC EMERALD_API ral_texture_view_create_info ral_texture_view_create_info_from_ral_texture(ral_texture in_texture);
+    EMERALD_API ral_texture_view_create_info(ral_texture in_texture);
+} ral_texture_view_create_info;
 
 #endif /* RAL_TYPES_H */

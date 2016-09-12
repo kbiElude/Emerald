@@ -85,8 +85,6 @@ PRIVATE void            _raGL_texture_client_memory_sourced_update_scheduler_cal
 PRIVATE ral_present_job _raGL_texture_deinit_storage_rendering_callback              (ral_context                                                context,
                                                                                       void*                                                      user_arg,
                                                                                       const ral_rendering_handler_rendering_callback_frame_data* unused);
-PRIVATE ral_present_job _raGL_texture_generate_mipmaps_renderer_callback             (ral_context                                                context,
-                                                                                      void*                                                      texture);
 PRIVATE void            _raGL_texture_generate_mipmaps_scheduler_callback            (void*                                                      texture);
 PRIVATE ral_present_job _raGL_texture_init_storage_renderer_callback                 (ral_context                                                context,
                                                                                       void*                                                      texture,

@@ -29,8 +29,8 @@ typedef enum
     /* not settable; system_callback_manager */
     RAL_TEXTURE_POOL_PROPERTY_CALLBACK_MANAGER,
 
-    /* not settable; uint32_t */
-    RAL_TEXTURE_POOL_PROPERTY_N_ACTIVE_TEXTURES
+    /* not settable; bool */
+    RAL_TEXTURE_POOL_PROPERTY_IS_BEING_RELEASED,
 } ral_texture_pool_property;
 
 /** TODO */
@@ -39,6 +39,9 @@ PUBLIC bool ral_texture_pool_add(ral_texture_pool pool,
 
 /** TODO */
 PUBLIC ral_texture_pool ral_texture_pool_create(ral_context in_context);
+
+/** Releases all textures maintained by the texture pool. Should precede the release call. */
+PUBLIC void ral_texture_pool_empty(ral_texture_pool pool);
 
 /** TODO */
 PUBLIC bool ral_texture_pool_get(ral_texture_pool               pool,

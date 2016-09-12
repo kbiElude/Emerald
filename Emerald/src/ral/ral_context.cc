@@ -680,6 +680,21 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             goto end;
         }
 
+        /* Store the reference counter */
+        system_critical_section_enter(context_ptr->object_to_refcount_cs);
+        {
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->object_to_refcount_map,
+                                                         reinterpret_cast<system_hash64>(result_objects_ptr[n_object])),
+                              "Reference counter already defined for the newly created object.");
+
+            system_hash64map_insert(context_ptr->object_to_refcount_map,
+                                    reinterpret_cast<system_hash64>(result_objects_ptr[n_object]),
+                                    reinterpret_cast<void*>(1),
+                                    nullptr,  /* callback          */
+                                    nullptr); /* callback_argument */
+        }
+        system_critical_section_leave(context_ptr->object_to_refcount_cs);
+
         /* Notify the subscribers, if needed */
         if (object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME &&
             object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE)
@@ -709,26 +724,6 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         }
         system_critical_section_leave(object_storage_cs);
     }
-
-    /* Store the reference counters */
-    system_critical_section_enter(context_ptr->object_to_refcount_cs);
-    {
-        for (uint32_t n_object = 0;
-                      n_object < n_objects;
-                    ++n_object)
-        {
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->object_to_refcount_map,
-                                                         reinterpret_cast<system_hash64>(result_objects_ptr[n_object])),
-                              "Reference counter already defined for the newly created object.");
-
-            system_hash64map_insert(context_ptr->object_to_refcount_map,
-                                    reinterpret_cast<system_hash64>(result_objects_ptr[n_object]),
-                                    reinterpret_cast<void*>(1),
-                                    nullptr,  /* callback          */
-                                    nullptr); /* callback_argument */
-        }
-    }
-    system_critical_section_leave(context_ptr->object_to_refcount_cs);
 
     /* Configure the output variables */
     memcpy(out_result_object_ptrs,
@@ -970,7 +965,7 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                       n_object < in_n_objects;
                     ++n_object)
         {
-            void*    object_ptr          = in_object_ptrs[n_object];
+            void*    object              = in_object_ptrs[n_object];
             uint32_t object_vector_index = ITEM_NOT_FOUND;
 
             if (in_object_ptrs[n_object] == nullptr)
@@ -1001,14 +996,14 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
             switch (object_type)
             {
-                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        (*reinterpret_cast<ral_buffer*>        (object_ptr) ); break;
-                case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release(*reinterpret_cast<ral_command_buffer*>(object_ptr) ); break;
-                case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     (*reinterpret_cast<ral_gfx_state*>     (object_ptr) ); break;
-                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       (*reinterpret_cast<ral_program*>       (object_ptr) ); break;
-                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       (*reinterpret_cast<ral_sampler*>       (object_ptr) ); break;
-                case RAL_CONTEXT_OBJECT_TYPE_SHADER:         ral_shader_release        (*reinterpret_cast<ral_shader*>        (object_ptr) ); break;
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:        ral_texture_release       (*reinterpret_cast<ral_texture*>       (object_ptr) ); break;
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:   ral_texture_view_release  (*reinterpret_cast<ral_texture_view*>  (object_ptr) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         ral_buffer_release        (reinterpret_cast<ral_buffer&>       (object) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: ral_command_buffer_release(reinterpret_cast<ral_command_buffer>(object) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      ral_gfx_state_release     (reinterpret_cast<ral_gfx_state>     (object) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        ral_program_release       (reinterpret_cast<ral_program&>      (object) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        ral_sampler_release       (reinterpret_cast<ral_sampler&>      (object) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_SHADER:         ral_shader_release        (reinterpret_cast<ral_shader&>       (object) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:        ral_texture_release       (reinterpret_cast<ral_texture&>      (object) ); break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:   ral_texture_view_release  (reinterpret_cast<ral_texture_view>  (object) ); break;
 
                 default:
                 {
@@ -1270,13 +1265,10 @@ PRIVATE void _ral_context_on_texture_dropped_from_texture_pool(const void* callb
     _ral_context*                                         context_ptr      = reinterpret_cast<_ral_context*>                                        (context);
     bool                                                  result;
 
-    result = _ral_context_delete_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                         callback_arg_ptr->n_textures,
-                                         reinterpret_cast<void* const*>(callback_arg_ptr->textures) );
-
-    ASSERT_DEBUG_SYNC(result,
-                      "Could not physically delete texture objects.");
+    ral_context_delete_objects(reinterpret_cast<ral_context>(context_ptr),
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               callback_arg_ptr->n_textures,
+                               reinterpret_cast<void* const*>(callback_arg_ptr->textures) );
 }
 
 /** TODO */
@@ -1288,7 +1280,6 @@ PRIVATE void _ral_context_release(void* context)
                                       RAL_CONTEXT_CALLBACK_ID_ABOUT_TO_RELEASE,
                                       context_ptr);
 
-    /* Unregister from notifications before continuing .. */
     _ral_context_subscribe_for_notifications(context_ptr,
                                              false); /* should_subscribe */
 
@@ -2140,32 +2131,36 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                                                                n_objects,
                                                                reinterpret_cast<ral_texture*>(object_ptrs) );
 
-            /* Note: Instead of deleting the textures, we stash them back in the texture pool so that
-             *       they can be re-used.. unless the texture pool is no longer available, in which
-             *       case we actually do release them. :) */
             if (context_ptr->texture_pool != nullptr)
             {
-                for (uint32_t n_texture = 0;
-                              n_texture < n_objects;
-                            ++n_texture)
+                bool is_pool_being_released = false;
+
+                ral_texture_pool_get_property(context_ptr->texture_pool,
+                                              RAL_TEXTURE_POOL_PROPERTY_IS_BEING_RELEASED,
+                                             &is_pool_being_released);
+
+                if (!is_pool_being_released)
                 {
-                    ral_texture_pool_add(context_ptr->texture_pool,
-                                         reinterpret_cast<ral_texture>(object_ptrs[n_texture]) );
+                    for (uint32_t n_texture = 0;
+                                  n_texture < n_objects;
+                                ++n_texture)
+                    {
+                        ral_texture_pool_add(context_ptr->texture_pool,
+                                             reinterpret_cast<ral_texture>(object_ptrs[n_texture]) );
+                    }
+
+                    result = true;
                 }
+            }
+
+            if (result)
+            {
+                goto end;
             }
             else
             {
-                _ral_texture_pool_callback_texture_dropped_arg fake_callback_arg;
-
-                fake_callback_arg.n_textures = n_objects;
-                fake_callback_arg.textures   = reinterpret_cast<ral_texture*>(object_ptrs);
-
-                _ral_context_on_texture_dropped_from_texture_pool(&fake_callback_arg,
-                                                                  context_ptr);
+                break;
             }
-
-            result = true;
-            goto end;
         }
 
         default:

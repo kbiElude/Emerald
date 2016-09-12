@@ -22,9 +22,11 @@
 #include "ral/ral_context.h"
 #include "ral/ral_rendering_handler.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "ral/ral_utils.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
@@ -213,6 +215,8 @@ PRIVATE void _ogl_context_initialize_gl_arb_multi_bind_extension                
 PRIVATE void _ogl_context_initialize_gl_arb_sparse_buffer_extension             (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_initialize_gl_ext_direct_state_access_extension       (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_initialize_gl_ext_texture_filter_anisotropic_extension(_ogl_context*                context_ptr);
+PRIVATE void _ogl_context_on_ral_context_about_to_release_callback              (const void*                  callback_data,
+                                                                                 void*                        user_arg);
 PRIVATE void _ogl_context_release                                               (void*                        ptr);
 PRIVATE void _ogl_context_retrieve_ES_function_pointers                         (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers      (_ogl_context*                context_ptr);
@@ -224,6 +228,8 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_texture_filter_anisotropic_limits     
 PRIVATE void _ogl_context_retrieve_GL_function_pointers                         (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_info                                      (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_limits                                    (_ogl_context*                context_ptr);
+PRIVATE void _ogl_context_subscribe_for_ral_context_notifications               (_ogl_context*                context_ptr,
+                                                                                 bool                         should_subscribe);
 PRIVATE bool _ogl_context_sort_descending                                       (void*                        in_int_1,
                                                                                  void*                        in_int_2);
 
@@ -325,6 +331,10 @@ PRIVATE void _ogl_context_create_from_system_window_shared(system_hashed_ansi_st
 
     new_context_ptr->pfn_init( (ogl_context) new_context_ptr,
                                _ogl_context_init_context_after_creation);
+
+    /* Sign up for ral_context notifications */
+    _ogl_context_subscribe_for_ral_context_notifications(new_context_ptr,
+                                                         true);
 }
 
 /** TODO */
@@ -1353,13 +1363,13 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             ASSERT_DEBUG_SYNC(color_to_is_rb,
                               "Default FB's color texture is not a RB");
 
-            ral_texture_get_property(context_ptr->fbo_color_texture,
-                                     RAL_TEXTURE_PROPERTY_DEFAULT_TEXTURE_VIEW,
-                                    &context_ptr->fbo_color_texture_view);
+            /* Spawn a view for the texture */
+            ral_texture_view_create_info texture_view_create_info = ral_texture_view_create_info(context_ptr->fbo_color_texture);
 
-            ral_context_retain_object(context_ptr->context,
-                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                      context_ptr->fbo_color_texture_view);
+            ral_context_create_texture_views(context_ptr->context,
+                                             1, /* n_texture_views */
+                                            &texture_view_create_info,
+                                            &context_ptr->fbo_color_texture_view);
         }
 
         if (format_depth_stencil != RAL_FORMAT_UNKNOWN)
@@ -1401,13 +1411,13 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             ASSERT_DEBUG_SYNC(depth_stencil_to_is_rb,
                               "Default FB's depth/stencil texture is not a RB");
 
-            ral_texture_get_property(context_ptr->fbo_ds_texture,
-                                     RAL_TEXTURE_PROPERTY_DEFAULT_TEXTURE_VIEW,
-                                    &context_ptr->fbo_ds_texture_view);
+            /* Spawn a view for the texture */
+            ral_texture_view_create_info texture_view_create_info = ral_texture_view_create_info(context_ptr->fbo_ds_texture);
 
-            ral_context_retain_object(context_ptr->context,
-                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                      context_ptr->fbo_ds_texture_view);
+            ral_context_create_texture_views(context_ptr->context,
+                                             1, /* n_texture_views */
+                                            &texture_view_create_info,
+                                            &context_ptr->fbo_ds_texture_view);
         }
 
         /* Retrieve a framebuffer wrapper whose underlying GL object uses the attachments
@@ -1485,6 +1495,17 @@ PRIVATE void _ogl_context_release(void* ptr)
 {
     _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(ptr);
 
+    _ogl_context_subscribe_for_ral_context_notifications(context_ptr,
+                                                         false);
+
+    if (context_ptr->fbo != nullptr)
+    {
+        /* raGL_framebuffers instance will release the FBO automatically when any of the attachments
+         * is released.
+         */
+        context_ptr->fbo = nullptr;
+    }
+
     if (context_ptr->bo_bindings != nullptr)
     {
         ogl_context_bo_bindings_release(context_ptr->bo_bindings);
@@ -1497,43 +1518,6 @@ PRIVATE void _ogl_context_release(void* ptr)
         ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
 
         context_ptr->sampler_bindings = nullptr;
-    }
-
-    if (context_ptr->fbo != nullptr)
-    {
-        /* raGL_framebuffers instance will release the FBO automatically when any of the attachments
-         * is released.
-         */
-        context_ptr->fbo = nullptr;
-    }
-
-    if (context_ptr->fbo_color_texture != nullptr ||
-        context_ptr->fbo_ds_texture    != nullptr)
-    {
-        ral_texture_view fbo_texture_views[] =
-        {
-            context_ptr->fbo_color_texture_view,
-            context_ptr->fbo_ds_texture_view
-        };
-        ral_texture fbo_textures[] =
-        {
-            context_ptr->fbo_color_texture,
-            context_ptr->fbo_ds_texture
-        };
-        const uint32_t n_fbo_texture_views = sizeof(fbo_texture_views) / sizeof(fbo_texture_views[0]);
-        const uint32_t n_fbo_textures      = sizeof(fbo_textures)      / sizeof(fbo_textures[0]);
-
-        ral_context_delete_objects(context_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                   n_fbo_textures,
-                                   reinterpret_cast<void* const*>(fbo_textures) );
-        ral_context_delete_objects(context_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                   n_fbo_texture_views,
-                                   reinterpret_cast<void* const*>(fbo_texture_views) );
-
-        context_ptr->fbo_color_texture = nullptr;
-        context_ptr->fbo_ds_texture    = nullptr;
     }
 
     if (context_ptr->state_cache != nullptr)
@@ -1590,6 +1574,38 @@ PRIVATE void _ogl_context_release(void* ptr)
 
         context_ptr->inited_event = nullptr;
     }
+}
+
+/** TODO */
+PRIVATE void _ogl_context_on_ral_context_about_to_release_callback(const void* callback_data,
+                                                                   void*       user_arg)
+{
+    _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(user_arg);
+
+    ral_texture_view fbo_texture_views[] =
+    {
+        context_ptr->fbo_color_texture_view,
+        context_ptr->fbo_ds_texture_view
+    };
+    ral_texture fbo_textures[] =
+    {
+        context_ptr->fbo_color_texture,
+        context_ptr->fbo_ds_texture
+    };
+    const uint32_t n_fbo_texture_views = sizeof(fbo_texture_views) / sizeof(fbo_texture_views[0]);
+    const uint32_t n_fbo_textures      = sizeof(fbo_textures)      / sizeof(fbo_textures[0]);
+
+    ral_context_delete_objects(context_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                               n_fbo_textures,
+                               reinterpret_cast<void* const*>(fbo_textures) );
+    ral_context_delete_objects(context_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                               n_fbo_texture_views,
+                               reinterpret_cast<void* const*>(fbo_texture_views) );
+
+    context_ptr->fbo_color_texture = nullptr;
+    context_ptr->fbo_ds_texture    = nullptr;
 }
 
 /** TODO */
@@ -3059,6 +3075,33 @@ PRIVATE bool _ogl_context_sort_descending(const void* in_int_1,
     int int_2 = reinterpret_cast<int>(in_int_2);
 
     return (int_1 > int_2);
+}
+
+/** TODO */
+PRIVATE void _ogl_context_subscribe_for_ral_context_notifications(_ogl_context* context_ptr,
+                                                                  bool          should_subscribe)
+{
+    system_callback_manager callback_manager = nullptr;
+
+    ral_context_get_property(context_ptr->context,
+                             RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
+                            &callback_manager);
+
+    if (should_subscribe)
+    {
+        system_callback_manager_subscribe_for_callbacks(callback_manager,
+                                                        RAL_CONTEXT_CALLBACK_ID_ABOUT_TO_RELEASE,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _ogl_context_on_ral_context_about_to_release_callback,
+                                                        context_ptr);
+    }
+    else
+    {
+        system_callback_manager_unsubscribe_from_callbacks(callback_manager,
+                                                           RAL_CONTEXT_CALLBACK_ID_ABOUT_TO_RELEASE,
+                                                           _ogl_context_on_ral_context_about_to_release_callback,
+                                                           context_ptr);
+    }
 }
 
 

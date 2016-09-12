@@ -430,9 +430,16 @@ private:
                           n_io < n_ios;
                         ++n_io)
             {
-                set_io(io_type,
-                       src_ios + n_io,
-                       dst_ios + n_io);
+                dst_ios[n_io].object      = src_ios[n_io].object;
+                dst_ios[n_io].object_type = src_ios[n_io].object_type;
+
+#if 0
+                todo: restore
+
+                ral_context_retain_object(context,
+                                          dst_ios[n_io].object_type,
+                                          dst_ios[n_io].object);
+#endif
             }
         }
     }
@@ -444,12 +451,7 @@ void _ral_present_task::set_io(ral_present_task_io_type   type,
                                const ral_present_task_io* src_io_ptr,
                                ral_present_task_io*       dst_io_ptr)
 {
-    dst_io_ptr->object      = src_io_ptr->object;
-    dst_io_ptr->object_type = src_io_ptr->object_type;
-
-    ral_context_retain_object(context,
-                              dst_io_ptr->object_type,
-                              dst_io_ptr->object);
+    
 }
 
 #if 0

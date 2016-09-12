@@ -4949,24 +4949,12 @@ PUBLIC void raGL_command_buffer_init()
 /** Please see header for specification */
 PUBLIC void raGL_command_buffer_release(raGL_command_buffer command_buffer)
 {
+    _raGL_command_buffer* command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
+
     ASSERT_DEBUG_SYNC(command_buffer != nullptr,
                       "Input raGL_command_buffer instance is NULL");
 
-    #ifdef _DEBUG
-    {
-        _raGL_command_buffer* command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
-
-        /* Ensure no commands are enqueued */
-        uint32_t n_commands = 0;
-
-        system_resizable_vector_get_property(command_buffer_ptr->commands,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_commands);
-
-        ASSERT_DEBUG_SYNC(n_commands == 0,
-                          "raGL_command_buffer_release() called for a command buffer with != 0 commands recorded.");
-    }
-    #endif /* _DEBUG */
+    command_buffer_ptr->clear_commands();
 
     system_resource_pool_return_to_pool(command_buffer_pool,
                                         (system_resource_pool_block) command_buffer);

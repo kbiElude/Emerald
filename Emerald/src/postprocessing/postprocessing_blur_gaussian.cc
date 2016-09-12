@@ -1161,7 +1161,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
                                    &ping_pong_rt_create_info,
                                    &blur_ptr->ping_pong_rt);
 
-        ping_pong_rt_view_create_info = ral_texture_view_create_info_from_ral_texture(blur_ptr->ping_pong_rt);
+        ping_pong_rt_view_create_info = ral_texture_view_create_info(blur_ptr->ping_pong_rt);
 
         ral_context_create_texture_views(blur_ptr->context,
                                          1, /* n_texture_views */
