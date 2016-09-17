@@ -21,6 +21,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_screen_mode.h"
 #include "system/system_window.h"
+#include "../../include/main.h"
 #include <algorithm>
 
 #ifdef _WIN32
@@ -498,5 +499,7 @@ PRIVATE void _window_closing_callback_handler(system_window window,
     demo_app_destroy_window(window_name);
 
     system_event_release(_window_closed_event);
+
+    main_force_deinit();
     return 0;
 }

@@ -524,7 +524,6 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                   n_object < n_objects;
                 ++n_object)
     {
-        system_hashed_ansi_string name_has = nullptr;
         char temp[128];
 
         snprintf(temp,
@@ -532,14 +531,12 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                  object_type_name,
                  (*object_counter_ptr)++);
 
-        name_has = system_hashed_ansi_string_create(temp);
-
         switch (object_type)
         {
             case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
             {
                 result_objects_ptr[n_object] = ral_buffer_create(reinterpret_cast<ral_context>(context_ptr),
-                                                                 name_has,
+                                                                 system_hashed_ansi_string_create(temp),
                                                                  reinterpret_cast<const ral_buffer_create_info*>(object_create_info_ptrs + n_object) );
 
                 break;
@@ -572,7 +569,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
             {
                 result_objects_ptr[n_object] = ral_sampler_create(reinterpret_cast<ral_context>(context_ptr),
-                                                                  name_has,
+                                                                  system_hashed_ansi_string_create(temp),
                                                                   reinterpret_cast<const ral_sampler_create_info*>(object_create_info_ptrs) + n_object);
 
                 break;
@@ -595,7 +592,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 {
                     backend_texture_callback_used = true;
                     result_objects_ptr[n_object]  = ral_texture_create(reinterpret_cast<ral_context>(context_ptr),
-                                                                       name_has,
+                                                                       system_hashed_ansi_string_create(temp),
                                                                        texture_create_info_ptr);
                 }
                 else
@@ -619,7 +616,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
                 result_objects_ptr[n_object] = ral_texture_create_from_file_name(reinterpret_cast<ral_context>(context_ptr),
-                                                                                 name_has,
+                                                                                 system_hashed_ansi_string_create(temp),
                                                                                  *reinterpret_cast<const system_hashed_ansi_string*>(object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
                                                                                  _ral_context_notify_backend_about_new_object,
@@ -632,6 +629,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
             {
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
                 system_hashed_ansi_string file_name_has = nullptr;
+                system_hashed_ansi_string name_has      = system_hashed_ansi_string_create(temp);
 
                 gfx_image_get_property(*reinterpret_cast<const gfx_image*>(object_create_info_ptrs + n_object),
                                        GFX_IMAGE_PROPERTY_FILENAME,

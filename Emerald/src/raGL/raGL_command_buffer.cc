@@ -925,8 +925,23 @@ typedef struct _raGL_command_buffer
     {
         raGL_backend backend = nullptr;
 
+        if (commands == nullptr)
+        {
+            commands = system_resizable_vector_create(32); /* capacity */
+        }
+        else
+        {
+            uint32_t n_commands = 0;
+
+            system_resizable_vector_get_property(commands,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_commands);
+
+            ASSERT_DEBUG_SYNC(n_commands == 0,
+                              "Existing command container is not empty");
+        }
+
         command_buffer_ral = nullptr;
-        commands           = system_resizable_vector_create(32); /* capacity */
         context            = in_context;
 
         ogl_context_get_property(in_context,

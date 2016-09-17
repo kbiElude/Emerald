@@ -528,8 +528,8 @@ PUBLIC EMERALD_API void system_dag_release(system_dag dag)
     {
         _system_dag_node* node_ptr = nullptr;
 
-        while (!system_resizable_vector_pop(dag_ptr->nodes,
-                                           &node_ptr) )
+        while (system_resizable_vector_pop(dag_ptr->nodes,
+                                          &node_ptr) )
         {
             delete node_ptr;
 
@@ -553,6 +553,8 @@ PUBLIC EMERALD_API void system_dag_release(system_dag dag)
 
         dag_ptr->sorted_nodes = nullptr;
     }
+
+    delete dag_ptr;
 }
 
 /** TODO */
@@ -561,8 +563,8 @@ PUBLIC EMERALD_API void system_dag_reset_connections(system_dag dag)
     _system_dag*            dag_ptr        = reinterpret_cast<_system_dag*>(dag);
     _system_dag_connection* connection_ptr = nullptr;
 
-    while (!system_resizable_vector_pop(dag_ptr->connections,
-                                       &connection_ptr) )
+    while (system_resizable_vector_pop(dag_ptr->connections,
+                                      &connection_ptr) )
     {
         delete connection_ptr;
 
