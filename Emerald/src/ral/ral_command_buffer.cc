@@ -69,7 +69,12 @@ typedef struct _ral_command
 
     void deinit()
     {
-        update_reference_counters(false);
+        if (type != RAL_COMMAND_TYPE_UNKNOWN)
+        {
+            update_reference_counters(false);
+
+            type = RAL_COMMAND_TYPE_UNKNOWN;
+        }
     }
 
     void init()
