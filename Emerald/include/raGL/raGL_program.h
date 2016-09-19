@@ -64,6 +64,12 @@ typedef enum
      **/
     RAGL_PROGRAM_PROPERTY_INFO_LOG,
 
+    /* not settable; uint32_t */
+    RAGL_PROGRAM_PROPERTY_N_SSB_BINDINGS,
+
+    /* not settable; uint32_t */
+    RAGL_PROGRAM_PROPERTY_N_UB_BINDINGS,
+
     /* not settable; ral_program */
     RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM
 } raGL_program_property;

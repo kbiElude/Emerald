@@ -962,11 +962,11 @@ typedef struct _raGL_command_buffer
                                          &dep_tracker);
     }
 
-    void bake_and_bind_fbo                 ();
-    void bake_and_bind_vao                 ();
-    void bake_gfx_state                    ();
-    void bake_pre_draw_call_memory_barriers();
-    void bake_rt_state                     ();
+    void bake_and_bind_fbo                     ();
+    void bake_and_bind_vao                     ();
+    void bake_gfx_state                        ();
+    void bake_pre_dispatch_draw_memory_barriers();
+    void bake_rt_state                         ();
 
     void bake_commands();
     void clear_commands();
@@ -1864,7 +1864,7 @@ void _raGL_command_buffer::bake_gfx_state()
 }
 
 /** TODO */
-void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
+void _raGL_command_buffer::bake_pre_dispatch_draw_memory_barriers()
 {
     ral_program active_program_ral = nullptr;
 
@@ -1896,16 +1896,16 @@ void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
      */
     GLenum   memory_barriers_to_schedule = 0;
     uint32_t n_sampler_variables         = 0;
-    uint32_t n_storage_blocks            = 0;
+    uint32_t n_ssb_bindings              = 0;
     uint32_t n_storage_image_variables   = 0;
-    uint32_t n_uniform_blocks            = 0;
+    uint32_t n_ub_bindings               = 0;
 
-    ral_program_get_property      (active_program_ral,
-                                   RAL_PROGRAM_PROPERTY_N_STORAGE_BLOCKS,
-                                  &n_storage_blocks);
-    ral_program_get_property      (active_program_ral,
-                                   RAL_PROGRAM_PROPERTY_N_UNIFORM_BLOCKS,
-                                  &n_uniform_blocks);
+    raGL_program_get_property     (bake_state.active_program,
+                                   RAGL_PROGRAM_PROPERTY_N_SSB_BINDINGS,
+                                  &n_ssb_bindings);
+    raGL_program_get_property     (bake_state.active_program,
+                                   RAGL_PROGRAM_PROPERTY_N_UB_BINDINGS,
+                                  &n_ub_bindings);
     ral_program_get_block_property(active_program_ral,
                                    system_hashed_ansi_string_get_default_empty_string(),
                                    RAL_PROGRAM_BLOCK_PROPERTY_N_SAMPLER_VARIABLES,
@@ -1915,12 +1915,12 @@ void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
                                    RAL_PROGRAM_BLOCK_PROPERTY_N_STORAGE_IMAGE_VARIABLES,
                                   &n_storage_image_variables);
 
-    if (n_storage_blocks > 0)
+    if (n_ssb_bindings > 0)
     {
         bool any_sb_dirty = false;
 
         for (uint32_t n_sb = 0;
-                      n_sb < n_storage_blocks;
+                      n_sb < n_ssb_bindings;
                     ++n_sb)
         {
             uint32_t bp = -1;
@@ -1944,7 +1944,7 @@ void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
                                                       bake_state.active_sb_bindings[bp].buffer,
                                                       GL_SHADER_STORAGE_BARRIER_BIT);
 
-            /* Since we have no way of determining whether the image is used for writes (at the moment),
+            /* Since we have no way of determining whether the buffer is used for writes (at the moment),
              * assume the worst-case scenario */
             raGL_dep_tracker_mark_as_dirty(dep_tracker,
                                            bake_state.active_sb_bindings[bp].buffer);
@@ -2011,12 +2011,12 @@ void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
         }
     }
 
-    if (n_uniform_blocks > 0)
+    if (n_ub_bindings > 0)
     {
         bool any_ub_dirty = false;
 
         for (uint32_t n_ub = 0;
-                      n_ub < n_uniform_blocks;
+                      n_ub < n_ub_bindings;
                     ++n_ub)
         {
             uint32_t bp = -1;
@@ -2064,7 +2064,7 @@ void _raGL_command_buffer::bake_pre_draw_call_memory_barriers()
         memory_barriers_to_schedule |= GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
     }
 
-    /* Have any of the textures the shader may attempt to sample from been updated with images ? */
+    /* Have any of the textures the shader may attempt to sample from been updated via image store ops? */
     bool any_sampler_variable_dirty = false;
 
     for (uint32_t n_sampler_variable = 0;
@@ -3015,6 +3015,8 @@ void _raGL_command_buffer::process_dispatch_command(const ral_command_buffer_dis
     }
     #endif
 
+    bake_pre_dispatch_draw_memory_barriers();
+
     dispatch_command_ptr->dispatch_command_info.x = command_ral_ptr->x;
     dispatch_command_ptr->dispatch_command_info.y = command_ral_ptr->y;
     dispatch_command_ptr->dispatch_command_info.z = command_ral_ptr->z;
@@ -3118,7 +3120,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
                           "Could not update draw buffer configuration");
     }
 
-    bake_pre_draw_call_memory_barriers();
+    bake_pre_dispatch_draw_memory_barriers();
 
     /* Issue the draw call */
     _raGL_command* draw_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
@@ -3278,7 +3280,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
     if (command_ral_ptr->index_buffer == nullptr)
     {
-        bake_pre_draw_call_memory_barriers();
+        bake_pre_dispatch_draw_memory_barriers();
 
         /* Issue the draw call */
         _raGL_command_multi_draw_arrays_indirect_command_info& command_args = draw_command_ptr->multi_draw_arrays_indirect_command_info;
@@ -3332,7 +3334,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
             }
         }
 
-        bake_pre_draw_call_memory_barriers();
+        bake_pre_dispatch_draw_memory_barriers();
 
         /* Issue the draw call */
         _raGL_command_multi_draw_elements_indirect_command_info& command_args = draw_command_ptr->multi_draw_elements_indirect_command_info;
@@ -3393,7 +3395,7 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
                           "VAO state still marked as dirty.");
     }
 
-    bake_pre_draw_call_memory_barriers();
+    bake_pre_dispatch_draw_memory_barriers();
 
     if (command_ral_ptr->n_instances == 1)
     {

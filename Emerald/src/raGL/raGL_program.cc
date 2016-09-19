@@ -2051,6 +2051,20 @@ PUBLIC void raGL_program_get_property(const raGL_program    program,
              break;
         }
 
+        case RAGL_PROGRAM_PROPERTY_N_SSB_BINDINGS:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = program_ptr->n_ssb_bindings;
+
+            break;
+        }
+
+        case RAGL_PROGRAM_PROPERTY_N_UB_BINDINGS:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = program_ptr->n_ub_bindings;
+
+            break;
+        }
+
         case RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM:
         {
             *reinterpret_cast<ral_program*>(out_result_ptr) = program_ptr->program_ral;

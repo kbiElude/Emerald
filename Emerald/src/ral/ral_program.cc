@@ -622,6 +622,19 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
                                 nullptr); /* callback_argument */
     }
 
+    if (variable_type_vector == nullptr)
+    {
+        variable_type_vector = system_resizable_vector_create(4); /* capacity */
+
+        system_hash64map_insert(block_ptr->variable_vector_by_class_hashmap,
+                                variable_type_class,
+                                variable_type_vector,
+                                nullptr,  /* on_removal_callback          */
+                                nullptr); /* on_removal_callback_user_arg */
+    }
+
+    system_resizable_vector_push(variable_type_vector,
+                                 variable_ptr);
 end:
     ;
 }

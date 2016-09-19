@@ -718,13 +718,20 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_han
 
     if (present_job != nullptr)
     {
+        raGL_dep_tracker         dep_tracker                     = nullptr;
         ral_context_object_type  presentable_output_object_type;
         ral_present_task         presentable_output_task         = nullptr;
         uint32_t                 presentable_output_task_index   = -1;
         uint32_t                 presentable_output_task_io      = -1;
         ral_present_task_io_type presentable_output_task_io_type;
+        raGL_texture             presentable_texture_raGL         = nullptr;
+        ral_texture              presentable_texture_ral          = nullptr;
         ral_texture_view         presentable_texture_view         = nullptr;
         uint32_t                 presentable_texture_view_size[2] = {0};
+
+        raGL_backend_get_private_property(rendering_handler_ptr->backend,
+                                          RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
+                                         &dep_tracker);
 
         ral_present_job_get_property(present_job,
                                      RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_ID,
@@ -759,6 +766,17 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_han
         }
         #endif
 
+        ral_texture_view_get_property(presentable_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &presentable_texture_ral);
+
+        raGL_backend_get_texture(rendering_handler_ptr->backend,
+                                 presentable_texture_ral,
+                                &presentable_texture_raGL);
+
+        ASSERT_DEBUG_SYNC(presentable_texture_raGL != nullptr,
+                          "raGL instance of the presentable texture is null");
+
         ral_texture_view_get_mipmap_property(presentable_texture_view,
                                              0, /* n_layer  */
                                              0, /* n_mipmap */
@@ -770,7 +788,8 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_han
                                              RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                              presentable_texture_view_size + 1);
 
-        /* Blit the context FBO's contents to the back buffer */
+        /* If the presentable texture is marked as dirty in the dep tracker, make sure to flush it
+         * before we use it as a blit source */
         raGL_framebuffers fbos            = nullptr;
         raGL_framebuffer  read_fb_raGL    = nullptr;
         GLuint            read_fb_raGL_id = -1;
@@ -793,6 +812,14 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_han
         rendering_handler_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
                                                   read_fb_raGL_id);
 
+        if (raGL_dep_tracker_is_dirty(dep_tracker,
+                                      presentable_texture_raGL,
+                                      GL_FRAMEBUFFER_BARRIER_BIT) )
+        {
+            rendering_handler_ptr->pGLMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
+        }
+
+        /* Blit the context FBO's contents to the back buffer */
         rendering_handler_ptr->pGLBlitFramebuffer(0,                                /* srcX0 */
                                                   0,                                /* srcY0 */
                                                   presentable_texture_view_size[0], /* srcX1 */

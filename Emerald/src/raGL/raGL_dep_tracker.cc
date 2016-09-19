@@ -26,7 +26,7 @@ typedef struct _raGL_dep_tracker
                                                   16,       /* n_elements_to_preallocate */
                                                   nullptr,  /* init_fn                   */
                                                   nullptr); /* deinit_fn                 */
-        handles     = system_hash64map_create    (16);      /* capacity                  */
+        handles     = system_hash64map_create    (sizeof(_raGL_dep_tracker_object*) );
     }
 
     ~_raGL_dep_tracker()
