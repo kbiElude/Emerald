@@ -1487,7 +1487,7 @@ typedef struct ral_gfx_state_create_info
         line_width                        = 1.0f;
         logic_op                          = RAL_LOGIC_OP_NOOP;
         max_depth_bounds                  = 1.0f;
-        min_depth_bounds                  = 0.0f;
+        min_depth_bounds                  = 1e-5f;
         n_patch_control_points            = 1;
         n_vertex_attributes               = 0;
         polygon_mode_back                 = RAL_POLYGON_MODE_FILL;

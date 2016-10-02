@@ -905,7 +905,7 @@ typedef struct
             active_rt_color_attachments[n_rt] = _raGL_command_buffer_bake_state_rt();
         }
 
-        active_fbo_draw_buffers_dirty = false;
+        active_fbo_draw_buffers_dirty = true;
         active_fbo_draw               = nullptr;
         active_gfx_state              = nullptr;
         active_gfx_state_dirty        = false;
@@ -1717,7 +1717,7 @@ void _raGL_command_buffer::bake_gfx_state()
     }
 
     /* Sample shading */
-    if (sample_shading_enabled)
+    if (!sample_shading_enabled)
     {
         _raGL_command* disable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
@@ -2170,7 +2170,7 @@ void _raGL_command_buffer::bake_rt_state()
     /* Below we can safely assume all draw buffers are going to use the same blend settings */
     const _raGL_command_buffer_bake_state_rt& current_rt = bake_state.active_rt_color_attachments[0];
 
-    if (current_rt.blend_enabled)
+    if (!current_rt.blend_enabled)
     {
         _raGL_command* disable_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
@@ -2193,6 +2193,22 @@ void _raGL_command_buffer::bake_rt_state()
                                          enable_command_ptr);
         }
 
+        if (current_rt.dst_alpha_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.dst_alpha_blend_factor == RAL_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA ||
+            current_rt.dst_alpha_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.dst_alpha_blend_factor == RAL_BLEND_FACTOR_CONSTANT_COLOR           ||
+            current_rt.dst_color_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.dst_color_blend_factor == RAL_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA ||
+            current_rt.dst_color_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.dst_color_blend_factor == RAL_BLEND_FACTOR_CONSTANT_COLOR           ||
+            current_rt.src_alpha_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.src_alpha_blend_factor == RAL_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA ||
+            current_rt.src_alpha_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.src_alpha_blend_factor == RAL_BLEND_FACTOR_CONSTANT_COLOR           ||
+            current_rt.src_color_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.src_color_blend_factor == RAL_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA ||
+            current_rt.src_color_blend_factor == RAL_BLEND_FACTOR_CONSTANT_ALPHA           ||
+            current_rt.src_color_blend_factor == RAL_BLEND_FACTOR_CONSTANT_COLOR)
         {
             /* Blend constant */
             _raGL_command* blend_color_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
@@ -3474,12 +3490,12 @@ void _raGL_command_buffer::process_execute_command_buffer_command(const ral_comm
 /** TODO */
 void _raGL_command_buffer::process_fill_buffer_command(const ral_command_buffer_fill_buffer_command_info* command_ral_ptr)
 {
-    raGL_backend   backend_raGL      = nullptr;
-    raGL_buffer    buffer_raGL       = nullptr;
-    GLuint         buffer_raGL_id    = 0;
-
-    _raGL_command* bind_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-    _raGL_command* clear_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    raGL_backend   backend_raGL             = nullptr;
+    raGL_buffer    buffer_raGL              = nullptr;
+    GLuint         buffer_raGL_id           = 0;
+    uint32_t       buffer_raGL_start_offset = 0;
+    _raGL_command* bind_command_ptr         = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    _raGL_command* clear_command_ptr        = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BACKEND,
@@ -3490,6 +3506,9 @@ void _raGL_command_buffer::process_fill_buffer_command(const ral_command_buffer_
     raGL_buffer_get_property(buffer_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &buffer_raGL_id);
+    raGL_buffer_get_property(buffer_raGL,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &buffer_raGL_start_offset);
 
     bind_command_ptr->type                            = RAGL_COMMAND_TYPE_BIND_BUFFER;
     bind_command_ptr->bind_buffer_command_info.bo_id  = buffer_raGL_id;
@@ -3499,7 +3518,7 @@ void _raGL_command_buffer::process_fill_buffer_command(const ral_command_buffer_
     clear_command_ptr->clear_buffer_sub_data_command_info.format         = GL_RED_INTEGER;
     clear_command_ptr->clear_buffer_sub_data_command_info.internalformat = GL_R32I;
     clear_command_ptr->clear_buffer_sub_data_command_info.size           = sizeof(uint32_t) * command_ral_ptr->n_dwords;
-    clear_command_ptr->clear_buffer_sub_data_command_info.start_offset   = command_ral_ptr->start_offset;
+    clear_command_ptr->clear_buffer_sub_data_command_info.start_offset   = command_ral_ptr->start_offset + buffer_raGL_start_offset;
     clear_command_ptr->clear_buffer_sub_data_command_info.target         = GL_COPY_WRITE_BUFFER;
     clear_command_ptr->clear_buffer_sub_data_command_info.type           = GL_INT;
 
@@ -3860,6 +3879,26 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 }
 
 /** TODO */
+void _raGL_command_buffer::process_set_color_rendertarget_command(const ral_command_buffer_set_color_rendertarget_command_info* command_ral_ptr)
+{
+    ASSERT_DEBUG_SYNC(command_ral_ptr->rendertarget_index < N_MAX_RENDERTARGETS,
+                      "Too many rendertargets requested.");
+
+    bake_state.active_rt_attachments_dirty                                      = true;
+    bake_state.active_rt_color_attachments[command_ral_ptr->rendertarget_index] = _raGL_command_buffer_bake_state_rt(*command_ral_ptr);
+}
+
+/** TODO */
+void _raGL_command_buffer::process_set_depth_rendertarget_command(const ral_command_buffer_set_depth_rendertarget_command_info* command_ral_ptr)
+{
+    if (bake_state.active_rt_ds_attachment != command_ral_ptr->depth_rt)
+    {
+        bake_state.active_rt_attachments_dirty = true;
+        bake_state.active_rt_ds_attachment     = command_ral_ptr->depth_rt;
+    }
+}
+
+/** TODO */
 void _raGL_command_buffer::process_set_gfx_state_command(const ral_command_buffer_set_gfx_state_command_info* command_ral_ptr)
 {
     ASSERT_DEBUG_SYNC(command_ral_ptr->new_state != nullptr,
@@ -3908,26 +3947,6 @@ void _raGL_command_buffer::process_set_program_command(const ral_command_buffer_
 }
 
 /** TODO */
-void _raGL_command_buffer::process_set_color_rendertarget_command(const ral_command_buffer_set_color_rendertarget_command_info* command_ral_ptr)
-{
-    ASSERT_DEBUG_SYNC(command_ral_ptr->rendertarget_index < N_MAX_RENDERTARGETS,
-                      "Too many rendertargets requested.");
-
-    bake_state.active_rt_attachments_dirty                                      = true;
-    bake_state.active_rt_color_attachments[command_ral_ptr->rendertarget_index] = _raGL_command_buffer_bake_state_rt(*command_ral_ptr);
-}
-
-/** TODO */
-void _raGL_command_buffer::process_set_depth_rendertarget_command(const ral_command_buffer_set_depth_rendertarget_command_info* command_ral_ptr)
-{
-    if (bake_state.active_rt_ds_attachment != command_ral_ptr->depth_rt)
-    {
-        bake_state.active_rt_attachments_dirty = true;
-        bake_state.active_rt_ds_attachment     = command_ral_ptr->depth_rt;
-    }
-}
-
-/** TODO */
 void _raGL_command_buffer::process_set_scissor_box_command(const ral_command_buffer_set_scissor_box_command_info* command_ral_ptr)
 {
     /* Sanity checks */
@@ -3953,7 +3972,7 @@ void _raGL_command_buffer::process_set_scissor_box_command(const ral_command_buf
     gl_command_ptr->scissor_indexedv_command_info.v[0]  = command_ral_ptr->xy  [0];
     gl_command_ptr->scissor_indexedv_command_info.v[1]  = command_ral_ptr->xy  [1];
     gl_command_ptr->scissor_indexedv_command_info.v[2]  = command_ral_ptr->size[0];
-    gl_command_ptr->scissor_indexedv_command_info.v[3]  = command_ral_ptr->size[0];
+    gl_command_ptr->scissor_indexedv_command_info.v[3]  = command_ral_ptr->size[1];
     gl_command_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
 
     memcpy(bake_state.active_scissor_boxes[command_ral_ptr->index].size,
@@ -3975,9 +3994,10 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
      *
      * In order to avoid doing insensible bind calls all the time, we cache configured VA state
      * and bind corresponding VAOs at draw call time. */
-    const raGL_program_attribute* attribute_ptr = nullptr;
-    raGL_backend                  backend_raGL  = nullptr;
-    raGL_buffer                   buffer_raGL   = nullptr;
+    const raGL_program_attribute* attribute_ptr            = nullptr;
+    raGL_backend                  backend_raGL             = nullptr;
+    raGL_buffer                   buffer_raGL              = nullptr;
+    uint32_t                      buffer_raGL_start_offset = 0;
 
     raGL_program_get_vertex_attribute_by_name(bake_state.active_program,
                                               command_ral_ptr->name,
@@ -3997,12 +4017,16 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
     ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
                       "No raGL buffer instance found for the specified RAL buffer instance.");
 
-    if (bake_state.vbs[attribute_ptr->location].buffer_raGL  != buffer_raGL                   ||
-        bake_state.vbs[attribute_ptr->location].start_offset != command_ral_ptr->start_offset)
+    raGL_buffer_get_property(buffer_raGL,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &buffer_raGL_start_offset);
+
+    if (bake_state.vbs[attribute_ptr->location].buffer_raGL  != buffer_raGL                                              ||
+        bake_state.vbs[attribute_ptr->location].start_offset != command_ral_ptr->start_offset + buffer_raGL_start_offset)
     {
         /* Need to update the VA configuration */
         bake_state.vbs[attribute_ptr->location].buffer_raGL  = buffer_raGL;
-        bake_state.vbs[attribute_ptr->location].start_offset = command_ral_ptr->start_offset;
+        bake_state.vbs[attribute_ptr->location].start_offset = command_ral_ptr->start_offset + buffer_raGL_start_offset;
         bake_state.vao_dirty                                 = true;
     }
 }
@@ -4051,9 +4075,10 @@ void _raGL_command_buffer::process_set_viewport_command(const ral_command_buffer
 /** TODO */
 void _raGL_command_buffer::process_update_buffer_command(const ral_command_buffer_update_buffer_command_info* command_ral_ptr)
 {
-    raGL_backend backend_gl     = nullptr;
-    raGL_buffer  buffer_raGL    = nullptr;
-    GLuint       buffer_raGL_id = 0;
+    raGL_backend backend_gl               = nullptr;
+    raGL_buffer  buffer_raGL              = nullptr;
+    GLuint       buffer_raGL_id           = 0;
+    uint32_t     buffer_raGL_start_offset = 0;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BACKEND,
@@ -4069,6 +4094,9 @@ void _raGL_command_buffer::process_update_buffer_command(const ral_command_buffe
     raGL_buffer_get_property(buffer_raGL,
                              RAGL_BUFFER_PROPERTY_ID,
                             &buffer_raGL_id);
+    raGL_buffer_get_property(buffer_raGL,
+                             RAGL_BUFFER_PROPERTY_START_OFFSET,
+                            &buffer_raGL_start_offset);
 
     /* Enqueue a corresponding GL command */
     _raGL_command* named_buffer_sub_data_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
@@ -4076,7 +4104,7 @@ void _raGL_command_buffer::process_update_buffer_command(const ral_command_buffe
     named_buffer_sub_data_command_ptr->named_buffer_sub_data_command_info.bo_id  = buffer_raGL_id ;
     named_buffer_sub_data_command_ptr->named_buffer_sub_data_command_info.data   = (command_ral_ptr->alloced_data != nullptr) ? command_ral_ptr->alloced_data
                                                                                                                               : command_ral_ptr->preallocated_data;
-    named_buffer_sub_data_command_ptr->named_buffer_sub_data_command_info.offset = command_ral_ptr->start_offset;
+    named_buffer_sub_data_command_ptr->named_buffer_sub_data_command_info.offset = command_ral_ptr->start_offset + buffer_raGL_start_offset;
     named_buffer_sub_data_command_ptr->named_buffer_sub_data_command_info.size   = command_ral_ptr->size;
     named_buffer_sub_data_command_ptr->type                                      = RAGL_COMMAND_TYPE_NAMED_BUFFER_SUB_DATA;
 

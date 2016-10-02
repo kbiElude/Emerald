@@ -524,6 +524,11 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
     _raGL_buffer* buffer_ptr      = reinterpret_cast<_raGL_buffer*>(buffer);
     ogl_context   current_context = ogl_context_get_current_context();
 
+    if (current_context == nullptr)
+    {
+        current_context = buffer_ptr->context;
+    }
+
     if (async)
     {
         ral_backend_type                                       backend_type;
@@ -555,11 +560,6 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
         _raGL_buffer_client_memory_sourced_update_request_arg callback_arg;
         ral_context                                           context_ral  = nullptr;
         ral_rendering_handler                                 context_rh   = nullptr;
-
-        if (buffer_ptr->context != current_context)
-        {
-            current_context = buffer_ptr->context;
-        }
 
         ogl_context_get_property(current_context,
                                  OGL_CONTEXT_PROPERTY_CONTEXT_RAL,

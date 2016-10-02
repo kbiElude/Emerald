@@ -131,7 +131,7 @@ static const char* fragment_shader_template = "#ifdef GL_ES\n"
                                               "{\n"
                                               "    vec4 texel = textureLod(font_table, vertex_shader_uv, 0.0);\n"
                                               "\n"
-                                              "    result = vec4(color.xyz * texel.x, (texel.x > 0.9) ? 1 : 0);\n"
+                                              "    result = vec4(1.0, 0.0, 0.0, 0.0) + vec4(color.xyz * texel.x, (texel.x > 0.9) ? 1 : 0);\n"
                                               "}\n";
 
 static const char* vertex_shader_template = "#ifdef GL_ES\n"
@@ -964,7 +964,7 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
         ral_gfx_state_create_info                    gfx_state_create_info;
         ral_command_buffer_set_viewport_command_info gfx_state_viewport;
 
-        gfx_state_viewport.depth_range[0] = 0.0f;
+        gfx_state_viewport.depth_range[0] = 1e-5f;
         gfx_state_viewport.depth_range[1] = 1.0f;
         gfx_state_viewport.index          = 0;
         gfx_state_viewport.size[0]        = static_cast<float>(target_texture_view_width);
@@ -1077,8 +1077,8 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
                 rt_info.dst_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                 rt_info.dst_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
                 rt_info.rendertarget_index     = 0;
-                rt_info.src_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-                rt_info.src_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                rt_info.src_alpha_blend_factor = RAL_BLEND_FACTOR_SRC_ALPHA;
+                rt_info.src_color_blend_factor = RAL_BLEND_FACTOR_SRC_ALPHA;
                 rt_info.texture_view           = target_texture_view;
 
                 rt_wide_scissor_box.index   = 0;
