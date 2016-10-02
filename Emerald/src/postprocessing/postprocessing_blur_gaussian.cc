@@ -1045,7 +1045,10 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
 
         if (blur_ptr->gfx_state != nullptr)
         {
-            ral_gfx_state_release(blur_ptr->gfx_state);
+            ral_context_delete_objects(blur_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&blur_ptr->gfx_state) );
 
             blur_ptr->gfx_state = nullptr;
         }

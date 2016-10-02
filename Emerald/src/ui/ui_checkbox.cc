@@ -522,7 +522,10 @@ PUBLIC void ui_checkbox_deinit(void* internal_instance)
 
     if (ui_checkbox_ptr->cached_gfx_state != nullptr)
     {
-        ral_gfx_state_release(ui_checkbox_ptr->cached_gfx_state);
+        ral_context_delete_objects(ui_checkbox_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&ui_checkbox_ptr->cached_gfx_state) );
 
         ui_checkbox_ptr->cached_gfx_state = nullptr;
     }
@@ -593,7 +596,10 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
         if (!(fabs(cached_static_viewports[0].size[0] - target_texture_view_size[0]) < 1e-5f &&
               fabs(cached_static_viewports[0].size[1] - target_texture_view_size[1]) < 1e-5f) )
         {
-            ral_gfx_state_release(checkbox_ptr->cached_gfx_state);
+            ral_context_delete_objects(checkbox_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&checkbox_ptr->cached_gfx_state) );
 
             checkbox_ptr->cached_gfx_state = nullptr;
         }
@@ -627,8 +633,10 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
         gfx_state_create_info.static_viewports                     = &viewport;
         gfx_state_create_info.static_viewports_enabled             = true;
 
-        checkbox_ptr->cached_gfx_state = ral_gfx_state_create(checkbox_ptr->context,
-                                                             &gfx_state_create_info);
+        ral_context_create_gfx_states(checkbox_ptr->context,
+                                      1, /* n_create_info_items */
+                                      &gfx_state_create_info,
+                                      &checkbox_ptr->cached_gfx_state);
     }
 
     /* Record the command buffer */

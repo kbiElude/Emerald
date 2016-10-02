@@ -335,7 +335,15 @@ _scene_renderer_uber_mesh_data::~_scene_renderer_uber_mesh_data()
 {
     if (gfx_state != nullptr)
     {
-        ral_gfx_state_release(gfx_state);
+        ral_context gfx_state_context = nullptr;
+
+        ral_gfx_state_get_property(gfx_state,
+                                   RAL_GFX_STATE_PROPERTY_CONTEXT,
+                                  &gfx_state_context);
+        ral_context_delete_objects(gfx_state_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&gfx_state) );
 
         gfx_state = nullptr;
     }
@@ -768,13 +776,19 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
     /* Cache the new gfx state and leave. */
     if (mesh_data_ptr->gfx_state != nullptr)
     {
-        ral_gfx_state_release(mesh_data_ptr->gfx_state);
+        ral_context_delete_objects(uber_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&mesh_data_ptr->gfx_state) );
 
         mesh_data_ptr->gfx_state = nullptr;
     }
 
-    mesh_data_ptr->gfx_state     = ral_gfx_state_create(uber_ptr->context,
-                                                        new_gfx_state_create_info_ptr);
+    ral_context_create_gfx_states(uber_ptr->context,
+                                  1, /* n_create_info_items */
+                                  new_gfx_state_create_info_ptr,
+                                 &mesh_data_ptr->gfx_state);
+
     mesh_data_ptr->mesh_instance = mesh;
 
     ral_gfx_state_create_info::release(new_gfx_state_create_info_ptr);

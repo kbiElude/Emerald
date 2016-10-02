@@ -532,7 +532,10 @@ PUBLIC void ui_texture_preview_deinit(void* internal_instance)
 
     if (ui_texture_preview_ptr->last_cached_gfx_state != nullptr)
     {
-        ral_gfx_state_release(ui_texture_preview_ptr->last_cached_gfx_state);
+        ral_context_delete_objects(ui_texture_preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&ui_texture_preview_ptr->last_cached_gfx_state) );
 
         ui_texture_preview_ptr->last_cached_gfx_state = nullptr;
     }
@@ -602,7 +605,10 @@ PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            int
     {
         if (texture_preview_ptr->last_cached_gfx_state_dirty)
         {
-            ral_gfx_state_release(texture_preview_ptr->last_cached_gfx_state);
+            ral_context_delete_objects(texture_preview_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&texture_preview_ptr->last_cached_gfx_state) );
 
             texture_preview_ptr->last_cached_gfx_state = nullptr;
         }
@@ -617,7 +623,10 @@ PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            int
             if (fabs(gfx_state_viewport.size[0] - target_texture_view_width)  > 1e-5f ||
                 fabs(gfx_state_viewport.size[1] - target_texture_view_height) > 1e-5f)
             {
-                ral_gfx_state_release(texture_preview_ptr->last_cached_gfx_state);
+                ral_context_delete_objects(texture_preview_ptr->context,
+                                           RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                           1, /* n_objects */
+                                           reinterpret_cast<void* const*>(&texture_preview_ptr->last_cached_gfx_state) );
 
                 texture_preview_ptr->last_cached_gfx_state = nullptr;
             }
@@ -649,8 +658,10 @@ PUBLIC ral_present_task ui_texture_preview_get_present_task(void*            int
         gfx_state_create_info.static_viewports                     = &viewport;
         gfx_state_create_info.static_viewports_enabled             = true;
 
-        texture_preview_ptr->last_cached_gfx_state = ral_gfx_state_create(texture_preview_ptr->context,
-                                                                         &gfx_state_create_info);
+        ral_context_create_gfx_states(texture_preview_ptr->context,
+                                      1, /* n_create_info_items */
+                                     &gfx_state_create_info,
+                                     &texture_preview_ptr->last_cached_gfx_state);
     }
 
     /* Start baking a command buffer */

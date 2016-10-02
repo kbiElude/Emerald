@@ -200,7 +200,10 @@ typedef struct _scene_renderer_frustum_preview
 
         if (gfx_state != nullptr)
         {
-            ral_gfx_state_release(gfx_state);
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&gfx_state) );
 
             gfx_state = nullptr;
         }
@@ -387,7 +390,10 @@ PRIVATE void _scene_renderer_frustum_preview_bake_gfx_state(_scene_renderer_frus
 
     if (preview_ptr->gfx_state != nullptr)
     {
-        ral_gfx_state_release(preview_ptr->gfx_state);
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&preview_ptr->gfx_state) );
 
         preview_ptr->gfx_state = nullptr;
     }
@@ -425,8 +431,10 @@ PRIVATE void _scene_renderer_frustum_preview_bake_gfx_state(_scene_renderer_frus
     gfx_state_create_info.static_viewports_enabled             = true;
     gfx_state_create_info.vertex_attribute_ptrs                = &data_va;
 
-    preview_ptr->gfx_state = ral_gfx_state_create(preview_ptr->context,
-                                                 &gfx_state_create_info);
+    ral_context_create_gfx_states(preview_ptr->context,
+                                  1, /* n_create_info_items */
+                                  &gfx_state_create_info,
+                                  &preview_ptr->gfx_state);
 }
 
 /** TODO */

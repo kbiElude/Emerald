@@ -465,8 +465,10 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
 
         gfx_state_create_info.primitive_type = RAL_PRIMITIVE_TYPE_POINTS;
 
-        new_instance_ptr->gfx_state = ral_gfx_state_create(context,
-                                                          &gfx_state_create_info);
+        ral_context_create_gfx_states(context,
+                                      1, /* n_create_info_items */
+                                      &gfx_state_create_info,
+                                      &new_instance_ptr->gfx_state);
 
         /* Initialize the program object */
         _scene_renderer_bbox_preview_init_preview_program(new_instance_ptr);
@@ -502,7 +504,10 @@ PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview prev
 
     if (preview_ptr->gfx_state != nullptr)
     {
-        ral_gfx_state_release(preview_ptr->gfx_state);
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&preview_ptr->gfx_state) );
 
         preview_ptr->gfx_state = nullptr;
     }

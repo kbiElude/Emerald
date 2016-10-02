@@ -1142,17 +1142,10 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
         }
     }
 
-    for (uint32_t n_gfx_state = 0;
-                  n_gfx_state < n_gfx_states_to_release;
-                ++n_gfx_state)
-    {
-        if (*gfx_states_to_release[n_gfx_state] != nullptr)
-        {
-            ral_gfx_state_release(*gfx_states_to_release[n_gfx_state]);
-
-            *gfx_states_to_release[n_gfx_state] = nullptr;
-        }
-    }
+    ral_context_delete_objects(ui_dropdown_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                               n_gfx_states_to_release,
+                               reinterpret_cast<void* const*>(gfx_states_to_release) );
 
     for (uint32_t n_present_task = 0;
                   n_present_task < n_present_tasks_to_release;
@@ -1390,7 +1383,10 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
         if (gfx_state_viewport.size[0] != target_texture_view_size[0] ||
             gfx_state_viewport.size[1] != target_texture_view_size[1])
         {
-            ral_gfx_state_release(dropdown_ptr->last_cached_gfx_state);
+            ral_context_delete_objects(dropdown_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&dropdown_ptr->last_cached_gfx_state) );
 
             dropdown_ptr->last_cached_gfx_state = nullptr;
         }
@@ -1425,8 +1421,10 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
         gfx_state_create_info.static_viewports                     = &viewport;
         gfx_state_create_info.static_viewports_enabled             = true;
 
-        dropdown_ptr->last_cached_gfx_state = ral_gfx_state_create(dropdown_ptr->context,
-                                                                  &gfx_state_create_info);
+        ral_context_create_gfx_states(dropdown_ptr->context,
+                                      1, /* n_create_info_items */
+                                     &gfx_state_create_info,
+                                     &dropdown_ptr->last_cached_gfx_state);
     }
 
     /* Start recording the draw command buffer */

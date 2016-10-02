@@ -531,7 +531,10 @@ PUBLIC void ui_button_deinit(void* internal_instance)
 
     if (ui_button_ptr->gfx_state != nullptr)
     {
-        ral_gfx_state_release(ui_button_ptr->gfx_state);
+        ral_context_delete_objects(ui_button_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&ui_button_ptr->gfx_state) );
 
         ui_button_ptr->gfx_state = nullptr;
     }
@@ -603,7 +606,10 @@ PUBLIC ral_present_task ui_button_get_present_task(void*            internal_ins
             if (!(fabs(viewports[0].size[0] - target_texture_view_width)  < 1e-5f &&
                   fabs(viewports[0].size[1] - target_texture_view_height) < 1e-5f))
             {
-                ral_gfx_state_release(button_ptr->gfx_state);
+                ral_context_delete_objects(button_ptr->context,
+                                           RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                           1, /* n_objects */
+                                           reinterpret_cast<void* const*>(&button_ptr->gfx_state) );
 
                 button_ptr->gfx_state = nullptr;
             }
@@ -651,8 +657,10 @@ PUBLIC ral_present_task ui_button_get_present_task(void*            internal_ins
             gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
             gfx_state_create_info.static_viewports_enabled             = true;
 
-            button_ptr->gfx_state = ral_gfx_state_create(button_ptr->context,
-                                                        &gfx_state_create_info);
+            ral_context_create_gfx_states(button_ptr->context,
+                                          1, /* n_create_info_items */
+                                         &gfx_state_create_info,
+                                         &button_ptr->gfx_state);
         }
 
         /* Bake the draw command buffer */

@@ -240,13 +240,21 @@ _raGL_vaos::~_raGL_vaos()
                   n_map_entry < n_map_entries;
                 ++n_map_entry)
     {
-        _raGL_vao* vao_ptr = nullptr;
+        _raGL_vao*              vao_ptr    = nullptr;
+        system_resizable_vector vao_vector = nullptr;
 
-        system_hash64map_get(n_vbs_to_vao_map,
-                             n_map_entry,
-                            &vao_ptr);
+        system_hash64map_get_element_at(n_vbs_to_vao_map,
+                                        n_map_entry,
+                                       &vao_vector,
+                                        nullptr); /* result_hash_ptr */
 
-        delete vao_ptr;
+        while (system_resizable_vector_pop(vao_vector,
+                                          &vao_ptr) )
+        {
+            delete vao_ptr;
+        }
+
+        system_resizable_vector_release(vao_vector);
     }
 
     system_hash64map_release(n_vbs_to_vao_map);
@@ -507,10 +515,13 @@ PRIVATE ral_present_job _raGL_vaos_release_vaos_renderer_thread_callback(ral_con
         uint32_t                n_vaos = 0;
         system_resizable_vector vaos   = nullptr;
 
-        system_hash64map_get_element_at(vaos_ptr->n_vbs_to_vao_map,
-                                        n_vao_vector,
-                                       &vaos,
-                                        nullptr); /* result_hash_ptr */
+        system_hash64map_get_element_at     (vaos_ptr->n_vbs_to_vao_map,
+                                             n_vao_vector,
+                                            &vaos,
+                                             nullptr); /* result_hash_ptr */
+        system_resizable_vector_get_property(vaos,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_vaos);
 
         for (uint32_t n_vao = 0;
                       n_vao < n_vaos;

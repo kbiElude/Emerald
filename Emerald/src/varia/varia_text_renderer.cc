@@ -617,16 +617,12 @@ PRIVATE void _varia_text_renderer_release(void* text)
 
     if (text_ptr->last_cached_command_buffer != nullptr)
     {
-        ral_command_buffer_release(text_ptr->last_cached_command_buffer);
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&text_ptr->last_cached_command_buffer) );
 
         text_ptr->last_cached_command_buffer = nullptr;
-    }
-
-    if (text_ptr->last_cached_gfx_state != nullptr)
-    {
-        ral_gfx_state_release(text_ptr->last_cached_gfx_state);
-
-        text_ptr->last_cached_gfx_state = nullptr;
     }
 
     if (text_ptr->last_cached_present_task != nullptr)
@@ -634,6 +630,16 @@ PRIVATE void _varia_text_renderer_release(void* text)
         ral_present_task_release(text_ptr->last_cached_present_task);
 
         text_ptr->last_cached_present_task = nullptr;
+    }
+
+    if (text_ptr->last_cached_gfx_state != nullptr)
+    {
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&text_ptr->last_cached_gfx_state) );
+
+        text_ptr->last_cached_gfx_state = nullptr;
     }
 
     if (text_ptr->sampler != nullptr)

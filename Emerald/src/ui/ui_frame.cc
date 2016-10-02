@@ -186,7 +186,10 @@ PUBLIC void ui_frame_deinit(void* internal_instance)
 
     if (ui_frame_ptr->last_cached_gfx_state != nullptr)
     {
-        ral_gfx_state_release(ui_frame_ptr->last_cached_gfx_state);
+        ral_context_delete_objects(ui_frame_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&ui_frame_ptr->last_cached_gfx_state) );
 
         ui_frame_ptr->last_cached_gfx_state = nullptr;
     }
@@ -240,7 +243,10 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
         if (fabs(gfx_state_viewport.size[0] - target_texture_view_width) > 1e-5f ||
             fabs(gfx_state_viewport.size[1] - target_texture_view_height) > 1e-5f)
         {
-            ral_gfx_state_release(frame_ptr->last_cached_gfx_state);
+            ral_context_delete_objects(frame_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&frame_ptr->last_cached_gfx_state) );
 
             frame_ptr->last_cached_gfx_state = nullptr;
         }
@@ -272,8 +278,10 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
         gfx_state_create_info.static_viewports                     = &viewport;
         gfx_state_create_info.static_viewports_enabled             = true;
 
-        frame_ptr->last_cached_gfx_state = ral_gfx_state_create(frame_ptr->context,
-                                                               &gfx_state_create_info);
+        ral_context_create_gfx_states(frame_ptr->context,
+                                      1, /* n_create_info_items */
+                                      &gfx_state_create_info,
+                                      &frame_ptr->last_cached_gfx_state);
     }
 
     /* Draw */

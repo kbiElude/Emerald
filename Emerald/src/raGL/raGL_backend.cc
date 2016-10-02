@@ -559,11 +559,12 @@ _raGL_backend::~_raGL_backend()
 
             switch (n_object_type)
             {
-                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:  error_string = "GL back-end leaks [%d] buffers";                       break;
-                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM: error_string = "GL back-end leaks [%d] programs";                      break;
-                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER: error_string = "GL back-end leaks [%d] samplers";                      break;
-                case RAL_CONTEXT_OBJECT_TYPE_SHADER:  error_string = "GL back-end leaks [%d] shaders";                       break;
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE: error_string = "GL back-end leaks [%d] textures and/or texture views"; break;
+                case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         error_string = "GL back-end leaks [%d] buffers";                       break;
+                case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: error_string = "GL back-end leaks [%d] command buffers";               break;
+                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        error_string = "GL back-end leaks [%d] programs";                      break;
+                case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        error_string = "GL back-end leaks [%d] samplers";                      break;
+                case RAL_CONTEXT_OBJECT_TYPE_SHADER:         error_string = "GL back-end leaks [%d] shaders";                       break;
+                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:        error_string = "GL back-end leaks [%d] textures and/or texture views"; break;
 
                 default:
                 {

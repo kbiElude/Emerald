@@ -426,8 +426,17 @@ PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview pr
         (preview_ptr->cached_color_rt_size[0] != color_rt_size[0] ||
          preview_ptr->cached_color_rt_size[1] != color_rt_size[1]) )
     {
-        ral_gfx_state_release(preview_ptr->cached_gfx_state_lines);
-        ral_gfx_state_release(preview_ptr->cached_gfx_state_points);
+        const ral_gfx_state gfx_states_to_release[] =
+        {
+            preview_ptr->cached_gfx_state_lines,
+            preview_ptr->cached_gfx_state_points
+        };
+        const uint32_t n_gfx_states_to_release = sizeof(gfx_states_to_release) / sizeof(gfx_states_to_release[0]);
+
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   n_gfx_states_to_release,
+                                   reinterpret_cast<void* const*>(gfx_states_to_release) );
 
         preview_ptr->cached_gfx_state_lines = nullptr;
         preview_ptr->cached_gfx_state_points = nullptr;

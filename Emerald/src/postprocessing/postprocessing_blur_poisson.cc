@@ -133,7 +133,10 @@ PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
 
     if (data_ptr->gfx_state != nullptr)
     {
-        ral_gfx_state_release(data_ptr->gfx_state);
+        ral_context_delete_objects(data_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&data_ptr->gfx_state) );
 
         data_ptr->gfx_state = nullptr;
     }
@@ -356,7 +359,10 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
 
     if (poisson_ptr->gfx_state != nullptr)
     {
-        ral_gfx_state_release(poisson_ptr->gfx_state);
+        ral_context_delete_objects(poisson_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&poisson_ptr->gfx_state) );
 
         poisson_ptr->gfx_state = nullptr;
     }
@@ -368,8 +374,10 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
     gfx_state_create_info.static_viewports_enabled             = true;
 
-    poisson_ptr->gfx_state = ral_gfx_state_create(poisson_ptr->context,
-                                                 &gfx_state_create_info);
+    ral_context_create_gfx_states(poisson_ptr->context,
+                                  1, /* n_create_info_items */
+                                  &gfx_state_create_info,
+                                  &poisson_ptr->gfx_state);
 
     /* Cache UB properties */
     ral_buffer program_ub_bo      = nullptr;

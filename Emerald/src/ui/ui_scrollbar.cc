@@ -350,7 +350,10 @@ PUBLIC void ui_scrollbar_deinit(void* internal_instance)
 
     if (scrollbar_ptr->last_cached_gfx_state != nullptr)
     {
-        ral_gfx_state_release(scrollbar_ptr->last_cached_gfx_state);
+        ral_context_delete_objects(scrollbar_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&scrollbar_ptr->last_cached_gfx_state) );
 
         scrollbar_ptr->last_cached_gfx_state = nullptr;
     }
@@ -511,7 +514,10 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
         if (fabs(viewport.size[0] - target_texture_view_width)  > 1e-5f ||
             fabs(viewport.size[1] - target_texture_view_height) > 1e-5f)
         {
-            ral_gfx_state_release(scrollbar_ptr->last_cached_gfx_state);
+            ral_context_delete_objects(scrollbar_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&scrollbar_ptr->last_cached_gfx_state) );
 
             scrollbar_ptr->last_cached_gfx_state = nullptr;
         }
@@ -544,8 +550,10 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
         gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
         gfx_state_create_info.static_viewports_enabled             = true;
 
-        scrollbar_ptr->last_cached_gfx_state = ral_gfx_state_create(scrollbar_ptr->context,
-                                                                   &gfx_state_create_info);
+        ral_context_create_gfx_states(scrollbar_ptr->context,
+                                      1, /* n_create_info_items */
+                                      &gfx_state_create_info,
+                                      &scrollbar_ptr->last_cached_gfx_state);
     }
 
     if (scrollbar_ptr->last_cached_command_buffer == nullptr)
