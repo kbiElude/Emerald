@@ -117,6 +117,9 @@ enum ogl_context_state_cache_property
     OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_LINE,
 
     /* settable, GLboolean */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_POINT,
+
+    /* settable, GLboolean */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH,
 
     /* settable, GLboolean */

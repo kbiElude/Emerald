@@ -157,6 +157,11 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
             bool               texture_view_raGL_is_rb = false;
             ral_texture_type   texture_view_type;
 
+            if (texture_view == nullptr)
+            {
+                continue;
+            }
+
             /* Configure the attachment */
             ral_texture_view_get_property(texture_view,
                                           RAL_TEXTURE_VIEW_PROPERTY_ASPECT,

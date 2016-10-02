@@ -1376,6 +1376,10 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
         ui_ptr->last_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("UI: rasterization"),
                                                                   &result_present_task_create_info);
         result                    = ui_ptr->last_present_task;
+
+        /* Clean up */
+        _freea(input_to_ingroup_task_mappings);
+        _freea(output_to_ingroup_task_mappings);
     }
     else
     {
@@ -1387,6 +1391,10 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
     /* The caller will release the present task when it's consumed. Need to ensure this does
      * not result in actual destruction. */
     ral_present_task_retain(result);
+
+    /* Clean up */
+    _freea(present_tasks);
+
 end:
     return result;
 }

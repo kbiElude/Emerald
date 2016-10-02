@@ -815,7 +815,8 @@ typedef struct _raGL_command_buffer_bake_state_rt
 
     _raGL_command_buffer_bake_state_rt()
     {
-        texture_view = nullptr;
+        blend_enabled  = false;
+        texture_view   = nullptr;
     }
 
 } _raGL_command_buffer_bake_state_rt;
@@ -895,6 +896,13 @@ typedef struct
             /* As per spec */
             active_fbo_draw_buffers[n_draw_buffer] = (n_draw_buffer == 0) ? GL_COLOR_ATTACHMENT0
                                                                           : GL_NONE;
+        }
+
+        for (uint32_t n_rt = 0;
+                      n_rt < sizeof(active_rt_color_attachments) / sizeof(active_rt_color_attachments[0]);
+                    ++n_rt)
+        {
+            active_rt_color_attachments[n_rt] = _raGL_command_buffer_bake_state_rt();
         }
 
         active_fbo_draw_buffers_dirty = false;
@@ -1861,6 +1869,8 @@ void _raGL_command_buffer::bake_gfx_state()
                                          stencil_op_command_ptr);
         }
     }
+
+    bake_state.active_gfx_state_dirty = false;
 }
 
 /** TODO */
@@ -2120,7 +2130,6 @@ void _raGL_command_buffer::bake_pre_dispatch_draw_memory_barriers()
         system_resizable_vector_push(commands,
                                      memory_barrier_command_ptr);
     }
-
 end:
     ;
 }
@@ -3295,8 +3304,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
     {
         /* Bind the index buffer */
         {
-            _raGL_command* bind_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-            raGL_buffer    index_buffer_raGL = nullptr;
+            raGL_buffer index_buffer_raGL = nullptr;
 
             raGL_backend_get_buffer(backend_raGL,
                                     command_ral_ptr->index_buffer,
@@ -3945,7 +3953,7 @@ void _raGL_command_buffer::process_set_scissor_box_command(const ral_command_buf
     gl_command_ptr->scissor_indexedv_command_info.v[0]  = command_ral_ptr->xy  [0];
     gl_command_ptr->scissor_indexedv_command_info.v[1]  = command_ral_ptr->xy  [1];
     gl_command_ptr->scissor_indexedv_command_info.v[2]  = command_ral_ptr->size[0];
-    gl_command_ptr->scissor_indexedv_command_info.v[2]  = command_ral_ptr->size[0];
+    gl_command_ptr->scissor_indexedv_command_info.v[3]  = command_ral_ptr->size[0];
     gl_command_ptr->type                                = RAGL_COMMAND_TYPE_SCISSOR_INDEXEDV;
 
     memcpy(bake_state.active_scissor_boxes[command_ral_ptr->index].size,
@@ -4194,6 +4202,15 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
         /* Execute GL command(s) for the RAL command */
         switch (command_ptr->type)
         {
+            case RAGL_COMMAND_TYPE_ACTIVE_TEXTURE:
+            {
+                const _raGL_command_active_texture_command_info& command_args = command_ptr->active_texture_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLActiveTexture(command_args.target);
+
+                break;
+            }
+
             case RAGL_COMMAND_TYPE_BIND_BUFFER:
             {
                 const _raGL_command_bind_buffer_command_info& command_args = command_ptr->bind_buffer_command_info;
@@ -4984,14 +5001,7 @@ PUBLIC void raGL_command_buffer_start_recording(raGL_command_buffer command_buff
     _raGL_command*        current_command_ptr = nullptr;
 
     /* Reset any enqueued commands */
-    while (system_resizable_vector_pop(command_buffer_ptr->commands,
-                                      &current_command_ptr) )
-    {
-        current_command_ptr->deinit();
-
-        system_resource_pool_return_to_pool(command_pool,
-                                            (system_resource_pool_block) current_command_ptr);
-    }
+    command_buffer_ptr->clear_commands();
 }
 
 /** Please see header for specification */

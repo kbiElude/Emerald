@@ -260,11 +260,9 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
                                        const ral_gfx_state_vertex_attribute* in_vertex_attributes,
                                        const raGL_vaos_vertex_buffer*        in_vertex_buffers)
 {
-    GLuint                index_buffer_raGL_id      = 0;
-    uint32_t              index_buffer_start_offset = 0;
-    _raGL_vao*            new_vao_ptr               = new (std::nothrow) _raGL_vao;
-    ral_rendering_handler rendering_handler         = nullptr;
-    GLuint                result_vao_id             = 0;
+    _raGL_vao*            new_vao_ptr       = new (std::nothrow) _raGL_vao;
+    ral_rendering_handler rendering_handler = nullptr;
+    GLuint                result_vao_id     = 0;
 
     ASSERT_ALWAYS_SYNC(new_vao_ptr != nullptr,
                        "Out of memory");
@@ -272,13 +270,6 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
     raGL_backend_get_property(in_vaos_ptr->backend_gl,
                               RAL_CONTEXT_PROPERTY_RENDERING_HANDLER,
                              &rendering_handler);
-
-    raGL_buffer_get_property(in_index_buffer,
-                             RAGL_BUFFER_PROPERTY_ID,
-                            &index_buffer_raGL_id);
-    raGL_buffer_get_property(in_index_buffer,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &index_buffer_start_offset);
 
     /* Convert input vertex attribute data to vertex array & vertex buffer representation */
     std::vector<_raGL_vaos_vao_vertex_attribute> baked_vas;
@@ -328,10 +319,10 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
 
         in_vaos_ptr->bake_index_buffer  = in_index_buffer;
         in_vaos_ptr->bake_n_vas         = baked_vas.size();
-        in_vaos_ptr->bake_vas_ptr       = &baked_vas[0];
+        in_vaos_ptr->bake_vas_ptr       = (in_vaos_ptr->bake_n_vas> 0) ? &baked_vas[0] : nullptr;
         in_vaos_ptr->bake_n_vbs         = baked_vbs.size();
         in_vaos_ptr->bake_result_vao_id = 0;
-        in_vaos_ptr->bake_vbs_ptr       = &baked_vbs[0];
+        in_vaos_ptr->bake_vbs_ptr       = (in_vaos_ptr->bake_n_vbs > 0) ? &baked_vbs[0] : nullptr;
 
         ral_rendering_handler_request_rendering_callback(rendering_handler,
                                                          _raGL_vaos_bake_vao_renderer_thread_callback,

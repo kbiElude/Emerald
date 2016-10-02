@@ -40,6 +40,8 @@ typedef struct _ral_present_job_task
                                    ral_present_task in_task)
     {
         task = in_task;
+
+        ral_present_task_retain(task);
     }
 
     ~_ral_present_job_task()
@@ -188,8 +190,6 @@ PUBLIC EMERALD_API bool ral_present_job_add_task(ral_present_job      job,
                             new_task_ptr,
                             nullptr,  /* on_removal_callback               */
                             nullptr); /* on_removal_callback_user_argument */
-
-    ral_present_task_retain(task);
 
     /* All done */
     *out_task_id_ptr = new_task_id;

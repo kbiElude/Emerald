@@ -22,6 +22,9 @@ typedef struct _ral_present_task
     ral_present_task_io*      outputs;
     ral_present_task_type     type;
 
+    void*                            cpu_callback_proc_user_arg;
+    PFNRALPRESENTTASKCPUCALLBACKPROC pfn_cpu_callback_proc;
+
     ral_present_task_ingroup_connection* group_task_connections;
     ral_present_task_group_mapping*      group_task_input_mappings;
     ral_present_task_group_mapping*      group_task_output_mappings;
@@ -56,6 +59,8 @@ typedef struct _ral_present_task
         n_inputs                     = 0;
         n_outputs                    = 0;
         outputs                      = nullptr;
+        pfn_cpu_callback_proc        = in_create_info_ptr->pfn_cpu_task_callback_proc;
+        cpu_callback_proc_user_arg   = in_create_info_ptr->cpu_task_callback_user_arg;
         ref_counter                  = 1;
         type                         = RAL_PRESENT_TASK_TYPE_CPU_TASK;
 
@@ -74,6 +79,7 @@ typedef struct _ral_present_task
                                        &context);
 
         command_buffer               = in_create_info_ptr->command_buffer;
+        cpu_callback_proc_user_arg   = nullptr;
         group_task_connections       = nullptr;
         group_task_input_mappings    = nullptr;
         group_task_output_mappings   = nullptr;
@@ -87,6 +93,7 @@ typedef struct _ral_present_task
         n_outputs                    = 0;
         name                         = in_name;
         outputs                      = nullptr;
+        pfn_cpu_callback_proc        = nullptr;
         ref_counter                  = 1;
         type                         = RAL_PRESENT_TASK_TYPE_GPU_TASK;
 
@@ -105,6 +112,7 @@ typedef struct _ral_present_task
                                const ral_present_task_group_create_info* in_create_info_ptr)
     {
         command_buffer               = nullptr;
+        cpu_callback_proc_user_arg   = nullptr;
         group_task_connections       = nullptr;
         group_task_input_mappings    = nullptr;
         group_task_output_mappings   = nullptr;
@@ -118,6 +126,7 @@ typedef struct _ral_present_task
         n_outputs                    = 0;
         name                         = in_name;
         outputs                      = nullptr;
+        pfn_cpu_callback_proc        = nullptr;
         ref_counter                  = 1;
         type                         = RAL_PRESENT_TASK_TYPE_GROUP;
 
@@ -154,6 +163,7 @@ typedef struct _ral_present_task
                 continue;
             }
 
+#if 0
             for (uint32_t n_item = 0;
                           n_item < n_items;
                         ++n_item)
@@ -163,6 +173,7 @@ typedef struct _ral_present_task
                                            1, /* n_objects */
                                            reinterpret_cast<void* const*>(&current_io_array_ptr[n_item].object) );
             }
+#endif
 
             delete [] current_io_array_ptr;
         }
@@ -401,6 +412,12 @@ private:
                                       n_io);
                 }
             }
+
+            _freea(inputs_last_mapping_id_ptr);
+            inputs_last_mapping_id_ptr = nullptr;
+
+            _freea(outputs_last_mapping_id_ptr);
+            outputs_last_mapping_id_ptr = nullptr;
         }
         #endif
     }
@@ -442,6 +459,9 @@ private:
 #endif
             }
         }
+
+        n_inputs  = n_input_ios;
+        n_outputs = n_output_ios;
     }
 } _ral_present_task;
 
@@ -831,9 +851,8 @@ end:
 PUBLIC EMERALD_API ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
                                                                 const ral_present_task_gpu_create_info* create_info_ptr)
 {
-    ral_command_buffer_status command_buffer_status        = RAL_COMMAND_BUFFER_STATUS_UNDEFINED;
-    bool                      is_command_buffer_resettable = false;
-    _ral_present_task*        result_ptr                   = nullptr;
+    ral_command_buffer_status command_buffer_status = RAL_COMMAND_BUFFER_STATUS_UNDEFINED;
+    _ral_present_task*        result_ptr            = nullptr;
 
     /* Sanity checks */
     if (name == nullptr)
@@ -855,9 +874,6 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_gpu(system_hashed_an
     if (create_info_ptr->command_buffer != nullptr)
     {
         ral_command_buffer_get_property(create_info_ptr->command_buffer,
-                                        RAL_COMMAND_BUFFER_PROPERTY_IS_RESETTABLE,
-                                       &is_command_buffer_resettable);
-        ral_command_buffer_get_property(create_info_ptr->command_buffer,
                                         RAL_COMMAND_BUFFER_PROPERTY_STATUS,
                                        &command_buffer_status);
 
@@ -865,14 +881,6 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_gpu(system_hashed_an
         {
             ASSERT_DEBUG_SYNC(command_buffer_status == RAL_COMMAND_BUFFER_STATUS_RECORDED,
                               "RAL present task can only be created for a recorded RAL command buffer");
-
-            goto end;
-        }
-
-        if (is_command_buffer_resettable)
-        {
-            ASSERT_DEBUG_SYNC(!is_command_buffer_resettable,
-                              "RAL present task does not support resettable command buffers at the moment.");
 
             goto end;
         }
@@ -946,6 +954,31 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_group(system_hashed_
                                        create_info_ptr);
 end:
     return reinterpret_cast<ral_present_task>(result_ptr);
+}
+
+/** Please see header for specification */
+PUBLIC bool ral_present_task_get_group_subtask(ral_present_task  task,
+                                               uint32_t          n_subtask,
+                                               ral_present_task* out_present_subtask_ptr)
+{
+    bool               result   = false;
+    _ral_present_task* task_ptr = reinterpret_cast<_ral_present_task*>(task);
+
+    if (n_subtask >= task_ptr->n_group_task_subtasks)
+    {
+        ASSERT_DEBUG_SYNC(n_subtask < task_ptr->n_group_task_subtasks,
+                          "Invalid subtask index specified");
+
+        goto end;
+    }
+
+    *out_present_subtask_ptr = task_ptr->group_task_subtasks[n_subtask];
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
 }
 
 /** Please see header for specification */
@@ -1089,10 +1122,41 @@ PUBLIC EMERALD_API bool ral_present_task_get_io_property(ral_present_task       
 
     if (task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP)
     {
-        ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
-                          "IO properties unavailable for a group present task.");
+        const ral_present_task_group_mapping* mapping_ptr = nullptr;
+        const ral_present_task_group_mapping* mappings    = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->group_task_input_mappings
+                                                                                                        : task_ptr->group_task_output_mappings;
+        const uint32_t                        n_mappings  = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->n_group_task_input_mappings
+                                                                                                        : task_ptr->n_group_task_output_mappings;
+        ral_present_task* const               subtasks    = task_ptr->group_task_subtasks;
 
-        goto end;
+        task_ptr = nullptr;
+
+        for (uint32_t n_mapping = 0;
+                      n_mapping < n_mappings;
+                    ++n_mapping)
+        {
+            mapping_ptr = mappings + n_mapping;
+
+            if (mapping_ptr->group_task_io_index == n_io)
+            {
+                n_io     = mapping_ptr->present_task_io_index;
+                task_ptr = *reinterpret_cast<_ral_present_task**>(subtasks + mapping_ptr->n_present_task);
+
+                /* TODO: This case is going to require a recursive call. Implement support when encountered */
+                ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
+                                  "Cannot handle group tasks");
+
+                break;
+            }
+        }
+
+        if (task_ptr == nullptr)
+        {
+            ASSERT_DEBUG_SYNC(task_ptr != nullptr,
+                              "Invalid IO index specified");
+
+            goto end;
+        }
     }
 
     switch (io_type)
@@ -1203,6 +1267,36 @@ PUBLIC EMERALD_API void ral_present_task_get_property(ral_present_task          
                               "RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER property is only available for RAL present GPU tasks");
 
             *reinterpret_cast<ral_command_buffer*>(out_result_ptr) = task_ptr->command_buffer;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_PROC:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_CPU_TASK,
+                              "RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_PROC property is only available for RAL present CPU tasks");
+
+            *reinterpret_cast<PFNRALPRESENTTASKCPUCALLBACKPROC*>(out_result_ptr) = task_ptr->pfn_cpu_callback_proc;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_USER_ARG:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_CPU_TASK,
+                              "RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_USER_ARG property is only available for RAL present CPU tasks");
+
+            *reinterpret_cast<void**>(out_result_ptr) = task_ptr->cpu_callback_proc_user_arg;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_N_GROUP_TASK_SUBTASKS:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_GROUP_TASK_SUBTASKS property is only available for RAL present group tasks");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_group_task_subtasks;
 
             break;
         }

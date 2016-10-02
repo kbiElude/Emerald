@@ -135,6 +135,24 @@ typedef enum
      **/
     RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER,
 
+    /* not settable; PFNRALPRESENTTASKCPUCALLBACKPROC
+     *
+     * Only available for CPU tasks
+     */
+    RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_PROC,
+
+    /* not settable; void*
+     *
+     * Only available for CPU tasks
+     */
+    RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_USER_ARG,
+
+    /* not settable; uint32_t
+     *
+     * Query is only valid for group tasks. Will result in an assertion failure if invoked for
+     * other types of present tasks. */
+    RAL_PRESENT_TASK_PROPERTY_N_GROUP_TASK_SUBTASKS,
+
     /* not settable; uint32_t
      *
      * Query is only valid for group tasks. Will result in an assertion failure if invoked for
@@ -206,6 +224,14 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_group(system_hashed_
  ***/
 PUBLIC EMERALD_API ral_present_task ral_present_task_create_gpu(system_hashed_ansi_string               name,
                                                                 const ral_present_task_gpu_create_info* create_info_ptr);
+
+/** TODO
+ *
+ *  NOTE: Only valid for group present tasks.
+ **/
+PUBLIC bool ral_present_task_get_group_subtask(ral_present_task  task,
+                                               uint32_t          n_subtask,
+                                               ral_present_task* out_present_subtask_ptr);
 
 /** TODO
  *

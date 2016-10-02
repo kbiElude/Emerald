@@ -43,10 +43,12 @@ PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      conte
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(create_info_ptr->static_scissor_boxes && (create_info_ptr->static_n_scissor_boxes_and_viewports != 0        &&
-                                                                create_info_ptr->static_scissor_boxes                 == nullptr),
+                                                                create_info_ptr->static_scissor_boxes                 == nullptr) ||
+                     !create_info_ptr->static_scissor_boxes,
                       "Static scissor box configuration is invalid");
     ASSERT_DEBUG_SYNC(create_info_ptr->static_viewports && (create_info_ptr->static_n_scissor_boxes_and_viewports != 0        &&
-                                                            create_info_ptr->static_viewports                     != nullptr),
+                                                            create_info_ptr->static_viewports                     != nullptr) ||
+                     !create_info_ptr->static_viewports,
                       "Static viewport state configuration is invalid");
 
     /* Cache the user-specified info from @param create_info_ptr */
@@ -58,7 +60,7 @@ PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      conte
         /* Static scissor box + viewport data needs extra care */
         if (create_info_ptr->static_n_scissor_boxes_and_viewports != 0)
         {
-            if (create_info_ptr->static_scissor_boxes)
+            if (create_info_ptr->static_scissor_boxes_enabled)
             {
                 gfx_state_ptr->create_info.static_scissor_boxes = new (std::nothrow) ral_command_buffer_set_scissor_box_command_info[create_info_ptr->static_n_scissor_boxes_and_viewports];
 
@@ -70,7 +72,7 @@ PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      conte
                        sizeof(ral_command_buffer_set_scissor_box_command_info) * create_info_ptr->static_n_scissor_boxes_and_viewports);
             }
 
-            if (create_info_ptr->static_viewports)
+            if (create_info_ptr->static_viewports_enabled)
             {
                 gfx_state_ptr->create_info.static_viewports = new (std::nothrow) ral_command_buffer_set_viewport_command_info[create_info_ptr->static_n_scissor_boxes_and_viewports];
 
@@ -98,6 +100,9 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
                                        void*                  out_result_ptr)
 {
     _ral_gfx_state* gfx_state_ptr = reinterpret_cast<_ral_gfx_state*>(gfx_state);
+
+    ASSERT_DEBUG_SYNC(gfx_state_ptr != nullptr,
+                      "Input gfx_state instance is null");
 
     switch (property)
     {
@@ -241,6 +246,20 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
             break;
         }
 
+        case RAL_GFX_STATE_PROPERTY_N_STATIC_SCISSOR_BOXES_AND_VIEWPORTS:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = gfx_state_ptr->create_info.static_n_scissor_boxes_and_viewports;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_N_VERTEX_ATTRIBUTES:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = gfx_state_ptr->create_info.n_vertex_attributes;
+
+            break;
+        }
+
         case RAL_GFX_STATE_PROPERTY_POLYGON_MODE_BACK:
         {
             *reinterpret_cast<ral_polygon_mode*>(out_result_ptr) = gfx_state_ptr->create_info.polygon_mode_back;
@@ -348,6 +367,13 @@ PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
         case RAL_GFX_STATE_PROPERTY_STENCIL_TEST_FRONT:
         {
             *reinterpret_cast<ral_stencil_op_state*>(out_result_ptr) = gfx_state_ptr->create_info.stencil_test_front_face;
+
+            break;
+        }
+
+        case RAL_GFX_STATE_PROPERTY_VERTEX_ATTRIBUTES:
+        {
+            *reinterpret_cast<ral_gfx_state_vertex_attribute**>(out_result_ptr) = gfx_state_ptr->create_info.vertex_attribute_ptrs;
 
             break;
         }

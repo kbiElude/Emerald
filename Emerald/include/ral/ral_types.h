@@ -1488,8 +1488,8 @@ typedef struct ral_gfx_state_create_info
         logic_op                          = RAL_LOGIC_OP_NOOP;
         max_depth_bounds                  = 1.0f;
         min_depth_bounds                  = 0.0f;
+        n_patch_control_points            = 1;
         n_vertex_attributes               = 0;
-        n_patch_control_points            = 0;
         polygon_mode_back                 = RAL_POLYGON_MODE_FILL;
         polygon_mode_front                = RAL_POLYGON_MODE_FILL;
         primitive_type                    = RAL_PRIMITIVE_TYPE_TRIANGLES;

@@ -114,6 +114,13 @@ PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_s
             break;
         }
 
+        case GL_POLYGON_OFFSET_POINT:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_POINT;
+
+            break;
+        }
+
         case GL_POLYGON_SMOOTH:
         {
             result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH;

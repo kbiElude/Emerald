@@ -18,6 +18,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
+#include "system/system_resources.h"
 #include "system/system_screen_mode.h"
 #include "system/system_threads.h"
 #include "system/system_time.h"
@@ -46,6 +47,7 @@ typedef struct
     void*                                 rendering_handler_backend; /* eg. raGL_rendering_handler instance for ES/GL contexts */
     system_time                           runtime_time_adjustment;
     bool                                  runtime_time_adjustment_mode;
+    varia_text_renderer                   text_renderer;
     varia_text_renderer_text_string_id    text_string_id;
     system_thread_id                      thread_id;
     demo_timeline                         timeline;
@@ -495,13 +497,9 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                          static_cast<int>(frame_time_msec),
                          frame_index);
 
-#if 0
-                todo
-
-                varia_text_renderer_set(text_renderer,
+                varia_text_renderer_set(rendering_handler_ptr->text_renderer,
                                         rendering_handler_ptr->text_string_id,
                                         temp_buffer);
-#endif
             }
 
             /* Determine AR for the frame. The aspect ratio is configurable on two levels:
@@ -567,6 +565,62 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
 
                  if (frame_present_job != nullptr)
                  {
+                     /* Draw the text strings over the presentable texture */
+                     {
+                         /* Retrieve the text rendering present task .. */
+                         ral_present_task         draw_text_strings_task          = nullptr;
+                         ral_present_task_id      draw_text_strings_task_id       = -1;
+                         ral_present_task         presentable_output_task         = nullptr;
+                         uint32_t                 presentable_output_task_index   = -1;
+                         uint32_t                 presentable_output_task_io      = -1;
+                         ral_present_task_io_type presentable_output_task_io_type;
+                         ral_texture_view         presentable_texture_view         = nullptr;
+
+                         ral_present_job_get_property(frame_present_job,
+                                                      RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_ID,
+                                                     &presentable_output_task_index);
+                         ral_present_job_get_property(frame_present_job,
+                                                      RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_INDEX,
+                                                     &presentable_output_task_io);
+                         ral_present_job_get_property(frame_present_job,
+                                                      RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE,
+                                                     &presentable_output_task_io_type);
+
+                         ral_present_job_get_task_with_id(frame_present_job,
+                                                          presentable_output_task_index,
+                                                         &presentable_output_task);
+
+                         ral_present_task_get_io_property(presentable_output_task,
+                                                          presentable_output_task_io_type,
+                                                          presentable_output_task_io,
+                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                          reinterpret_cast<void**>(&presentable_texture_view) );
+
+                         draw_text_strings_task = varia_text_renderer_get_present_task(rendering_handler_ptr->text_renderer,
+                                                                                       presentable_texture_view);
+
+                         /* Attach the new present task to the present job */
+                         ral_present_job_add_task(frame_present_job,
+                                                  draw_text_strings_task,
+                                                 &draw_text_strings_task_id);
+                         ral_present_task_release(draw_text_strings_task);
+
+                         ASSERT_DEBUG_SYNC(presentable_output_task_io_type == RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                           "Cannot render text strings over a presentable texture view which acts as a task input");
+
+                         ral_present_job_connect_tasks(frame_present_job,
+                                                       presentable_output_task_index,
+                                                       presentable_output_task_io,
+                                                       draw_text_strings_task_id,
+                                                       0,        /* n_dst_task_input          */
+                                                       nullptr); /* out_opt_connection_id_ptr */
+
+                         ral_present_job_set_presentable_output(frame_present_job,
+                                                                draw_text_strings_task_id,
+                                                                false, /* is_input_io */
+                                                                0);    /* n_io        */
+                     }
+
                      rendering_handler_ptr->pfn_execute_present_job_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
                                                                                    frame_present_job);
                  }
@@ -582,14 +636,6 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                 ral_present_job_get_property(frame_present_job,
                                              RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
                                             &should_swap_buffers);
-
-                #if 0
-                    todo
-
-                    /* Draw the text strings right before we blit the render-target to the system's FBO. */
-                    varia_text_renderer_draw(rendering_handler_ptr->context,
-                                             text_renderer);
-                #endif
 
                 rendering_handler_ptr->last_frame_index = frame_index;
                 rendering_handler_ptr->last_frame_time  = new_frame_time;
@@ -669,44 +715,58 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
 
         ral_context_retain(context_ral);
 
-#ifdef TODO
-        /* Set up the text renderer.
-         *
-         * TODO
-         */
-        if (!is_helper_context)
-        {
-            /* Create a new text string which we will use to show performance info */
-            const float         text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
-            varia_text_renderer text_renderer          = nullptr;
-            const float         text_scale             = 0.75f;
-            const int           text_string_position[] = {0, window_size[1]};
-
-            ogl_context_get_property(context_gl,
-                                     OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
-                                    &text_renderer);
-
-            rendering_handler->text_string_id = varia_text_renderer_add_string(text_renderer);
-
-            varia_text_renderer_set_text_string_property(text_renderer,
-                                                         rendering_handler->text_string_id,
-                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
-                                                         text_color);
-            varia_text_renderer_set_text_string_property(text_renderer,
-                                                         rendering_handler->text_string_id,
-                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
-                                                         text_string_position);
-            varia_text_renderer_set_text_string_property(text_renderer,
-                                                         rendering_handler->text_string_id,
-                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
-                                                        &text_scale);
-        }
-#endif
-
         /* Let the back-end initialize as well. */
         rendering_handler_ptr->pfn_init_raBackend_rendering_handler_proc(rendering_handler_ptr->context,
                                                                          reinterpret_cast<ral_rendering_handler>(rendering_handler_ptr),
                                                                          rendering_handler_ptr->rendering_handler_backend);
+
+        /* Set up the text renderer for non-helper contexts. */
+        if (!system_hashed_ansi_string_contains(context_window_name,
+                                                system_hashed_ansi_string_create("Helper") ))
+        {
+            const float               text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
+            const  float              text_default_size      = 0.75f;
+            const float               text_scale             = 0.75f;
+            const int                 text_string_position[] = {0, window_size[1]};
+            system_hashed_ansi_string window_name            = nullptr;
+
+            system_window_get_property(rendering_handler_ptr->context_window,
+                                       SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                       window_size);
+            system_window_get_property(rendering_handler_ptr->context_window,
+                                       SYSTEM_WINDOW_PROPERTY_NAME,
+                                      &window_name);
+
+            rendering_handler_ptr->text_renderer = varia_text_renderer_create(window_name,
+                                                                              rendering_handler_ptr->context,
+                                                                              system_resources_get_meiryo_font_table(),
+                                                                              window_size[0],
+                                                                              window_size[1]);
+
+            varia_text_renderer_set_text_string_property(rendering_handler_ptr->text_renderer,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                        &text_default_size);
+            varia_text_renderer_set_text_string_property(rendering_handler_ptr->text_renderer,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                         text_color);
+
+            rendering_handler_ptr->text_string_id = varia_text_renderer_add_string(rendering_handler_ptr->text_renderer);
+
+            varia_text_renderer_set_text_string_property(rendering_handler_ptr->text_renderer,
+                                                         rendering_handler_ptr->text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                         text_color);
+            varia_text_renderer_set_text_string_property(rendering_handler_ptr->text_renderer,
+                                                         rendering_handler_ptr->text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_PX,
+                                                         text_string_position);
+            varia_text_renderer_set_text_string_property(rendering_handler_ptr->text_renderer,
+                                                         rendering_handler_ptr->text_string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                        &text_scale);
+        }
 
         /* On with the loop */
         unsigned int last_frame_index = 0;
@@ -777,6 +837,14 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
         demo_timeline_release(rendering_handler_ptr->timeline);
 
         rendering_handler_ptr->timeline = nullptr;
+    }
+
+    /* Release the text renderer */
+    if (rendering_handler_ptr->text_renderer != nullptr)
+    {
+        varia_text_renderer_release(rendering_handler_ptr->text_renderer);
+
+        rendering_handler_ptr->text_renderer = nullptr;
     }
 
     if (rendering_handler_ptr->context != nullptr)
@@ -981,6 +1049,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
         new_handler_ptr->should_thread_live                           = true;
         new_handler_ptr->shutdown_request_event                       = system_event_create (true);  /* manual_reset */
         new_handler_ptr->shutdown_request_ack_event                   = system_event_create (true);  /* manual_reset */
+        new_handler_ptr->text_renderer                                = nullptr;
         new_handler_ptr->timeline                                     = nullptr;
 
         #ifdef _DEBUG

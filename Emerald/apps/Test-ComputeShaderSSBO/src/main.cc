@@ -330,6 +330,7 @@ ral_present_job _rendering_handler(ral_context                                  
     ral_present_job_add_task(result_job,
                              present_task,
                             &present_task_id);
+    ral_present_task_release(present_task);
 
     ral_present_job_set_presentable_output(result_job,
                                            present_task_id,

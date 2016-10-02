@@ -3389,5 +3389,11 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     /* Mark as no longer rendered */
     uber_ptr->is_rendering = false;
 
+    /* Clean up */
+    _freea(render_gpu_tasks);
+    _freea(result_task_ingroup_connections);
+    _freea(result_present_tasks);
+    _freea(result_task_unique_mappings);
+
     return result_task;
 }

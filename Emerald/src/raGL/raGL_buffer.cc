@@ -553,7 +553,6 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
     else
     {
         _raGL_buffer_client_memory_sourced_update_request_arg callback_arg;
-        ogl_context                                           context_gl   = nullptr;
         ral_context                                           context_ral  = nullptr;
         ral_rendering_handler                                 context_rh   = nullptr;
 
@@ -562,7 +561,7 @@ PUBLIC void raGL_buffer_update_regions_with_client_memory(raGL_buffer           
             current_context = buffer_ptr->context;
         }
 
-        ogl_context_get_property(context_gl,
+        ogl_context_get_property(current_context,
                                  OGL_CONTEXT_PROPERTY_CONTEXT_RAL,
                                 &context_ral);
         ral_context_get_property(context_ral,

@@ -3980,5 +3980,9 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
 
     shadow_mapping_ptr->current_camera = nullptr;
 
+    /* Clean up */
+    _freea(render_present_tasks);
+    _freea(result_present_task_mappings);
+
     return result_present_task;
 }

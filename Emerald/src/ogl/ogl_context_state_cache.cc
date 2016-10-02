@@ -107,6 +107,8 @@ typedef struct _ogl_context_state_cache
     GLboolean active_rendering_mode_polygon_offset_fill_local;
     GLboolean active_rendering_mode_polygon_offset_line_context;
     GLboolean active_rendering_mode_polygon_offset_line_local;
+    GLboolean active_rendering_mode_polygon_offset_point_context;
+    GLboolean active_rendering_mode_polygon_offset_point_local;
     GLboolean active_rendering_mode_polygon_smooth_context;
     GLboolean active_rendering_mode_polygon_smooth_local;
     GLboolean active_rendering_mode_primitive_restart_context;
@@ -412,6 +414,11 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_POINT:
+        {
+            *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_polygon_offset_point_local;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH:
         {
             *reinterpret_cast<GLboolean*>(out_result_ptr) = cache_ptr->active_rendering_mode_polygon_smooth_local;
@@ -661,6 +668,8 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     cache_ptr->active_rendering_mode_polygon_offset_fill_local             = false;
     cache_ptr->active_rendering_mode_polygon_offset_line_context           = false;
     cache_ptr->active_rendering_mode_polygon_offset_line_local             = false;
+    cache_ptr->active_rendering_mode_polygon_offset_point_context          = false;
+    cache_ptr->active_rendering_mode_polygon_offset_point_local            = false;
     cache_ptr->active_rendering_mode_polygon_smooth_context                = false;
     cache_ptr->active_rendering_mode_polygon_smooth_local                  = false;
     cache_ptr->active_rendering_mode_primitive_restart_context             = false;
@@ -1052,6 +1061,13 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_POINT:
+        {
+            cache_ptr->active_rendering_mode_polygon_offset_point_local = *reinterpret_cast<const GLboolean*>(data);
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH:
         {
             cache_ptr->active_rendering_mode_polygon_smooth_local = *reinterpret_cast<const GLboolean*>(data);
@@ -1439,6 +1455,13 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                 UPDATE_STATE(cache_ptr->active_rendering_mode_polygon_offset_line_context,
                              cache_ptr->active_rendering_mode_polygon_offset_line_local,
                              GL_POLYGON_OFFSET_LINE);
+            }
+
+            if (cache_ptr->active_rendering_mode_polygon_offset_point_context != cache_ptr->active_rendering_mode_polygon_offset_point_local)
+            {
+                UPDATE_STATE(cache_ptr->active_rendering_mode_polygon_offset_point_context,
+                             cache_ptr->active_rendering_mode_polygon_offset_point_local,
+                             GL_POLYGON_OFFSET_POINT);
             }
 
             if (cache_ptr->active_rendering_mode_polygon_smooth_context != cache_ptr->active_rendering_mode_polygon_smooth_local)

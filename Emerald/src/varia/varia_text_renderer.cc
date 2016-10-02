@@ -378,10 +378,10 @@ PRIVATE void _varia_text_renderer_init_programs(_varia_text_renderer* text_ptr)
 
     if (!ral_program_attach_shader(text_ptr->draw_text_program,
                                    result_shaders[0],
-                                   true /* async */) ||
+                                   false /* async */) ||
         !ral_program_attach_shader(text_ptr->draw_text_program,
                                    result_shaders[1],
-                                   true /* async */) )
+                                   false /* async */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not link text drawing program.");
@@ -447,6 +447,85 @@ PRIVATE void _varia_text_renderer_init_programs(_varia_text_renderer* text_ptr)
     text_ptr->vsdata_ub = ral_program_block_buffer_create(text_ptr->context,
                                                           text_ptr->draw_text_program,
                                                           system_hashed_ansi_string_create("VSData") );
+}
+
+/** TODO */
+PRIVATE void _varia_text_renderer_prepare_vram_data_storage(_varia_text_renderer* text_ptr)
+{
+    uint32_t n_text_strings     = 0;
+    uint32_t summed_text_length = 0;
+
+    system_resizable_vector_get_property(text_ptr->strings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_text_strings);
+
+    for (size_t n_text_string = 0;
+                n_text_string < n_text_strings;
+              ++n_text_string)
+    {
+        _varia_text_renderer_text_string* string_ptr = nullptr;
+
+        if (system_resizable_vector_get_element_at(text_ptr->strings,
+                                                   n_text_string,
+                                                  &string_ptr) )
+        {
+            summed_text_length += string_ptr->string_length;
+        }
+    }
+
+    if (text_ptr->data_buffer_contents_length < summed_text_length)
+    {
+        bool                   alloc_result;
+        ral_buffer_create_info alloc_info;
+
+        /* Need to reallocate */
+        if (text_ptr->data_buffer_contents != nullptr)
+        {
+            delete [] text_ptr->data_buffer_contents;
+
+            text_ptr->data_buffer_contents = nullptr;
+        }
+
+        text_ptr->data_buffer_contents_length = summed_text_length;
+        text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
+        text_ptr->data_buffer_contents        = reinterpret_cast<char*>(new (std::nothrow) char[text_ptr->data_buffer_contents_size]);
+
+        ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != nullptr,
+                           "Out of memory");
+
+        if (text_ptr->data_buffer_contents == nullptr)
+        {
+            return;
+        }
+
+        /* This implies we also need to resize the buffer object */
+        if (text_ptr->data_buffer != nullptr)
+        {
+            /* Free the region first */
+            ral_context_delete_objects(text_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                       1, /* n_buffers */
+                                       reinterpret_cast<void* const*>(&text_ptr->data_buffer) );
+
+            text_ptr->data_buffer = nullptr;
+        }
+
+        alloc_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+        alloc_info.parent_buffer    = nullptr;
+        alloc_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+        alloc_info.size             = text_ptr->data_buffer_contents_size;
+        alloc_info.start_offset     = 0;
+        alloc_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
+        alloc_info.user_queue_bits  = 0xFFFFFFFF;
+
+        alloc_result = ral_context_create_buffers(text_ptr->context,
+                                                  1, /* n_buffers */
+                                                 &alloc_info,
+                                                 &text_ptr->data_buffer);
+
+        ASSERT_DEBUG_SYNC(alloc_result,
+                          "Text data buffer allocation failed.");
+    }
 }
 
 /** Please see header for specification */
@@ -578,7 +657,8 @@ PRIVATE void _varia_text_renderer_release(void* text)
 /** TODO */
 PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(void* text_raw_ptr)
 {
-    ral_backend_type                                                     backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+    ral_backend_type                                                     backend_type   = RAL_BACKEND_TYPE_UNKNOWN;
+    uint32_t                                                             n_text_strings = 0;
     ral_buffer_client_sourced_update_info                                data_update;
     std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > data_update_ptrs;
     _varia_text_renderer*                                                text_ptr     = reinterpret_cast<_varia_text_renderer*>(text_raw_ptr);
@@ -592,86 +672,14 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(voi
                              RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
                             &backend_type);
 
-    /* Prepare UV data to be uploaded to VRAM */
-    uint32_t n_text_strings     = 0;
-    uint32_t summed_text_length = 0;
-
-    system_resizable_vector_get_property(text_ptr->strings,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_text_strings);
-
-    for (size_t n_text_string = 0;
-                n_text_string < n_text_strings;
-              ++n_text_string)
-    {
-        _varia_text_renderer_text_string* string_ptr = nullptr;
-
-        if (system_resizable_vector_get_element_at(text_ptr->strings,
-                                                   n_text_string,
-                                                  &string_ptr) )
-        {
-            summed_text_length += string_ptr->string_length;
-        }
-    }
-
-    if (text_ptr->data_buffer_contents_length < summed_text_length)
-    {
-        bool                   alloc_result;
-        ral_buffer_create_info alloc_info;
-
-        /* Need to reallocate */
-        if (text_ptr->data_buffer_contents != nullptr)
-        {
-            delete [] text_ptr->data_buffer_contents;
-
-            text_ptr->data_buffer_contents = nullptr;
-        }
-
-        text_ptr->data_buffer_contents_length = summed_text_length;
-        text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
-        text_ptr->data_buffer_contents        = reinterpret_cast<char*>(new (std::nothrow) char[text_ptr->data_buffer_contents_size]);
-
-        ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != nullptr,
-                           "Out of memory");
-
-        if (text_ptr->data_buffer_contents == nullptr)
-        {
-            return;
-        }
-
-        /* This implies we also need to resize the buffer object */
-        if (text_ptr->data_buffer != nullptr)
-        {
-            /* Free the region first */
-            ral_context_delete_objects(text_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                       1, /* n_buffers */
-                                       reinterpret_cast<void* const*>(&text_ptr->data_buffer) );
-
-            text_ptr->data_buffer = nullptr;
-        }
-
-        alloc_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-        alloc_info.parent_buffer    = nullptr;
-        alloc_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
-        alloc_info.size             = text_ptr->data_buffer_contents_size;
-        alloc_info.start_offset     = 0;
-        alloc_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
-        alloc_info.user_queue_bits  = 0xFFFFFFFF;
-
-        alloc_result = ral_context_create_buffers(text_ptr->context,
-                                                  1, /* n_buffers */
-                                                 &alloc_info,
-                                                 &text_ptr->data_buffer);
-
-        ASSERT_DEBUG_SYNC(alloc_result,
-                          "Text data buffer allocation failed.");
-    }
-
     /* Iterate through each character and prepare the data for uploading */
     float*   character_data_traveller_ptr = reinterpret_cast<float*>(text_ptr->data_buffer_contents);
     uint32_t largest_height               = 0;
     uint32_t summed_width                 = 0;
+
+    system_resizable_vector_get_property(text_ptr->strings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_text_strings);
 
     for (size_t n_text_string = 0;
                 n_text_string < n_text_strings;
@@ -912,6 +920,7 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
         goto end;
     }
     else
+    if (text_ptr->last_cached_present_task != nullptr)
     {
         ral_present_task_release(text_ptr->last_cached_present_task);
 
@@ -932,16 +941,19 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
 
     if (text_ptr->last_cached_gfx_state != nullptr)
     {
-        ral_command_buffer_set_viewport_command_info gfx_state_viewport;
+        ral_command_buffer_set_viewport_command_info* gfx_state_viewport_ptr = nullptr;
 
         ral_gfx_state_get_property(text_ptr->last_cached_gfx_state,
                                    RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
-                                  &gfx_state_viewport);
+                                  &gfx_state_viewport_ptr);
 
-        if (fabs(gfx_state_viewport.size[0] - target_texture_view_width)  > 1e-5f ||
-            fabs(gfx_state_viewport.size[1] - target_texture_view_height) > 1e-5f)
+        if (fabs(gfx_state_viewport_ptr->size[0] - target_texture_view_width)  > 1e-5f ||
+            fabs(gfx_state_viewport_ptr->size[1] - target_texture_view_height) > 1e-5f)
         {
-            ral_gfx_state_release(text_ptr->last_cached_gfx_state);
+            ral_context_delete_objects(text_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&text_ptr->last_cached_gfx_state) );
 
             text_ptr->last_cached_gfx_state = nullptr;
         }
@@ -963,12 +975,18 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLES;
         gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
-        gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
+        gfx_state_create_info.static_scissor_boxes_enabled         = false;
         gfx_state_create_info.static_viewports_enabled             = true;
+        gfx_state_create_info.static_viewports                     = &gfx_state_viewport;
 
-        text_ptr->last_cached_gfx_state = ral_gfx_state_create(text_ptr->context,
-                                                              &gfx_state_create_info);
+        ral_context_create_gfx_states(text_ptr->context,
+                                      1, /* n_create_info_items */
+                                     &gfx_state_create_info,
+                                     &text_ptr->last_cached_gfx_state);
     }
+
+    /* If necessary, create the data buffer */
+    _varia_text_renderer_prepare_vram_data_storage(text_ptr);
 
     /* Start recording the commands .. */
     if (text_ptr->last_cached_command_buffer == nullptr)
@@ -988,6 +1006,9 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
 
     ral_command_buffer_start_recording(text_ptr->last_cached_command_buffer);
     {
+        ral_command_buffer_record_set_gfx_state(text_ptr->last_cached_command_buffer,
+                                                text_ptr->last_cached_gfx_state);
+
         system_critical_section_enter(text_ptr->draw_cs);
         {
             system_resizable_vector_get_property(text_ptr->strings,
@@ -1020,6 +1041,12 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
                                         RAL_BUFFER_PROPERTY_SIZE,
                                        &ub_vsdata_bo_size);
 
+
+                ASSERT_DEBUG_SYNC(text_ptr->data_buffer != nullptr &&
+                                  text_ptr->sampler     != nullptr &&
+                                  ub_fsdata_bo          != nullptr &&
+                                  ub_vsdata_bo          != nullptr,
+                                  "Cannot bind a null object");
 
                 binding_info[0].binding_type                  = RAL_BINDING_TYPE_STORAGE_BUFFER;
                 binding_info[0].name                          = system_hashed_ansi_string_create("dataSSB");
@@ -1215,16 +1242,18 @@ PUBLIC ral_present_task varia_text_renderer_get_present_task(varia_text_renderer
     result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &result_present_task_unique_input;
     result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_unique_output;
 
-    text_ptr->last_cached_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("Text renderer: rasterization"),
-                                                                       &result_present_task_create_info);
-    result                             = text_ptr->last_cached_present_task;
+    text_ptr->last_cached_present_task                     = ral_present_task_create_group(system_hashed_ansi_string_create("Text renderer: rasterization"),
+                                                                                           &result_present_task_create_info);
+    text_ptr->last_cached_present_task_target_texture_view = target_texture_view;
+
+    result = text_ptr->last_cached_present_task;
 
 
     ral_present_task_release(present_task_cpu);
     ral_present_task_release(present_task_gpu);
-end:
     ral_present_task_retain(result);
 
+end:
     return result;
 }
 

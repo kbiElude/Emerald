@@ -30,7 +30,6 @@
 #include "system/system_threads.h"
 #include "system/system_time.h"
 #include "system/system_window.h"
-#include "varia/varia_text_renderer.h"
 
 enum
 {
@@ -254,8 +253,8 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                   n_present_task < n_present_tasks;
                 ++n_present_task)
     {
-        ral_present_task present_task      = nullptr;
-        system_dag_node  present_task_node = nullptr;
+        ral_present_task      present_task      = nullptr;
+        ral_present_task_type present_task_type;
 
         ral_present_job_get_task_at_index(present_job,
                                           n_present_task,
@@ -265,33 +264,71 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                           "Null present task reported at index [%d]",
                           n_present_task);
 
-        present_task_node = system_dag_add_node(result,
-                                                reinterpret_cast<system_dag_node_value>(present_task) );
+        /* CPU & GPU tasks should be associated a single node. If we encounter group tasks,
+         * we only want nodes for the CPU & GPU tasks they hold */
+        uint32_t n_subtasks = 1;
 
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(rendering_handler_ptr->dag_present_task_to_node_map,
-                                                     reinterpret_cast<system_hash64>(present_task) ),
-                          "Present task->DAG node map already holds a DAG node for the newly spawned present task");
-        ASSERT_DEBUG_SYNC(present_task_node != nullptr,
-                          "NULL DAG node created for a present task");
+        ral_present_task_get_property(present_task,
+                                      RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                     &present_task_type);
 
-        system_hash64map_insert(rendering_handler_ptr->dag_present_task_to_node_map,
-                                reinterpret_cast<system_hash64>(present_task),
-                                present_task_node,
-                                nullptr,  /* on_removal_callback          */
-                                nullptr); /* on_removal_callback_user_arg */
+        if (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP)
+        {
+            ral_present_task_get_property(present_task,
+                                          RAL_PRESENT_TASK_PROPERTY_N_GROUP_TASK_SUBTASKS,
+                                         &n_subtasks);
+        }
+
+        for (uint32_t n_subtask = 0;
+                      n_subtask < n_subtasks;
+                    ++n_subtask)
+        {
+            ral_present_task current_subtask;
+            system_dag_node  current_subtask_node = nullptr;
+
+            if (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP)
+            {
+                ral_present_task_get_group_subtask(present_task,
+                                                   n_subtask,
+                                                  &current_subtask);
+            }
+            else
+            {
+                current_subtask = present_task;
+            }
+
+            current_subtask_node = system_dag_add_node(result,
+                                                    reinterpret_cast<system_dag_node_value>(current_subtask) );
+
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(rendering_handler_ptr->dag_present_task_to_node_map,
+                                                         reinterpret_cast<system_hash64>(current_subtask) ),
+                              "Present task->DAG node map already holds a DAG node for the newly spawned present task");
+            ASSERT_DEBUG_SYNC(current_subtask_node != nullptr,
+                              "NULL DAG node created for a present task");
+
+            system_hash64map_insert(rendering_handler_ptr->dag_present_task_to_node_map,
+                                    reinterpret_cast<system_hash64>(current_subtask),
+                                    current_subtask_node,
+                                    nullptr,  /* on_removal_callback          */
+                                    nullptr); /* on_removal_callback_user_arg */
+        }
     }
 
     for (uint32_t n_connection = 0;
                   n_connection < n_connections;
                 ++n_connection)
     {
-        ral_present_job_connection_id connection_id             = -1;
-        ral_present_task              dst_present_task          = nullptr;
-        system_dag_node               dst_present_task_dag_node = nullptr;
-        ral_present_task_id           dst_present_task_id       = -1;
-        ral_present_task              src_present_task          = nullptr;
-        system_dag_node               src_present_task_dag_node = nullptr;
-        ral_present_task_id           src_present_task_id       = -1;
+        ral_present_job_connection_id connection_id                = -1;
+        ral_present_task              dst_present_task             = nullptr;
+        system_dag_node               dst_present_task_dag_node    = nullptr;
+        ral_present_task_id           dst_present_task_id          = -1;
+        uint32_t                      dst_present_task_input_index = -1;
+        ral_present_task_type         dst_present_task_type;
+        ral_present_task              src_present_task              = nullptr;
+        system_dag_node               src_present_task_dag_node     = nullptr;
+        ral_present_task_id           src_present_task_id           = -1;
+        uint32_t                      src_present_task_output_index = -1;
+        ral_present_task_type         src_present_task_type;
 
         ral_present_job_get_connection_id_at_index(present_job,
                                                    n_connection,
@@ -302,8 +339,16 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                                                   &dst_present_task_id);
         ral_present_job_get_connection_property   (present_job,
                                                    connection_id,
+                                                   RAL_PRESENT_JOB_CONNECTION_PROPERTY_DST_TASK_INPUT_INDEX,
+                                                  &dst_present_task_input_index);
+        ral_present_job_get_connection_property   (present_job,
+                                                   connection_id,
                                                    RAL_PRESENT_JOB_CONNECTION_PROPERTY_SRC_TASK_ID,
                                                   &src_present_task_id);
+        ral_present_job_get_connection_property   (present_job,
+                                                   connection_id,
+                                                   RAL_PRESENT_JOB_CONNECTION_PROPERTY_SRC_TASK_OUTPUT_INDEX,
+                                                  &src_present_task_output_index);
 
         ral_present_job_get_task_with_id(present_job,
                                          dst_present_task_id,
@@ -311,6 +356,57 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
         ral_present_job_get_task_with_id(present_job,
                                          src_present_task_id,
                                         &src_present_task);
+
+        ral_present_task_get_property(dst_present_task,
+                                      RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                     &dst_present_task_type);
+        ral_present_task_get_property(src_present_task,
+                                      RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                     &src_present_task_type);
+
+        if (dst_present_task_type == RAL_PRESENT_TASK_TYPE_GROUP ||
+            src_present_task_type == RAL_PRESENT_TASK_TYPE_GROUP)
+        {
+            for (uint32_t n_task_type = 0;
+                          n_task_type < 2; /* dst, src */
+                        ++n_task_type)
+            {
+                const uint32_t              io_index      = (n_task_type == 0) ? dst_present_task_input_index
+                                                                               : src_present_task_output_index;
+                const bool                  is_input_io   = (n_task_type == 0);
+                ral_present_task            subtask       = nullptr;
+                uint32_t                    subtask_index;
+                const ral_present_task      task          = (n_task_type == 0) ? dst_present_task
+                                                                               : src_present_task;
+                const ral_present_task_type task_type     = (n_task_type == 0) ? dst_present_task_type
+                                                                               : src_present_task_type;
+
+                if (task_type != RAL_PRESENT_TASK_TYPE_GROUP)
+                {
+                    continue;
+                }
+
+                ral_present_task_get_io_mapping_property(task,
+                                                         is_input_io ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                     : RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                         io_index,
+                                                         RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_SUBTASK_INDEX,
+                                                         reinterpret_cast<void**>(&subtask_index) );
+
+                ral_present_task_get_group_subtask(task,
+                                                   subtask_index,
+                                                  &subtask);
+
+                if (n_task_type == 0)
+                {
+                    dst_present_task = subtask;
+                }
+                else
+                {
+                    src_present_task = subtask;
+                }
+            }
+        }
 
         system_hash64map_get(rendering_handler_ptr->dag_present_task_to_node_map,
                              reinterpret_cast<system_hash64>(dst_present_task),
@@ -533,26 +629,68 @@ PUBLIC void raGL_rendering_handler_execute_present_job(void*           rendering
                   n_present_task < n_ordered_present_tasks;
                 ++n_present_task)
     {
-        ral_present_task    task                 = nullptr;
-        raGL_command_buffer task_cmd_buffer_raGL = nullptr;
-        ral_command_buffer  task_cmd_buffer_ral  = nullptr;
+        ral_present_task      task                 = nullptr;
+        raGL_command_buffer   task_cmd_buffer_raGL = nullptr;
+        ral_command_buffer    task_cmd_buffer_ral  = nullptr;
+        ral_present_task_type task_type;
 
         system_resizable_vector_get_element_at(rendering_handler_ptr->ordered_present_tasks,
                                                n_present_task,
                                               &task);
 
         ral_present_task_get_property(task,
-                                      RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER,
-                                     &task_cmd_buffer_ral);
+                                      RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                     &task_type);
 
-        raGL_backend_get_command_buffer(rendering_handler_ptr->backend,
-                                        task_cmd_buffer_ral,
-                                       &task_cmd_buffer_raGL);
+        switch (task_type)
+        {
+            case RAL_PRESENT_TASK_TYPE_CPU_TASK:
+            {
+                void*                            cpu_callback_user_arg;
+                PFNRALPRESENTTASKCPUCALLBACKPROC pfn_cpu_callback_proc;
 
-        raGL_command_buffer_execute(task_cmd_buffer_raGL,
-                                    dep_tracker);
+                ral_present_task_get_property(task,
+                                              RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_PROC,
+                                             &pfn_cpu_callback_proc);
+                ral_present_task_get_property(task,
+                                              RAL_PRESENT_TASK_PROPERTY_CPU_CALLBACK_USER_ARG,
+                                             &cpu_callback_user_arg);
 
-        ral_present_task_release(task);
+                pfn_cpu_callback_proc(cpu_callback_user_arg);
+
+                break;
+            }
+
+            case RAL_PRESENT_TASK_TYPE_GPU_TASK:
+            {
+                ral_present_task_get_property(task,
+                                              RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER,
+                                             &task_cmd_buffer_ral);
+
+                raGL_backend_get_command_buffer(rendering_handler_ptr->backend,
+                                                task_cmd_buffer_ral,
+                                               &task_cmd_buffer_raGL);
+
+                raGL_command_buffer_execute(task_cmd_buffer_raGL,
+                                            dep_tracker);
+
+                break;
+            }
+
+            case RAL_PRESENT_TASK_TYPE_GROUP:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "RAL group present task should never reach this place!");
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unsupported RAL present task type encountered.");
+            }
+        }
     }
 
     ral_present_job_get_property(present_job,

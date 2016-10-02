@@ -36,9 +36,7 @@
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
-#include "system/system_resources.h"
 #include "system/system_window.h"
-#include "varia/varia_text_renderer.h"
 #include <string.h>
 
 #ifdef _WIN32
@@ -139,7 +137,6 @@ typedef struct
     ogl_context_bo_bindings         bo_bindings;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_context_state_cache         state_cache;
-    varia_text_renderer             text_renderer;
     ogl_context_texture_compression texture_compression;
     ogl_context_to_bindings         to_bindings;
     ogl_context_vaos                vaos;
@@ -979,7 +976,6 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->multisampling_samples                      = 0;
     context_ptr->sampler_bindings                           = nullptr;
     context_ptr->state_cache                                = nullptr;
-    context_ptr->text_renderer                              = nullptr;
     context_ptr->texture_compression                        = nullptr;
     context_ptr->to_bindings                                = nullptr;
 
@@ -1157,35 +1153,8 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     if (!context_ptr->is_helper_context)
     {
         _ogl_context_initialize_fbo(context_ptr);
-
-        /* Set up text renderer */
-        const  float              text_default_size = 0.75f;
-        static float              text_color[3]     = {1.0f, 1.0f, 1.0f};
-        system_hashed_ansi_string window_name       = nullptr;
-        int                       window_size[2];
-
-        system_window_get_property(context_ptr->window,
-                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                                   window_size);
-        system_window_get_property(context_ptr->window,
-                                   SYSTEM_WINDOW_PROPERTY_NAME,
-                                  &window_name);
-
-        context_ptr->text_renderer = varia_text_renderer_create(window_name,
-                                                               context_ptr->context,
-                                                               system_resources_get_meiryo_font_table(),
-                                                               window_size[0],
-                                                               window_size[1]);
-
-        varia_text_renderer_set_text_string_property(context_ptr->text_renderer,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
-                                                    &text_default_size);
-        varia_text_renderer_set_text_string_property(context_ptr->text_renderer,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
-                                                     text_color);
     }
+
     raGL_rendering_handler_set_property(rendering_handler_raGL,
                                         RAGL_RENDERING_HANDLER_PROPERTY_CALL_PASSTHROUGH_MODE,
                                        &call_passthrough_mode_disabled);
@@ -2413,7 +2382,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLMultiDrawElementsIndirect,                   "glMultiDrawElementsIndirect"},
         {&context_ptr->entry_points_gl.pGLObjectLabel,                                      "glObjectLabel"},
         {&context_ptr->entry_points_gl.pGLObjectPtrLabel,                                   "glObjectPtrLabel"},
-        {&context_ptr->entry_points_gl.pGLPatchParameteri,                                  "glPatchParameteri"},
+        {&context_ptr->entry_points_private.pGLPatchParameteri,                             "glPatchParameteri"},
         {&context_ptr->entry_points_gl.pGLPauseTransformFeedback,                           "glPauseTransformFeedback"},
         {&context_ptr->entry_points_gl.pGLPixelStoref,                                      "glPixelStoref"},
         {&context_ptr->entry_points_gl.pGLPixelStorei,                                      "glPixelStorei"},
@@ -3659,16 +3628,6 @@ PUBLIC void ogl_context_get_property(const ogl_context    context,
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_TEXT_RENDERER:
-        {
-            ASSERT_DEBUG_SYNC(context_ptr->text_renderer != nullptr,
-                              "Text renderer is nullptr");
-
-            *reinterpret_cast<varia_text_renderer*>(out_result_ptr) = context_ptr->text_renderer;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_TEXTURE_COMPRESSION:
         {
             *reinterpret_cast<ogl_context_texture_compression*>(out_result_ptr) = context_ptr->texture_compression;
@@ -3749,13 +3708,6 @@ PUBLIC bool ogl_context_is_extension_supported(ogl_context               context
 PUBLIC bool ogl_context_release_managers(ogl_context context)
 {
     _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(context);
-
-    if (context_ptr->text_renderer != nullptr)
-    {
-        varia_text_renderer_release(context_ptr->text_renderer);
-
-        context_ptr->text_renderer = nullptr;
-    }
 
     return true;
 }

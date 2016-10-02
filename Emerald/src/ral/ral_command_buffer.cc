@@ -2053,6 +2053,8 @@ PUBLIC EMERALD_API bool ral_command_buffer_start_recording(ral_command_buffer co
     /* Update the cmd buffer and fire a notification to listening backend. */
     cmd_buffer_ptr->status = RAL_COMMAND_BUFFER_STATUS_RECORDING;
 
+    cmd_buffer_ptr->clear_commands();
+
     system_callback_manager_call_back(cmd_buffer_ptr->callback_manager,
                                       RAL_COMMAND_BUFFER_CALLBACK_ID_RECORDING_STARTED,
                                       command_buffer);

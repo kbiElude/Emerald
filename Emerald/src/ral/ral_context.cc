@@ -1261,7 +1261,6 @@ PRIVATE void _ral_context_on_texture_dropped_from_texture_pool(const void* callb
 {
     const _ral_texture_pool_callback_texture_dropped_arg* callback_arg_ptr = reinterpret_cast<const _ral_texture_pool_callback_texture_dropped_arg*>(callback_arg);
     _ral_context*                                         context_ptr      = reinterpret_cast<_ral_context*>                                        (context);
-    bool                                                  result;
 
     ral_context_delete_objects(reinterpret_cast<ral_context>(context_ptr),
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
@@ -1934,6 +1933,8 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_file_names(ral_context 
                                                               n_file_names_to_handle,
                                                               result_textures);
             }
+
+            _freea(result_textures);
         }
         else
         {

@@ -1674,6 +1674,9 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
         {
             ral_present_task_release(temp);
         }
+
+        _freea(pass_input_mappings);
+        _freea(pass_output_mappings);
     }
 
     /* This code is going to require a working RAL for debugging purposes. Deferring implementation till

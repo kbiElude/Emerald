@@ -1648,6 +1648,11 @@ PRIVATE bool _demo_timeline_segment_render_segment(demo_timeline_segment segment
     result = true;
 
     system_hash64map_clear(segment_ptr->node_to_present_task_index_map);
+    _freea                (node_present_task_ids);
+    _freea                (node_present_tasks);
+    _freea                (result_present_task_connections);
+    _freea                (result_present_task_in_mappings);
+    _freea                (result_present_task_out_mappings);
 
     return result;
 
