@@ -10,6 +10,17 @@
 REFCOUNT_INSERT_DECLARATIONS(ral_context,
                              ral_context);
 
+/** Optimus: forces High Performance profile */
+#ifdef _WIN32
+    #define INCLUDE_OPTIMUS_SUPPORT                                          \
+        extern "C"                                                           \
+        {                                                                    \
+        _declspec(dllexport) extern DWORD NvOptimusEnablement = 0x00000001; \
+        }
+#else
+    #define INCLUDE_OPTIMUS_SUPPORT
+#endif
+
 /* ral_context call-backs. These should be used by back-ends to notify about RAL object modifications. */
 enum
 {

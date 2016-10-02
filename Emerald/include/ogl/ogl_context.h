@@ -17,17 +17,6 @@
 REFCOUNT_INSERT_DECLARATIONS(ogl_context,
                              ogl_context)
 
-/** Optimus: forces High Performance profile */
-#ifdef _WIN32
-    #define INCLUDE_OPTIMUS_SUPPORT                                          \
-        extern "C"                                                           \
-        {                                                                    \
-        _declspec(dllexport) extern DWORD NvOptimusEnablement = 0x00000001; \
-        }
-#else
-    #define INCLUDE_OPTIMUS_SUPPORT
-#endif
-
 
 typedef enum ogl_context_property
 {

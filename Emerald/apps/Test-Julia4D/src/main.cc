@@ -9,11 +9,13 @@
 #include "demo/demo_app.h"
 #include "demo/demo_flyby.h"
 #include "demo/demo_window.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_pipeline.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_job.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
 #include "ral/ral_rendering_handler.h"
+#include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -37,101 +39,105 @@ demo_flyby       _flyby                     = NULL;
 float            _light_color[3]            = {1.0f,  1.0f,   1.0f};
 float            _light_position[3]         = {2.76f, 1.619f, 0.0f};
 int              _max_iterations            = 10;
-ogl_pipeline     _pipeline                  = NULL;
 uint32_t         _pipeline_stage_id         = -1;
 system_matrix4x4 _projection_matrix         = NULL;
 float            _raycast_radius_multiplier = 2.65f;
+ral_texture      _rt_texture                = nullptr;
+ral_texture_view _rt_texture_view           = nullptr;
 bool             _shadows                   = true;
 float            _specularity               = 4.4f;
 demo_window      _window                    = NULL;
 system_event     _window_closed_event       = system_event_create(true); /* manual_reset */
-
+const uint32_t   _window_height             = 480;
+const uint32_t   _window_width              = 640;
 
 /* Forward declarations */
-PRIVATE void _deinit_gl                              (ral_context             context,
-                                                      void*                   not_used);
-PRIVATE void _fire_shadows                           (void*                   not_used,
-                                                      void*                   not_used2);
-PRIVATE void _get_a_value                            (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_b_value                            (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_c_value                            (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_d_value                            (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_epsilon_value                      (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_escape_threshold_value             (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_light_color_blue_value             (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_light_color_green_value            (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_light_color_red_value              (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_light_position_x_value             (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_light_position_y_value             (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_light_position_z_value             (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_max_iterations_value               (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_raycast_radius_multiplier_value    (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _get_specularity_value                  (void*                   user_arg,
-                                                      system_variant          result);
-PRIVATE void _init_gl                                ();
-PRIVATE void _init_pipeline_rendering_thread_callback(ogl_context             context,
-                                                      void*                   unused);
-PRIVATE void _init_ui                                ();
-PRIVATE void _rendering_handler                      (ogl_context             context,
-                                                      uint32_t                n_frames_rendered,
-                                                      system_time             frame_time,
-                                                      void*                   renderer);
-PRIVATE void _rendering_lbm_callback_handler         (system_window           window,
-                                                      unsigned short          x,
-                                                      unsigned short          y,
-                                                      system_window_vk_status new_status,
-                                                      void*                   unused);
-PRIVATE void _set_a_value                            (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_b_value                            (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_c_value                            (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_d_value                            (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_epsilon_value                      (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_escape_threshold_value             (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_light_color_blue_value             (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_light_color_green_value            (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_light_color_red_value              (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_light_position_x_value             (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_light_position_y_value             (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_light_position_z_value             (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_max_iterations_value               (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_raycast_radius_multiplier_value    (void*                   user_arg,
-                                                      system_variant          new_value);
-PRIVATE void _set_specularity_value                  (void*                   user_arg,
-                                                      system_variant          new_value);
+PRIVATE void _deinit                     ();
+PRIVATE void _fire_shadows               (void*          not_used,
+                                          void*          not_used2);
+PRIVATE void _get_a_value                (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_b_value                (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_c_value                (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_d_value                (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_epsilon_value          (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_escape_threshold_value (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_light_color_blue_value (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_light_color_green_value(void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_light_color_red_value  (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_light_position_x_value (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_light_position_y_value (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_light_position_z_value (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_max_iterations_value   (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _get_specularity_value      (void*          user_arg,
+                                          system_variant result);
+PRIVATE void _init                       ();
+PRIVATE void _init_ui                    ();
+PRIVATE void _set_a_value                (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_b_value                (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_c_value                (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_d_value                (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_epsilon_value          (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_escape_threshold_value (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_light_color_blue_value (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_light_color_green_value(void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_light_color_red_value  (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_light_position_x_value (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_light_position_y_value (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_light_position_z_value (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_max_iterations_value   (void*          user_arg,
+                                          system_variant new_value);
+PRIVATE void _set_specularity_value      (void*          user_arg,
+                                          system_variant new_value);
+
+PRIVATE void _get_raycast_radius_multiplier_value(void*                   user_arg,
+                                                  system_variant          result);
+PRIVATE void _rendering_lbm_callback_handler     (system_window           window,
+                                                  unsigned short          x,
+                                                  unsigned short          y,
+                                                  system_window_vk_status new_status,
+                                                  void*                   unused);
+PRIVATE void _set_raycast_radius_multiplier_value(void*                   user_arg,
+                                                  system_variant          new_value);
 
 
 /** TODO */
-PRIVATE void _deinit_gl(ral_context context)
+PRIVATE void _deinit()
 {
-    stage_step_julia_deinit(context);
-    stage_step_light_deinit(context);
+    stage_step_julia_deinit(_context);
+    stage_step_light_deinit(_context);
+}
+
+/** TODO */
+PRIVATE ral_present_job _draw_frame(ral_context                                                context,
+                                    void*                                                      user_arg,
+                                    const ral_rendering_handler_rendering_callback_frame_data* frame_data_ptr)
+{
+    todo;
 }
 
 /** TODO */
@@ -260,17 +266,43 @@ PRIVATE void _get_specularity_value(void*          user_arg,
                              _specularity);
 }
 
-PRIVATE void _init_gl()
+PRIVATE void _init()
 {
-    _init_pipeline_rendering_thread_callback(context,
-                                             not_used);
+    /* Initialize rendertargets */
+    ral_texture_create_info      texture_create_info;
+    ral_texture_view_create_info texture_view_create_info;
 
-    stage_step_julia_init(_context,
-                          _pipeline,
-                          _pipeline_stage_id);
-    stage_step_light_init(_context,
-                          _pipeline,
-                          _pipeline_stage_id);
+    texture_create_info.base_mipmap_depth      = 1;
+    texture_create_info.base_mipmap_height     = _window_height;
+    texture_create_info.base_mipmap_width      = _window_width;
+    texture_create_info.fixed_sample_locations = true;
+    texture_create_info.format                 = RAL_FORMAT_RGBA8_UNORM;
+    texture_create_info.name                   = system_hashed_ansi_string_create("Staging texture");
+    texture_create_info.n_layers               = 1;
+    texture_create_info.n_samples              = 1;
+    texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    texture_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_SRC_BIT |
+                                                 RAL_TEXTURE_USAGE_IMAGE_STORE_OPS_BIT;
+    texture_create_info.use_full_mipmap_chain  = false;
+
+    ral_context_create_textures(_context,
+                                1, /* n_textures */
+                               &texture_create_info,
+                               &_rt_texture);
+
+    texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_texture);
+
+    ral_context_create_texture_views(_context,
+                                     1, /* n_texture_views */
+                                    &texture_view_create_info,
+                                    &_rt_texture_view);
+
+    /* Initialize workers */
+    stage_step_julia_init(_context);
+    stage_step_light_init(_context);
+
+    /* Initialize the UI */
+    _init_ui();
 
     /* Initialize flyby */
     const float camera_pos[]          = {-0.1611f, 4.5528f, -6.0926f};
@@ -301,19 +333,6 @@ PRIVATE void _init_gl()
 }
 
 /** TODO */
-PRIVATE void _init_pipeline_rendering_thread_callback(ogl_context context,
-                                                      void*       unused)
-{
-    /* Set up pipeline */
-    _pipeline          = ogl_pipeline_create   (_context,
-                                                true,  /* should_overlay_performance_info */
-                                                system_hashed_ansi_string_create("pipeline") );
-    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
-
-    _init_ui();
-}
-
-/** TODO */
 PRIVATE void _init_ui()
 {
     /* Initialize UI */
@@ -333,9 +352,18 @@ PRIVATE void _init_ui()
     const float scrollbar_14_x1y1[] = {0.0f, 0.6f};
     const float scrollbar_15_x1y1[] = {0.0f, 0.7f};
     const float checkbox_1_x1y1[]   = {0.0f, 0.1f};
-    ui          pipeline_ui         = ogl_pipeline_get_ui(_pipeline);
 
-    ui_add_scrollbar(pipeline_ui,
+    ral_rendering_handler rh;
+    ui                    rh_ui;
+
+    demo_window_get_property          (_window,
+                                       DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                      &rh);
+    ral_rendering_handler_get_property(rh,
+                                       RAL_RENDERING_HANDLER_PROPERTY_UI,
+                                      &rh_ui);
+
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("A"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(-1.5f),
@@ -345,7 +373,7 @@ PRIVATE void _init_ui()
                      NULL,         /* get_current_value_user_arg */
                      _set_a_value,
                      NULL);        /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("B"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(-1.5f),
@@ -355,7 +383,7 @@ PRIVATE void _init_ui()
                      NULL,         /* get_current_value_user_arg */
                      _set_b_value,
                      NULL);        /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("C"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(-1.5f),
@@ -365,7 +393,7 @@ PRIVATE void _init_ui()
                      NULL,         /* get_current_value_user_arg */
                      _set_c_value,
                      NULL);        /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("D"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(-1.5f),
@@ -375,7 +403,7 @@ PRIVATE void _init_ui()
                      NULL,         /* get_current_value_user_arg */
                      _set_d_value,
                      NULL);        /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Epsilon"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(0.00001f),
@@ -385,7 +413,7 @@ PRIVATE void _init_ui()
                      NULL,               /* get_current_value_user_arg */
                      _set_epsilon_value,
                      NULL);              /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Escape threshold"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(0.01f),
@@ -395,7 +423,7 @@ PRIVATE void _init_ui()
                      NULL,                        /* get_current_value_user_arg */
                      _set_escape_threshold_value,
                      NULL);                       /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Max iterations"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(1),
@@ -405,7 +433,7 @@ PRIVATE void _init_ui()
                      NULL,                      /* get_current_value_user_arg */
                      _set_max_iterations_value,
                      NULL);                     /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Raycast radius"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(1),
@@ -415,7 +443,7 @@ PRIVATE void _init_ui()
                      NULL,                                 /* get_current_value_user_arg */
                      _set_raycast_radius_multiplier_value,
                      NULL);                                /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Specularity"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(0.0001f),
@@ -425,13 +453,13 @@ PRIVATE void _init_ui()
                      NULL,                   /* get_current_value_user_arg */
                      _set_specularity_value,
                      NULL);                  /* set_current_value_user_arg */
-    ui_add_checkbox (pipeline_ui,
+    ui_add_checkbox (rh_ui,
                      system_hashed_ansi_string_create("Shadows"),
                      checkbox_1_x1y1,
                      _shadows,
                      _fire_shadows,
                      NULL);         /* fire_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Color R"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(0.0f),
@@ -441,7 +469,7 @@ PRIVATE void _init_ui()
                      NULL,                       /* get_current_value_user_arg */
                      _set_light_color_red_value,
                      NULL);                      /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Color G"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(0.0f),
@@ -451,7 +479,7 @@ PRIVATE void _init_ui()
                      NULL,                         /* get_current_value_user_arg */
                      _set_light_color_green_value,
                      NULL);                        /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Color B"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(0.0f),
@@ -461,7 +489,7 @@ PRIVATE void _init_ui()
                      NULL,                        /* get_current_value_user_arg */
                      _set_light_color_blue_value,
                      NULL);                       /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Position X"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(-3.0f),
@@ -471,7 +499,7 @@ PRIVATE void _init_ui()
                      NULL,                        /* get_current_value_user_arg */
                      _set_light_position_x_value,
                      NULL);                       /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Position Y"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(-3.0f),
@@ -481,7 +509,7 @@ PRIVATE void _init_ui()
                      NULL,                        /* get_current_value_user_arg */
                      _set_light_position_y_value,
                      NULL);                       /* set_current_value_user_arg */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Position Z"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float(-3.0f),
@@ -491,29 +519,6 @@ PRIVATE void _init_ui()
                      NULL,                        /* get_current_value_user_arg */
                      _set_light_position_z_value,
                      NULL);                       /* set_current_value_user_arg */
-}
-
-/** Rendering handler */
-PRIVATE void _rendering_handler(ral_context context,
-                                system_time frame_time,
-                                uint32_t    n_frame,
-                                const int*  rendering_area_px_topdown,
-                                void*       user_arg)
-{
-    static bool is_initialized = false;
-
-    if (!is_initialized)
-    {
-        _init_gl();
-
-        is_initialized = true;
-    }
-
-    ogl_pipeline_draw_stage(_pipeline,
-                            _pipeline_stage_id,
-                            n_frame,
-                            frame_time,
-                            rendering_area_px_topdown);
 }
 
 PRIVATE void _rendering_lbm_callback_handler(system_window           window,
@@ -660,9 +665,7 @@ PRIVATE void _window_closed_callback_handler(system_window window,
 PRIVATE void _window_closing_callback_handler(system_window window,
                                               void*         unused)
 {
-    _deinit_gl          (_context);
-    ogl_pipeline_release(_pipeline);
-
+    _deinit();
 }
 
 /** Please see header for specification */
@@ -735,13 +738,13 @@ float main_get_specularity()
     int main()
 #endif
 {
-    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc    = _rendering_handler;
+    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc    = _draw_frame;
     ral_rendering_handler                   rendering_handler    = NULL;
     demo_window_create_info                 window_create_info;
     const system_hashed_ansi_string         window_name          = system_hashed_ansi_string_create("Julia 4D test app");
 
-    window_create_info.resolution[0] = 640;
-    window_create_info.resolution[1] = 480;
+    window_create_info.resolution[0] = _window_width;
+    window_create_info.resolution[1] = _window_height;
 
     _window = demo_app_create_window(window_name,
                                      window_create_info,
@@ -760,10 +763,10 @@ float main_get_specularity()
                                       &pfn_callback_proc);
 
     /* Set up matrices */
-    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,           /* fov_y */
-                                                                               640.0f / 480.0f, /* ar */
-                                                                               0.001f,          /* z_near */
-                                                                               500.0f);         /* z_far */
+    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,                                        /* fov_y  */
+                                                                               float(_window_width) / float(_window_height), /* ar     */
+                                                                               0.001f,                                       /* z_near */
+                                                                               500.0f);                                      /* z_far  */
 
     /* Set up callbacks */
     demo_window_add_callback_func(_window,
@@ -781,6 +784,9 @@ float main_get_specularity()
                                   SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
                                   (void*) _window_closing_callback_handler,
                                   NULL);
+
+    /* Set up rendering-related stuff */
+    _init();
 
     /* Carry on */
     demo_window_start_rendering(_window,

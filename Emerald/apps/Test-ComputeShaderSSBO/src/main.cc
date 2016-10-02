@@ -303,8 +303,6 @@ ral_present_job _rendering_handler(ral_context                                  
 
         ral_command_buffer_record_dispatch(command_buffer,
                                            n_global_invocations);
-
-        /* TODO: Make sure RAL injects a GL_FRAMEBUFFER_BARRIER_BIT before automatic buffer swap ! */
     }
     ral_command_buffer_stop_recording(command_buffer);
 
