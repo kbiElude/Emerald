@@ -137,6 +137,12 @@ PUBLIC void stage_step_light_deinit(ral_context context)
 }
 
 /* Please see header for specification */
+PUBLIC ral_present_task stage_step_light_get_present_task()
+{
+    return _light_present_task;
+}
+
+/* Please see header for specification */
 PUBLIC void stage_step_light_init(ral_context      context,
                                   ral_texture_view color_rt_texture_view,
                                   ral_texture_view depth_rt_texture_view)
@@ -149,17 +155,21 @@ PUBLIC void stage_step_light_init(ral_context      context,
                                                  system_hashed_ansi_string_create("light fragment") );
 
     /* Prepare a vertex shader */
-    const ral_shader_create_info vs_create_info =
+    const system_hashed_ansi_string vs_body_has    = system_hashed_ansi_string_create(_light_vs_shader_body);
+    const ral_shader_create_info    vs_create_info =
     {
         system_hashed_ansi_string_create("light vs"),
         RAL_SHADER_TYPE_VERTEX,
     };
 
-    vertex_shader = ral_shader_create(&vs_create_info);
+    ral_context_create_shaders(context,
+                               1, /* n_create_info_items */
+                              &vs_create_info,
+                              &vertex_shader);
 
     ral_shader_set_property(vertex_shader,
                             RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &_light_vs_shader_body);
+                           &vs_body_has);
 
     /* Prepare a program */
     const ral_program_create_info light_po_create_info =
@@ -185,7 +195,7 @@ PUBLIC void stage_step_light_init(ral_context      context,
     ral_context_delete_objects(context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
                                1, /* n_objects */
-                              &vertex_shader);
+                               reinterpret_cast<void* const*>(&vertex_shader) );
 
     /* Retrieve attribute/uniform locations */
     const ral_program_variable* color_uniform_ral_ptr    = nullptr;
@@ -268,7 +278,8 @@ PUBLIC void stage_step_light_init(ral_context      context,
         draw_call.n_instances   = 1;
         draw_call.n_vertices    = 1;
 
-        color_rt.texture_view = color_rt_texture_view;
+        color_rt.rendertarget_index = 0;
+        color_rt.texture_view       = color_rt_texture_view;
 
         ub_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
         ub_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
@@ -366,7 +377,7 @@ PUBLIC void stage_step_light_init(ral_context      context,
     group_task_input_mappings[0].group_task_io_index   = 0;
     group_task_input_mappings[0].n_present_task        = 1; /* gpu_task              */
     group_task_input_mappings[0].present_task_io_index = 0; /* color_rt_texture_view */
-    group_task_input_mappings[1].group_task_io_index   = 0;
+    group_task_input_mappings[1].group_task_io_index   = 1;
     group_task_input_mappings[1].n_present_task        = 1; /* gpu_task              */
     group_task_input_mappings[1].present_task_io_index = 1; /* depth_rt_texture_view */
     group_task_output_mappings[0]                      = group_task_input_mappings[0];
@@ -375,8 +386,8 @@ PUBLIC void stage_step_light_init(ral_context      context,
     group_task_create_info.ingroup_connections                      = group_task_connections;
     group_task_create_info.n_ingroup_connections                    = sizeof(group_task_connections)   / sizeof(group_task_connections  [0]);
     group_task_create_info.n_present_tasks                          = sizeof(group_task_present_tasks) / sizeof(group_task_present_tasks[0]);
-    group_task_create_info.n_total_unique_inputs                    = 0;
-    group_task_create_info.n_total_unique_outputs                   = 0;
+    group_task_create_info.n_total_unique_inputs                    = 2;
+    group_task_create_info.n_total_unique_outputs                   = 2;
     group_task_create_info.n_unique_input_to_ingroup_task_mappings  = sizeof(group_task_input_mappings)  / sizeof(group_task_input_mappings [0]);
     group_task_create_info.n_unique_output_to_ingroup_task_mappings = sizeof(group_task_output_mappings) / sizeof(group_task_output_mappings[0]);
     group_task_create_info.present_tasks                            = group_task_present_tasks;

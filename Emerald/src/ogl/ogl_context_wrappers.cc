@@ -23,6 +23,12 @@
 /* Injects glFinish() call after each GL call. Enable ONLY for debugging purposes */
 //#define ENABLE_DEBUG_FINISH_CALLS
 
+enum vap_worker_type
+{
+    VAP_WORKER_TYPE_NORMALIZED,
+    VAP_WORKER_TYPE_INTEGER,
+    VAP_WORKER_TYPE_DOUBLE
+};
 
 #ifdef _WIN32
     __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = nullptr;
@@ -31,6 +37,7 @@
 #endif
 
 
+/** TODO */
 PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(GLenum property)
 {
     ogl_context_state_cache_property result = OGL_CONTEXT_STATE_CACHE_PROPERTY_UNKNOWN;
@@ -221,6 +228,228 @@ PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_s
     }
 
     return result;
+}
+
+/** TODO */
+PRIVATE void _ogl_context_wrappers_vertex_attrib_format_worker(vap_worker_type worker_type,
+                                                               GLuint          attribindex,
+                                                               GLint           size,
+                                                               GLenum          type,
+                                                               GLboolean       normalized,
+                                                               GLuint          relativeoffset)
+{
+    ogl_context             context                = ogl_context_get_current_context();
+    GLboolean               current_normalized     = GL_FALSE;
+    GLuint                  current_relativeoffset = -1;
+    GLint                   current_size           = -1;
+    GLenum                  current_type           = -1;
+    ogl_vao                 current_vao            = nullptr;
+    GLuint                  current_vao_id         = -1;
+    ogl_context_state_cache state_cache            = nullptr;
+    ogl_context_vaos        vaos                   = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_VAOS,
+                            &vaos);
+
+    /* Retrieve current VAO's VAA properties */
+    ogl_context_state_cache_get_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
+                                        &current_vao_id);
+
+    current_vao = ogl_context_vaos_get_vao(vaos,
+                                           current_vao_id);
+
+    ogl_vao_get_vaa_property(current_vao,
+                             attribindex,
+                             OGL_VAO_VAA_PROPERTY_NORMALIZED,
+                            &current_normalized);
+    ogl_vao_get_vaa_property(current_vao,
+                             attribindex,
+                             OGL_VAO_VAA_PROPERTY_RELATIVE_OFFSET,
+                            &current_relativeoffset);
+    ogl_vao_get_vaa_property(current_vao,
+                             attribindex,
+                             OGL_VAO_VAA_PROPERTY_SIZE,
+                            &current_size);
+    ogl_vao_get_vaa_property(current_vao,
+                             attribindex,
+                             OGL_VAO_VAA_PROPERTY_TYPE,
+                            &current_type);
+
+    if (current_normalized     != normalized     ||
+        current_relativeoffset != relativeoffset ||
+        current_size           != size           ||
+        current_type           != type)
+    {
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
+
+        ogl_context_state_cache_sync(state_cache,
+                                     STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
+
+        switch (worker_type)
+        {
+            case VAP_WORKER_TYPE_DOUBLE:
+            {
+                _private_entrypoints_ptr->pGLVertexAttribLFormat(attribindex,
+                                                                 size,
+                                                                 type,
+                                                                 relativeoffset);
+
+                break;
+            }
+
+            case VAP_WORKER_TYPE_INTEGER:
+            {
+                _private_entrypoints_ptr->pGLVertexAttribIFormat(attribindex,
+                                                                 size,
+                                                                 type,
+                                                                 relativeoffset);
+
+                break;
+            }
+
+            case VAP_WORKER_TYPE_NORMALIZED:
+            {
+                _private_entrypoints_ptr->pGLVertexAttribFormat(attribindex,
+                                                                size,
+                                                                type,
+                                                                normalized,
+                                                                relativeoffset);
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized VAP worker type");
+            }
+        }
+
+        ogl_vao_set_vaa_property(current_vao,
+                                 attribindex,
+                                 OGL_VAO_VAA_PROPERTY_NORMALIZED,
+                                &current_normalized);
+        ogl_vao_set_vaa_property(current_vao,
+                                 attribindex,
+                                 OGL_VAO_VAA_PROPERTY_RELATIVE_OFFSET,
+                                &current_relativeoffset);
+        ogl_vao_set_vaa_property(current_vao,
+                                 attribindex,
+                                 OGL_VAO_VAA_PROPERTY_SIZE,
+                                &current_size);
+        ogl_vao_set_vaa_property(current_vao,
+                                 attribindex,
+                                 OGL_VAO_VAA_PROPERTY_TYPE,
+                                &current_type);
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_context_wrappers_vertex_attrib_pointer_worker(vap_worker_type worker_type,
+                                                                GLuint          index,
+                                                                GLint           size,
+                                                                GLenum          type,
+                                                                GLboolean       normalized,
+                                                                GLsizei         stride,
+                                                                const GLvoid*   pointer)
+{
+    ogl_context             context                  = ogl_context_get_current_context();
+    ogl_context_bo_bindings bo_bindings              = nullptr;
+    GLuint                  current_array_buffer     = 0;
+    ogl_vao                 current_vao              = nullptr;
+    GLuint                  current_vao_id           = -1;
+    ogl_context_state_cache state_cache              = nullptr;
+    ogl_context_vaos        vaos                     = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_VAOS,
+                            &vaos);
+
+    /* Retrieve current GL_ARRAY_BUFFER binding */
+    current_array_buffer = ogl_context_bo_bindings_get_general_binding(bo_bindings,
+                                                                       GL_ARRAY_BUFFER);
+
+    /* Retrieve current VAO's VAA properties */
+    ogl_context_state_cache_get_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
+                                        &current_vao_id);
+
+    current_vao = ogl_context_vaos_get_vao(vaos,
+                                           current_vao_id);
+
+    /* As per spec .. */
+    GLuint effective_stride = 0;
+
+    switch (worker_type)
+    {
+        case VAP_WORKER_TYPE_DOUBLE:
+        {
+            ogl_context_wrappers_glVertexAttribLFormat(index,
+                                                       size,
+                                                       type,
+                                                       0); /* relativeoffset */
+
+            break;
+        }
+
+        case VAP_WORKER_TYPE_INTEGER:
+        {
+            ogl_context_wrappers_glVertexAttribIFormat(index,
+                                                       size,
+                                                       type,
+                                                       0); /* relativeoffset */
+
+            break;
+        }
+
+        case VAP_WORKER_TYPE_NORMALIZED:
+        {
+            ogl_context_wrappers_glVertexAttribFormat(index,
+                                                      size,
+                                                      type,
+                                                      normalized,
+                                                      0); /* relativeoffset */
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized VAP worker type");
+        }
+    }
+
+
+    if (stride != 0)
+    {
+        effective_stride = stride;
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(stride == 0,
+                          "TODO: Compute effectiveStride based on size and type");
+    }
+
+    ogl_context_wrappers_glBindVertexBuffer(index,
+                                            current_array_buffer,
+                                            reinterpret_cast<GLintptr>(pointer),
+                                            effective_stride);
 }
 
 /* Please see header for specification */
@@ -629,6 +858,76 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendEquation(GLenum mode)
     ogl_context_state_cache_set_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB,
                                         &mode);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glBindVertexBuffer(GLuint   bindingindex,
+                                                             GLuint   buffer,
+                                                             GLintptr offset,
+                                                             GLsizei  stride)
+{
+    ogl_context             context           = ogl_context_get_current_context();
+    ogl_vao                 current_vao       = nullptr;
+    GLuint                  current_vao_id    = -1;
+    GLuint                  current_vb_buffer = -1;
+    GLintptr                current_vb_offset = -1;
+    GLsizei                 current_vb_stride = -1;
+    ogl_context_state_cache state_cache       = nullptr;
+    GLboolean               vaa_enabled       = GL_FALSE;
+    ogl_context_vaos        vaos              = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_VAOS,
+                            &vaos);
+
+    ogl_context_state_cache_get_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
+                                        &current_vao_id);
+
+    current_vao = ogl_context_vaos_get_vao(vaos,
+                                           current_vao_id);
+
+    ogl_vao_get_vb_property(current_vao,
+                            bindingindex,
+                            OGL_VAO_VB_PROPERTY_BUFFER,
+                           &current_vb_buffer);
+    ogl_vao_get_vb_property(current_vao,
+                            bindingindex,
+                            OGL_VAO_VB_PROPERTY_OFFSET,
+                           &current_vb_offset);
+    ogl_vao_get_vb_property(current_vao,
+                            bindingindex,
+                            OGL_VAO_VB_PROPERTY_STRIDE,
+                           &current_vb_stride);
+
+    if (current_vb_buffer != buffer ||
+        current_vb_offset != offset ||
+        current_vb_stride != stride)
+    {
+        ogl_context_state_cache_sync(state_cache,
+                                     STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
+
+        _private_entrypoints_ptr->pGLBindVertexBuffer(bindingindex,
+                                                      buffer,
+                                                      offset,
+                                                      stride);
+
+        ogl_vao_set_vb_property(current_vao,
+                                bindingindex,
+                                OGL_VAO_VB_PROPERTY_BUFFER,
+                               &buffer);
+        ogl_vao_set_vb_property(current_vao,
+                                bindingindex,
+                                OGL_VAO_VB_PROPERTY_OFFSET,
+                               &offset);
+        ogl_vao_set_vb_property(current_vao,
+                                bindingindex,
+                                OGL_VAO_VB_PROPERTY_STRIDE,
+                               &stride);
+    }
 }
 
 /** Please see header for spec */
@@ -6550,98 +6849,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT(GL
                                                                               GLsizei  stride,
                                                                               GLintptr offset)
 {
-    ogl_context_bo_bindings bo_bindings = nullptr;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_vao                 vao         = nullptr;
-    ogl_context_vaos        vaos        = nullptr;
-
-    GLuint   current_vaa_buffer = -1;
-    GLintptr current_vaa_offset =  0;
-    GLint    current_vaa_size   = -1;
-    GLsizei  current_vaa_stride = -1;
-    GLenum   current_vaa_type   = GL_NONE;
-
-    ogl_context_get_property    (context,
-                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                                &bo_bindings);
-    ogl_context_get_property    (context,
-                                 OGL_CONTEXT_PROPERTY_VAOS,
-                                &vaos);
-
-    vao = ogl_context_vaos_get_vao(vaos,
-                                   vaobj);
-
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                            &current_vaa_buffer);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_POINTER,
-                            &current_vaa_offset);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_SIZE,
-                            &current_vaa_size);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_STRIDE,
-                             &current_vaa_stride);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_TYPE,
-                            &current_vaa_type);
-
-    if (current_vaa_buffer != buffer ||
-        current_vaa_offset != offset ||
-        current_vaa_size   != size   ||
-        current_vaa_stride != stride ||
-        current_vaa_type   != type)
-    {
-        ogl_context_bo_bindings_sync(bo_bindings,
-                                     BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
-
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
-
-        _private_entrypoints_ptr->pGLVertexArrayVertexAttribIOffsetEXT(vaobj,
-                                                                       buffer,
-                                                                       index,
-                                                                       size,
-                                                                       type,
-                                                                       stride,
-                                                                       offset);
-
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
-
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                                &buffer);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_POINTER,
-                                &offset);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_SIZE,
-                                &size);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_STRIDE,
-                                &stride);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_TYPE,
-                                &type);
-    }
+    /* ..and having ARB_DSA entrypoints would greatly simplify that task. */
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO. _ogl_context_wrappers_vertex_attrib_format_worker() requires modifications to support this entrypoint.");
 }
 
 /** Please see header for spec */
@@ -6654,173 +6864,28 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT(GLu
                                                                              GLsizei   stride,
                                                                              GLintptr  offset)
 {
-    ogl_context_bo_bindings bo_bindings = nullptr;
-    ogl_context             context     = ogl_context_get_current_context();
-    ogl_vao                 vao         = nullptr;
-    ogl_context_vaos        vaos        = nullptr;
-
-    GLuint    current_vaa_buffer     = -1;
-    GLboolean current_vaa_normalized = GL_FALSE;
-    GLintptr  current_vaa_offset     =  0;
-    GLint     current_vaa_size       = -1;
-    GLsizei   current_vaa_stride     = -1;
-    GLenum    current_vaa_type       = GL_NONE;
-
-    ogl_context_get_property    (context,
-                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                                &bo_bindings);
-    ogl_context_get_property    (context,
-                                 OGL_CONTEXT_PROPERTY_VAOS,
-                                &vaos);
-
-    vao = ogl_context_vaos_get_vao(vaos,
-                                   vaobj);
-
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                            &current_vaa_buffer);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_NORMALIZED,
-                            &current_vaa_normalized);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_POINTER,
-                            &current_vaa_offset);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_SIZE,
-                            &current_vaa_size);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_STRIDE,
-                             &current_vaa_stride);
-    ogl_vao_get_vaa_property(vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_TYPE,
-                            &current_vaa_type);
-
-    if (current_vaa_buffer     != buffer     ||
-        current_vaa_normalized != normalized ||
-        current_vaa_offset     != offset     ||
-        current_vaa_size       != size       ||
-        current_vaa_stride     != stride     ||
-        current_vaa_type       != type)
-    {
-        ogl_context_bo_bindings_sync(bo_bindings,
-                                     BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
-
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
-
-        _private_entrypoints_ptr->pGLVertexArrayVertexAttribOffsetEXT(vaobj,
-                                                                      buffer,
-                                                                      index,
-                                                                      size,
-                                                                      type,
-                                                                      normalized,
-                                                                      stride,
-                                                                      offset);
-
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
-
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                                &buffer);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_NORMALIZED,
-                                &normalized);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_POINTER,
-                                &offset);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_SIZE,
-                                &size);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_STRIDE,
-                                &stride);
-        ogl_vao_set_vaa_property(vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_TYPE,
-                                &type);
-    }
+    /* ..and having ARB_DSA entrypoints would greatly simplify that task. */
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO. _ogl_context_wrappers_vertex_attrib_format_worker() requires modifications to support this entrypoint.");
 }
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribBinding(GLuint attribindex,
                                                                 GLuint bindingindex)
 {
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO: Vertex attribute binding support");
-}
+    ogl_context             context                = ogl_context_get_current_context();
+    ogl_vao                 current_vao            = nullptr;
+    GLuint                  current_vao_id         = -1;
+    uint32_t                current_vao_vb_binding = -1;
+    ogl_context_state_cache state_cache            = nullptr;
+    ogl_context_vaos        vaos                   = nullptr;
 
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribFormat(GLuint    attribindex,
-                                                               GLint     size,
-                                                               GLenum    type,
-                                                               GLboolean normalized,
-                                                               GLuint    relativeoffset)
-{
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO: Vertex attribute binding support");
-}
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIFormat(GLuint attribindex,
-                                                                GLint  size,
-                                                                GLenum type,
-                                                                GLuint relativeoffset)
-{
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO: Vertex attribute binding support");
-}
-
-/** Please see header for spec */
-PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIPointer(GLuint        index,
-                                                                 GLint         size,
-                                                                 GLenum        type,
-                                                                 GLsizei       stride,
-                                                                 const GLvoid* pointer)
-{
-    ogl_context             context                  = ogl_context_get_current_context();
-    ogl_context_bo_bindings bo_bindings              = nullptr;
-    GLuint                  current_array_buffer     = 0;
-    GLuint                  current_vaa_array_buffer = 0;
-    const GLvoid*           current_vaa_pointer      = nullptr;
-    GLint                   current_vaa_size         = -1;
-    GLsizei                 current_vaa_stride       = -1;
-    GLenum                  current_vaa_type         = GL_NONE;
-    ogl_vao                 current_vao              = nullptr;
-    GLuint                  current_vao_id           = -1;
-    ogl_context_state_cache state_cache              = nullptr;
-    ogl_context_vaos        vaos                     = nullptr;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_VAOS,
                             &vaos);
-
-    /* Retrieve current GL_ARRAY_BUFFER binding */
-    current_array_buffer = ogl_context_bo_bindings_get_general_binding(bo_bindings,
-                                                                       GL_ARRAY_BUFFER);
 
     /* Retrieve current VAO's VAA properties */
     ogl_context_state_cache_get_property(state_cache,
@@ -6831,76 +6896,75 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIPointer(GLuint        i
                                            current_vao_id);
 
     ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                            &current_vaa_array_buffer);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_POINTER,
-                            &current_vaa_pointer);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_SIZE,
-                            &current_vaa_size);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_STRIDE,
-                            &current_vaa_stride);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_TYPE,
-                            &current_vaa_type);
+                             attribindex,
+                             OGL_VAO_VAA_PROPERTY_VB_BINDING,
+                            &current_vao_vb_binding);
 
-    if (current_vaa_array_buffer != current_array_buffer ||
-        current_vaa_pointer      != pointer              ||
-        current_vaa_size         != size                 ||
-        current_vaa_stride       != stride               ||
-        current_vaa_type         != type)
+    /* Update the binding only if necessary. */
+    if (current_vao_vb_binding != bindingindex)
     {
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
+
         ogl_context_state_cache_sync(state_cache,
                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
-        ogl_context_bo_bindings_sync(bo_bindings,
-                                     BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
 
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
-
-        _private_entrypoints_ptr->pGLVertexAttribIPointer(index,
-                                                          size,
-                                                          type,
-                                                          stride,
-                                                          pointer);
-
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
+        _private_entrypoints_ptr->pGLVertexAttribBinding(attribindex,
+                                                         bindingindex);
 
         ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                                &current_array_buffer);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_POINTER,
-                                &pointer);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_SIZE,
-                                &size);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_STRIDE,
-                                &stride);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_TYPE,
-                                &type);
+                                 attribindex,
+                                 OGL_VAO_VAA_PROPERTY_VB_BINDING,
+                                &bindingindex);
     }
+}
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribFormat(GLuint    attribindex,
+                                                               GLint     size,
+                                                               GLenum    type,
+                                                               GLboolean normalized,
+                                                               GLuint    relativeoffset)
+{
+    _ogl_context_wrappers_vertex_attrib_format_worker(VAP_WORKER_TYPE_NORMALIZED,
+                                                      attribindex,
+                                                      size,
+                                                      type,
+                                                      normalized,
+                                                      relativeoffset);
+}
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIFormat(GLuint attribindex,
+                                                                GLint  size,
+                                                                GLenum type,
+                                                                GLuint relativeoffset)
+{
+    _ogl_context_wrappers_vertex_attrib_format_worker(VAP_WORKER_TYPE_INTEGER,
+                                                      attribindex,
+                                                      size,
+                                                      type,
+                                                      GL_FALSE, /* normalized - irrelevant */
+                                                      relativeoffset);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIPointer(GLuint        index,
+                                                                 GLint         size,
+                                                                 GLenum        type,
+                                                                 GLsizei       stride,
+                                                                 const GLvoid* pointer)
+{
+    _ogl_context_wrappers_vertex_attrib_pointer_worker(VAP_WORKER_TYPE_INTEGER,
+                                                       index,
+                                                       size,
+                                                       type,
+                                                       GL_FALSE, /* normalized - irrelevant */
+                                                       stride,
+                                                       pointer);
 }
 
 /** Please see header for spec */
@@ -6909,8 +6973,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribLFormat(GLuint attribind
                                                                 GLenum type,
                                                                 GLuint relativeoffset)
 {
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO: Vertex attribute binding support");
+    _ogl_context_wrappers_vertex_attrib_format_worker(VAP_WORKER_TYPE_DOUBLE,
+                                                      attribindex,
+                                                      size,
+                                                      type,
+                                                      GL_FALSE, /* normalized - irrelevant */
+                                                      relativeoffset);
 }
 
 /** Please see header for spec */
@@ -6921,33 +6989,32 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribPointer(GLuint        in
                                                                 GLsizei       stride,
                                                                 const GLvoid* pointer)
 {
-    ogl_context_bo_bindings bo_bindings              = nullptr;
-    ogl_context             context                  = ogl_context_get_current_context();
-    GLuint                  current_array_buffer     = 0;
-    GLuint                  current_vaa_array_buffer = 0;
-    GLboolean               current_vaa_normalized   = GL_FALSE;
-    const GLvoid*           current_vaa_pointer      = nullptr;
-    GLint                   current_vaa_size         = -1;
-    GLsizei                 current_vaa_stride       = -1;
-    GLenum                  current_vaa_type         = GL_NONE;
-    ogl_vao                 current_vao              = nullptr;
-    GLuint                  current_vao_id           = -1;
-    ogl_context_state_cache state_cache              = nullptr;
-    ogl_context_vaos        vaos                     = nullptr;
+    _ogl_context_wrappers_vertex_attrib_pointer_worker(VAP_WORKER_TYPE_NORMALIZED,
+                                                       index,
+                                                       size,
+                                                       type,
+                                                       normalized,
+                                                       stride,
+                                                       pointer);
+}
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                            &bo_bindings);
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexBindingDivisor(GLuint bindingindex,
+                                                                 GLuint divisor)
+{
+    ogl_context             context         = ogl_context_get_current_context();
+    GLuint                  current_divisor = -1;
+    ogl_vao                 current_vao     = nullptr;
+    GLuint                  current_vao_id  = -1;
+    ogl_context_state_cache state_cache     = nullptr;
+    ogl_context_vaos        vaos            = nullptr;
+
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_STATE_CACHE,
                             &state_cache);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_VAOS,
                             &vaos);
-
-    /* Retrieve current GL_ARRAY_BUFFER binding */
-    current_array_buffer = ogl_context_bo_bindings_get_general_binding(bo_bindings,
-                                                                       GL_ARRAY_BUFFER);
 
     /* Retrieve current VAO's VAA properties */
     ogl_context_state_cache_get_property(state_cache,
@@ -6957,86 +7024,30 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribPointer(GLuint        in
     current_vao = ogl_context_vaos_get_vao(vaos,
                                            current_vao_id);
 
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                            &current_vaa_array_buffer);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_NORMALIZED,
-                            &current_vaa_normalized);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_POINTER,
-                            &current_vaa_pointer);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_SIZE,
-                            &current_vaa_size);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_STRIDE,
-                            &current_vaa_stride);
-    ogl_vao_get_vaa_property(current_vao,
-                             index,
-                             OGL_VAO_VAA_PROPERTY_TYPE,
-                            &current_vaa_type);
+    ogl_vao_get_vb_property(current_vao,
+                            bindingindex,
+                            OGL_VAO_VB_PROPERTY_DIVISOR,
+                           &current_divisor);
 
-    if (current_vaa_array_buffer != current_array_buffer ||
-        current_vaa_normalized   != normalized           ||
-        current_vaa_pointer      != pointer              ||
-        current_vaa_size         != size                 ||
-        current_vaa_stride       != stride               ||
-        current_vaa_type         != type)
+    /* Update the binding only if necessary. */
+    if (current_divisor != divisor)
     {
+        #ifdef ENABLE_DEBUG_FINISH_CALLS
+        {
+            _private_entrypoints_ptr->pGLFinish();
+        }
+        #endif
+
         ogl_context_state_cache_sync(state_cache,
                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
-        ogl_context_bo_bindings_sync(bo_bindings,
-                                     BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER);
 
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
+        _private_entrypoints_ptr->pGLVertexBindingDivisor(bindingindex,
+                                                          divisor);
 
-        _private_entrypoints_ptr->pGLVertexAttribPointer(index,
-                                                         size,
-                                                         type,
-                                                         normalized,
-                                                         stride,
-                                                         pointer);
-
-        #ifdef ENABLE_DEBUG_FINISH_CALLS
-        {
-            _private_entrypoints_ptr->pGLFinish();
-        }
-        #endif
-
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-                                &current_array_buffer);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_NORMALIZED,
-                                &normalized);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_POINTER,
-                                &pointer);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_SIZE,
-                                &size);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_STRIDE,
-                                &stride);
-        ogl_vao_set_vaa_property(current_vao,
-                                 index,
-                                 OGL_VAO_VAA_PROPERTY_TYPE,
-                                &type);
+        ogl_vao_set_vb_property(current_vao,
+                                bindingindex,
+                                OGL_VAO_VB_PROPERTY_DIVISOR,
+                               &divisor);
     }
 }
 

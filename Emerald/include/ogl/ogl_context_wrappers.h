@@ -79,6 +79,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindTextures(GLuint        first,
 PUBLIC void APIENTRY ogl_context_wrappers_glBindVertexArray(GLuint array);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBindVertexBuffer(GLuint   bindingindex,
+                                                             GLuint   buffer,
+                                                             GLintptr offset,
+                                                             GLsizei  stride);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
                                                        GLfloat green,
                                                        GLfloat blue,
@@ -1006,12 +1012,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribLFormat(GLuint attribind
                                                                 GLuint relativeoffset);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribPointer(GLuint index,
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribPointer(GLuint        index,
                                                                 GLint         size,
                                                                 GLenum        type,
                                                                 GLboolean     normalized,
                                                                 GLsizei       stride,
                                                                 const GLvoid* pointer);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexBindingDivisor(GLuint bindingindex,
+                                                                 GLuint divisor);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,

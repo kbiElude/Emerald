@@ -23,6 +23,7 @@
 #include "system/system_threads.h"
 #include "system/system_time.h"
 #include "system/system_window.h"
+#include "ui/ui.h"
 #include "varia/varia_text_renderer.h"
 
 #define REWIND_DELTA_TIME_MSEC          (1500)
@@ -51,6 +52,7 @@ typedef struct
     varia_text_renderer_text_string_id    text_string_id;
     system_thread_id                      thread_id;
     demo_timeline                         timeline;
+    ui                                    ui_instance;
 
     bool        is_space_key_pressed;
     system_time left_arrow_key_press_start_time;
@@ -615,6 +617,8 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                                                        0,        /* n_dst_task_input          */
                                                        nullptr); /* out_opt_connection_id_ptr */
 
+                         /* TODO: Add UI rendering here -> */
+
                          ral_present_job_set_presentable_output(frame_present_job,
                                                                 draw_text_strings_task_id,
                                                                 false, /* is_input_io */
@@ -720,10 +724,10 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
                                                                          reinterpret_cast<ral_rendering_handler>(rendering_handler_ptr),
                                                                          rendering_handler_ptr->rendering_handler_backend);
 
-        /* Set up the text renderer for non-helper contexts. */
         if (!system_hashed_ansi_string_contains(context_window_name,
                                                 system_hashed_ansi_string_create("Helper") ))
         {
+            /* Set up the text renderer for non-helper contexts. */
             const float               text_color[4]          = {1.0f, 1.0f, 1.0f, 1.0f};
             const  float              text_default_size      = 0.75f;
             const float               text_scale             = 0.75f;
@@ -766,6 +770,10 @@ PRIVATE void _ral_rendering_handler_thread_entrypoint(void* in_arg)
                                                          rendering_handler_ptr->text_string_id,
                                                          VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
                                                         &text_scale);
+
+            /* We could also use a UI */
+            rendering_handler_ptr->ui_instance = ui_create(rendering_handler_ptr->text_renderer,
+                                                           system_hashed_ansi_string_create("UI renderer") );
         }
 
         /* On with the loop */
@@ -839,7 +847,7 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
         rendering_handler_ptr->timeline = nullptr;
     }
 
-    /* Release the text renderer */
+    /* Release various renderers */
     if (rendering_handler_ptr->text_renderer != nullptr)
     {
         varia_text_renderer_release(rendering_handler_ptr->text_renderer);
@@ -847,6 +855,14 @@ PRIVATE void _ral_rendering_handler_release(void* in_arg)
         rendering_handler_ptr->text_renderer = nullptr;
     }
 
+    if (rendering_handler_ptr->ui_instance != nullptr)
+    {
+        ui_release(rendering_handler_ptr->ui_instance);
+
+        rendering_handler_ptr->ui_instance = nullptr;
+    }
+
+    /* Follow with the rest .. */
     if (rendering_handler_ptr->context != nullptr)
     {
         /* Unsubscribe from the window call-backs */
@@ -1191,9 +1207,9 @@ PUBLIC ral_rendering_handler ral_rendering_handler_create_with_render_per_reques
 }
 
 /** Please see header for specification */
-PUBLIC void ral_rendering_handler_get_property(ral_rendering_handler          rendering_handler,
-                                               ral_rendering_handler_property property,
-                                               void*                          out_result_ptr)
+PUBLIC EMERALD_API void ral_rendering_handler_get_property(ral_rendering_handler          rendering_handler,
+                                                           ral_rendering_handler_property property,
+                                                           void*                          out_result_ptr)
 {
     _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
 
@@ -1258,6 +1274,13 @@ PUBLIC void ral_rendering_handler_get_property(ral_rendering_handler          re
         case RAL_RENDERING_HANDLER_PROPERTY_TIMELINE:
         {
             *reinterpret_cast<demo_timeline*>(out_result_ptr) = rendering_handler_ptr->timeline;
+
+            break;
+        }
+
+        case RAL_RENDERING_HANDLER_PROPERTY_UI:
+        {
+            *reinterpret_cast<ui*>(out_result_ptr) = rendering_handler_ptr->ui_instance;
 
             break;
         }

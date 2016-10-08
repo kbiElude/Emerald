@@ -752,7 +752,8 @@ PUBLIC EMERALD_API void ral_command_buffer_record_clear_rendertarget_binding(ral
         {
             const ral_command_buffer_clear_rt_binding_rendertarget& current_rt = src_command.rendertargets[n_rendertarget];
 
-            if (current_rt.rt_index >= N_MAX_CLEAR_RENDERTARGETS)
+            if (current_rt.aspect   == RAL_TEXTURE_ASPECT_COLOR_BIT &&
+                current_rt.rt_index >= N_MAX_CLEAR_RENDERTARGETS)
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Invalid rendertarget index specified");
@@ -774,7 +775,9 @@ PUBLIC EMERALD_API void ral_command_buffer_record_clear_rendertarget_binding(ral
                    src_command.rendertargets,
                    src_command.n_rendertargets * sizeof(src_command.rendertargets[0]) );
 
-            new_command_ptr->type = RAL_COMMAND_TYPE_CLEAR_RT_BINDING;
+            new_command_ptr->clear_rt_binding_command.n_clear_regions = src_command.n_clear_regions;
+            new_command_ptr->clear_rt_binding_command.n_rendertargets = src_command.n_rendertargets;
+            new_command_ptr->type                                     = RAL_COMMAND_TYPE_CLEAR_RT_BINDING;
 
             new_command_ptr->init();
 

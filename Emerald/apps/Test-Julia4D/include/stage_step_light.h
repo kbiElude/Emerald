@@ -12,6 +12,9 @@
 PUBLIC void stage_step_light_deinit(ral_context context);
 
 /** TODO */
+PUBLIC ral_present_task stage_step_light_get_present_task();
+
+/** TODO */
 PUBLIC void stage_step_light_init(ral_context      context,
                                   ral_texture_view color_rt_texture_view,
                                   ral_texture_view depth_rt_texture_view);

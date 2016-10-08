@@ -31,22 +31,24 @@
 INCLUDE_OPTIMUS_SUPPORT;
 
 
-ral_context      _context                   = NULL;
+ral_context      _context                   = nullptr;
 float            _data[4]                   = {.17995f, -0.66f, -0.239f, -0.210f};
 float            _epsilon                   = 0.001f;
 float            _escape                    = 1.2f * 1.5f;
-demo_flyby       _flyby                     = NULL;
+demo_flyby       _flyby                     = nullptr;
 float            _light_color[3]            = {1.0f,  1.0f,   1.0f};
 float            _light_position[3]         = {2.76f, 1.619f, 0.0f};
 int              _max_iterations            = 10;
 uint32_t         _pipeline_stage_id         = -1;
-system_matrix4x4 _projection_matrix         = NULL;
+system_matrix4x4 _projection_matrix         = nullptr;
 float            _raycast_radius_multiplier = 2.65f;
-ral_texture      _rt_texture                = nullptr;
-ral_texture_view _rt_texture_view           = nullptr;
+ral_texture      _rt_color_texture          = nullptr;
+ral_texture_view _rt_color_texture_view     = nullptr;
+ral_texture      _rt_depth_texture          = nullptr;
+ral_texture_view _rt_depth_texture_view     = nullptr;
 bool             _shadows                   = true;
 float            _specularity               = 4.4f;
-demo_window      _window                    = NULL;
+demo_window      _window                    = nullptr;
 system_event     _window_closed_event       = system_event_create(true); /* manual_reset */
 const uint32_t   _window_height             = 480;
 const uint32_t   _window_width              = 640;
@@ -128,6 +130,28 @@ PRIVATE void _set_raycast_radius_multiplier_value(void*                   user_a
 /** TODO */
 PRIVATE void _deinit()
 {
+    ral_texture textures_to_delete[] =
+    {
+        _rt_color_texture,
+        _rt_depth_texture
+    };
+    ral_texture_view texture_views_to_delete[] =
+    {
+        _rt_color_texture_view,
+        _rt_depth_texture_view
+    };
+    const uint32_t n_textures_to_delete      = sizeof(textures_to_delete)      / sizeof(textures_to_delete     [0]);
+    const uint32_t n_texture_views_to_delete = sizeof(texture_views_to_delete) / sizeof(texture_views_to_delete[0]);
+
+    ral_context_delete_objects(_context,
+                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                              n_textures_to_delete,
+                              reinterpret_cast<void* const*>(textures_to_delete) );
+    ral_context_delete_objects(_context,
+                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                              n_texture_views_to_delete,
+                              reinterpret_cast<void* const*>(texture_views_to_delete) );
+
     stage_step_julia_deinit(_context);
     stage_step_light_deinit(_context);
 }
@@ -137,7 +161,38 @@ PRIVATE ral_present_job _draw_frame(ral_context                                 
                                     void*                                                      user_arg,
                                     const ral_rendering_handler_rendering_callback_frame_data* frame_data_ptr)
 {
-    todo;
+    ral_present_task_id julia_present_task_id = -1;
+    ral_present_task_id light_present_task_id = -1;
+    ral_present_job     present_job           = nullptr;
+
+    present_job = ral_present_job_create();
+
+    ral_present_job_add_task(present_job,
+                             stage_step_light_get_present_task(),
+                            &light_present_task_id);
+    ral_present_job_add_task(present_job,
+                             stage_step_julia_get_present_task(),
+                            &julia_present_task_id);
+
+    ral_present_job_connect_tasks(present_job,
+                                  julia_present_task_id,
+                                  0, /* n_src_task_output */
+                                  light_present_task_id,
+                                  0,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+    ral_present_job_connect_tasks(present_job,
+                                  julia_present_task_id,
+                                  1, /* n_src_task_output */
+                                  light_present_task_id,
+                                  1,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+
+    ral_present_job_set_presentable_output(present_job,
+                                           light_present_task_id,
+                                           false, /* is_input_io */
+                                           0);    /* n_io        */
+
+    return present_job;
 }
 
 /** TODO */
@@ -269,37 +324,64 @@ PRIVATE void _get_specularity_value(void*          user_arg,
 PRIVATE void _init()
 {
     /* Initialize rendertargets */
-    ral_texture_create_info      texture_create_info;
-    ral_texture_view_create_info texture_view_create_info;
+    ral_texture_create_info      color_texture_create_info;
+    ral_texture_view_create_info color_texture_view_create_info;
+    ral_texture_create_info      depth_texture_create_info;
+    ral_texture_view_create_info depth_texture_view_create_info;
 
-    texture_create_info.base_mipmap_depth      = 1;
-    texture_create_info.base_mipmap_height     = _window_height;
-    texture_create_info.base_mipmap_width      = _window_width;
-    texture_create_info.fixed_sample_locations = true;
-    texture_create_info.format                 = RAL_FORMAT_RGBA8_UNORM;
-    texture_create_info.name                   = system_hashed_ansi_string_create("Staging texture");
-    texture_create_info.n_layers               = 1;
-    texture_create_info.n_samples              = 1;
-    texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
-    texture_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_SRC_BIT |
-                                                 RAL_TEXTURE_USAGE_IMAGE_STORE_OPS_BIT;
-    texture_create_info.use_full_mipmap_chain  = false;
+    color_texture_create_info.base_mipmap_depth      = 1;
+    color_texture_create_info.base_mipmap_height     = _window_height;
+    color_texture_create_info.base_mipmap_width      = _window_width;
+    color_texture_create_info.fixed_sample_locations = true;
+    color_texture_create_info.format                 = RAL_FORMAT_RGBA8_UNORM;
+    color_texture_create_info.name                   = system_hashed_ansi_string_create("Staging color texture");
+    color_texture_create_info.n_layers               = 1;
+    color_texture_create_info.n_samples              = 1;
+    color_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    color_texture_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                       RAL_TEXTURE_USAGE_BLIT_SRC_BIT;
+    color_texture_create_info.use_full_mipmap_chain  = false;
+
+    depth_texture_create_info.base_mipmap_depth      = 1;
+    depth_texture_create_info.base_mipmap_height     = _window_height;
+    depth_texture_create_info.base_mipmap_width      = _window_width;
+    depth_texture_create_info.fixed_sample_locations = true;
+    depth_texture_create_info.format                 = RAL_FORMAT_DEPTH32_FLOAT;
+    depth_texture_create_info.name                   = system_hashed_ansi_string_create("Staging depth texture");
+    depth_texture_create_info.n_layers               = 1;
+    depth_texture_create_info.n_samples              = 1;
+    depth_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    depth_texture_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    depth_texture_create_info.use_full_mipmap_chain  = false;
 
     ral_context_create_textures(_context,
                                 1, /* n_textures */
-                               &texture_create_info,
-                               &_rt_texture);
+                               &color_texture_create_info,
+                               &_rt_color_texture);
+    ral_context_create_textures(_context,
+                                1, /* n_textures */
+                               &depth_texture_create_info,
+                               &_rt_depth_texture);
 
-    texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_texture);
+    color_texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_color_texture);
+    depth_texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_depth_texture);
 
     ral_context_create_texture_views(_context,
                                      1, /* n_texture_views */
-                                    &texture_view_create_info,
-                                    &_rt_texture_view);
+                                    &color_texture_view_create_info,
+                                    &_rt_color_texture_view);
+    ral_context_create_texture_views(_context,
+                                     1, /* n_texture_views */
+                                    &depth_texture_view_create_info,
+                                    &_rt_depth_texture_view);
 
     /* Initialize workers */
-    stage_step_julia_init(_context);
-    stage_step_light_init(_context);
+    stage_step_julia_init(_context,
+                          _rt_color_texture_view,
+                          _rt_depth_texture_view);
+    stage_step_light_init(_context,
+                          _rt_color_texture_view,
+                          _rt_depth_texture_view);
 
     /* Initialize the UI */
     _init_ui();
@@ -362,6 +444,9 @@ PRIVATE void _init_ui()
     ral_rendering_handler_get_property(rh,
                                        RAL_RENDERING_HANDLER_PROPERTY_UI,
                                       &rh_ui);
+
+#if 0
+    TODO
 
     ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("A"),
@@ -519,6 +604,7 @@ PRIVATE void _init_ui()
                      NULL,                        /* get_current_value_user_arg */
                      _set_light_position_z_value,
                      NULL);                       /* set_current_value_user_arg */
+#endif
 }
 
 PRIVATE void _rendering_lbm_callback_handler(system_window           window,

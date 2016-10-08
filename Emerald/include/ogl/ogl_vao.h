@@ -28,24 +28,37 @@ typedef enum
 
 typedef enum
 {
-    /* GLuint */
-    OGL_VAO_VAA_PROPERTY_ARRAY_BUFFER_BINDING,
-    /* GLint */
-    OGL_VAO_VAA_PROPERTY_DIVISOR,
     /* GLboolean */
     OGL_VAO_VAA_PROPERTY_ENABLED,
     /* GLboolean */
     OGL_VAO_VAA_PROPERTY_NORMALIZED,
-    /* GLvoid* */
-    OGL_VAO_VAA_PROPERTY_POINTER,
+    /* GLintptr */
+    OGL_VAO_VAA_PROPERTY_RELATIVE_OFFSET,
     /* GLint */
     OGL_VAO_VAA_PROPERTY_SIZE,
     /* GLint */
     OGL_VAO_VAA_PROPERTY_STRIDE,
     /* GLenum */
-    OGL_VAO_VAA_PROPERTY_TYPE
+    OGL_VAO_VAA_PROPERTY_TYPE,
+
+    /* uint32_t */
+    OGL_VAO_VAA_PROPERTY_VB_BINDING,
 } ogl_vao_vaa_property;
 
+typedef enum
+{
+    /* GLuint */
+    OGL_VAO_VB_PROPERTY_BUFFER,
+
+    /* GLuint */
+    OGL_VAO_VB_PROPERTY_DIVISOR,
+
+    /* GLintptr */
+    OGL_VAO_VB_PROPERTY_OFFSET,
+
+    /* GLsizei */
+    OGL_VAO_VB_PROPERTY_STRIDE,
+} ogl_vao_vb_property;
 
 /** TODO */
 PUBLIC ogl_vao ogl_vao_create(ogl_context  context,
@@ -63,6 +76,12 @@ PUBLIC void ogl_vao_get_vaa_property(const ogl_vao        vao,
                                      void*                out_result_ptr);
 
 /** TODO */
+PUBLIC void ogl_vao_get_vb_property(const ogl_vao       vao,
+                                    unsigned int        n_vb,
+                                    ogl_vao_vb_property property,
+                                    void*               out_result_ptr);
+
+/** TODO */
 PUBLIC void ogl_vao_release(ogl_vao vao);
 
 /** TODO */
@@ -75,5 +94,11 @@ PUBLIC void ogl_vao_set_vaa_property(ogl_vao              vao,
                                      unsigned int         n_vaa,
                                      ogl_vao_vaa_property property,
                                      const void*          data);
+
+/** TODO */
+PUBLIC void ogl_vao_set_vb_property(ogl_vao             vao,
+                                    unsigned int        n_vb,
+                                    ogl_vao_vb_property property,
+                                    const void*         data);
 
 #endif /* OGL_VAO_H */

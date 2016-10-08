@@ -2285,6 +2285,14 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
                              OGL_CONTEXT_PROPERTY_BACKEND,
                             &backend_raGL);
 
+    if (bake_state.active_fbo_draw_buffers_dirty)
+    {
+        bake_and_bind_fbo();
+
+        ASSERT_DEBUG_SYNC(!bake_state.active_fbo_draw_buffers_dirty,
+                          "Could not update draw buffer configuration");
+    }
+
     bool scissor_test_pre_enabled          = false;
     bool should_restore_draw_buffers       = false;
     bool should_restore_scissor_test_state = false;
@@ -2318,8 +2326,33 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
                   n_rt < command_ral_ptr->n_rendertargets;
                 ++n_rt)
     {
-        const ral_command_buffer_clear_rt_binding_rendertarget& current_rt        = command_ral_ptr->rendertargets[n_rt];
-        const _raGL_command_buffer_bake_state_rt&               current_rt_raGL   = bake_state.active_rt_color_attachments[current_rt.rt_index];
+        const ral_command_buffer_clear_rt_binding_rendertarget& current_rt     = command_ral_ptr->rendertargets[n_rt];
+        ral_texture_view                                        current_rt_ral = nullptr;
+
+        switch (current_rt.aspect)
+        {
+            case RAL_TEXTURE_ASPECT_COLOR_BIT:
+            {
+                current_rt_ral = bake_state.active_rt_color_attachments[current_rt.rt_index].texture_view;
+
+                break;
+            }
+
+            case RAL_TEXTURE_ASPECT_DEPTH_BIT:
+            case (RAL_TEXTURE_ASPECT_DEPTH_BIT | RAL_TEXTURE_ASPECT_STENCIL_BIT):
+            case RAL_TEXTURE_ASPECT_STENCIL_BIT:
+            {
+                current_rt_ral = bake_state.active_rt_ds_attachment;
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                 "Unrecognized texture aspect specified");
+            }
+        }
 
         uint32_t        current_rt_depth;
         ral_format      current_rt_format;
@@ -2335,30 +2368,30 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
         ral_texture     current_rt_parent_texture;
         uint32_t        current_rt_width;
 
-        if (current_rt_raGL.texture_view == nullptr)
+        if (current_rt_ral == nullptr)
         {
-            ASSERT_DEBUG_SYNC(current_rt_raGL.texture_view != nullptr,
+            ASSERT_DEBUG_SYNC(current_rt_ral != nullptr,
                               "No texture view assigned to the specified rendertarget");
 
             continue;
         }
 
-        ral_texture_view_get_property(current_rt_raGL.texture_view,
+        ral_texture_view_get_property(current_rt_ral,
                                       RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
                                      &current_rt_format);
-        ral_texture_view_get_property(current_rt_raGL.texture_view,
+        ral_texture_view_get_property(current_rt_ral,
                                       RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER,
                                      &current_rt_n_base_layer);
-        ral_texture_view_get_property(current_rt_raGL.texture_view,
+        ral_texture_view_get_property(current_rt_ral,
                                       RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP,
                                      &current_rt_n_base_mip);
-        ral_texture_view_get_property(current_rt_raGL.texture_view,
+        ral_texture_view_get_property(current_rt_ral,
                                       RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
                                      &current_rt_n_layers);
-        ral_texture_view_get_property(current_rt_raGL.texture_view,
+        ral_texture_view_get_property(current_rt_ral,
                                       RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
                                      &current_rt_n_mips);
-        ral_texture_view_get_property(current_rt_raGL.texture_view,
+        ral_texture_view_get_property(current_rt_ral,
                                       RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
                                      &current_rt_parent_texture);
 
@@ -2375,16 +2408,17 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
                                       RAL_FORMAT_PROPERTY_FORMAT_TYPE,
                                      &current_rt_format_type);
 
-        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0 && !current_rt_format_has_color_comps)
-        {
-            ASSERT_DEBUG_SYNC(!((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0 && !current_rt_format_has_color_comps),
-                              "Cannot clear color channel of a a non-color rendertarget");
-
-            continue;
-        }
-        else
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) != 0)
         {
             /* Color attachment-specific checks */
+            if (!current_rt_format_has_color_comps)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Cannot clear color channel of a a non-color rendertarget");
+
+                continue;
+            }
+
             if (current_rt.rt_index >= N_MAX_RENDERTARGETS)
             {
                 ASSERT_DEBUG_SYNC(current_rt.rt_index < N_MAX_RENDERTARGETS,
@@ -2394,16 +2428,18 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
             }
         }
 
-        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0 && !current_rt_format_has_depth_comps)
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0)
         {
-            ASSERT_DEBUG_SYNC(!((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0 && !current_rt_format_has_depth_comps),
-                              "Cannot clear depth channel of a a non-depth rendertarget");
-
-            continue;
-        }
-        else
-        {
+            /* Depth attachment-specific checks */
             ral_texture_aspect ds_aspect;
+
+            if (!current_rt_format_has_depth_comps)
+            {
+                ASSERT_DEBUG_SYNC(!((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0 && !current_rt_format_has_depth_comps),
+                                  "Cannot clear depth channel of a a non-depth rendertarget");
+
+                continue;
+            }
 
             if (bake_state.active_rt_ds_attachment == nullptr)
             {
@@ -2433,7 +2469,8 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
             continue;
         }
-        else
+
+        if ((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0)
         {
             /* Stencil attachment-specific checks */
             ral_texture_aspect ds_aspect;
@@ -2452,7 +2489,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
             if ((ds_aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) == 0)
             {
-                ASSERT_DEBUG_SYNC((ds_aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0,
+                ASSERT_DEBUG_SYNC((ds_aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) != 0,
                                   "Cannot clear depth attachment - current DS attachment does not hold depth data.");
 
                 continue;
@@ -2490,6 +2527,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
             _raGL_command* draw_buffers_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             draw_buffers_command_ptr->draw_buffers_command_info.bufs[0] = GL_COLOR_ATTACHMENT0 + current_rt.rt_index;
+            draw_buffers_command_ptr->draw_buffers_command_info.n       = 1;
             draw_buffers_command_ptr->type                              = RAGL_COMMAND_TYPE_DRAW_BUFFERS;
 
             should_restore_draw_buffers = true;
@@ -2504,15 +2542,38 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
             _raGL_command* clear_color_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             /* TODO: We should handle sint/uint clear requests differently */
-            ASSERT_DEBUG_SYNC(current_rt_format_type == RAL_FORMAT_TYPE_SFLOAT ||
-                              current_rt_format_type == RAL_FORMAT_TYPE_UFLOAT,
-                             "TODO: Clear support for int/sint attachments");
-
             static_assert(sizeof(clear_color_command_ptr->clear_color_command_info.rgba) == sizeof(current_rt.clear_value.color.f32), "");
 
-            memcpy(clear_color_command_ptr->clear_color_command_info.rgba,
-                   current_rt.clear_value.color.f32,
-                   sizeof(clear_color_command_ptr->clear_color_command_info.rgba) );
+            switch (current_rt_format_type)
+            {
+                case RAL_FORMAT_TYPE_SFLOAT:
+                case RAL_FORMAT_TYPE_UFLOAT:
+                {
+                    memcpy(clear_color_command_ptr->clear_color_command_info.rgba,
+                           current_rt.clear_value.color.f32,
+                           sizeof(clear_color_command_ptr->clear_color_command_info.rgba) );
+
+                    break;
+                }
+
+                case RAL_FORMAT_TYPE_UNORM:
+                {
+                    for (uint32_t n_component = 0;
+                                  n_component < 4;
+                                ++n_component)
+                    {
+                        clear_color_command_ptr->clear_color_command_info.rgba[n_component] = float(current_rt.clear_value.color.ui8[n_component]) / 255.0f;
+                    }
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unsupported rendertarget format type");
+                }
+            }
 
             clear_color_command_ptr->type = RAGL_COMMAND_TYPE_CLEAR_COLOR;
 
@@ -3771,9 +3832,6 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
 
             /* Enqueue a GL command */
             _raGL_command* bind_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-
-            ASSERT_DEBUG_SYNC(buffer_binding_info.size != 0,
-                              "Zero-sized buffer binding was requested.");
 
             bind_command_ptr->bind_buffer_range_command_info.bo_id    = buffer_raGL_id;
             bind_command_ptr->bind_buffer_range_command_info.bp_index = bp;

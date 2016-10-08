@@ -367,6 +367,12 @@ PUBLIC void stage_step_julia_deinit(ral_context context)
 }
 
 /* Please see header for specification */
+PUBLIC ral_present_task stage_step_julia_get_present_task()
+{
+    return _julia_present_task;
+}
+
+/* Please see header for specification */
 PUBLIC void stage_step_julia_init(ral_context      context,
                                   ral_texture_view color_rt_texture_view,
                                   ral_texture_view depth_rt_texture_view)
@@ -622,7 +628,8 @@ PUBLIC void stage_step_julia_init(ral_context      context,
         clear_op.rendertargets[1].clear_value.depth        = 1.0f;
         clear_op.rendertargets[1].rt_index                 = -1; /* irrelevant */
 
-        color_rt.texture_view = color_rt_texture_view;
+        color_rt.rendertarget_index = 0;
+        color_rt.texture_view       = color_rt_texture_view;
 
         draw_call.base_instance = 0;
         draw_call.base_vertex   = 0;
@@ -639,8 +646,10 @@ PUBLIC void stage_step_julia_init(ral_context      context,
         vb.name         = system_hashed_ansi_string_create("vertex");
         vb.start_offset = vertex_data_offset;
 
-        ral_command_buffer_record_set_program(_julia_cmd_buffer,
-                                              _julia_program);
+        ral_command_buffer_record_set_gfx_state(_julia_cmd_buffer,
+                                                _julia_gfx_state);
+        ral_command_buffer_record_set_program  (_julia_cmd_buffer,
+                                                _julia_program);
 
         ral_command_buffer_record_set_color_rendertargets   (_julia_cmd_buffer,
                                                              1, /* n_rendertargets */
@@ -651,6 +660,9 @@ PUBLIC void stage_step_julia_init(ral_context      context,
                                                              1, /* n_clear_ops */
                                                             &clear_op);
 
+        ral_command_buffer_record_set_bindings      (_julia_cmd_buffer,
+                                                     1, /* n_bindings */
+                                                    &ub);
         ral_command_buffer_record_set_vertex_buffers(_julia_cmd_buffer,
                                                      1, /* n_vertex_buffers */
                                                     &vb);
@@ -714,7 +726,7 @@ PUBLIC void stage_step_julia_init(ral_context      context,
     group_task_output_mappings[0].group_task_io_index   = 0;
     group_task_output_mappings[0].n_present_task        = 1; /* gpu_present_task */
     group_task_output_mappings[0].present_task_io_index = 0; /* color_rt         */
-    group_task_output_mappings[1].group_task_io_index   = 0;
+    group_task_output_mappings[1].group_task_io_index   = 1;
     group_task_output_mappings[1].n_present_task        = 1; /* gpu_present_task */
     group_task_output_mappings[1].present_task_io_index = 1; /* depth_rt         */
 
@@ -725,7 +737,7 @@ PUBLIC void stage_step_julia_init(ral_context      context,
     group_task_create_info.n_ingroup_connections                    = 1;
     group_task_create_info.n_present_tasks                          = sizeof(group_task_present_tasks) / sizeof(group_task_present_tasks[0]);
     group_task_create_info.n_total_unique_inputs                    = 0;
-    group_task_create_info.n_total_unique_outputs                   = 0;
+    group_task_create_info.n_total_unique_outputs                   = 2;
     group_task_create_info.n_unique_input_to_ingroup_task_mappings  = 0;
     group_task_create_info.n_unique_output_to_ingroup_task_mappings = sizeof(group_task_output_mappings) / sizeof(group_task_output_mappings[0]);
     group_task_create_info.present_tasks                            = group_task_present_tasks;

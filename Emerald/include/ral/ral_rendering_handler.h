@@ -123,6 +123,9 @@ typedef enum
      */
     RAL_RENDERING_HANDLER_PROPERTY_TIMELINE,
 
+    /* not settable, ui */
+    RAL_RENDERING_HANDLER_PROPERTY_UI,
+
 } ral_rendering_handler_property;
 
 /** TODO */
@@ -149,9 +152,9 @@ PUBLIC ral_rendering_handler ral_rendering_handler_create_with_max_performance_p
                                                                                       void*                                   user_arg);
 
 /** TODO */
-PUBLIC void ral_rendering_handler_get_property(ral_rendering_handler          rendering_handler,
-                                               ral_rendering_handler_property property,
-                                               void*                          out_result);
+PUBLIC EMERALD_API void ral_rendering_handler_get_property(ral_rendering_handler          rendering_handler,
+                                                           ral_rendering_handler_property property,
+                                                           void*                          out_result);
 
 /** TODO */
 PUBLIC bool ral_rendering_handler_is_current_thread_rendering_thread(ral_rendering_handler rendering_handler);

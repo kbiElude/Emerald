@@ -564,8 +564,10 @@ typedef struct
     union
     {
         float    f32[4];
+        int8_t   i8 [4];
         int32_t  i32[4];
         uint32_t u32[4];
+        uint8_t  ui8[4];
     } color;
 
     float    depth;
@@ -1475,8 +1477,11 @@ typedef struct ral_gfx_state_create_info
         scissor_test       = false;
         stencil_test       = false;
 
-        static_scissor_boxes = nullptr;
-        static_viewports     = nullptr;
+        static_n_scissor_boxes_and_viewports = 0;
+        static_scissor_boxes                 = nullptr;
+        static_scissor_boxes_enabled         = false;
+        static_viewports                     = nullptr;
+        static_viewports_enabled             = false;
 
         cull_mode                         = RAL_CULL_MODE_BACK;
         depth_bias_constant_factor        = 0.0f;

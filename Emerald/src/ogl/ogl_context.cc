@@ -2177,7 +2177,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLBindTexture,                                 "glBindTexture"},
         {&context_ptr->entry_points_gl.pGLBindTransformFeedback,                            "glBindTransformFeedback"},
         {&context_ptr->entry_points_private.pGLBindVertexArray,                             "glBindVertexArray"},
-        {&context_ptr->entry_points_gl.pGLBindVertexBuffer,                                 "glBindVertexBuffer"},
+        {&context_ptr->entry_points_private.pGLBindVertexBuffer,                            "glBindVertexBuffer"},
         {&context_ptr->entry_points_private.pGLBlendColor,                                  "glBlendColor"},
         {&context_ptr->entry_points_private.pGLBlendEquation,                               "glBlendEquation"},
         {&context_ptr->entry_points_private.pGLBlendEquationSeparate,                       "glBlendEquationSeparate"},
@@ -2547,7 +2547,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_private.pGLVertexAttribIPointer,                        "glVertexAttribIPointer"},
         {&context_ptr->entry_points_private.pGLVertexAttribLFormat,                         "glVertexAttribLFormat"},
         {&context_ptr->entry_points_private.pGLVertexAttribPointer,                         "glVertexAttribPointer"},
-        {&context_ptr->entry_points_gl.pGLVertexBindingDivisor,                             "glVertexBindingDivisor"},
+        {&context_ptr->entry_points_private.pGLVertexBindingDivisor,                        "glVertexBindingDivisor"},
         {&context_ptr->entry_points_private.pGLViewport,                                    "glViewport"},
         {&context_ptr->entry_points_private.pGLViewportIndexedfv,                           "glViewportIndexedfv"},
         {&context_ptr->entry_points_gl.pGLWaitSync,                                         "glWaitSync"}
@@ -2569,6 +2569,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLBindSampler                                 = ogl_context_wrappers_glBindSampler;
     context_ptr->entry_points_gl.pGLBindTexture                                 = ogl_context_wrappers_glBindTexture;
     context_ptr->entry_points_gl.pGLBindVertexArray                             = ogl_context_wrappers_glBindVertexArray;
+    context_ptr->entry_points_gl.pGLBindVertexBuffer                            = ogl_context_wrappers_glBindVertexBuffer;
     context_ptr->entry_points_gl.pGLBlendColor                                  = ogl_context_wrappers_glBlendColor;
     context_ptr->entry_points_gl.pGLBlendEquation                               = ogl_context_wrappers_glBlendEquation;
     context_ptr->entry_points_gl.pGLBlendEquationSeparate                       = ogl_context_wrappers_glBlendEquationSeparate;
@@ -2704,6 +2705,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLVertexAttribIPointer                        = ogl_context_wrappers_glVertexAttribIPointer;
     context_ptr->entry_points_gl.pGLVertexAttribLFormat                         = ogl_context_wrappers_glVertexAttribLFormat;
     context_ptr->entry_points_gl.pGLVertexAttribPointer                         = ogl_context_wrappers_glVertexAttribPointer;
+    context_ptr->entry_points_gl.pGLVertexBindingDivisor                        = ogl_context_wrappers_glVertexBindingDivisor;
     context_ptr->entry_points_gl.pGLViewport                                    = ogl_context_wrappers_glViewport;
     context_ptr->entry_points_gl.pGLViewportIndexedfv                           = ogl_context_wrappers_glViewportIndexedfv;
 }

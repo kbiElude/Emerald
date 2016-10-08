@@ -896,6 +896,7 @@ typedef struct
     PFNGLBINDSAMPLERPROC                                 pGLBindSampler;
     PFNGLBINDTEXTUREPROC                                 pGLBindTexture;
     PFNGLBINDVERTEXARRAYPROC                             pGLBindVertexArray;
+    PFNGLBINDVERTEXBUFFERPROC                            pGLBindVertexBuffer;
     PFNGLBLENDCOLORPROC                                  pGLBlendColor;
     PFNGLBLENDEQUATIONPROC                               pGLBlendEquation;
     PFNGLBLENDEQUATIONSEPARATEPROC                       pGLBlendEquationSeparate;
@@ -1028,6 +1029,7 @@ typedef struct
     PFNGLVERTEXATTRIBIPOINTERPROC                        pGLVertexAttribIPointer;
     PFNGLVERTEXATTRIBLFORMATPROC                         pGLVertexAttribLFormat;
     PFNGLVERTEXATTRIBPOINTERPROC                         pGLVertexAttribPointer;
+    PFNGLVERTEXBINDINGDIVISORPROC                        pGLVertexBindingDivisor;
     PFNGLVIEWPORTPROC                                    pGLViewport;
     PFNGLVIEWPORTINDEXEDFVPROC                           pGLViewportIndexedfv;
 
