@@ -6,7 +6,9 @@
 #include "shared.h"
 #include "audio/audio_device.h"
 #include "audio/audio_stream.h"
+#include "demo/demo_flyby.h"
 #include "demo/demo_timeline.h"
+#include "demo/demo_window.h"
 #include "raGL/raGL_rendering_handler.h"
 #include "ral/ral_context.h"
 #include "ral/ral_present_job.h"
@@ -435,16 +437,28 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
     {
         float           aspect_ratio      = 0.0f;
         system_time     curr_time         = system_time_now();
+        demo_flyby      flyby             = nullptr;
         int32_t         frame_index       = 0;
         ral_present_job frame_present_job = nullptr;
         system_time     new_frame_time    = 0;
         int             rendering_area[4] = {0};
+        demo_window     window_demo       = nullptr;
         uint32_t        window_size[2];
         uint32_t        window_x1y1x2y2[4];
 
+        ral_context_get_property  (rendering_handler_ptr->context,
+                                   RAL_CONTEXT_PROPERTY_WINDOW_DEMO,
+                                  &window_demo);
         system_window_get_property(rendering_handler_ptr->context_window,
                                    SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
                                    window_x1y1x2y2);
+
+        ASSERT_DEBUG_SYNC(window_demo != nullptr,
+                          "No demo_window instance associated with RAL context");
+
+        demo_window_get_property(window_demo,
+                                 DEMO_WINDOW_PROPERTY_FLYBY,
+                                &flyby);
 
         window_size[0] = window_x1y1x2y2[2] - window_x1y1x2y2[0];
         window_size[1] = window_x1y1x2y2[3] - window_x1y1x2y2[1];
@@ -536,6 +550,18 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                 rendering_area[1] = (window_size[1] - rendering_area_height) / 2;
                 rendering_area[2] = rendering_area_width;
                 rendering_area[3] = window_size[1] - rendering_area[1];
+            }
+
+            /* If the flyby is activated for the context the pipeline owns, update it now */
+            bool is_flyby_active = false;
+
+            demo_flyby_get_property(flyby,
+                                    DEMO_FLYBY_PROPERTY_IS_ACTIVE,
+                                   &is_flyby_active);
+
+            if (is_flyby_active)
+            {
+                demo_flyby_update(flyby);
             }
 
             if (rendering_handler_ptr->pfn_rendering_callback != nullptr ||
