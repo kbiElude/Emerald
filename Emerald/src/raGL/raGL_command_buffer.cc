@@ -4056,6 +4056,7 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
     raGL_backend                  backend_raGL             = nullptr;
     raGL_buffer                   buffer_raGL              = nullptr;
     uint32_t                      buffer_raGL_start_offset = 0;
+    uint32_t                      buffer_ral_start_offset  = 0;
 
     raGL_program_get_vertex_attribute_by_name(bake_state.active_program,
                                               command_ral_ptr->name,
@@ -4078,13 +4079,16 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
     raGL_buffer_get_property(buffer_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &buffer_raGL_start_offset);
+    ral_buffer_get_property (command_ral_ptr->buffer,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &buffer_ral_start_offset);
 
-    if (bake_state.vbs[attribute_ptr->location].buffer_raGL  != buffer_raGL                                              ||
-        bake_state.vbs[attribute_ptr->location].start_offset != command_ral_ptr->start_offset + buffer_raGL_start_offset)
+    if (bake_state.vbs[attribute_ptr->location].buffer_raGL  != buffer_raGL                                                                        ||
+        bake_state.vbs[attribute_ptr->location].start_offset != command_ral_ptr->start_offset + buffer_raGL_start_offset + buffer_ral_start_offset)
     {
         /* Need to update the VA configuration */
         bake_state.vbs[attribute_ptr->location].buffer_raGL  = buffer_raGL;
-        bake_state.vbs[attribute_ptr->location].start_offset = command_ral_ptr->start_offset + buffer_raGL_start_offset;
+        bake_state.vbs[attribute_ptr->location].start_offset = command_ral_ptr->start_offset + buffer_raGL_start_offset + buffer_ral_start_offset;
         bake_state.vao_dirty                                 = true;
     }
 }

@@ -377,6 +377,19 @@ PUBLIC void stage_step_julia_init(ral_context      context,
                                   ral_texture_view color_rt_texture_view,
                                   ral_texture_view depth_rt_texture_view)
 {
+    uint32_t color_rt_texture_view_size[2];
+
+    ral_texture_view_get_mipmap_property(color_rt_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                         color_rt_texture_view_size + 0);
+    ral_texture_view_get_mipmap_property(color_rt_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                         color_rt_texture_view_size + 1);
+
     /* Instantiate sphere we will use for raytracing */
     uint32_t normals_data_offset = 0;
     uint32_t vertex_data_offset  = 0;
@@ -546,18 +559,31 @@ PUBLIC void stage_step_julia_init(ral_context      context,
 
     va.format     = RAL_FORMAT_RGB32_FLOAT;
     va.input_rate = RAL_VERTEX_INPUT_RATE_PER_VERTEX;
-    va.name       = system_hashed_ansi_string_create("vertex"); /* is this really needed?*/
+    va.name       = system_hashed_ansi_string_create("vertex"); /* is this really needed? */
     va.offset     = vertex_data_offset;
     va.stride     = sizeof(float) * 3;
 
-    gfx_state_create_info.culling               = true;
-    gfx_state_create_info.cull_mode             = RAL_CULL_MODE_BACK;
-    gfx_state_create_info.depth_test            = true;
-    gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_LESS;
-    gfx_state_create_info.front_face            = RAL_FRONT_FACE_CW;
-    gfx_state_create_info.n_vertex_attributes   = 1;
-    gfx_state_create_info.primitive_type        = RAL_PRIMITIVE_TYPE_TRIANGLES;
-    gfx_state_create_info.vertex_attribute_ptrs = &va;
+    ral_command_buffer_set_viewport_command_info viewport_info;
+
+    viewport_info.depth_range[0] = 0.0f;
+    viewport_info.depth_range[1] = 1.0f;
+    viewport_info.index          = 0;
+    viewport_info.size[0]        = color_rt_texture_view_size[0];
+    viewport_info.size[1]        = color_rt_texture_view_size[1];
+    viewport_info.xy[0]          = 0;
+    viewport_info.xy[1]          = 0;
+
+    gfx_state_create_info.culling                              = true;
+    gfx_state_create_info.cull_mode                            = RAL_CULL_MODE_BACK;
+    gfx_state_create_info.depth_test                           = true;
+    gfx_state_create_info.depth_test_compare_op                = RAL_COMPARE_OP_LESS;
+    gfx_state_create_info.front_face                           = RAL_FRONT_FACE_CCW;
+    gfx_state_create_info.n_vertex_attributes                  = 1;
+    gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLES;
+    gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+    gfx_state_create_info.static_viewports                     = &viewport_info;
+    gfx_state_create_info.static_viewports_enabled             = true;
+    gfx_state_create_info.vertex_attribute_ptrs                = &va;
 
 
     ral_context_create_gfx_states(context,
@@ -619,10 +645,10 @@ PUBLIC void stage_step_julia_init(ral_context      context,
         clear_op.n_clear_regions                           = 1;
         clear_op.n_rendertargets                           = 2;
         clear_op.rendertargets[0].aspect                   = static_cast<ral_texture_aspect>(RAL_TEXTURE_ASPECT_COLOR_BIT);
-        clear_op.rendertargets[0].clear_value.color.f32[0] = 0.0f;
-        clear_op.rendertargets[0].clear_value.color.f32[1] = 0.3f;
-        clear_op.rendertargets[0].clear_value.color.f32[2] = 0.7f;
-        clear_op.rendertargets[0].clear_value.color.f32[3] = 1.0f;
+        clear_op.rendertargets[0].clear_value.color.ui8[0] = 0;
+        clear_op.rendertargets[0].clear_value.color.ui8[1] = 76;
+        clear_op.rendertargets[0].clear_value.color.ui8[2] = 178;
+        clear_op.rendertargets[0].clear_value.color.ui8[3] = 255;
         clear_op.rendertargets[0].rt_index                 = 0;
         clear_op.rendertargets[1].aspect                   = static_cast<ral_texture_aspect>(RAL_TEXTURE_ASPECT_DEPTH_BIT);
         clear_op.rendertargets[1].clear_value.depth        = 1.0f;

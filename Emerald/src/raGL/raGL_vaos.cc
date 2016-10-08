@@ -451,31 +451,27 @@ PRIVATE ral_present_job _raGL_vaos_bake_vao_renderer_thread_callback(ral_context
                   n_vb < vaos_ptr->bake_n_vbs;
                 ++n_vb)
     {
-        GLuint                              buffer_raGL_id           = 0;
-        uint32_t                            buffer_raGL_start_offset = 0;
-        const _raGL_vaos_vao_vertex_buffer* current_vb_ptr           = vaos_ptr->bake_vbs_ptr + n_vb;
+        GLuint                              buffer_raGL_id = 0;
+        const _raGL_vaos_vao_vertex_buffer* current_vb_ptr = vaos_ptr->bake_vbs_ptr + n_vb;
 
         raGL_buffer_get_property(current_vb_ptr->buffer,
                                  RAGL_BUFFER_PROPERTY_ID,
                                 &buffer_raGL_id);
-        raGL_buffer_get_property(current_vb_ptr->buffer,
-                                 RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                &buffer_raGL_start_offset);
 
         entrypoints_ptr->pGLBindVertexBuffer(n_vb,
                                              buffer_raGL_id,
-                                             current_vb_ptr->offset + buffer_raGL_start_offset,
+                                             current_vb_ptr->offset,
                                              current_vb_ptr->stride);
     }
 
     /* Set up VA/VB bindings */
     for (uint32_t n_vb = 0;
-                  n_vb < vaos_ptr->bake_n_vbs;
+                  n_vb < vaos_ptr->bake_n_vas;
                 ++n_vb)
     {
         const _raGL_vaos_vao_vertex_buffer* current_vb_ptr = vaos_ptr->bake_vbs_ptr + n_vb;
 
-        entrypoints_ptr->pGLEnableVertexAttribArray(n_vb);
+        entrypoints_ptr->pGLEnableVertexAttribArray(current_vb_ptr->va_index);
         entrypoints_ptr->pGLVertexAttribBinding    (current_vb_ptr->va_index,
                                                     n_vb);
     }

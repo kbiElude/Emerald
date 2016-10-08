@@ -1067,6 +1067,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
         new_handler_ptr->shutdown_request_ack_event                   = system_event_create (true);  /* manual_reset */
         new_handler_ptr->text_renderer                                = nullptr;
         new_handler_ptr->timeline                                     = nullptr;
+        new_handler_ptr->ui_instance                                  = nullptr;
 
         #ifdef _DEBUG
         {
