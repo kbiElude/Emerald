@@ -58,6 +58,9 @@ PUBLIC EMERALD_API bool ral_present_job_connect_tasks(ral_present_job           
 /** TODO */
 PUBLIC EMERALD_API ral_present_job ral_present_job_create();
 
+/** Converts any group tasks defined in the present job to a set of CPU & GPU tasks they consist of. */
+PUBLIC bool ral_present_job_flatten(ral_present_job job);
+
 /** TODO */
 PUBLIC EMERALD_API bool ral_present_job_get_connection_property(ral_present_job                     job,
                                                                 ral_present_job_connection_id       connection_id,
@@ -83,6 +86,13 @@ PUBLIC EMERALD_API bool ral_present_job_get_task_at_index(ral_present_job   job,
 PUBLIC EMERALD_API bool ral_present_job_get_task_with_id(ral_present_job     present_job,
                                                          ral_present_task_id task_id,
                                                          ral_present_task*   out_result_task_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ral_present_job_is_connection_defined(ral_present_job     job,
+                                                              ral_present_task_id src_task_id,
+                                                              uint32_t            n_src_task_output,
+                                                              ral_present_task_id dst_task_id,
+                                                              uint32_t            n_dst_task_n_input);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_present_job_release(ral_present_job job);

@@ -42,13 +42,13 @@ PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      conte
                        "Out of memory");
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(create_info_ptr->static_scissor_boxes && (create_info_ptr->static_n_scissor_boxes_and_viewports != 0        &&
-                                                                create_info_ptr->static_scissor_boxes                 == nullptr) ||
-                     !create_info_ptr->static_scissor_boxes,
+    ASSERT_DEBUG_SYNC(create_info_ptr->static_scissor_boxes_enabled && (create_info_ptr->static_n_scissor_boxes_and_viewports != 0        &&
+                                                                        create_info_ptr->static_scissor_boxes                 != nullptr) ||
+                     !create_info_ptr->static_scissor_boxes_enabled,
                       "Static scissor box configuration is invalid");
-    ASSERT_DEBUG_SYNC(create_info_ptr->static_viewports && (create_info_ptr->static_n_scissor_boxes_and_viewports != 0        &&
-                                                            create_info_ptr->static_viewports                     != nullptr) ||
-                     !create_info_ptr->static_viewports,
+    ASSERT_DEBUG_SYNC(create_info_ptr->static_viewports_enabled && (create_info_ptr->static_n_scissor_boxes_and_viewports != 0        &&
+                                                                    create_info_ptr->static_viewports                     != nullptr) ||
+                     !create_info_ptr->static_viewports_enabled,
                       "Static viewport state configuration is invalid");
 
     /* Cache the user-specified info from @param create_info_ptr */

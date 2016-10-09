@@ -188,7 +188,8 @@ PRIVATE ral_present_job _draw_frame(ral_context                                 
     //                              nullptr); /* out_opt_connection_id_ptr */
 
     ral_present_job_set_presentable_output(present_job,
-                                           julia_present_task_id, /* TODO: this should say light instead */
+                                           //light_present_task_id,
+        julia_present_task_id,
                                            false, /* is_input_io */
                                            0);    /* n_io        */
 
@@ -444,9 +445,7 @@ PRIVATE void _init_ui()
     ral_rendering_handler_get_property(rh,
                                        RAL_RENDERING_HANDLER_PROPERTY_UI,
                                       &rh_ui);
-
 #if 0
-    TODO
 
     ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("A"),

@@ -150,6 +150,8 @@ PRIVATE void _ui_button_init(_ui_button*               button_ptr,
     button_ptr->visible            = true;
 
     /* Configure the text to be shown on the button */
+    static const float font_size = 0.5f;
+
     varia_text_renderer_set(button_ptr->text_renderer,
                             button_ptr->text_index,
                             system_hashed_ansi_string_get_buffer(name) );
@@ -160,6 +162,10 @@ PRIVATE void _ui_button_init(_ui_button*               button_ptr,
                                                  button_ptr->text_index,
                                                  VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
                                                  _ui_button_text_color);
+    varia_text_renderer_set_text_string_property(button_ptr->text_renderer,
+                                                 button_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                &font_size);
 
     /* Retrieve the rendering program */
     button_ptr->program = ui_get_registered_program(ui_instance,

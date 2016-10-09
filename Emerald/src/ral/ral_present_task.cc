@@ -1142,9 +1142,17 @@ PUBLIC EMERALD_API bool ral_present_task_get_io_property(ral_present_task       
                 n_io     = mapping_ptr->present_task_io_index;
                 task_ptr = *reinterpret_cast<_ral_present_task**>(subtasks + mapping_ptr->n_present_task);
 
-                /* TODO: This case is going to require a recursive call. Implement support when encountered */
-                ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
-                                  "Cannot handle group tasks");
+                if (task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP)
+                {
+                    /* Handle this request recursively */
+                    result = ral_present_task_get_io_property(reinterpret_cast<ral_present_task>(task_ptr),
+                                                              io_type,
+                                                              n_io,
+                                                              property,
+                                                              out_result_ptr);
+
+                    goto end;
+                }
 
                 break;
             }

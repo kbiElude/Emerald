@@ -1270,61 +1270,8 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
                 present_tasks[n_present_tasks] = ui_control_ptr->pfn_get_present_task_func_ptr(ui_control_ptr->internal,
                                                                                                target_texture_view);
 
+                needs_baking |= (ui_control_ptr->last_present_task != present_tasks[n_present_tasks]);
                 n_present_tasks++;
-
-                needs_baking |= (ui_control_ptr->last_present_task == present_tasks[n_present_tasks]);
-
-                #ifdef _DEBUG
-                {
-                    uint32_t                n_inputs                        = 0;
-                    uint32_t                n_outputs                       = 0;
-                    void*                   present_task_input_object       = nullptr;
-                    ral_context_object_type present_task_input_object_type;
-                    void*                   present_task_output_object      = nullptr;
-                    ral_context_object_type present_task_output_object_type;
-
-                    /* Sanity checks */
-                    ral_present_task_get_property(ui_control_present_task,
-                                                  RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
-                                                 &n_inputs);
-                    ral_present_task_get_property(ui_control_present_task,
-                                                  RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
-                                                 &n_outputs);
-
-                    ASSERT_DEBUG_SYNC(n_inputs == 1,
-                                      "Invalid number of inputs exposed by a present task returned by a UI control");
-                    ASSERT_DEBUG_SYNC(n_outputs == 1,
-                                      "Invalid number of outputs exposed by a present task returned by a UI control");
-
-                    ral_present_task_get_io_property(ui_control_present_task,
-                                                     RAL_PRESENT_TASK_IO_TYPE_INPUT,
-                                                     0, /* n_io */
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                    &present_task_input_object);
-                    ral_present_task_get_io_property(ui_control_present_task,
-                                                     RAL_PRESENT_TASK_IO_TYPE_INPUT,
-                                                     0, /* n_io */
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
-                                                     (void**) &present_task_input_object_type);
-                    ral_present_task_get_io_property(ui_control_present_task,
-                                                     RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
-                                                     0, /* n_io */
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                    &present_task_output_object);
-                    ral_present_task_get_io_property(ui_control_present_task,
-                                                     RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
-                                                     0, /* n_io */
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
-                                                     (void**) &present_task_output_object_type);
-
-                    ASSERT_DEBUG_SYNC(present_task_input_object       == target_texture_view                  &&
-                                      present_task_input_object_type  == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW &&
-                                      present_task_output_object      == target_texture_view                  &&
-                                      present_task_output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                      "Present task returned by the UI control is invalid.");
-
-                }
-                #endif
             }
             else
             {
@@ -1348,11 +1295,11 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
                       n_mapping < n_present_tasks;
                     ++n_mapping)
         {
-            input_to_ingroup_task_mappings[n_mapping].group_task_io_index   = n_mapping;
+            input_to_ingroup_task_mappings[n_mapping].group_task_io_index   = 0;
             input_to_ingroup_task_mappings[n_mapping].n_present_task        = n_mapping;
             input_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
 
-            output_to_ingroup_task_mappings[n_mapping].group_task_io_index   = n_mapping;
+            output_to_ingroup_task_mappings[n_mapping].group_task_io_index   = 0;
             output_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
             output_to_ingroup_task_mappings[n_mapping].n_present_task        = n_mapping;
         }
@@ -1360,8 +1307,8 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
         result_present_task_create_info.ingroup_connections                      = nullptr;
         result_present_task_create_info.n_ingroup_connections                    = 0;
         result_present_task_create_info.n_present_tasks                          = n_present_tasks;
-        result_present_task_create_info.n_total_unique_inputs                    = n_present_tasks;
-        result_present_task_create_info.n_total_unique_outputs                   = n_present_tasks;
+        result_present_task_create_info.n_total_unique_inputs                    = 1;
+        result_present_task_create_info.n_total_unique_outputs                   = 1;
         result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_present_tasks;
         result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = n_present_tasks;
         result_present_task_create_info.present_tasks                            = present_tasks;
@@ -1413,6 +1360,15 @@ PUBLIC void ui_get_property(ui          ui_instance,
             varia_text_renderer_get_property(ui_ptr->text_renderer,
                                              VARIA_TEXT_RENDERER_PROPERTY_CONTEXT,
                                              out_result_ptr);
+
+            break;
+        }
+
+        case UI_PROPERTY_N_CONTROLS:
+        {
+            system_resizable_vector_get_property(ui_ptr->controls,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }

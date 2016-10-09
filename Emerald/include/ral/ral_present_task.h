@@ -203,6 +203,8 @@ typedef enum
      *
      */
     RAL_PRESENT_TASK_TYPE_GROUP,
+
+    RAL_PRESENT_TASK_TYPE_UNKNOWN
 } ral_present_task_type;
 
 /** TODO */

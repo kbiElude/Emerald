@@ -144,6 +144,19 @@ PRIVATE void _ui_checkbox_init(_ui_checkbox* checkbox_ptr)
     border_width[0] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[2] - checkbox_ptr->x1y1x2y2[0]) * window_size[0]);
     border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_size[1]);
 
+    /* Retrieve the rendering program */
+    checkbox_ptr->program = ui_get_registered_program(checkbox_ptr->ui_instance,
+                                                      ui_checkbox_program_name);
+
+    if (checkbox_ptr->program == nullptr)
+    {
+        _ui_checkbox_init_program(checkbox_ptr->ui_instance,
+                                  checkbox_ptr);
+
+        ASSERT_DEBUG_SYNC(checkbox_ptr->program != nullptr,
+                          "Could not initialize checkbox UI program");
+    }
+
     /* Retrieve uniform locations */
     const ral_program_variable* border_width_uniform_ral_ptr    = nullptr;
     const ral_program_variable* brightness_uniform_ral_ptr      = nullptr;
@@ -212,6 +225,8 @@ PRIVATE void _ui_checkbox_init(_ui_checkbox* checkbox_ptr)
     checkbox_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 
     /* Configure the text to be shown on the button */
+    static const float font_size = 0.5f;
+
     varia_text_renderer_set(checkbox_ptr->text_renderer,
                             checkbox_ptr->text_index,
                             system_hashed_ansi_string_get_buffer(checkbox_ptr->name) );
@@ -223,19 +238,10 @@ PRIVATE void _ui_checkbox_init(_ui_checkbox* checkbox_ptr)
                                                  checkbox_ptr->text_index,
                                                  VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
                                                  _ui_checkbox_text_color);
-
-    /* Retrieve the rendering program */
-    checkbox_ptr->program = ui_get_registered_program(checkbox_ptr->ui_instance,
-                                                      ui_checkbox_program_name);
-
-    if (checkbox_ptr->program == nullptr)
-    {
-        _ui_checkbox_init_program(checkbox_ptr->ui_instance,
-                                  checkbox_ptr);
-
-        ASSERT_DEBUG_SYNC(checkbox_ptr->program != nullptr,
-                          "Could not initialize checkbox UI program");
-    }
+    varia_text_renderer_set_text_string_property(checkbox_ptr->text_renderer,
+                                                 checkbox_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                &font_size);
 }
 
 /** TODO */
@@ -861,6 +867,7 @@ PUBLIC void* ui_checkbox_init(ui                        instance,
         new_checkbox_ptr->status             = default_status;
         new_checkbox_ptr->text_renderer      = text_renderer;
         new_checkbox_ptr->text_index         = varia_text_renderer_add_string(text_renderer);
+        new_checkbox_ptr->ui_instance        = instance;
         new_checkbox_ptr->visible            = true;
 
         _ui_checkbox_init(new_checkbox_ptr);

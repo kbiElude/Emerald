@@ -643,14 +643,78 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                                                        0,        /* n_dst_task_input          */
                                                        nullptr); /* out_opt_connection_id_ptr */
 
-                         /* TODO: Add UI rendering here -> */
-
                          ral_present_job_set_presentable_output(frame_present_job,
                                                                 draw_text_strings_task_id,
                                                                 false, /* is_input_io */
                                                                 0);    /* n_io        */
                      }
 
+                     /* If there are UI components to render, also attach relevant tasks */
+                     uint32_t n_ui_controls = 0;
+
+                     ui_get_property(rendering_handler_ptr->ui_instance,
+                                     UI_PROPERTY_N_CONTROLS,
+                                    &n_ui_controls);
+
+                     if (n_ui_controls > 0)
+                     {
+                         ral_present_task         presentable_output_task         = nullptr;
+                         uint32_t                 presentable_output_task_index   = -1;
+                         uint32_t                 presentable_output_task_io      = -1;
+                         ral_present_task_io_type presentable_output_task_io_type;
+                         ral_texture_view         presentable_texture_view         = nullptr;
+                         ral_present_task         ui_task;
+                         ral_present_task_id      ui_task_id;
+
+                         ral_present_job_get_property(frame_present_job,
+                                                      RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_ID,
+                                                     &presentable_output_task_index);
+                         ral_present_job_get_property(frame_present_job,
+                                                      RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_INDEX,
+                                                     &presentable_output_task_io);
+                         ral_present_job_get_property(frame_present_job,
+                                                      RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE,
+                                                     &presentable_output_task_io_type);
+
+                         ral_present_job_get_task_with_id(frame_present_job,
+                                                          presentable_output_task_index,
+                                                         &presentable_output_task);
+
+                         ral_present_task_get_io_property(presentable_output_task,
+                                                          presentable_output_task_io_type,
+                                                          presentable_output_task_io,
+                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                          reinterpret_cast<void**>(&presentable_texture_view) );
+
+                         ui_task = ui_get_present_task(rendering_handler_ptr->ui_instance,
+                                                       presentable_texture_view);
+
+                         /* Adjust connections accordingly */
+                         ral_present_job_add_task(frame_present_job,
+                                                  ui_task,
+                                                 &ui_task_id);
+                         ral_present_task_release(ui_task);
+
+                         ASSERT_DEBUG_SYNC(presentable_output_task_io_type == RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                           "Cannot render UI over a presentable texture view which acts as a task input");
+
+                         ral_present_job_connect_tasks(frame_present_job,
+                                                       presentable_output_task_index,
+                                                       presentable_output_task_io,
+                                                       ui_task_id,
+                                                       0,        /* n_dst_task_input          */
+                                                       nullptr); /* out_opt_connection_id_ptr */
+
+                         ral_present_job_set_presentable_output(frame_present_job,
+                                                                ui_task_id,
+                                                                false, /* is_input_io */
+                                                                0);    /* n_io        */
+                     }
+
+                     /* We may need to flatten (i.e. unroll any group tasks that may be defined) the graph at this point. */
+                     ral_present_job_flatten(frame_present_job);
+
+                     /* OK, go for it */
                      rendering_handler_ptr->pfn_execute_present_job_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
                                                                                    frame_present_job);
                  }

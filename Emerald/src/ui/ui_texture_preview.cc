@@ -960,6 +960,8 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
     if (new_texture_preview_ptr != nullptr)
     {
         /* Initialize fields */
+        static const float font_size = 0.5f;
+
         memset(new_texture_preview_ptr,
                0,
                sizeof(_ui_texture_preview) );
@@ -982,6 +984,11 @@ PUBLIC void* ui_texture_preview_init(ui                        instance,
         new_texture_preview_ptr->texture_view             = texture_view;
         new_texture_preview_ptr->texture_view_initialized = false;
         new_texture_preview_ptr->visible                  = true;
+
+        varia_text_renderer_set_text_string_property(new_texture_preview_ptr->text_renderer,
+                                                     new_texture_preview_ptr->text_index,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                    &font_size);
 
         /* Set default blending states */
         memset(new_texture_preview_ptr->blend_color,

@@ -991,24 +991,35 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
     _ui_dropdown_update_entry_visibility(dropdown_ptr);
 
     /* Set up the label */
-    unsigned int text_height = 0;
-    unsigned int text_width  = 0;
-             int text_xy[2]  = {0};
-       const int x1y1_ss[2]  =
+    static const float font_size   = 0.5f;
+    unsigned int       text_height = 0;
+    unsigned int       text_width  = 0;
+             int       text_xy[2]  = {0};
+       const int       x1y1_ss[2]  =
     {
         int(x1y1[0] * float(window_size[0]) ),
         int(x1y1[1] * float(window_size[1]))
     };
-       const int y2_ss = int(x2y2[1] * float(window_size[1]));
+    const int y2_ss = int(x2y2[1] * float(window_size[1]));
 
     if (dropdown_ptr->label_string_id == -1)
     {
         dropdown_ptr->label_string_id = varia_text_renderer_add_string(dropdown_ptr->text_renderer);
+
+        varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                     dropdown_ptr->label_string_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                    &font_size);
     }
 
     varia_text_renderer_set(dropdown_ptr->text_renderer,
                             dropdown_ptr->label_string_id,
                             system_hashed_ansi_string_get_buffer(dropdown_ptr->label_text) );
+
+    varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
+                                                 dropdown_ptr->label_string_id,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                 _ui_dropdown_label_text_color);
 
     varia_text_renderer_get_text_string_property(dropdown_ptr->text_renderer,
                                                  VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
@@ -1018,10 +1029,6 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
                                                  VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
                                                  dropdown_ptr->label_string_id,
                                                 &text_width);
-    varia_text_renderer_set_text_string_property(dropdown_ptr->text_renderer,
-                                                 dropdown_ptr->label_string_id,
-                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
-                                                 _ui_dropdown_label_text_color);
 
     text_xy[0] = x1y1_ss[0] - text_width - LABEL_X_SEPARATOR_PX;
     text_xy[1] = x1y1_ss[1] + text_height + ((y2_ss - x1y1_ss[1]) - int(text_height)) / 2;
@@ -1989,6 +1996,7 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
                     ++n_entry)
         {
             _ui_dropdown_entry* entry_ptr = nullptr;
+            static const float  font_size = 0.5f;
 
             entry_ptr = new (std::nothrow) _ui_dropdown_entry;
 
@@ -1997,6 +2005,11 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
 
             /* Fill the descriptor */
             entry_ptr->string_id = varia_text_renderer_add_string(text_renderer);
+
+            varia_text_renderer_set_text_string_property(new_dropdown_ptr->text_renderer,
+                                                         entry_ptr->string_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                        &font_size);
 
             if (n_entry != n_strings)
             {

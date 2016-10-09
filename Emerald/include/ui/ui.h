@@ -19,7 +19,10 @@ REFCOUNT_INSERT_DECLARATIONS(ui,
 typedef enum
 {
     /* not settable; ral_context */
-    UI_PROPERTY_CONTEXT
+    UI_PROPERTY_CONTEXT,
+
+    /* not settable; uint32_t */
+    UI_PROPERTY_N_CONTROLS,
 
 } ui_property;
 

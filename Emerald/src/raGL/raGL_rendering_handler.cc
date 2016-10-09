@@ -314,6 +314,9 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
         }
     }
 
+#if 0
+    TODO: Remove this code. This should be no longer needed.
+
     for (uint32_t n_connection = 0;
                   n_connection < n_connections;
                 ++n_connection)
@@ -424,6 +427,7 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                                       dst_present_task_dag_node);
         }
     }
+#endif
 end:
     system_hash64map_clear(rendering_handler_ptr->dag_present_task_to_node_map);
 

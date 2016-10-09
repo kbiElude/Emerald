@@ -88,6 +88,8 @@ PUBLIC void* ui_label_init(ui                        instance,
     if (new_label_ptr != nullptr)
     {
         /* Initialize fields */
+        static const float font_size = 0.5f;
+
         memset(new_label_ptr,
                0,
                sizeof(_ui_label) );
@@ -112,6 +114,10 @@ PUBLIC void* ui_label_init(ui                        instance,
                                                      new_label_ptr->text_id,
                                                      VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_POSITION_SS,
                                                      x1y1);
+        varia_text_renderer_set_text_string_property(new_label_ptr->text_renderer,
+                                                     new_label_ptr->text_id,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                    &font_size);
     }
 
     return reinterpret_cast<void*>(new_label_ptr);

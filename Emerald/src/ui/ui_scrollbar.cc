@@ -544,6 +544,7 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
         gfx_state_viewport.xy  [1]        = 0;
 
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+        gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &gfx_state_scissor_box;
         gfx_state_create_info.static_scissor_boxes_enabled         = true;
@@ -624,6 +625,8 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
             ub_slider_bindings[1].uniform_buffer_binding.size   = scrollbar_ptr->program_slider_ub_vs_bo_size;
 
 
+            ral_command_buffer_record_set_program            (scrollbar_ptr->last_cached_command_buffer,
+                                                              scrollbar_ptr->program_slider);
             ral_command_buffer_record_set_bindings           (scrollbar_ptr->last_cached_command_buffer,
                                                               sizeof(ub_slider_bindings) / sizeof(ub_slider_bindings[0]),
                                                               ub_slider_bindings);
@@ -632,8 +635,6 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
                                                              &rt_info);
             ral_command_buffer_record_set_gfx_state          (scrollbar_ptr->last_cached_command_buffer,
                                                               scrollbar_ptr->last_cached_gfx_state);
-            ral_command_buffer_record_set_program            (scrollbar_ptr->last_cached_command_buffer,
-                                                              scrollbar_ptr->program_slider);
             ral_command_buffer_record_draw_call_regular      (scrollbar_ptr->last_cached_command_buffer,
                                                               1, /* n_draw_calls */
                                                              &draw_call_info);
@@ -885,10 +886,19 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
                                 new_scrollbar_ptr->text_index,
                                 system_hashed_ansi_string_get_buffer(name) );
 
-        int           text_height    = 0;
-        system_window window         = nullptr;
-        int           window_size[2] = {0};
+        static const float font_size      = 0.5f;
+        int                text_height    = 0;
+        system_window      window         = nullptr;
+        int                window_size[2] = {0};
 
+        varia_text_renderer_set_text_string_property(new_scrollbar_ptr->text_renderer,
+                                                     new_scrollbar_ptr->text_index,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                     _ui_scrollbar_text_color);
+        varia_text_renderer_set_text_string_property(new_scrollbar_ptr->text_renderer,
+                                                     new_scrollbar_ptr->text_index,
+                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                    &font_size);
         varia_text_renderer_get_text_string_property(new_scrollbar_ptr->text_renderer,
                                                      VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
                                                      new_scrollbar_ptr->text_index,
@@ -905,11 +915,6 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
 
         ASSERT_DEBUG_SYNC(new_scrollbar_ptr->slider_x1y1x2y2[1] < new_scrollbar_ptr->slider_x1y1x2y2[3],
                           "Scrollbar has illegal height");
-
-        varia_text_renderer_set_text_string_property(new_scrollbar_ptr->text_renderer,
-                                                     new_scrollbar_ptr->text_index,
-                                                     VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
-                                                     _ui_scrollbar_text_color);
 
         _ui_scrollbar_update_text_position(new_scrollbar_ptr);
 
