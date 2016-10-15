@@ -17,6 +17,7 @@
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
+#include "ral/ral_texture_view.h"
 #include "shaders/shaders_fragment_static.h"
 #include "system/system_matrix4x4.h"
 #include <string.h>
@@ -147,8 +148,21 @@ PUBLIC void stage_step_light_init(ral_context      context,
                                   ral_texture_view color_rt_texture_view,
                                   ral_texture_view depth_rt_texture_view)
 {
-    shaders_fragment_static fragment_shader = nullptr;
-    ral_shader              vertex_shader   = nullptr;
+    uint32_t                color_rt_texture_view_height = 0;
+    uint32_t                color_rt_texture_view_width  = 0;
+    shaders_fragment_static fragment_shader              = nullptr;
+    ral_shader              vertex_shader                = nullptr;
+
+    ral_texture_view_get_mipmap_property(color_rt_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                        &color_rt_texture_view_width);
+    ral_texture_view_get_mipmap_property(color_rt_texture_view,
+                                         0, /* n_layer  */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                        &color_rt_texture_view_height);
 
     /* Prepare a fragment shader */
     fragment_shader = shaders_fragment_static_create(context,
@@ -238,11 +252,33 @@ PUBLIC void stage_step_light_init(ral_context      context,
                                          &datavs_ub_bo_ral);
 
     /* Set up gfx state */
-    ral_gfx_state_create_info gfx_state_create_info;
+    ral_gfx_state_create_info                       gfx_state_create_info;
+    ral_command_buffer_set_scissor_box_command_info scissor_box;
+    ral_command_buffer_set_viewport_command_info    viewport;
 
-    gfx_state_create_info.depth_test            = true;
-    gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_LESS;
-    gfx_state_create_info.primitive_type        = RAL_PRIMITIVE_TYPE_POINTS;
+    scissor_box.index   = 0;
+    scissor_box.size[0] = color_rt_texture_view_width;
+    scissor_box.size[1] = color_rt_texture_view_height;
+    scissor_box.xy  [0] = 0;
+    scissor_box.xy  [1] = 0;
+
+    viewport.depth_range[0] = 0.0f;
+    viewport.depth_range[1] = 1.0f;
+    viewport.index          = 0;
+    viewport.size       [0] = color_rt_texture_view_width;
+    viewport.size       [1] = color_rt_texture_view_height;
+    viewport.xy         [0] = 0;
+    viewport.xy         [1] = 0;
+
+    gfx_state_create_info.depth_test                           = true;
+    gfx_state_create_info.depth_test_compare_op                = RAL_COMPARE_OP_LESS;
+    gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_POINTS;
+    gfx_state_create_info.scissor_test                         = true;
+    gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+    gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
+    gfx_state_create_info.static_scissor_boxes_enabled         = true;
+    gfx_state_create_info.static_viewports                     = &viewport;
+    gfx_state_create_info.static_viewports_enabled             = true;
 
     ral_context_create_gfx_states(context,
                                   1, /* n_create_info_items */
@@ -306,9 +342,9 @@ PUBLIC void stage_step_light_init(ral_context      context,
         ral_command_buffer_record_set_gfx_state          (_light_cmd_buffer,
                                                           _light_gfx_state);
 
-        ral_command_buffer_record_draw_call_regular(_light_cmd_buffer,
-                                                    1, /* n_draw_calls */
-                                                   &draw_call);
+        // ral_command_buffer_record_draw_call_regular(_light_cmd_buffer,
+        //                                             1, /* n_draw_calls */
+        //                                            &draw_call);
     }
     ral_command_buffer_stop_recording(_light_cmd_buffer);
 

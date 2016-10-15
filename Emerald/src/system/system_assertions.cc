@@ -91,7 +91,8 @@ PUBLIC EMERALD_API void system_assertions_assert(bool                  is_blocki
 
         /* Insert a log entry */
         system_log_write(LOGLEVEL_ERROR,
-                         formatted_message);
+                         formatted_message,
+                         true); /* include_tid */
 
         /* Alloc message container */
         size_t message_length    = strlen(formatted_message);

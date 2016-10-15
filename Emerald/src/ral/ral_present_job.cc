@@ -35,12 +35,15 @@ typedef struct _ral_present_job_connection
 typedef struct _ral_present_job_task
 {
     bool             has_been_flattened;
+    uint32_t         id;
     ral_present_task task; 
 
     explicit _ral_present_job_task(system_dag_node  in_dag_node,
-                                   ral_present_task in_task)
+                                   ral_present_task in_task,
+                                   uint32_t         in_id)
     {
         has_been_flattened = false;
+        id                 = in_id;
         task               = in_task;
 
         ral_present_task_retain(task);
@@ -176,13 +179,14 @@ PUBLIC EMERALD_API bool ral_present_job_add_task(ral_present_job      job,
     }
 
     /* Store the new task, simultaneously assigning it a new ID */
+    new_task_id = job_ptr->n_total_tasks_added++;
+
     new_task_ptr = new _ral_present_job_task(new_task_dag_node,
-                                             task);
+                                             task,
+                                             new_task_id);
 
     ASSERT_ALWAYS_SYNC(new_task_ptr != nullptr,
                        "Out of memory");
-
-    new_task_id = job_ptr->n_total_tasks_added++;
 
     ASSERT_DEBUG_SYNC(!system_hash64map_contains(job_ptr->tasks,
                                                  new_task_id),
@@ -319,6 +323,210 @@ PUBLIC EMERALD_API ral_present_job ral_present_job_create()
 }
 
 /** Please see header for spec */
+PUBLIC void ral_present_job_dump(ral_present_job job)
+{
+    _ral_present_job* job_ptr       = reinterpret_cast<_ral_present_job*>(job);
+    uint32_t          n_connections = 0;
+    uint32_t          n_tasks       = 0;
+
+    system_hash64map_get_property(job_ptr->connections,
+                                   SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                  &n_connections);
+    system_hash64map_get_property(job_ptr->tasks,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_tasks);
+
+    LOG_RAW("Dump of ral_present_job [%p]:\n"
+            "\n"
+            "Number of tasks:       [%u]\n"
+            "Number of connections: [%u]\n"
+            "\n"
+            "* Tasks:",
+            job,
+            n_tasks,
+            n_connections);
+
+    for (uint32_t n_task = 0;
+                  n_task < n_tasks;
+                ++n_task)
+    {
+        system_hashed_ansi_string task_name = nullptr;
+        _ral_present_job_task*    task_ptr  = nullptr;
+        ral_present_task_type     task_type;
+
+        /* General properties */
+        system_hash64map_get_element_at(job_ptr->tasks,
+                                        n_task,
+                                       &task_ptr,
+                                        nullptr); /* result_hash_ptr */
+
+        ral_present_task_get_property(task_ptr->task,
+                                      RAL_PRESENT_TASK_PROPERTY_NAME,
+                                     &task_name);
+        ral_present_task_get_property(task_ptr->task,
+                                      RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                     &task_type);
+        LOG_RAW("** Task [ID: %u]:\n"
+                "----------------\n"
+                "Name: [%s]",
+                task_ptr->id,
+                system_hashed_ansi_string_get_buffer(task_name) );
+
+        switch (task_type)
+        {
+            case RAL_PRESENT_TASK_TYPE_CPU_TASK: LOG_RAW("Type: CPU task\n");   break;
+            case RAL_PRESENT_TASK_TYPE_GPU_TASK: LOG_RAW("Type: GPU task\n");   break;
+            case RAL_PRESENT_TASK_TYPE_GROUP:    LOG_RAW("Type: Group task\n"); break;
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unknown RAL present task type");
+            }
+        }
+
+        /* IOs */
+        if (task_type == RAL_PRESENT_TASK_TYPE_GROUP)
+        {
+            uint32_t n_input_mappings  = 0;
+            uint32_t n_output_mappings = 0;
+
+            ral_present_task_get_property(task_ptr->task,
+                                          RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS,
+                                         &n_input_mappings);
+            ral_present_task_get_property(task_ptr->task,
+                                          RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS,
+                                         &n_output_mappings);
+
+            LOG_RAW("Number of input mappings:  [%u]\n"
+                    "Number of output mappings: [%u]\n",
+                    n_input_mappings,
+                    n_output_mappings);
+
+            for (uint32_t n_mapping_type = 0;
+                          n_mapping_type < 2;
+                        ++n_mapping_type)
+            {
+                const bool     is_input_mapping = (n_mapping_type == 0);
+                const uint32_t n_mappings       = (is_input_mapping)    ? n_input_mappings : n_output_mappings;
+
+                for (uint32_t n_mapping = 0;
+                              n_mapping < n_mappings;
+                            ++n_mapping)
+                {
+                    uint32_t group_task_io_index = -1;
+                    uint32_t io_index            = -1;
+                    uint32_t subtask_index       = -1;
+
+                    ral_present_task_get_io_mapping_property(task_ptr->task,
+                                                             is_input_mapping ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                              : RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                             n_mapping,
+                                                             RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_GROUP_TASK_IO_INDEX,
+                                                             reinterpret_cast<void**>(&group_task_io_index) );
+                    ral_present_task_get_io_mapping_property(task_ptr->task,
+                                                             is_input_mapping ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                              : RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                             n_mapping,
+                                                             RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_IO_INDEX,
+                                                             reinterpret_cast<void**>(&io_index) );
+                    ral_present_task_get_io_mapping_property(task_ptr->task,
+                                                             is_input_mapping ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                              : RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                             n_mapping,
+                                                             RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_SUBTASK_INDEX,
+                                                             reinterpret_cast<void**>(&subtask_index) );
+
+                    LOG_RAW("%s [%u]\n"
+                            "===\n"
+                            "Group task IO index: [%u]\n"
+                            "IO index:            [%u]\n"
+                            "Subtask index:       [%u]\n",
+                            (is_input_mapping) ? "[Input mapping]" : "[Output mapping]",
+                            n_mapping,
+                            group_task_io_index,
+                            io_index,
+                            subtask_index);
+                }
+            }
+        }
+        else
+        {
+            uint32_t n_inputs  = 0;
+            uint32_t n_outputs = 0;
+
+            ral_present_task_get_property(task_ptr->task,
+                                          RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
+                                         &n_inputs);
+            ral_present_task_get_property(task_ptr->task,
+                                          RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
+                                         &n_outputs);
+
+            LOG_RAW("Number of inputs:  [%u]\n"
+                    "Number of outputs: [%u]\n",
+                    n_inputs,
+                    n_outputs);
+
+            for (uint32_t n_io_type = 0;
+                          n_io_type < 2;
+                        ++n_io_type)
+            {
+                const ral_present_task_io_type io_type = (n_io_type == 0) ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                          : RAL_PRESENT_TASK_IO_TYPE_OUTPUT;
+                const uint32_t                 n_ios   = (n_io_type == 0) ? n_inputs : n_outputs;
+
+                for (uint32_t n_io = 0;
+                              n_io < n_ios;
+                            ++n_io)
+                {
+                    ral_context_object_type object_type;
+
+                    ral_present_task_get_io_property(task_ptr->task,
+                                                     io_type,
+                                                     n_io,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                     reinterpret_cast<void**>(&object_type) );
+
+                    LOG_RAW("%s [%u]:\n"
+                            "===\n"
+                            "Accepted object type: [%s]\n",
+                            (n_io_type == 0) ? "Input" : "Output",
+                            n_io,
+                            system_hashed_ansi_string_get_buffer(ral_utils_get_ral_context_object_type_has(object_type) ));
+                }
+            }
+        }
+    }
+
+    LOG_RAW("\n"
+            "* Connections:\n");
+
+    for (uint32_t n_connection = 0;
+                  n_connection < n_connections;
+                ++n_connection)
+    {
+        _ral_present_job_connection* connection_ptr = nullptr;
+
+        system_hash64map_get_element_at(job_ptr->connections,
+                                        n_connection,
+                                       &connection_ptr,
+                                        nullptr); /* result_hash_ptr */
+
+        LOG_RAW("** Connection [%u]:\n"
+                "==================\n"
+                "Destination task ID:          [%u]\n"
+                "Destination task input index: [%u]\n"
+                "Source task ID:               [%u]\n"
+                "Source task output index:     [%u]\n",
+                n_connection,
+                connection_ptr->dst_task_id,
+                connection_ptr->n_dst_task_input,
+                connection_ptr->src_task_id,
+                connection_ptr->n_src_task_output);
+    }
+}
+
+/** Please see header for spec */
 PUBLIC bool ral_present_job_flatten(ral_present_job job)
 {
     _ral_present_job* job_ptr = reinterpret_cast<_ral_present_job*>(job);
@@ -340,11 +548,12 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
             ral_present_task_id new_job_task_id;
         } *subtasks = nullptr;
 
-        uint32_t               n_connections = 0;
-        uint32_t               n_subtasks    = 0;
-        system_hash64          task_id       = -1;
-        _ral_present_job_task* task_ptr      = nullptr;
-        ral_present_task_type  task_type     = RAL_PRESENT_TASK_TYPE_UNKNOWN;
+        uint32_t               n_connections         = 0;
+        uint32_t               n_ingroup_connections = 0;
+        uint32_t               n_subtasks            = 0;
+        system_hash64          task_id               = -1;
+        _ral_present_job_task* task_ptr              = nullptr;
+        ral_present_task_type  task_type             = RAL_PRESENT_TASK_TYPE_UNKNOWN;
 
         if (!system_hash64map_get_element_at(job_ptr->tasks,
                                              n_task,
@@ -397,8 +606,6 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
                 ral_present_job_add_task(job,
                                          subtasks[n_subtask].ingroup_subtask,
                                         &subtasks[n_subtask].new_job_task_id);
-
-                ral_present_task_retain(subtasks[n_subtask].ingroup_subtask);
             }
         }
 
@@ -420,7 +627,40 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
             job_ptr->presentable_output_task_id = subtasks[presentable_subtask_index].new_job_task_id;
         }
 
-        /* Iterate over defined connections. If any of these refers to the group node we're
+        /* Iterate over in-group connections and create corresponding entries on the job levle. */
+        ral_present_task_get_property(task_ptr->task,
+                                      RAL_PRESENT_TASK_PROPERTY_N_INGROUP_CONNECTIONS,
+                                     &n_ingroup_connections);
+
+        for (uint32_t n_connection = 0;
+                      n_connection < n_ingroup_connections;
+                    ++n_connection)
+        {
+            uint32_t input_present_task_index;
+            uint32_t input_present_task_io_index;
+            uint32_t output_present_task_index;
+            uint32_t output_present_task_io_index;
+
+            ral_present_task_get_ingroup_connection(task_ptr->task,
+                                                    n_connection,
+                                                   &input_present_task_index,
+                                                   &input_present_task_io_index,
+                                                   &output_present_task_index,
+                                                   &output_present_task_io_index);
+
+            ASSERT_DEBUG_SYNC(input_present_task_index  < n_subtasks &&
+                              output_present_task_index < n_subtasks,
+                              "Invalid IO referred to from an ingroup connection");
+
+            ral_present_job_connect_tasks(job,
+                                          subtasks[output_present_task_index].new_job_task_id,
+                                          output_present_task_io_index,
+                                          subtasks[input_present_task_index].new_job_task_id,
+                                          input_present_task_io_index,
+                                          nullptr); /* out_opt_connection_id_ptr */
+        }
+
+        /* Iterate over connections defined for the job. If any of these refers to the group node we're
          * currently working, either as a source or a destination, or both, the connections
          * need to be re-mapped to the newly created node's IOs. */
         system_hash64map_get_property(job_ptr->connections,
@@ -428,7 +668,7 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
                                      &n_connections);
 
         for (int32_t n_connection = 0;
-                     n_connection < n_connections;
+                     n_connection < static_cast<int32_t>(n_connections);
                    ++n_connection)
         {
             system_hash64                connection_id  = -1;
@@ -569,9 +809,12 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
                 system_hash64map_remove(job_ptr->connections,
                                         connection_id);
 
-                --n_connection;
-                --n_connections;
+                n_connection = -1;
             }
+
+            system_hash64map_get_property(job_ptr->connections,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_connections);
         }
 
         /* Clean up other stuff */
@@ -587,6 +830,10 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
          * Since we use a hashmap for task storage, we need to walk through all tasks all over again
          * to ensure we do not miss any of the defined tasks */
         n_task = -1;
+
+        system_hash64map_get_property(job_ptr->tasks,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_tasks);
     }
 
     /* At this point, none of the existing group tasks should be referred to from any of the connections.
@@ -664,7 +911,8 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
             system_hash64map_remove(job_ptr->tasks,
                                     task_id);
 
-            --n_task;
+            n_task = -1;
+
             --n_tasks;
         }
     }

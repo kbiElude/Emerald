@@ -167,29 +167,28 @@ PRIVATE ral_present_job _draw_frame(ral_context                                 
 
     present_job = ral_present_job_create();
 
-    //ral_present_job_add_task(present_job,
-    //                         stage_step_light_get_present_task(),
-    //                        &light_present_task_id);
+    ral_present_job_add_task(present_job,
+                             stage_step_light_get_present_task(),
+                            &light_present_task_id);
     ral_present_job_add_task(present_job,
                              stage_step_julia_get_present_task(),
                             &julia_present_task_id);
 
-    //ral_present_job_connect_tasks(present_job,
-    //                              julia_present_task_id,
-    //                              0, /* n_src_task_output */
-    //                              light_present_task_id,
-    //                              0,        /* n_dst_task_input          */
-    //                              nullptr); /* out_opt_connection_id_ptr */
-    //ral_present_job_connect_tasks(present_job,
-    //                              julia_present_task_id,
-    //                              1, /* n_src_task_output */
-    //                              light_present_task_id,
-    //                              1,        /* n_dst_task_input          */
-    //                              nullptr); /* out_opt_connection_id_ptr */
+    ral_present_job_connect_tasks(present_job,
+                                  julia_present_task_id,
+                                  0, /* n_src_task_output */
+                                  light_present_task_id,
+                                  0,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+    ral_present_job_connect_tasks(present_job,
+                                  julia_present_task_id,
+                                  1, /* n_src_task_output */
+                                  light_present_task_id,
+                                  1,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
 
     ral_present_job_set_presentable_output(present_job,
-                                           //light_present_task_id,
-        julia_present_task_id,
+                                           light_present_task_id,
                                            false, /* is_input_io */
                                            0);    /* n_io        */
 

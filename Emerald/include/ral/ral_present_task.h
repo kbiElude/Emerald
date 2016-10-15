@@ -156,6 +156,12 @@ typedef enum
     /* not settable; uint32_t
      *
      * Query is only valid for group tasks. Will result in an assertion failure if invoked for
+     * other types of present tasks. */
+    RAL_PRESENT_TASK_PROPERTY_N_INGROUP_CONNECTIONS,
+
+    /* not settable; uint32_t
+     *
+     * Query is only valid for group tasks. Will result in an assertion failure if invoked for
      * other types of present tasks.
      */
     RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS,
@@ -234,6 +240,17 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_gpu(system_hashed_an
 PUBLIC bool ral_present_task_get_group_subtask(ral_present_task  task,
                                                uint32_t          n_subtask,
                                                ral_present_task* out_present_subtask_ptr);
+
+/** TODO
+ *
+ *  NOTE: Only valid for group present tasks.
+ */
+PUBLIC EMERALD_API bool ral_present_task_get_ingroup_connection(ral_present_task task,
+                                                                uint32_t         n_ingroup_connection,
+                                                                uint32_t*        out_input_present_task_index_ptr,
+                                                                uint32_t*        out_input_present_task_io_index_ptr,
+                                                                uint32_t*        out_output_present_task_index_ptr,
+                                                                uint32_t*        out_output_present_task_io_index_ptr);
 
 /** TODO
  *

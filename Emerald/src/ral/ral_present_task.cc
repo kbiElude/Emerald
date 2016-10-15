@@ -58,6 +58,7 @@ typedef struct _ral_present_task
         n_group_task_subtasks        = 0;
         n_inputs                     = 0;
         n_outputs                    = 0;
+        name                         = in_name;
         outputs                      = nullptr;
         pfn_cpu_callback_proc        = in_create_info_ptr->pfn_cpu_task_callback_proc;
         cpu_callback_proc_user_arg   = in_create_info_ptr->cpu_task_callback_user_arg;
@@ -982,6 +983,39 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ral_present_task_get_ingroup_connection(ral_present_task task,
+                                                                uint32_t         n_ingroup_connection,
+                                                                uint32_t*        out_input_present_task_index_ptr,
+                                                                uint32_t*        out_input_present_task_io_index_ptr,
+                                                                uint32_t*        out_output_present_task_index_ptr,
+                                                                uint32_t*        out_output_present_task_io_index_ptr)
+{
+    const ral_present_task_ingroup_connection* connection_ptr = nullptr;
+    bool                                       result         = false;
+    _ral_present_task*                         task_ptr       = reinterpret_cast<_ral_present_task*>(task);
+
+    if (task_ptr->n_group_task_connections <= n_ingroup_connection)
+    {
+        ASSERT_DEBUG_SYNC(!(task_ptr->n_group_task_connections <= n_ingroup_connection),
+                          "Invalid ingroup connection index");
+
+        goto end;
+    }
+
+    connection_ptr = task_ptr->group_task_connections + n_ingroup_connection;
+
+    *out_input_present_task_index_ptr     = connection_ptr->input_present_task_index;
+    *out_input_present_task_io_index_ptr  = connection_ptr->input_present_task_io_index;
+    *out_output_present_task_index_ptr    = connection_ptr->output_present_task_index;
+    *out_output_present_task_io_index_ptr = connection_ptr->output_present_task_io_index;
+
+    /* All done */
+    result = true;
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool ral_present_task_get_io_mapping_property(ral_present_task                     task,
                                                                  ral_present_task_io_type             io_type,
                                                                  uint32_t                             n_io_mapping,
@@ -1305,6 +1339,16 @@ PUBLIC EMERALD_API void ral_present_task_get_property(ral_present_task          
                               "RAL_PRESENT_TASK_PROPERTY_N_GROUP_TASK_SUBTASKS property is only available for RAL present group tasks");
 
             *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_group_task_subtasks;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_N_INGROUP_CONNECTIONS:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_INGROUP_CONNECTIONS query can only be used against group present tasks.");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_group_task_connections;
 
             break;
         }

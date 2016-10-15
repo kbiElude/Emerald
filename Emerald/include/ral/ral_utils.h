@@ -75,6 +75,9 @@ typedef enum
 
 } ral_texture_type_property;
 
+/** TODO */
+PUBLIC system_hashed_ansi_string ral_utils_get_ral_context_object_type_has(ral_context_object_type object_type);
+
 /** Provides information about specified RAL format.
  *
  *  @param texture_format RAL format to return info for.

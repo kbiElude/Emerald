@@ -5,7 +5,28 @@
  * Rendering Abstraction Layer utility functions
  */
 #include "shared.h"
+#include "ral/ral_context.h"
 #include "ral/ral_utils.h"
+
+/** Please see header for specification */
+PUBLIC system_hashed_ansi_string ral_utils_get_ral_context_object_type_has(ral_context_object_type object_type)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    switch (object_type)
+    {
+        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:         result = system_hashed_ansi_string_create("Buffer");         break;
+        case RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER: result = system_hashed_ansi_string_create("Command buffer"); break;
+        case RAL_CONTEXT_OBJECT_TYPE_GFX_STATE:      result = system_hashed_ansi_string_create("GFX state");      break;
+        case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:        result = system_hashed_ansi_string_create("Program");        break;
+        case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:        result = system_hashed_ansi_string_create("Sampler");        break;
+        case RAL_CONTEXT_OBJECT_TYPE_SHADER:         result = system_hashed_ansi_string_create("Shader");         break;
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:        result = system_hashed_ansi_string_create("Texture");        break;
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:   result = system_hashed_ansi_string_create("Texture view");   break;
+    }
+
+    return result;
+}
 
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ral_utils_get_format_property(ral_format          format,

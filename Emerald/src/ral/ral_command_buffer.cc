@@ -415,6 +415,8 @@ PRIVATE void _ral_command_buffer_deinit_command_buffer(system_resource_pool_bloc
 
     if (cmd_buffer_ptr->commands != nullptr)
     {
+        cmd_buffer_ptr->clear_commands();
+
         system_resizable_vector_release(cmd_buffer_ptr->commands);
 
         cmd_buffer_ptr->commands = nullptr;

@@ -172,6 +172,8 @@ enum
 
 typedef enum
 {
+    /* NOTE: If you modify enum values below, make sure to also update ral_utils_get_ral_context_object_type_has() */
+
     RAL_CONTEXT_OBJECT_TYPE_BUFFER,
     RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
     RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,

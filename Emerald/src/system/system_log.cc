@@ -41,16 +41,25 @@ PUBLIC void _system_log_deinit()
 
 /** Please see header for specification */
 EMERALD_API void system_log_write(system_log_priority,
-                                  const char* text)
+                                  const char*         text,
+                                  bool                include_tid_info)
 {
     {
         static char temp[16];
 
-        snprintf(temp,
-                 sizeof(temp),
-                 "[tid:%08x] ",
-                 system_threads_get_thread_id() );
-
+        if (include_tid_info)
+        {
+            snprintf(temp,
+                     sizeof(temp),
+                     "[tid:%08x] ",
+                     system_threads_get_thread_id() );
+        }
+        else
+        {
+            memset(temp,
+                   0,
+                   sizeof(temp) );
+        }
 #ifdef _WIN32
         ::OutputDebugStringA(temp);
         ::OutputDebugStringA(text);

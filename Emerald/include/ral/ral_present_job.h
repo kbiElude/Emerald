@@ -58,6 +58,9 @@ PUBLIC EMERALD_API bool ral_present_job_connect_tasks(ral_present_job           
 /** TODO */
 PUBLIC EMERALD_API ral_present_job ral_present_job_create();
 
+/** TODO */
+PUBLIC void ral_present_job_dump(ral_present_job job);
+
 /** Converts any group tasks defined in the present job to a set of CPU & GPU tasks they consist of. */
 PUBLIC bool ral_present_job_flatten(ral_present_job job);
 
