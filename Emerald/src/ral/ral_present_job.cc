@@ -932,6 +932,7 @@ PUBLIC EMERALD_API bool ral_present_job_get_connection_id_at_index(ral_present_j
     _ral_present_job* job_ptr               = reinterpret_cast<_ral_present_job*>(job);
     uint32_t          n_connections_defined = 0;
     bool              result                = false;
+    system_hash64     result64;
 
     /* Sanity checks */
     if (job_ptr == nullptr)
@@ -955,7 +956,12 @@ PUBLIC EMERALD_API bool ral_present_job_get_connection_id_at_index(ral_present_j
         goto end;
     }
 
-    *out_result_ptr = n_connection;
+    system_hash64map_get_element_at(job_ptr->connections,
+                                    n_connection,
+                                    nullptr, /* result_element_ptr */
+                                   &result64);
+
+    *out_result_ptr = static_cast<ral_present_job_connection_id>(result64);
 
     /* All done */
     result = true;

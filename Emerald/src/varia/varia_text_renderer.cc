@@ -498,6 +498,10 @@ PRIVATE void _varia_text_renderer_prepare_vram_data_storage(_varia_text_renderer
             return;
         }
 
+        memset(text_ptr->data_buffer_contents,
+               0,
+               text_ptr->data_buffer_contents_size);
+
         /* This implies we also need to resize the buffer object */
         if (text_ptr->data_buffer != nullptr)
         {

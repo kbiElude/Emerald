@@ -95,6 +95,12 @@ typedef enum
     /* Command args stored in _raGL_command_clear_stencil_command_info */
     RAGL_COMMAND_TYPE_CLEAR_STENCIL,
 
+    /* Command args stored in _raGL_command_color_mask_command_info */
+    RAGL_COMMAND_TYPE_COLOR_MASK,
+
+    /* Command args stored in _raGL_command_color_maski_command_info */
+    RAGL_COMMAND_TYPE_COLOR_MASKI,
+
     /* Command args stored in _raGL_command_copy_buffer_sub_data_command_info */
     RAGL_COMMAND_TYPE_COPY_BUFFER_SUB_DATA,
 
@@ -365,6 +371,25 @@ typedef struct
     GLint stencil;
 
 } _raGL_command_clear_stencil_command_info;
+
+typedef struct
+{
+    GLboolean red;
+    GLboolean green;
+    GLboolean blue;
+    GLboolean alpha;
+
+} _raGL_command_color_mask_command_info;
+
+typedef struct
+{
+    GLuint    buf;
+    GLboolean red;
+    GLboolean green;
+    GLboolean blue;
+    GLboolean alpha;
+
+} _raGL_command_color_maski_command_info;
 
 typedef struct
 {
@@ -720,6 +745,8 @@ typedef struct
         _raGL_command_clear_color_command_info                                       clear_color_command_info;
         _raGL_command_clear_depthf_command_info                                      clear_depthf_command_info;
         _raGL_command_clear_stencil_command_info                                     clear_stencil_command_info;
+        _raGL_command_color_mask_command_info                                        color_mask_command_info;
+        _raGL_command_color_maski_command_info                                       color_maski_command_info;
         _raGL_command_copy_buffer_sub_data_command_info                              copy_buffer_sub_data_command_info;
         _raGL_command_copy_image_sub_data_command_info                               copy_image_sub_data_command_info;
         _raGL_command_cull_face_command_info                                         cull_face_command_info;
@@ -1512,7 +1539,7 @@ void _raGL_command_buffer::bake_gfx_state()
         _raGL_command* depth_func_command_ptr          = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
         _raGL_command* enable_depth_writes_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool));
 
-        enable_depth_writes_command_ptr->depth_mask_command_info.flag = GL_FALSE;
+        enable_depth_writes_command_ptr->depth_mask_command_info.flag = GL_TRUE;
         enable_depth_writes_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_MASK;
 
         depth_func_command_ptr->depth_func_command_info.func = raGL_utils_get_ogl_enum_for_ral_compare_op(depth_compare_func);
@@ -2294,6 +2321,8 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
     }
 
     bool scissor_test_pre_enabled          = false;
+    bool should_restore_color_writes       = !bake_state.active_rt_attachments_dirty;
+    bool should_restore_depth_writes       = !bake_state.active_gfx_state_dirty;
     bool should_restore_draw_buffers       = false;
     bool should_restore_scissor_test_state = false;
 
@@ -2641,16 +2670,92 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
             system_resizable_vector_push(commands,
                                          scissor_command_ptr);
 
+            /* Make sure write mask is enabled for the aspect of our interest before we record a clear op */
+            if ((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT) == RAL_TEXTURE_ASPECT_COLOR_BIT)
+            {
+                _raGL_command* color_mask_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+                color_mask_command_ptr->color_mask_command_info.red   = GL_TRUE;
+                color_mask_command_ptr->color_mask_command_info.green = GL_TRUE;
+                color_mask_command_ptr->color_mask_command_info.blue  = GL_TRUE;
+                color_mask_command_ptr->color_mask_command_info.alpha = GL_TRUE;
+                color_mask_command_ptr->type                          = RAGL_COMMAND_TYPE_COLOR_MASK;
+
+                system_resizable_vector_push(commands,
+                                             color_mask_command_ptr);
+            }
+
+            if ((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT) == RAL_TEXTURE_ASPECT_DEPTH_BIT)
+            {
+                _raGL_command* enable_depth_writes_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+                enable_depth_writes_command_ptr->depth_mask_command_info.flag = GL_TRUE;
+                enable_depth_writes_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_MASK;
+
+                system_resizable_vector_push(commands,
+                                             enable_depth_writes_command_ptr);
+            }
+
+            if ((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) == RAL_TEXTURE_ASPECT_STENCIL_BIT)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "TODO");
+            }
+
             /* Enqueue clear command */
             clear_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
-            clear_command_ptr->clear_command_info.mask = (((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT)   != 0) ? GL_COLOR_BUFFER_BIT   : 0) |
-                                                         (((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT)   != 0) ? GL_DEPTH_BUFFER_BIT   : 0) |
-                                                         (((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0) ? GL_STENCIL_BUFFER_BIT : 0);
+            clear_command_ptr->clear_command_info.mask = (((current_rt.aspect & RAL_TEXTURE_ASPECT_COLOR_BIT)   == RAL_TEXTURE_ASPECT_COLOR_BIT)   ? GL_COLOR_BUFFER_BIT   : 0) |
+                                                         (((current_rt.aspect & RAL_TEXTURE_ASPECT_DEPTH_BIT)   == RAL_TEXTURE_ASPECT_DEPTH_BIT)   ? GL_DEPTH_BUFFER_BIT   : 0) |
+                                                         (((current_rt.aspect & RAL_TEXTURE_ASPECT_STENCIL_BIT) == RAL_TEXTURE_ASPECT_STENCIL_BIT) ? GL_STENCIL_BUFFER_BIT : 0);
             clear_command_ptr->type                    = RAGL_COMMAND_TYPE_CLEAR;
 
             system_resizable_vector_push(commands,
                                          clear_command_ptr);
+
+            /* Reset to previous state */
+            if (should_restore_color_writes)
+            {
+                for (uint32_t n_color_attachment = 0;
+                              n_color_attachment < sizeof(bake_state.active_rt_color_attachments) / sizeof(bake_state.active_rt_color_attachments[0]);
+                            ++n_color_attachment)
+                {
+                    if ( bake_state.active_rt_color_attachments[n_color_attachment].texture_view    != nullptr &&
+                        (bake_state.active_rt_color_attachments[n_color_attachment].color_writes[0] == false   ||
+                         bake_state.active_rt_color_attachments[n_color_attachment].color_writes[1] == false   ||
+                         bake_state.active_rt_color_attachments[n_color_attachment].color_writes[2] == false   ||
+                         bake_state.active_rt_color_attachments[n_color_attachment].color_writes[3] == false) )
+                    {
+                        _raGL_command* color_maski_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+                        color_maski_command_ptr->color_maski_command_info.buf   = n_color_attachment;
+                        color_maski_command_ptr->color_maski_command_info.red   = (bake_state.active_rt_color_attachments[n_color_attachment].color_writes[0]) ? GL_TRUE : GL_FALSE;
+                        color_maski_command_ptr->color_maski_command_info.green = (bake_state.active_rt_color_attachments[n_color_attachment].color_writes[1]) ? GL_TRUE : GL_FALSE;
+                        color_maski_command_ptr->color_maski_command_info.blue  = (bake_state.active_rt_color_attachments[n_color_attachment].color_writes[2]) ? GL_TRUE : GL_FALSE;
+                        color_maski_command_ptr->color_maski_command_info.alpha = (bake_state.active_rt_color_attachments[n_color_attachment].color_writes[3]) ? GL_TRUE : GL_FALSE;
+                        color_maski_command_ptr->type                           = RAGL_COMMAND_TYPE_COLOR_MASKI;
+
+                        system_resizable_vector_push(commands,
+                                                     color_maski_command_ptr);
+                    }
+                }
+            }
+
+            if (should_restore_depth_writes)
+            {
+                _raGL_command* update_depth_writes_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+                bool           current_depth_writes             = false;
+
+                ral_gfx_state_get_property(bake_state.active_gfx_state,
+                                           RAL_GFX_STATE_PROPERTY_DEPTH_WRITES_ENABLED,
+                                          &current_depth_writes);
+
+                update_depth_writes_command_ptr->depth_mask_command_info.flag = current_depth_writes ? GL_TRUE : GL_FALSE;
+                update_depth_writes_command_ptr->type                         = RAGL_COMMAND_TYPE_DEPTH_MASK;
+
+                system_resizable_vector_push(commands,
+                                             update_depth_writes_command_ptr);
+            }
         }
     }
 
@@ -4496,6 +4601,31 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
                 const _raGL_command_clear_stencil_command_info& command_args = command_ptr->clear_stencil_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLClearStencil(command_args.stencil);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_COLOR_MASK:
+            {
+                const _raGL_command_color_mask_command_info& command_args = command_ptr->color_mask_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLColorMask(command_args.red,
+                                                                  command_args.green,
+                                                                  command_args.blue,
+                                                                  command_args.alpha);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_COLOR_MASKI:
+            {
+                const _raGL_command_color_maski_command_info& command_args = command_ptr->color_maski_command_info;
+
+                command_buffer_ptr->entrypoints_ptr->pGLColorMaski(command_args.buf,
+                                                                   command_args.red,
+                                                                   command_args.green,
+                                                                   command_args.blue,
+                                                                   command_args.alpha);
 
                 break;
             }

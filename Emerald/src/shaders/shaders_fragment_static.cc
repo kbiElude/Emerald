@@ -16,7 +16,7 @@
 const char* fragment_shader_body =
     "#version 430 core\n"
     "\n"
-    "uniform dataFS\n"
+    "layout(binding = 0, std140) uniform dataFS\n"
     "{\n"
     "    vec4 color;\n"
     "};\n"

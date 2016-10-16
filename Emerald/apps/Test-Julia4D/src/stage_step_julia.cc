@@ -49,7 +49,7 @@ const char* julia_fragment_shader_code =
     "\n"
     "layout(location = 0) in vec3 fp_vertex;\n"
     "\n"
-    "layout(binding = 0) uniform dataUB\n"
+    "layout(std140, binding = 0) uniform dataUB\n"
     "{\n"
     "    vec4  data;\n"
     "    float epsilon;\n"
@@ -230,7 +230,7 @@ const char* julia_vertex_shader_code =
     "layout (location = 0) in  vec3 vertex;\n"
     "layout (location = 0) out vec3 fp_vertex;\n"
     "\n"
-    "layout (binding = 0) uniform dataUB\n"
+    "layout (std140, binding = 0) uniform dataUB\n"
     "{\n"
     "    vec4  data;\n"
     "    float epsilon;\n"
@@ -577,6 +577,7 @@ PUBLIC void stage_step_julia_init(ral_context      context,
     gfx_state_create_info.cull_mode                            = RAL_CULL_MODE_BACK;
     gfx_state_create_info.depth_test                           = true;
     gfx_state_create_info.depth_test_compare_op                = RAL_COMPARE_OP_LESS;
+    gfx_state_create_info.depth_writes                         = true;
     gfx_state_create_info.front_face                           = RAL_FRONT_FACE_CCW;
     gfx_state_create_info.n_vertex_attributes                  = 1;
     gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLES;

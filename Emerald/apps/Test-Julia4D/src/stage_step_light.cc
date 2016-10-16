@@ -38,7 +38,7 @@ system_matrix4x4         _light_view_matrix               = nullptr;
 static const char* _light_vs_shader_body =
     "#version 430 core\n"
     "\n"
-    "layout(binding = 1) uniform dataVS\n"
+    "layout(std140, binding = 1) uniform dataVS\n"
     "{\n"
     "    mat4 mvp;\n"
     "    vec4 position;\n"
@@ -272,6 +272,7 @@ PUBLIC void stage_step_light_init(ral_context      context,
 
     gfx_state_create_info.depth_test                           = true;
     gfx_state_create_info.depth_test_compare_op                = RAL_COMPARE_OP_LESS;
+    gfx_state_create_info.depth_writes                         = true;
     gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_POINTS;
     gfx_state_create_info.scissor_test                         = true;
     gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
@@ -342,9 +343,9 @@ PUBLIC void stage_step_light_init(ral_context      context,
         ral_command_buffer_record_set_gfx_state          (_light_cmd_buffer,
                                                           _light_gfx_state);
 
-        // ral_command_buffer_record_draw_call_regular(_light_cmd_buffer,
-        //                                             1, /* n_draw_calls */
-        //                                            &draw_call);
+        ral_command_buffer_record_draw_call_regular(_light_cmd_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call);
     }
     ral_command_buffer_stop_recording(_light_cmd_buffer);
 

@@ -254,6 +254,7 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                 ++n_present_task)
     {
         ral_present_task      present_task      = nullptr;
+        system_dag_node       present_task_node = nullptr;
         ral_present_task_type present_task_type;
 
         ral_present_job_get_task_at_index(present_job,
@@ -264,58 +265,28 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                           "Null present task reported at index [%d]",
                           n_present_task);
 
-        /* CPU & GPU tasks should be associated a single node. If we encounter group tasks,
-         * we only want nodes for the CPU & GPU tasks they hold */
-        uint32_t n_subtasks = 1;
-
         ral_present_task_get_property(present_task,
                                       RAL_PRESENT_TASK_PROPERTY_TYPE,
                                      &present_task_type);
 
-        if (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP)
-        {
-            ral_present_task_get_property(present_task,
-                                          RAL_PRESENT_TASK_PROPERTY_N_GROUP_TASK_SUBTASKS,
-                                         &n_subtasks);
-        }
+        ASSERT_DEBUG_SYNC(present_task_type != RAL_PRESENT_TASK_TYPE_GROUP,
+                          "The present job must be flattened before it is passed for execution.");
 
-        for (uint32_t n_subtask = 0;
-                      n_subtask < n_subtasks;
-                    ++n_subtask)
-        {
-            ral_present_task current_subtask;
-            system_dag_node  current_subtask_node = nullptr;
+        present_task_node = system_dag_add_node(result,
+                                                reinterpret_cast<system_dag_node_value>(present_task) );
 
-            if (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP)
-            {
-                ral_present_task_get_group_subtask(present_task,
-                                                   n_subtask,
-                                                  &current_subtask);
-            }
-            else
-            {
-                current_subtask = present_task;
-            }
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(rendering_handler_ptr->dag_present_task_to_node_map,
+                                                     reinterpret_cast<system_hash64>(present_task) ),
+                          "Present task->DAG node map already holds a DAG node for the newly spawned present task");
+        ASSERT_DEBUG_SYNC(present_task_node  != nullptr,
+                          "NULL DAG node created for a present task");
 
-            current_subtask_node = system_dag_add_node(result,
-                                                    reinterpret_cast<system_dag_node_value>(current_subtask) );
-
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(rendering_handler_ptr->dag_present_task_to_node_map,
-                                                         reinterpret_cast<system_hash64>(current_subtask) ),
-                              "Present task->DAG node map already holds a DAG node for the newly spawned present task");
-            ASSERT_DEBUG_SYNC(current_subtask_node != nullptr,
-                              "NULL DAG node created for a present task");
-
-            system_hash64map_insert(rendering_handler_ptr->dag_present_task_to_node_map,
-                                    reinterpret_cast<system_hash64>(current_subtask),
-                                    current_subtask_node,
-                                    nullptr,  /* on_removal_callback          */
-                                    nullptr); /* on_removal_callback_user_arg */
-        }
+        system_hash64map_insert(rendering_handler_ptr->dag_present_task_to_node_map,
+                                reinterpret_cast<system_hash64>(present_task),
+                                present_task_node ,
+                                nullptr,  /* on_removal_callback          */
+                                nullptr); /* on_removal_callback_user_arg */
     }
-
-#if 0
-    TODO: Remove this code. This should be no longer needed.
 
     for (uint32_t n_connection = 0;
                   n_connection < n_connections;
@@ -367,50 +338,6 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                                       RAL_PRESENT_TASK_PROPERTY_TYPE,
                                      &src_present_task_type);
 
-        if (dst_present_task_type == RAL_PRESENT_TASK_TYPE_GROUP ||
-            src_present_task_type == RAL_PRESENT_TASK_TYPE_GROUP)
-        {
-            for (uint32_t n_task_type = 0;
-                          n_task_type < 2; /* dst, src */
-                        ++n_task_type)
-            {
-                const uint32_t              io_index      = (n_task_type == 0) ? dst_present_task_input_index
-                                                                               : src_present_task_output_index;
-                const bool                  is_input_io   = (n_task_type == 0);
-                ral_present_task            subtask       = nullptr;
-                uint32_t                    subtask_index;
-                const ral_present_task      task          = (n_task_type == 0) ? dst_present_task
-                                                                               : src_present_task;
-                const ral_present_task_type task_type     = (n_task_type == 0) ? dst_present_task_type
-                                                                               : src_present_task_type;
-
-                if (task_type != RAL_PRESENT_TASK_TYPE_GROUP)
-                {
-                    continue;
-                }
-
-                ral_present_task_get_io_mapping_property(task,
-                                                         is_input_io ? RAL_PRESENT_TASK_IO_TYPE_INPUT
-                                                                     : RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
-                                                         io_index,
-                                                         RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_SUBTASK_INDEX,
-                                                         reinterpret_cast<void**>(&subtask_index) );
-
-                ral_present_task_get_group_subtask(task,
-                                                   subtask_index,
-                                                  &subtask);
-
-                if (n_task_type == 0)
-                {
-                    dst_present_task = subtask;
-                }
-                else
-                {
-                    src_present_task = subtask;
-                }
-            }
-        }
-
         system_hash64map_get(rendering_handler_ptr->dag_present_task_to_node_map,
                              reinterpret_cast<system_hash64>(dst_present_task),
                             &dst_present_task_dag_node);
@@ -427,7 +354,7 @@ PRIVATE system_dag _raGL_rendering_handler_create_dag_from_present_job(_raGL_ren
                                       dst_present_task_dag_node);
         }
     }
-#endif
+
 end:
     system_hash64map_clear(rendering_handler_ptr->dag_present_task_to_node_map);
 
