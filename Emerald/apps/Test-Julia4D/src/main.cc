@@ -444,8 +444,8 @@ PRIVATE void _init_ui()
     ral_rendering_handler_get_property(rh,
                                        RAL_RENDERING_HANDLER_PROPERTY_UI,
                                       &rh_ui);
-#if 0
 
+#if 0
     ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("A"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
@@ -536,12 +536,16 @@ PRIVATE void _init_ui()
                      NULL,                   /* get_current_value_user_arg */
                      _set_specularity_value,
                      NULL);                  /* set_current_value_user_arg */
+#endif
+
     ui_add_checkbox (rh_ui,
                      system_hashed_ansi_string_create("Shadows"),
                      checkbox_1_x1y1,
                      _shadows,
                      _fire_shadows,
                      NULL);         /* fire_user_arg */
+
+#if 0
     ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Color R"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,

@@ -91,6 +91,7 @@ typedef struct
     ui                         ui_instance;
 
     ral_program_block_buffer program_handle_ub_fs;
+    ral_program_block_buffer program_handle_ub_vs;
     ral_program              program_slider;
     uint32_t                 program_slider_border_width_ub_offset;
     uint32_t                 program_slider_brightness_ub_offset;
@@ -315,6 +316,13 @@ PUBLIC void ui_scrollbar_deinit(void* internal_instance)
         scrollbar_ptr->program_handle_ub_fs = nullptr;
     }
 
+    if (scrollbar_ptr->program_handle_ub_vs != nullptr)
+    {
+        ral_program_block_buffer_release(scrollbar_ptr->program_handle_ub_vs);
+
+        scrollbar_ptr->program_handle_ub_vs = nullptr;
+    }
+
     if (scrollbar_ptr->program_slider_ub_fs != nullptr)
     {
         ral_program_block_buffer_release(scrollbar_ptr->program_slider_ub_fs);
@@ -343,7 +351,10 @@ PUBLIC void ui_scrollbar_deinit(void* internal_instance)
     /* Release other stuff */
     if (scrollbar_ptr->last_cached_command_buffer != nullptr)
     {
-        ral_command_buffer_release(scrollbar_ptr->last_cached_command_buffer);
+        ral_context_delete_objects(scrollbar_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&scrollbar_ptr->last_cached_command_buffer) );
 
         scrollbar_ptr->last_cached_command_buffer = nullptr;
     }
@@ -447,6 +458,10 @@ PRIVATE void _ui_scrollbar_update_ub_cpu_task_callback(void* scrollbar_raw_ptr)
                                                            scrollbar_ptr->slider_border_width,
                                                            sizeof(float) * 2);
     ral_program_block_buffer_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
+                                                           scrollbar_ptr->program_slider_brightness_ub_offset,
+                                                          &scrollbar_ptr->current_gpu_brightness_level,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(scrollbar_ptr->program_slider_ub_fs,
                                                            scrollbar_ptr->program_slider_is_handle_ub_offset,
                                                           &bool_false,
                                                            sizeof(bool) );
@@ -459,15 +474,20 @@ PRIVATE void _ui_scrollbar_update_ub_cpu_task_callback(void* scrollbar_raw_ptr)
                                                            scrollbar_ptr->slider_handle_border_width,
                                                            sizeof(float) * 2);
     ral_program_block_buffer_set_nonarrayed_variable_value(scrollbar_ptr->program_handle_ub_fs,
+                                                           scrollbar_ptr->program_slider_brightness_ub_offset,
+                                                          &scrollbar_ptr->current_gpu_brightness_level,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(scrollbar_ptr->program_handle_ub_fs,
                                                            scrollbar_ptr->program_slider_is_handle_ub_offset,
                                                           &bool_true,
                                                            sizeof(bool) );
-    ral_program_block_buffer_set_nonarrayed_variable_value(scrollbar_ptr->program_handle_ub_fs,
+    ral_program_block_buffer_set_nonarrayed_variable_value(scrollbar_ptr->program_handle_ub_vs,
                                                            scrollbar_ptr->program_slider_x1y1x2y2_ub_offset,
                                                            scrollbar_ptr->slider_handle_x1y1x2y2,
                                                            sizeof(float) * 4);
 
     ral_program_block_buffer_sync_immediately(scrollbar_ptr->program_handle_ub_fs);
+    ral_program_block_buffer_sync_immediately(scrollbar_ptr->program_handle_ub_vs);
     ral_program_block_buffer_sync_immediately(scrollbar_ptr->program_slider_ub_fs);
     ral_program_block_buffer_sync_immediately(scrollbar_ptr->program_slider_ub_vs);
 }
@@ -477,6 +497,7 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
                                                       ral_texture_view target_texture_view)
 {
     ral_buffer     handle_ub_fs_bo             = nullptr;
+    ral_buffer     handle_ub_vs_bo             = nullptr;
     ral_buffer     slider_ub_fs_bo             = nullptr;
     ral_buffer     slider_ub_vs_bo             = nullptr;
     _ui_scrollbar* scrollbar_ptr               = reinterpret_cast<_ui_scrollbar*>(internal_instance);
@@ -543,6 +564,7 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
         gfx_state_viewport.xy  [0]        = 0;
         gfx_state_viewport.xy  [1]        = 0;
 
+        gfx_state_create_info.depth_test                           = false;
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
         gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
@@ -576,6 +598,9 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
     ral_program_block_buffer_get_property(scrollbar_ptr->program_handle_ub_fs,
                                           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
                                          &handle_ub_fs_bo);
+    ral_program_block_buffer_get_property(scrollbar_ptr->program_handle_ub_vs,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &handle_ub_vs_bo);
     ral_program_block_buffer_get_property(scrollbar_ptr->program_slider_ub_fs,
                                           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
                                          &slider_ub_fs_bo);
@@ -590,7 +615,7 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
             /* Draw stuff otherwise */
             ral_command_buffer_draw_call_regular_command_info      draw_call_info;
             ral_command_buffer_set_color_rendertarget_command_info rt_info;
-            ral_command_buffer_set_binding_command_info            ub_handle_binding;
+            ral_command_buffer_set_binding_command_info            ub_handle_bindings[2];
             ral_command_buffer_set_binding_command_info            ub_slider_bindings[2];
 
             draw_call_info.base_instance = 0;
@@ -604,15 +629,21 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
             rt_info.dst_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
             rt_info.dst_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
             rt_info.rendertarget_index     = 0;
-            rt_info.src_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-            rt_info.src_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            rt_info.src_alpha_blend_factor = RAL_BLEND_FACTOR_SRC_ALPHA;
+            rt_info.src_color_blend_factor = RAL_BLEND_FACTOR_SRC_ALPHA;
             rt_info.texture_view           = target_texture_view;
 
-            ub_handle_binding.binding_type                      = RAL_BINDING_TYPE_UNIFORM_BUFFER;
-            ub_handle_binding.name                              = system_hashed_ansi_string_create("dataFS");
-            ub_handle_binding.uniform_buffer_binding.buffer     = handle_ub_fs_bo;
-            ub_handle_binding.uniform_buffer_binding.offset     = 0;
-            ub_handle_binding.uniform_buffer_binding.size       = scrollbar_ptr->program_slider_ub_fs_bo_size;
+            ub_handle_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+            ub_handle_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
+            ub_handle_bindings[0].uniform_buffer_binding.buffer = handle_ub_fs_bo;
+            ub_handle_bindings[0].uniform_buffer_binding.offset = 0;
+            ub_handle_bindings[0].uniform_buffer_binding.size   = scrollbar_ptr->program_slider_ub_fs_bo_size;
+            ub_handle_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+            ub_handle_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
+            ub_handle_bindings[1].uniform_buffer_binding.buffer = handle_ub_vs_bo;
+            ub_handle_bindings[1].uniform_buffer_binding.offset = 0;
+            ub_handle_bindings[1].uniform_buffer_binding.size   = scrollbar_ptr->program_slider_ub_vs_bo_size;
+
             ub_slider_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
             ub_slider_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
             ub_slider_bindings[0].uniform_buffer_binding.buffer = slider_ub_fs_bo;
@@ -641,8 +672,8 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
 
             /* Draw the handle */
             ral_command_buffer_record_set_bindings     (scrollbar_ptr->last_cached_command_buffer,
-                                                        1,
-                                                       &ub_handle_binding);
+                                                        sizeof(ub_handle_bindings) / sizeof(ub_handle_bindings[0]),
+                                                        ub_handle_bindings);
             ral_command_buffer_record_draw_call_regular(scrollbar_ptr->last_cached_command_buffer,
                                                         1, /* n_draw_calls */
                                                        &draw_call_info);
@@ -682,7 +713,7 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
                                                   &cpu_present_task_create_info);
 
 
-    draw_present_task_inputs[0].buffer       = handle_ub_fs_bo;
+    draw_present_task_inputs[0].buffer       = handle_ub_fs_bo; /* TODO: handle_ub_vs_bo */
     draw_present_task_inputs[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
     draw_present_task_inputs[1].buffer       = slider_ub_fs_bo;
     draw_present_task_inputs[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
@@ -736,14 +767,21 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
     result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &result_present_task_input_mapping;
     result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &result_present_task_output_mapping;
 
+    if (scrollbar_ptr->last_cached_present_task != nullptr)
+    {
+        ral_present_task_release(scrollbar_ptr->last_cached_present_task);
+
+        scrollbar_ptr->last_cached_present_task = nullptr;
+    }
+
     scrollbar_ptr->last_cached_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("UI scroll-bar: rasterization"),
                                                                             &result_present_task_create_info);
 
+    ral_present_task_retain (scrollbar_ptr->last_cached_present_task);
     ral_present_task_release(cpu_present_task);
     ral_present_task_release(draw_present_task);
 
 end:
-    ral_present_task_retain(scrollbar_ptr->last_cached_present_task);
 
     return scrollbar_ptr->last_cached_present_task;
 }
@@ -865,6 +903,7 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
         new_scrollbar_ptr->pfn_set_current_value_ptr      = pfn_set_current_value_ptr;
         new_scrollbar_ptr->set_current_value_ptr_user_arg = set_current_value_ptr_user_arg;
 
+        new_scrollbar_ptr->name                           = name;
         new_scrollbar_ptr->text_renderer                  = text_renderer;
         new_scrollbar_ptr->text_index                     = varia_text_renderer_add_string(text_renderer);
         new_scrollbar_ptr->text_location                  = text_location;
@@ -954,6 +993,9 @@ PUBLIC void* ui_scrollbar_init(ui                          ui_instance,
         new_scrollbar_ptr->program_handle_ub_fs = ral_program_block_buffer_create(new_scrollbar_ptr->context,
                                                                                   new_scrollbar_ptr->program_slider,
                                                                                   system_hashed_ansi_string_create("dataFS") );
+        new_scrollbar_ptr->program_handle_ub_vs = ral_program_block_buffer_create(new_scrollbar_ptr->context,
+                                                                                  new_scrollbar_ptr->program_slider,
+                                                                                  system_hashed_ansi_string_create("dataVS") );
         new_scrollbar_ptr->program_slider_ub_fs = ral_program_block_buffer_create(new_scrollbar_ptr->context,
                                                                                   new_scrollbar_ptr->program_slider,
                                                                                   system_hashed_ansi_string_create("dataFS") );

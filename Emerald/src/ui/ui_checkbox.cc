@@ -75,9 +75,7 @@ typedef struct
     uint32_t                  program_brightness_ub_offset;
     uint32_t                  program_text_brightness_ub_offset;
     ral_program_block_buffer  program_ub_fs;
-    uint32_t                  program_ub_fs_bo_size;
     ral_program_block_buffer  program_ub_vs;
-    uint32_t                  program_ub_vs_bo_size;
     uint32_t                  program_x1y1x2y2_ub_offset;
 
     uint32_t            text_index;
@@ -90,14 +88,14 @@ typedef struct
 static const char* ui_checkbox_fragment_shader_body =
     "#version 430 core\n"
     "\n"
-    "in  vec2 uv;\n"
+    "layout(location = 0) in vec2 uv;\n"
+    "\n"
     "out vec3 result;\n"
     /* stop, rgb */
-    "uniform dataFS\n"
+    "layout(binding = 1, std140) uniform dataFS\n"
     "{\n"
     "    float brightness;\n"
     "    vec2  border_width;\n"
-    "    vec4  stop_data[4];\n"
     "    float text_brightness;\n"
     "};\n"
     "\n"
@@ -141,6 +139,27 @@ PRIVATE void _ui_checkbox_init(_ui_checkbox* checkbox_ptr)
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                window_size);
 
+    /* Configure the text to be shown on the button */
+    static const float font_size = 0.5f;
+
+    varia_text_renderer_set(checkbox_ptr->text_renderer,
+                            checkbox_ptr->text_index,
+                            system_hashed_ansi_string_get_buffer(checkbox_ptr->name) );
+
+    varia_text_renderer_set_text_string_property(checkbox_ptr->text_renderer,
+                                                 checkbox_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
+                                                 _ui_checkbox_text_color);
+    varia_text_renderer_set_text_string_property(checkbox_ptr->text_renderer,
+                                                 checkbox_ptr->text_index,
+                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
+                                                &font_size);
+
+    _ui_checkbox_update_text_location(checkbox_ptr);
+    _ui_checkbox_update_x1y1x2y2     (checkbox_ptr);
+    _ui_checkbox_update_text_location(checkbox_ptr);
+
+    /* Update checkbox's properties */
     border_width[0] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[2] - checkbox_ptr->x1y1x2y2[0]) * window_size[0]);
     border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_size[1]);
 
@@ -203,13 +222,6 @@ PRIVATE void _ui_checkbox_init(_ui_checkbox* checkbox_ptr)
                                           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
                                          &ub_vs_bo_ral);
 
-    ral_buffer_get_property(ub_fs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &checkbox_ptr->program_ub_fs_bo_size);
-    ral_buffer_get_property(ub_vs_bo_ral,
-                            RAL_BUFFER_PROPERTY_SIZE,
-                           &checkbox_ptr->program_ub_vs_bo_size);
-
     /* Set them up */
     const float default_brightness = NONFOCUSED_BRIGHTNESS;
 
@@ -223,25 +235,6 @@ PRIVATE void _ui_checkbox_init(_ui_checkbox* checkbox_ptr)
                                                            sizeof(float) );
 
     checkbox_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
-
-    /* Configure the text to be shown on the button */
-    static const float font_size = 0.5f;
-
-    varia_text_renderer_set(checkbox_ptr->text_renderer,
-                            checkbox_ptr->text_index,
-                            system_hashed_ansi_string_get_buffer(checkbox_ptr->name) );
-
-    _ui_checkbox_update_x1y1x2y2     (checkbox_ptr);
-    _ui_checkbox_update_text_location(checkbox_ptr);
-
-    varia_text_renderer_set_text_string_property(checkbox_ptr->text_renderer,
-                                                 checkbox_ptr->text_index,
-                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_COLOR,
-                                                 _ui_checkbox_text_color);
-    varia_text_renderer_set_text_string_property(checkbox_ptr->text_renderer,
-                                                 checkbox_ptr->text_index,
-                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
-                                                &font_size);
 }
 
 /** TODO */
@@ -521,7 +514,10 @@ PUBLIC void ui_checkbox_deinit(void* internal_instance)
 
     if (ui_checkbox_ptr->cached_command_buffer != nullptr)
     {
-        ral_command_buffer_release(ui_checkbox_ptr->cached_command_buffer);
+        ral_context_delete_objects(ui_checkbox_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&ui_checkbox_ptr->cached_command_buffer) );
 
         ui_checkbox_ptr->cached_command_buffer = nullptr;
     }
@@ -632,7 +628,9 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
         viewport.xy  [0]        = 0;
         viewport.xy  [1]        = 0;
 
+        gfx_state_create_info.depth_test                           = false;
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+        gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
         gfx_state_create_info.static_scissor_boxes_enabled         = true;
@@ -663,8 +661,9 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
 
     ral_command_buffer_start_recording(checkbox_ptr->cached_command_buffer);
     {
-        ral_command_buffer_draw_call_regular_command_info draw_call_command_info;
-        ral_command_buffer_set_binding_command_info       set_binding_command_info_items[2];
+        ral_command_buffer_draw_call_regular_command_info      draw_call_command_info;
+        ral_command_buffer_set_color_rendertarget_command_info rt;
+        ral_command_buffer_set_binding_command_info            set_binding_command_info_items[2];
 
         ral_program_block_buffer_get_property(checkbox_ptr->program_ub_fs,
                                               RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
@@ -678,25 +677,38 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
         draw_call_command_info.n_instances   = 1;
         draw_call_command_info.n_vertices    = 4;
 
+        rt.blend_enabled          = false;
+        rt.blend_op_alpha         = RAL_BLEND_OP_ADD; /* irrelevant */
+        rt.blend_op_color         = RAL_BLEND_OP_ADD; /* irrelevant */
+        rt.dst_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; /* irrelevant */
+        rt.dst_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; /* irrelevant */
+        rt.rendertarget_index     = 0;
+        rt.src_alpha_blend_factor = RAL_BLEND_FACTOR_SRC_ALPHA; /* irrelevant */
+        rt.src_color_blend_factor = RAL_BLEND_FACTOR_SRC_ALPHA; /* irrelevant */
+        rt.texture_view           = target_texture_view;
+
         set_binding_command_info_items[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
         set_binding_command_info_items[0].name                          = system_hashed_ansi_string_create("dataFS");
         set_binding_command_info_items[0].uniform_buffer_binding.buffer = ub_fs_bo;
         set_binding_command_info_items[0].uniform_buffer_binding.offset = 0;
-        set_binding_command_info_items[0].uniform_buffer_binding.size   = checkbox_ptr->program_ub_fs_bo_size;
+        set_binding_command_info_items[0].uniform_buffer_binding.size   = 0;
 
         set_binding_command_info_items[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
         set_binding_command_info_items[1].name                          = system_hashed_ansi_string_create("dataVS");
         set_binding_command_info_items[1].uniform_buffer_binding.buffer = ub_vs_bo;
         set_binding_command_info_items[1].uniform_buffer_binding.offset = 0;
-        set_binding_command_info_items[1].uniform_buffer_binding.size   = checkbox_ptr->program_ub_fs_bo_size;
+        set_binding_command_info_items[1].uniform_buffer_binding.size   = 0;
 
-        ral_command_buffer_record_set_bindings (checkbox_ptr->cached_command_buffer,
-                                                sizeof(set_binding_command_info_items) / sizeof(set_binding_command_info_items[0]),
-                                                set_binding_command_info_items);
-        ral_command_buffer_record_set_gfx_state(checkbox_ptr->cached_command_buffer,
-                                                checkbox_ptr->cached_gfx_state);
-        ral_command_buffer_record_set_program  (checkbox_ptr->cached_command_buffer,
-                                                checkbox_ptr->program);
+        ral_command_buffer_record_set_program            (checkbox_ptr->cached_command_buffer,
+                                                          checkbox_ptr->program);
+        ral_command_buffer_record_set_bindings           (checkbox_ptr->cached_command_buffer,
+                                                          sizeof(set_binding_command_info_items) / sizeof(set_binding_command_info_items[0]),
+                                                          set_binding_command_info_items);
+        ral_command_buffer_record_set_color_rendertargets(checkbox_ptr->cached_command_buffer,
+                                                          1, /* n_rendertargets */
+                                                         &rt);
+        ral_command_buffer_record_set_gfx_state          (checkbox_ptr->cached_command_buffer,
+                                                          checkbox_ptr->cached_gfx_state);
 
         ral_command_buffer_record_draw_call_regular(checkbox_ptr->cached_command_buffer,
                                                     1, /* n_draw_calls */
@@ -762,12 +774,12 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
 
     present_task_ingroup_connections[0].input_present_task_index     = 1; /* ub_fs */
     present_task_ingroup_connections[0].input_present_task_io_index  = 0;
-    present_task_ingroup_connections[0].output_present_task_index    = 1; /* ub_fs */
+    present_task_ingroup_connections[0].output_present_task_index    = 0; /* ub_fs */
     present_task_ingroup_connections[0].output_present_task_io_index = 0;
 
     present_task_ingroup_connections[1].input_present_task_index     = 1; /* ub_vs */
     present_task_ingroup_connections[1].input_present_task_io_index  = 1;
-    present_task_ingroup_connections[1].output_present_task_index    = 1; /* ub_vs */
+    present_task_ingroup_connections[1].output_present_task_index    = 0; /* ub_vs */
     present_task_ingroup_connections[1].output_present_task_io_index = 1;
 
     present_task_unique_input_mapping.group_task_io_index   = 0;
@@ -789,9 +801,15 @@ PUBLIC ral_present_task ui_checkbox_get_present_task(void*            internal_i
     present_task_group_create_info.unique_input_to_ingroup_task_mapping     = &present_task_unique_input_mapping;
     present_task_group_create_info.unique_output_to_ingroup_task_mapping    = &present_task_unique_output_mapping;
 
-    checkbox_ptr->cached_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("UI check-box: rasterization"),
-                                                                      &present_task_group_create_info);
-    result                            = checkbox_ptr->cached_present_task;
+    if (checkbox_ptr->cached_present_task != nullptr)
+    {
+        ral_present_task_release(checkbox_ptr->cached_present_task);
+    }
+
+    checkbox_ptr->cached_present_task              = ral_present_task_create_group(system_hashed_ansi_string_create("UI check-box: rasterization"),
+                                                                                   &present_task_group_create_info);
+    checkbox_ptr->cached_present_task_texture_view = target_texture_view;
+    result                                         = checkbox_ptr->cached_present_task;
 
     ral_present_task_release(present_task_cpu);
     ral_present_task_release(present_task_gpu);

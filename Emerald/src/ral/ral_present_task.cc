@@ -354,15 +354,26 @@ private:
                     ral_present_task_get_io_property(current_io_user,
                                                      io_type,
                                                      mapping.present_task_io_index,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                     (void**) &current_io_object);
+                    ral_present_task_get_io_property(current_io_user,
+                                                     io_type,
+                                                     mapping.present_task_io_index,
                                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                                      (void**) &current_io_object_type);
+                    ral_present_task_get_io_property(last_io_user,
+                                                     io_type,
+                                                     mapping.present_task_io_index,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                     (void**) &last_io_object);
+
                     ral_present_task_get_io_property(last_io_user,
                                                      io_type,
                                                      mapping.present_task_io_index,
                                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                                      (void**) &last_io_object_type);
 
-                    ASSERT_DEBUG_SYNC(current_io_object_type != last_io_object_type,
+                    ASSERT_DEBUG_SYNC(current_io_object_type == last_io_object_type,
                                       "A group IO maps to present task IOs of different object types");
 
                     switch (current_io_object_type)

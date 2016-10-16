@@ -323,9 +323,9 @@ PRIVATE void _ui_deinit(_ui* ui_ptr)
             {
                 ral_context context = nullptr;
 
-                system_window_get_property(ui_ptr->window,
-                                           SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
-                                          &context);
+                ral_program_get_property(ui_control_program,
+                                         RAL_PROGRAM_PROPERTY_CONTEXT,
+                                        &context);
 
                 ral_context_delete_objects(context,
                                            RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
@@ -1300,8 +1300,8 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
             input_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
 
             output_to_ingroup_task_mappings[n_mapping].group_task_io_index   = 0;
-            output_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
             output_to_ingroup_task_mappings[n_mapping].n_present_task        = n_mapping;
+            output_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
         }
 
         result_present_task_create_info.ingroup_connections                      = nullptr;
@@ -1325,6 +1325,13 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
         result                    = ui_ptr->last_present_task;
 
         /* Clean up */
+        for (uint32_t n_present_task = 0;
+                      n_present_task < n_present_tasks;
+                    ++n_present_task)
+        {
+            ral_present_task_release(present_tasks[n_present_task]);
+        }
+
         _freea(input_to_ingroup_task_mappings);
         _freea(output_to_ingroup_task_mappings);
     }

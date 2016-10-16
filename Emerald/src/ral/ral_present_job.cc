@@ -567,6 +567,11 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
             goto end;
         }
 
+        if (task_id == 3)
+        {
+            int a = 1; a++;
+        }
+
         ral_present_task_get_property(task_ptr->task,
                                       RAL_PRESENT_TASK_PROPERTY_TYPE,
                                      &task_type);
@@ -696,7 +701,6 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
                               n_connection_type < 2; /* src->this node ; this node->dst */
                             ++n_connection_type)
                 {
-                    bool                           has_found_mapping                = false;
                     const ral_present_task_io_type io_type                          = (n_connection_type == 0) ? RAL_PRESENT_TASK_IO_TYPE_INPUT
                                                                                                                : RAL_PRESENT_TASK_IO_TYPE_OUTPUT;
                     uint32_t                       n_group_task_io_mappings         = 0;
@@ -728,13 +732,15 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
                     }
 
                     /* Identify the mapping we need to use */
+                    bool has_found_mapping = false;
+
                     ral_present_task_get_property(task_ptr->task,
                                                   (n_connection_type == 0) ? RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS
                                                                            : RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS,
                                                  &n_group_task_io_mappings);
 
                     for (uint32_t n_mapping = 0;
-                                  n_mapping < n_group_task_io_mappings && !has_found_mapping;
+                                  n_mapping < n_group_task_io_mappings;
                                 ++n_mapping)
                     {
                         uint32_t group_task_io_index = -1;
@@ -761,46 +767,46 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
                                                                  RAL_PRESENT_TASK_IO_MAPPING_PROPERTY_IO_INDEX,
                                                                  reinterpret_cast<void**>(&subtask_io_index) );
 
+                        if (n_connection_type == 0)
+                        {
+                            new_connection_dst_task_id      = subtasks[subtask_index].new_job_task_id;
+                            new_connection_dst_task_n_input = subtask_io_index;
+                        }
+                        else
+                        {
+                            new_connection_src_task_id       = subtasks[subtask_index].new_job_task_id;
+                            new_connection_src_task_n_output = subtask_io_index;
+                        }
+
+                        #ifdef _DEBUG
+                        {
+                            ASSERT_DEBUG_SYNC(!ral_present_job_is_connection_defined(job,
+                                                                                     new_connection_src_task_id,
+                                                                                     new_connection_src_task_n_output,
+                                                                                     new_connection_dst_task_id,
+                                                                                     new_connection_dst_task_n_input),
+                                              "A new connection, about to be created as a result of the flattening op, is already there?!");
+                        }
+                        #endif
+
+                        /* Create a new connection between root-level nodes */
+                        ral_present_job_connect_tasks(job,
+                                                      new_connection_src_task_id,
+                                                      new_connection_src_task_n_output,
+                                                      new_connection_dst_task_id,
+                                                      new_connection_dst_task_n_input,
+                                                      nullptr); /* out_opt_connection_id_ptr */
+
                         has_found_mapping = true;
                     }
 
                     if (!has_found_mapping)
                     {
                         ASSERT_DEBUG_SYNC(has_found_mapping,
-                                          "Could not find a relevant mapping!");
+                                          "Could not find relevant mappings!");
 
                         goto end;
                     }
-
-                    if (n_connection_type == 0)
-                    {
-                        new_connection_dst_task_id      = subtasks[subtask_index].new_job_task_id;
-                        new_connection_dst_task_n_input = subtask_io_index;
-                    }
-                    else
-                    {
-                        new_connection_src_task_id       = subtasks[subtask_index].new_job_task_id;
-                        new_connection_src_task_n_output = subtask_io_index;
-                    }
-
-                    #ifdef _DEBUG
-                    {
-                        ASSERT_DEBUG_SYNC(!ral_present_job_is_connection_defined(job,
-                                                                                 new_connection_src_task_id,
-                                                                                 new_connection_src_task_n_output,
-                                                                                 new_connection_dst_task_id,
-                                                                                 new_connection_dst_task_n_input),
-                                          "A new connection, about to be created as a result of the flattening op, is already there?!");
-                    }
-                    #endif
-
-                    /* Create a new connection between root-level nodes */
-                    ral_present_job_connect_tasks(job,
-                                                  new_connection_src_task_id,
-                                                  new_connection_src_task_n_output,
-                                                  new_connection_dst_task_id,
-                                                  new_connection_dst_task_n_input,
-                                                  nullptr); /* out_opt_connection_id_ptr */
                 }
 
                 /* Safe to drop the processed connection at this point */
