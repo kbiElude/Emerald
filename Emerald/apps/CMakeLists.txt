@@ -3,8 +3,6 @@
 # to the root binary directory of the project as ${HELLO_BINARY_DIR}. 
 cmake_minimum_required (VERSION 2.6)
 
-ADD_SUBDIRECTORY(ES31AppTemplate)
-
 IF(MSVC)
     # Windows-only projects.
     #
@@ -23,7 +21,6 @@ ADD_SUBDIRECTORY(Test-DemoApp)
 ADD_SUBDIRECTORY(Test-DOF)
 ADD_SUBDIRECTORY(Test-Julia4D)
 ADD_SUBDIRECTORY(Test-MarchingCubes)
-ADD_SUBDIRECTORY(Test-Pipeline)
 ADD_SUBDIRECTORY(Test-Spinner)
 
 

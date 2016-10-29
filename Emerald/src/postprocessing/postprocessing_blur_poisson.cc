@@ -81,14 +81,14 @@ static const char* postprocessing_blur_poisson_tap_data_body =
     "                              0.8182191f,  -0.5711964f);\n";
 
 static const char* postprocessing_blur_poisson_fragment_shader_body_declarations =
-    "uniform dataFS\n"
+    "layout(binding = 0) uniform dataFS\n"
     "{\n"
     "    float blur_strength;\n"
     "};\n"
     "\n"
-    "uniform sampler2D data;\n"
-    "out     vec4      result;\n"
-    "in      vec2      uv;\n"
+    "layout(binding  = 1) uniform sampler2D data;\n"
+    "layout(location = 0) out     vec4      result;\n"
+    "layout(location = 0) in      vec2      uv;\n"
     "\n"
     "vec2 get_blur_strength();\n"
     "\n"
@@ -206,6 +206,9 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
                                                                 system_hashed_ansi_string_get_buffer(name))
     };
 
+    ral_sampler_create_info sampler_create_info;
+
+
     /* Instantiate the object */
     result_ptr = new (std::nothrow) _postprocessing_blur_poisson;
 
@@ -232,10 +235,14 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
                                 1, /* n_create_info_items */
                                &po_create_info,
                                &result_ptr->program);
-    ral_context_create_shaders(context,
-                               1, /* n_create_info_items */
-                              &fs_create_info,
-                              &fragment_shader);
+    ral_context_create_samplers(context,
+                                1, /* n_create_info_items */
+                               &sampler_create_info,
+                               &result_ptr->sampler);
+    ral_context_create_shaders (context,
+                                1, /* n_create_info_items */
+                               &fs_create_info,
+                               &fragment_shader);
 
     vertex_shader = shaders_vertex_fullscreen_create(context,
                                                      true, /* export_uv */
@@ -368,6 +375,7 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     }
 
     gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+    gfx_state_create_info.scissor_test                         = true;
     gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
     gfx_state_create_info.static_scissor_boxes                 = &gfx_state_scissor_box;
     gfx_state_create_info.static_scissor_boxes_enabled         = true;
@@ -423,7 +431,6 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
         ral_command_buffer_draw_call_regular_command_info      draw_call_command_info;
         ral_command_buffer_set_binding_command_info            set_input_texture_binding_command_info;
         ral_command_buffer_set_color_rendertarget_command_info set_color_rt_binding_command_info = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
-        ral_command_buffer_set_viewport_command_info           set_viewport_command_info;
 
         draw_call_command_info.base_instance = 0;
         draw_call_command_info.base_vertex   = 0;
@@ -431,20 +438,12 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
         draw_call_command_info.n_vertices    = 4;
 
         set_color_rt_binding_command_info.rendertarget_index = 0;
-        set_color_rt_binding_command_info.texture_view       = poisson_ptr->cached_result_texture_view;
+        set_color_rt_binding_command_info.texture_view       = result_texture_view;
 
         set_input_texture_binding_command_info.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
         set_input_texture_binding_command_info.name                               = system_hashed_ansi_string_create("data");
         set_input_texture_binding_command_info.sampled_image_binding.sampler      = poisson_ptr->sampler;
         set_input_texture_binding_command_info.sampled_image_binding.texture_view = input_texture_view;
-
-        set_viewport_command_info.depth_range[0] = 0.0f;
-        set_viewport_command_info.depth_range[1] = 1.0f;
-        set_viewport_command_info.index          = 0;
-        set_viewport_command_info.size[0]        = static_cast<float>(texture_width);
-        set_viewport_command_info.size[1]        = static_cast<float>(texture_height);
-        set_viewport_command_info.xy  [0]        = 0;
-        set_viewport_command_info.xy  [1]        = 0;
 
         ral_command_buffer_record_set_program            (cmd_buffer,
                                                           poisson_ptr->program);
@@ -459,9 +458,6 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
         ral_command_buffer_record_set_bindings           (cmd_buffer,
                                                           1, /* n_bindings */
                                                          &set_ub_binding_command_info);
-        ral_command_buffer_record_set_viewports          (cmd_buffer,
-                                                          1, /* n_viewports */
-                                                         &set_viewport_command_info);
 
         ral_command_buffer_record_draw_call_regular(cmd_buffer,
                                                     1, /* n_draw_calls */

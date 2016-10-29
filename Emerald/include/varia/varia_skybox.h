@@ -36,8 +36,14 @@ PUBLIC EMERALD_API varia_skybox varia_skybox_create_spherical_projection_texture
                                                                                  ral_texture               texture,
                                                                                  system_hashed_ansi_string name);
 
-/** TODO */
+/** TODO.
+ *
+ *  Present task's structure:
+ *
+ *  Output 0: Texture view to render the skybox on.
+ */
 PUBLIC EMERALD_API ral_present_task varia_skybox_get_present_task(varia_skybox     skybox,
+                                                                  ral_texture_view target_texture_view,
                                                                   system_matrix4x4 modelview,
                                                                   system_matrix4x4 inverted_projection);
 

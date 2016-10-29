@@ -1943,7 +1943,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers(_ogl_cont
         context_ptr->entry_points_gl_arb_multi_bind.pGLBindBuffersRange = ogl_context_wrappers_glBindBuffersRange;
         context_ptr->entry_points_gl_arb_multi_bind.pGLBindSamplers     = ogl_context_wrappers_glBindSamplers;
         context_ptr->entry_points_gl_arb_multi_bind.pGLBindTextures     = ogl_context_wrappers_glBindTextures;
-        context_ptr->gl_arb_multi_bind_support                          = true;
+        context_ptr->gl_arb_multi_bind_support                          = false; //true;
     }
 }
 

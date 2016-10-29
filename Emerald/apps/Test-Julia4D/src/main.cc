@@ -445,7 +445,6 @@ PRIVATE void _init_ui()
                                        RAL_RENDERING_HANDLER_PROPERTY_UI,
                                       &rh_ui);
 
-#if 0
     ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("A"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
@@ -536,7 +535,6 @@ PRIVATE void _init_ui()
                      NULL,                   /* get_current_value_user_arg */
                      _set_specularity_value,
                      NULL);                  /* set_current_value_user_arg */
-#endif
 
     ui_add_checkbox (rh_ui,
                      system_hashed_ansi_string_create("Shadows"),
@@ -545,7 +543,6 @@ PRIVATE void _init_ui()
                      _fire_shadows,
                      NULL);         /* fire_user_arg */
 
-#if 0
     ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Light Color R"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
@@ -606,7 +603,6 @@ PRIVATE void _init_ui()
                      NULL,                        /* get_current_value_user_arg */
                      _set_light_position_z_value,
                      NULL);                       /* set_current_value_user_arg */
-#endif
 }
 
 PRIVATE void _rendering_lbm_callback_handler(system_window           window,

@@ -16,14 +16,15 @@ PUBLIC void stage_step_julia_deinit(ral_context context);
 PUBLIC ral_texture stage_step_julia_get_color_texture();
 
 /** TODO */
-PUBLIC ral_texture stage_step_julia_get_depth_texture();
+PUBLIC ral_texture_view stage_step_julia_get_color_texture_view();
 
 /** TODO */
-PUBLIC ral_framebuffer stage_step_julia_get_fbo();
+PUBLIC ral_texture_view stage_step_julia_get_depth_texture_view();
 
 /** TODO */
-PUBLIC void stage_step_julia_init(ral_context  context,
-                                  ogl_pipeline pipeline,
-                                  uint32_t     stage_id);
+PUBLIC ral_present_task stage_step_julia_get_present_task();
+
+/** TODO */
+PUBLIC void stage_step_julia_init(ral_context  context);
 
 #endif /* STAGE_STEP_JULIA_H */

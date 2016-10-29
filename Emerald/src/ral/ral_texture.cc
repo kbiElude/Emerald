@@ -562,13 +562,16 @@ end:
     return result;
 }
 
+#if 0
+
+TODO: Move to ral_context, only use ral_texture_create_from_gfx_image().
+
 /** Please see header for specification */
-PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                                  context,
-                                                     system_hashed_ansi_string                    name,
-                                                     system_hashed_ansi_string                    file_name,
-                                                     ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
-                                                     bool                                         async)
+PUBLIC ral_texture ral_texture_create_from_file_name(ral_context               context,
+                                                     system_hashed_ansi_string name,
+                                                     system_hashed_ansi_string file_name,
+                                                     ral_texture_usage_bits    usage,
+                                                     bool                      async)
 {
     gfx_image   new_gfx_image = nullptr;
     ral_texture result        = nullptr;
@@ -611,7 +614,6 @@ PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                
                                                name,
                                                new_gfx_image,
                                                usage,
-                                               pfn_notify_backend_about_new_object_proc,
                                                async);
 
     if (result == nullptr)
@@ -635,24 +637,21 @@ end:
     return result;
 }
 
+#endif
+
 /** Please see header for specification */
-PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                                  context,
-                                                     system_hashed_ansi_string                    name,
-                                                     gfx_image                                    image,
-                                                     ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
-                                                     bool                                         async)
+PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               context,
+                                                     system_hashed_ansi_string name,
+                                                     gfx_image                 image,
+                                                     ral_texture_usage_bits    usage)
 {
-    system_hashed_ansi_string                                       base_image_file_name    = nullptr;
-    unsigned int                                                    base_image_height       = 0;
-    unsigned int                                                    base_image_width        = 0;
-    ral_format                                                      image_format            = RAL_FORMAT_UNKNOWN;
-    bool                                                            image_is_compressed     = false;
-    unsigned int                                                    image_n_mipmaps         = 0;
-    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = nullptr;
-    ral_texture                                                     result                  = nullptr;
-    ral_texture_create_info                                         result_create_info;
-    _ral_texture*                                                   result_ptr              = nullptr;
+    system_hashed_ansi_string base_image_file_name    = nullptr;
+    unsigned int              base_image_height       = 0;
+    unsigned int              base_image_width        = 0;
+    ral_format                image_format            = RAL_FORMAT_UNKNOWN;
+    unsigned int              image_n_mipmaps         = 0;
+    ral_texture               result                  = nullptr;
+    ral_texture_create_info   result_create_info;
 
     /* Sanity checks */
     if (image == nullptr ||
@@ -688,10 +687,6 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
                                  &image_format);
     gfx_image_get_mipmap_property(image,
                                   0, /* n_mipmap */
-                                  GFX_IMAGE_MIPMAP_PROPERTY_IS_COMPRESSED,
-                                 &image_is_compressed);
-    gfx_image_get_mipmap_property(image,
-                                  0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
                                  &base_image_width);
 
@@ -699,16 +694,6 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
     {
         ASSERT_DEBUG_SYNC(false,
                           "gfx_image container specifies zero mipmaps?");
-
-        goto end;
-    }
-
-    mipmap_update_info_ptrs = new (std::nothrow) std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>[image_n_mipmaps];
-
-    if (mipmap_update_info_ptrs == nullptr)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Out of memory");
 
         goto end;
     }
@@ -734,15 +719,38 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
     {
         ASSERT_DEBUG_SYNC(false,
                           "ral_texture_create() failed.");
+    }
+
+    /* All done */
+end:
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_texture_upload_data_from_gfx_image(ral_texture texture,
+                                                   gfx_image   image,
+                                                   bool        async)
+{
+    /* Upload the mipmaps */
+    unsigned int                                                    image_n_mipmaps         = 0;
+    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = nullptr;
+    _ral_texture*                                                   texture_ptr             = reinterpret_cast<_ral_texture*>(texture);
+
+    gfx_image_get_property(image,
+                           GFX_IMAGE_PROPERTY_N_MIPMAPS,
+                          &image_n_mipmaps);
+
+    mipmap_update_info_ptrs = new (std::nothrow) std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>[image_n_mipmaps];
+
+    if (mipmap_update_info_ptrs == nullptr)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
-    else
-    {
-        result_ptr = (_ral_texture*) result;
-    }
 
-    /* Upload the mipmaps */
     for (uint32_t n_mipmap = 0;
                   n_mipmap < image_n_mipmaps;
                 ++n_mipmap)
@@ -800,23 +808,15 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                
         gfx_image_retain(image);
     }
 
-    pfn_notify_backend_about_new_object_proc(context,
-                                             result,
-                                             RAL_CONTEXT_OBJECT_TYPE_TEXTURE);
-
-    if (!ral_texture_set_mipmap_data_from_client_memory(result,
+    if (!ral_texture_set_mipmap_data_from_client_memory(texture,
                                                         image_n_mipmaps,
                                                         mipmap_update_info_ptrs,
                                                         async) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Failed to set mipmap data for a ral_texture instance deriving from a gfx_image instance.");
-
-        ral_texture_release(result);
-        result = nullptr;
     }
 
-    /* All done */
 end:
     if (mipmap_update_info_ptrs != nullptr)
     {
@@ -824,7 +824,7 @@ end:
 
         mipmap_update_info_ptrs = nullptr;
     }
-    return result;
+
 }
 
 /** Please see header for specification */

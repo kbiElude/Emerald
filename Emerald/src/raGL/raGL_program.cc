@@ -46,7 +46,7 @@ typedef struct _raGL_program_block_binding
         block_index = -1;
         block_name  = nullptr;
         block_type  = RAL_PROGRAM_BLOCK_TYPE_UNDEFINED;
-        indexed_bp  = 0;
+        indexed_bp  = -1;
     }
 } _raGL_program_block_binding;
 

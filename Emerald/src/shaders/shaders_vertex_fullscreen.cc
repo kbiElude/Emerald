@@ -63,7 +63,7 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(ra
 
     if (export_uv)
     {
-        body_stream << "out vec2 uv;\n"
+        body_stream << "layout(location = 0) out vec2 uv;\n"
                        "\n";
     }
 

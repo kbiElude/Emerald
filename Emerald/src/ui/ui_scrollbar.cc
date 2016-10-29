@@ -41,7 +41,8 @@ const  float                     _ui_scrollbar_text_color[]        = {1, 1, 1, 1
 static const char* ui_scrollbar_fragment_shader_body =
     "#version 430 core\n"
     "\n"
-    "in  vec2  uv;\n"
+    "layout(location = 0) in vec2 uv;\n"
+    "\n"
     "out vec4  result;\n"
     "\n"
     "uniform dataFS\n"

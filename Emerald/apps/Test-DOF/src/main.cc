@@ -1,6 +1,6 @@
 /**
  *
- * DOF test app (kbi/elude @2012-2015)
+ * DOF test app (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -9,12 +9,13 @@
 #include "demo/demo_app.h"
 #include "demo/demo_flyby.h"
 #include "demo/demo_window.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_rendering_handler.h"
-#include "raGL/raGL_framebuffer.h"
 #include "ral/ral_context.h"
-#include "ral/ral_framebuffer.h"
+#include "ral/ral_present_job.h"
+#include "ral/ral_present_task.h"
+#include "ral/ral_program.h"
+#include "ral/ral_rendering_handler.h"
+#include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -26,7 +27,6 @@
 #include "stage_step_background.h"
 #include "stage_step_dof_scheuermann.h"
 #include "stage_step_julia.h"
-#include "stage_step_preview.h"
 #include "ui/ui.h"
 
 
@@ -47,7 +47,6 @@ float            _light_color[3]            = {1.0f,  1.0f,   1.0f};
 float            _light_position[3]         = {2.76f, 1.619f, 0.0f};
 float            _max_coc_px                = 5.0f;
 int              _max_iterations            = 6;
-ogl_pipeline     _pipeline                  = NULL;
 uint32_t         _pipeline_stage_id         = -1;
 system_matrix4x4 _projection_matrix         = NULL;
 float            _raycast_radius_multiplier = 2.65f;
@@ -57,6 +56,100 @@ float            _specularity               = 4.4f;
 demo_window      _window                    = NULL;
 system_event     _window_closed_event       = system_event_create(true); /* manual_reset */
 int              _window_resolution[2]      = {1280, 720};
+
+PRIVATE void _init   ();
+PRIVATE void _init_ui();
+
+/** Rendering handler */
+PRIVATE ral_present_job _draw_frame(ral_context                                                context,
+                                    void*                                                      user_arg,
+                                    const ral_rendering_handler_rendering_callback_frame_data* frame_data_ptr)
+{
+    ral_present_task    background_task         = stage_step_background_get_present_task();
+    ral_present_task_id background_task_id      = -1;
+    ral_present_task    blur_task               = stage_step_dof_scheuermann_get_blur_present_task();
+    ral_present_task_id blur_task_id            = -1;
+    ral_present_task    dof_scheuermann_task    = stage_step_dof_scheuermann_get_present_task(_context,
+                                                                                              stage_step_background_get_bg_texture_view(),
+                                                                                              stage_step_dof_get_blurred_texture_view  (),
+                                                                                              stage_step_julia_get_color_texture_view  (),
+                                                                                              stage_step_julia_get_depth_texture_view  () );
+    ral_present_task_id dof_scheuermann_task_id = -1;
+    ral_present_task    downsample_task         = stage_step_dof_scheuermann_get_downsample_present_task(_context,
+                                                                                                         stage_step_julia_get_color_texture_view() );
+    ral_present_task_id downsample_task_id      = -1;
+    ral_present_task    julia_task              = stage_step_julia_get_present_task();
+    ral_present_task_id julia_task_id           = -1;
+    ral_present_job     present_job             = nullptr;
+
+    present_job = ral_present_job_create();
+
+    ral_present_job_add_task(present_job,
+                             background_task,
+                            &background_task_id);
+    ral_present_job_add_task(present_job,
+                             blur_task,
+                            &blur_task_id);
+    ral_present_job_add_task(present_job,
+                             downsample_task,
+                            &downsample_task_id);
+    ral_present_job_add_task(present_job,
+                             dof_scheuermann_task,
+                            &dof_scheuermann_task_id);
+    ral_present_job_add_task(present_job,
+                             julia_task,
+                            &julia_task_id);
+
+    ral_present_job_connect_tasks(present_job,
+                                  julia_task_id,
+                                  0,        /* n_src_task_output */
+                                  downsample_task_id,
+                                  0,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+    ral_present_job_connect_tasks(present_job,
+                                  julia_task_id, /* src_task_id       */
+                                  0,             /* n_src_task_output */
+                                  dof_scheuermann_task_id,
+                                  0,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+    ral_present_job_connect_tasks(present_job,
+                                  julia_task_id,
+                                  1,        /* n_src_task_output */
+                                  dof_scheuermann_task_id,
+                                  3,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+
+    ral_present_job_connect_tasks(present_job,
+                                  downsample_task_id,
+                                  0,        /* n_src_task_output */
+                                  blur_task_id,
+                                  0,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+
+    ral_present_job_connect_tasks(present_job,
+                                  blur_task_id,
+                                  0,        /* n_src_task_output */
+                                  dof_scheuermann_task_id,
+                                  1,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+
+    ral_present_job_connect_tasks(present_job,
+                                  background_task_id,
+                                  0,        /* n_src_task_output */
+                                  dof_scheuermann_task_id,
+                                  2,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+
+    ral_present_job_set_presentable_output(present_job,
+                                           dof_scheuermann_task_id,
+                                           false, /* is_input_io */
+                                           0);    /* n_io        */
+
+    ral_present_task_release(dof_scheuermann_task);
+    ral_present_task_release(downsample_task);
+
+    return present_job;
+}
 
 PRIVATE void _get_blur_radius(void*          user_arg,
                               system_variant result)
@@ -171,34 +264,18 @@ PRIVATE void _set_reflectivity(void*          user_arg,
 }
 
 
-void _deinit_gl(ral_context context)
+void _deinit(ral_context context)
 {
     stage_step_background_deinit     (_context);
     stage_step_julia_deinit          (_context);
     stage_step_dof_scheuermann_deinit(_context);
-    stage_step_preview_deinit        (_context);
 }
 
-void _init_gl(ogl_context context,
-              void*       not_used)
+void _init()
 {
-    _pipeline          = ogl_pipeline_create   (_context,
-                                                true, /* should_overlay_performance_info */
-                                                system_hashed_ansi_string_create("pipeline") );
-    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
-
-    stage_step_background_init     (_context,
-                                    _pipeline,
-                                    _pipeline_stage_id);
-    stage_step_julia_init          (_context,
-                                    _pipeline,
-                                    _pipeline_stage_id);
-    stage_step_dof_scheuermann_init(_context,
-                                    _pipeline,
-                                    _pipeline_stage_id);
-    stage_step_preview_init        (_context,
-                                    _pipeline,
-                                    _pipeline_stage_id);
+    stage_step_background_init     (_context);
+    stage_step_julia_init          (_context);
+    stage_step_dof_scheuermann_init(_context);
 
     /* Initialize flyby */
     const float camera_movement_delta =  0.025f;
@@ -228,19 +305,32 @@ void _init_gl(ogl_context context,
                            &camera_yaw);
 
     /* Initialize UI */
-    const float scrollbar_1_x1y1[]         = {0.8f, 0.0f};
-    const float scrollbar_2_x1y1[]         = {0.8f, 0.1f};
-    const float scrollbar_3_x1y1[]         = {0.8f, 0.2f};
-    const float scrollbar_4_x1y1[]         = {0.8f, 0.3f};
-    const float scrollbar_5_x1y1[]         = {0.8f, 0.4f};
-    const float scrollbar_6_x1y1[]         = {0.8f, 0.5f};
-    const float scrollbar_7_x1y1[]         = {0.8f, 0.6f};
-    const float scrollbar_8_x1y1[]         = {0.8f, 0.7f};
-    const float texture_preview_max_size[] = {0.3f, 0.05f};
-    const float texture_preview_x1y1[]     = {0.6f, 0.1f};
-    ui          pipeline_ui                = ogl_pipeline_get_ui(_pipeline);
+    _init_ui();
+}
 
-    ui_add_scrollbar(pipeline_ui,
+void _init_ui()
+{
+    ral_rendering_handler rh;
+    ui                    rh_ui;
+    const float           scrollbar_1_x1y1[]         = {0.8f, 0.0f};
+    const float           scrollbar_2_x1y1[]         = {0.8f, 0.1f};
+    const float           scrollbar_3_x1y1[]         = {0.8f, 0.2f};
+    const float           scrollbar_4_x1y1[]         = {0.8f, 0.3f};
+    const float           scrollbar_5_x1y1[]         = {0.8f, 0.4f};
+    const float           scrollbar_6_x1y1[]         = {0.8f, 0.5f};
+    const float           scrollbar_7_x1y1[]         = {0.8f, 0.6f};
+    const float           scrollbar_8_x1y1[]         = {0.8f, 0.7f};
+    const float           texture_preview_max_size[] = {0.3f, 0.05f};
+    const float           texture_preview_x1y1[]     = {0.6f, 0.1f};
+
+    demo_window_get_property          (_window,
+                                       DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                      &rh);
+    ral_rendering_handler_get_property(rh,
+                                       RAL_RENDERING_HANDLER_PROPERTY_UI,
+                                      &rh_ui);
+
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("DOF cut-off"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (0.0f),
@@ -250,7 +340,7 @@ void _init_gl(ogl_context context,
                      NULL,             /* pfn_get_current_value_ptr */
                      _set_dof_cutoff,
                      NULL);            /* pfn_set_current_value_ptr */
-    ui_add_scrollbar(pipeline_ui, 
+    ui_add_scrollbar(rh_ui, 
                      system_hashed_ansi_string_create("DOF far plane depth"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (0.0f),
@@ -260,7 +350,7 @@ void _init_gl(ogl_context context,
                      NULL,                    /* pfn_get_current_value_ptr */
                      _set_dof_far_plane_depth,
                      NULL);                   /* pfn_set_current_value_ptr */
-    ui_add_scrollbar(pipeline_ui, 
+    ui_add_scrollbar(rh_ui, 
                      system_hashed_ansi_string_create("DOF focal plane depth"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (0.0f),
@@ -270,7 +360,7 @@ void _init_gl(ogl_context context,
                      NULL,                       /* pfn_get_current_value_ptr */
                      _set_dof_focal_plane_depth,
                      NULL);                      /* pfn_set_current_value_ptr */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("DOF near plane depth"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (0.0f),
@@ -280,7 +370,7 @@ void _init_gl(ogl_context context,
                      NULL,                     /* pfn_get_current_value_ptr */
                      _set_dof_near_plane_depth,
                      NULL);                    /* pfn_set_current_value_ptr */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Max CoC size (px)"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (1.0f),
@@ -290,7 +380,7 @@ void _init_gl(ogl_context context,
                      NULL,            /* pfn_get_current_value_ptr */
                      _set_max_coc_px,
                      NULL);           /* pfn_set_current_value_ptr */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Blur radius"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (0.01f),
@@ -300,7 +390,7 @@ void _init_gl(ogl_context context,
                      NULL,            /* pfn_get_current_value_ptr */
                      _set_blur_radius,
                      NULL);           /* pfn_set_current_value_ptr */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Reflectivity"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (0.0f),
@@ -310,7 +400,7 @@ void _init_gl(ogl_context context,
                      NULL,             /* pfn_get_current_value_ptr */
                      _set_reflectivity,
                      NULL);            /* pfn_set_current_value_ptr */
-    ui_add_scrollbar(pipeline_ui,
+    ui_add_scrollbar(rh_ui,
                      system_hashed_ansi_string_create("Fresnel reflectance"),
                      UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                      system_variant_create_float     (0.0f),
@@ -320,48 +410,6 @@ void _init_gl(ogl_context context,
                      NULL,                     /* pfn_get_current_value_ptr */
                      _set_fresnel_reflectance,
                      NULL);                    /* pfn_set_current_value_ptr */
-}
-
-/** Rendering handler */
-void _rendering_handler(ogl_context context,
-                        uint32_t    n_frames_rendered,
-                        system_time frame_time,
-                        const int*  rendering_area_px_topdown,
-                        void*       renderer)
-{
-    ral_framebuffer                   default_fbo         = NULL;
-    raGL_framebuffer                  default_fbo_raGL    = NULL;
-    GLuint                            default_fbo_raGL_id = 0;
-    const ogl_context_gl_entrypoints* entry_points        = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_DEFAULT_FBO,
-                            &default_fbo);
-
-    default_fbo_raGL = ral_context_get_framebuffer_gl(_context,
-                                                      default_fbo);
-
-    raGL_framebuffer_get_property(default_fbo_raGL,
-                                  RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                 &default_fbo_raGL_id);
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
-
-    entry_points->pGLClearColor     (0, /* red */
-                                     0, /* green */
-                                     0, /* blue */
-                                     1); /* alpha */
-    entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
-                                     default_fbo_raGL_id);
-    entry_points->pGLClear          (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    ogl_pipeline_draw_stage(_pipeline,
-                            _pipeline_stage_id,
-                            n_frames_rendered,
-                            frame_time,
-                            rendering_area_px_topdown);
 }
 
 void _rendering_lbm_callback_handler(system_window           window,
@@ -390,8 +438,7 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
                               &context);
 
-    _deinit_gl          (context);
-    ogl_pipeline_release(_pipeline);
+    _deinit(context);
 }
 
 /** Please see header for specification */
@@ -531,11 +578,11 @@ unsigned int main_get_window_width()
     int main()
 #endif
 {
-    PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _rendering_handler;
-    ogl_rendering_handler                   rendering_handler  = NULL;
+    PFNRALRENDERINGHANDLERRENDERINGCALLBACK pfn_callback_proc  = _draw_frame;
+    ral_rendering_handler                   rendering_handler  = NULL;
     system_screen_mode                      screen_mode        = NULL;
     demo_window_create_info                 window_create_info;
-    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("Compute shader SSBO test app");
+    const system_hashed_ansi_string         window_name        = system_hashed_ansi_string_create("DOF test app");
     int                                     window_x1y1x2y2[4] = {0};
 
     window_create_info.resolution[0] = _window_resolution[0];
@@ -553,8 +600,8 @@ unsigned int main_get_window_width()
                              DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
                             &rendering_handler);
 
-    ogl_rendering_handler_set_property(rendering_handler,
-                                       OGL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
+    ral_rendering_handler_set_property(rendering_handler,
+                                       RAL_RENDERING_HANDLER_PROPERTY_RENDERING_CALLBACK,
                                       &pfn_callback_proc);
 
     /* Set up matrices */
@@ -580,10 +627,8 @@ unsigned int main_get_window_width()
                                   (void*) _window_closing_callback_handler,
                                   NULL);
 
-    /* Initialize GL objects */
-    ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
-                                                               _init_gl,
-                                                               NULL); /* user_arg */
+    /* Set up rendering-related stuff */
+    _init();
 
     /* Carry on */
     demo_window_start_rendering(_window,

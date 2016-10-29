@@ -96,23 +96,22 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
-PUBLIC ral_texture ral_texture_create_from_file_name(ral_context                                  context,
-                                                     system_hashed_ansi_string                    name,
-                                                     system_hashed_ansi_string                    file_name,
-                                                     ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
-                                                     bool                                         async);
+PUBLIC ral_texture ral_texture_create_from_file_name(ral_context               context,
+                                                     system_hashed_ansi_string name,
+                                                     system_hashed_ansi_string file_name,
+                                                     ral_texture_usage_bits    usage,
+                                                     bool                      async);
 
 /** TODO.
  *
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
+ *
+ *  NOTE: ral_context must call ral_texture_upload_external_mip_data() after backend 
  **/
-PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context                                  context,
-                                                     system_hashed_ansi_string                    name,
-                                                     gfx_image                                    image,
-                                                     ral_texture_usage_bits                       usage,
-                                                     PFNRALCONTEXTNOTIFYBACKENDABOUTNEWOBJECTPROC pfn_notify_backend_about_new_object_proc,
-                                                     bool                                         async);
+PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               context,
+                                                     system_hashed_ansi_string name,
+                                                     gfx_image                 image,
+                                                     ral_texture_usage_bits    usage);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture,
@@ -151,5 +150,14 @@ PUBLIC EMERALD_API bool ral_texture_set_mipmap_data_from_client_memory(ral_textu
 PUBLIC void ral_texture_set_property(ral_texture          texture,
                                      ral_texture_property property,
                                      const void*          data);
+
+/** TODO.
+ *
+ *  NOTE: This function should only be called by ral_context.
+ *
+ */
+PUBLIC void ral_texture_upload_data_from_gfx_image(ral_texture texture,
+                                                   gfx_image   image,
+                                                   bool        async);
 
 #endif /* RAL_TEXTURE_H */

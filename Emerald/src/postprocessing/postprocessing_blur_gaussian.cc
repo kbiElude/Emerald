@@ -1376,11 +1376,11 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             copy_layer_to_temp_2d_array_command_info.dst_start_xyz[0]     = 0;
             copy_layer_to_temp_2d_array_command_info.dst_start_xyz[1]     = 0;
             copy_layer_to_temp_2d_array_command_info.dst_start_xyz[2]     = 0;
-            copy_layer_to_temp_2d_array_command_info.dst_texture          = blur_ptr->ping_pong_rt;
-            copy_layer_to_temp_2d_array_command_info.n_dst_texture_layer  = 0;
-            copy_layer_to_temp_2d_array_command_info.n_dst_texture_mipmap = 0;
-            copy_layer_to_temp_2d_array_command_info.n_src_texture_layer  = n_layer;
-            copy_layer_to_temp_2d_array_command_info.n_src_texture_mipmap = 0;
+            copy_layer_to_temp_2d_array_command_info.dst_texture_view     = blur_ptr->ping_pong_rt_view_l0;
+            copy_layer_to_temp_2d_array_command_info.n_dst_layer          = 0;
+            copy_layer_to_temp_2d_array_command_info.n_dst_mipmap         = 0;
+            copy_layer_to_temp_2d_array_command_info.n_src_layer          = n_layer;
+            copy_layer_to_temp_2d_array_command_info.n_src_mipmap         = 0;
             copy_layer_to_temp_2d_array_command_info.scaling_filter       = (target_sampler == blur_ptr->sampler_blur_linear) ? RAL_TEXTURE_FILTER_LINEAR
                                                                                                                               : RAL_TEXTURE_FILTER_NEAREST;
             copy_layer_to_temp_2d_array_command_info.src_size[0]          = dst_src_texture_view_width;
@@ -1389,7 +1389,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             copy_layer_to_temp_2d_array_command_info.src_start_xyz[0]     = 0;
             copy_layer_to_temp_2d_array_command_info.src_start_xyz[1]     = 0;
             copy_layer_to_temp_2d_array_command_info.src_start_xyz[2]     = 0;
-            copy_layer_to_temp_2d_array_command_info.src_texture          = dst_src_texture;
+            copy_layer_to_temp_2d_array_command_info.src_texture_view     = dst_src_texture_view;
 
             ral_command_buffer_record_copy_texture_to_texture(cmd_buffer,
                                                               1, /* n_copy_ops */
@@ -1615,11 +1615,11 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             copy_texture_command_info.dst_start_xyz[0]     = 0;
             copy_texture_command_info.dst_start_xyz[1]     = 0;
             copy_texture_command_info.dst_start_xyz[2]     = 0;
-            copy_texture_command_info.dst_texture          = dst_src_texture;
-            copy_texture_command_info.n_dst_texture_layer  = 0;
-            copy_texture_command_info.n_dst_texture_mipmap = 0;
-            copy_texture_command_info.n_src_texture_layer  = (dst_src_texture_view_type == RAL_TEXTURE_TYPE_2D) ? 0 : n_layer;
-            copy_texture_command_info.n_src_texture_mipmap = 0;
+            copy_texture_command_info.dst_texture_view     = dst_src_texture_view;
+            copy_texture_command_info.n_dst_layer          = 0;
+            copy_texture_command_info.n_dst_mipmap         = 0;
+            copy_texture_command_info.n_src_layer          = (dst_src_texture_view_type == RAL_TEXTURE_TYPE_2D) ? 0 : n_layer;
+            copy_texture_command_info.n_src_mipmap         = 0;
             copy_texture_command_info.scaling_filter       = (target_sampler == blur_ptr->sampler_blur_nearest) ? RAL_TEXTURE_FILTER_NEAREST
                                                                                                                 : RAL_TEXTURE_FILTER_LINEAR;
             copy_texture_command_info.src_size[0]          = dst_src_texture_view_width;
@@ -1628,7 +1628,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             copy_texture_command_info.src_start_xyz[0]     = 0;
             copy_texture_command_info.src_start_xyz[1]     = 0;
             copy_texture_command_info.src_start_xyz[2]     = 0;
-            copy_texture_command_info.src_texture          = blur_ptr->ping_pong_rt;
+            copy_texture_command_info.src_texture_view     = blur_ptr->ping_pong_rt_view_l012;
 
             ral_command_buffer_record_copy_texture_to_texture(cmd_buffer,
                                                               1, /* n_copy_ops */

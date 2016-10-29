@@ -74,13 +74,13 @@ typedef struct ral_command_buffer_copy_buffer_to_buffer_command_info
 typedef struct ral_command_buffer_copy_texture_to_texture_command_info
 {
     ral_texture_aspect_bits aspect;
-    ral_texture             dst_texture;
-    ral_texture             src_texture;
+    ral_texture_view        dst_texture_view;
+    ral_texture_view        src_texture_view;
 
-    uint32_t n_dst_texture_layer;
-    uint32_t n_dst_texture_mipmap;
-    uint32_t n_src_texture_layer;
-    uint32_t n_src_texture_mipmap;
+    uint32_t n_dst_layer;
+    uint32_t n_dst_mipmap;
+    uint32_t n_src_layer;
+    uint32_t n_src_mipmap;
 
     uint32_t dst_start_xyz[3];
     uint32_t src_start_xyz[3];

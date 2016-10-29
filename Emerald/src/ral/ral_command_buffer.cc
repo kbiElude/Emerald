@@ -94,27 +94,27 @@ private:
         {
             case RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE:
             {
-                ral_context dst_texture_context = nullptr;
-                ral_context src_texture_context = nullptr;
+                ral_context dst_texture_view_context = nullptr;
+                ral_context src_texture_view_context = nullptr;
 
-                ral_texture_get_property(copy_texture_to_texture_command.dst_texture,
-                                         RAL_TEXTURE_PROPERTY_CONTEXT,
-                                        &dst_texture_context);
-                ral_texture_get_property(copy_texture_to_texture_command.src_texture,
-                                         RAL_TEXTURE_PROPERTY_CONTEXT,
-                                        &src_texture_context);
+                ral_texture_view_get_property(copy_texture_to_texture_command.dst_texture_view,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &dst_texture_view_context);
+                ral_texture_view_get_property(copy_texture_to_texture_command.src_texture_view,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &src_texture_view_context);
 
-                ral_texture textures[] =
+                ral_texture_view texture_views[] =
                 {
-                    copy_texture_to_texture_command.dst_texture,
-                    copy_texture_to_texture_command.src_texture
+                    copy_texture_to_texture_command.dst_texture_view,
+                    copy_texture_to_texture_command.src_texture_view
                 };
-                const uint32_t n_textures = sizeof(textures) / sizeof(textures[0]);
+                const uint32_t n_texture_views = sizeof(texture_views) / sizeof(texture_views[0]);
 
-                pfn_update_ref_proc(dst_texture_context,
-                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                    n_textures,
-                                    reinterpret_cast<void* const*>(textures) );
+                pfn_update_ref_proc(dst_texture_view_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                    n_texture_views,
+                                    reinterpret_cast<void* const*>(texture_views) );
 
                 break;
             }
@@ -921,16 +921,17 @@ PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_co
         #ifdef _DEBUG
         {
             uint32_t   dst_mip_size[3]       = {0};
-            ral_format dst_texture_format;
-            uint32_t   dst_texture_n_layers  =  0;
-            uint32_t   dst_texture_n_mipmaps =  0;
+            ral_format dst_texture_view_format;
+            uint32_t   dst_texture_view_n_layers  =  0;
+            uint32_t   dst_texture_view_n_mipmaps =  0;
             uint32_t   src_mip_size[3]       = {0};
-            ral_format src_texture_format;
-            uint32_t   src_texture_n_layers  =  0;
-            uint32_t   src_texture_n_mipmaps =  0;
+            ral_format src_texture_view_format;
+            uint32_t   src_texture_view_n_layers  =  0;
+            uint32_t   src_texture_view_n_mipmaps =  0;
 
             /* Sanity checks */
-            if (src_command.scaling_filter == RAL_TEXTURE_FILTER_LINEAR)
+            if ( src_command.scaling_filter                                      == RAL_TEXTURE_FILTER_LINEAR &&
+                (command_buffer_ptr->compatible_queues & RAL_QUEUE_GRAPHICS_BIT) == 0)
             {
                 ASSERT_DEBUG_SYNC((command_buffer_ptr->compatible_queues & RAL_QUEUE_GRAPHICS_BIT) != 0,
                                   "Scaling texture->texture copy requires a graphics queue command buffer.");
@@ -938,18 +939,18 @@ PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_co
                 continue;
             }
 
-            if (src_command.dst_texture == nullptr)
+            if (src_command.dst_texture_view == nullptr)
             {
-                ASSERT_DEBUG_SYNC(src_command.dst_texture != nullptr,
-                                  "Destination texture is null");
+                ASSERT_DEBUG_SYNC(src_command.dst_texture_view != nullptr,
+                                  "Destination texture view is null");
 
                 continue;
             }
 
-            if (src_command.src_texture == nullptr)
+            if (src_command.src_texture_view == nullptr)
             {
-                ASSERT_DEBUG_SYNC(src_command.src_texture != nullptr,
-                                  "Source texture is null");
+                ASSERT_DEBUG_SYNC(src_command.src_texture_view != nullptr,
+                                  "Source texture view is null");
 
                 continue;
             }
@@ -964,108 +965,108 @@ PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_co
                 continue;
             }
 
-            ral_texture_get_property(src_command.dst_texture,
-                                     RAL_TEXTURE_PROPERTY_FORMAT,
-                                    &dst_texture_format);
-            ral_texture_get_property(src_command.dst_texture,
-                                     RAL_TEXTURE_PROPERTY_N_LAYERS,
-                                    &dst_texture_n_layers);
-            ral_texture_get_property(src_command.src_texture,
-                                     RAL_TEXTURE_PROPERTY_FORMAT,
-                                    &src_texture_format);
-            ral_texture_get_property(src_command.src_texture,
-                                     RAL_TEXTURE_PROPERTY_N_LAYERS,
-                                    &src_texture_n_layers);
-            ral_texture_get_property(src_command.dst_texture,
-                                     RAL_TEXTURE_PROPERTY_N_MIPMAPS,
-                                    &dst_texture_n_mipmaps);
-            ral_texture_get_property(src_command.src_texture,
-                                     RAL_TEXTURE_PROPERTY_N_MIPMAPS,
-                                    &src_texture_n_mipmaps);
+            ral_texture_view_get_property(src_command.dst_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                         &dst_texture_view_format);
+            ral_texture_view_get_property(src_command.dst_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
+                                         &dst_texture_view_n_layers);
+            ral_texture_view_get_property(src_command.src_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                         &src_texture_view_format);
+            ral_texture_view_get_property(src_command.src_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
+                                         &src_texture_view_n_layers);
+            ral_texture_view_get_property(src_command.dst_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                         &dst_texture_view_n_mipmaps);
+            ral_texture_view_get_property(src_command.src_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                         &src_texture_view_n_mipmaps);
 
-            if (!(src_command.n_dst_texture_mipmap < dst_texture_n_mipmaps) )
+            if (!(src_command.n_dst_mipmap < dst_texture_view_n_mipmaps) )
             {
-                ASSERT_DEBUG_SYNC(src_command.n_dst_texture_mipmap < dst_texture_n_mipmaps,
-                                  "Invalid texture mipmap requested for the destination texture.");
+                ASSERT_DEBUG_SYNC(src_command.n_dst_mipmap < dst_texture_view_n_mipmaps,
+                                  "Invalid texture mipmap requested for the destination texture view.");
 
                 continue;
             }
 
-            if (!(src_command.n_dst_texture_layer < dst_texture_n_layers) )
+            if (!(src_command.n_dst_layer < dst_texture_view_n_layers) )
             {
-                ASSERT_DEBUG_SYNC(src_command.n_dst_texture_layer < dst_texture_n_layers,
-                                  "Invalid texture layer requested for the destination texture.");
+                ASSERT_DEBUG_SYNC(src_command.n_dst_layer < dst_texture_view_n_layers,
+                                  "Invalid texture layer requested for the destination texture view.");
 
                 continue;
             }
 
-            if (!(src_command.n_src_texture_mipmap < src_texture_n_mipmaps) )
+            if (!(src_command.n_src_mipmap < src_texture_view_n_mipmaps) )
             {
-                ASSERT_DEBUG_SYNC(src_command.n_src_texture_mipmap < src_texture_n_mipmaps,
-                                  "Invalid texture mipmap requested for the source texture.");
+                ASSERT_DEBUG_SYNC(src_command.n_src_mipmap < src_texture_view_n_mipmaps,
+                                  "Invalid texture mipmap requested for the source texture view.");
 
                 continue;
             }
 
-            if (!(src_command.n_src_texture_layer < src_texture_n_layers) )
+            if (!(src_command.n_src_layer < src_texture_view_n_layers) )
             {
-                ASSERT_DEBUG_SYNC(src_command.n_src_texture_layer < src_texture_n_layers,
-                                  "Invalid texture layer requested for the source texture.");
+                ASSERT_DEBUG_SYNC(src_command.n_src_layer < src_texture_view_n_layers,
+                                  "Invalid texture layer requested for the source texture view.");
 
                 continue;
             }
 
-            ral_texture_get_mipmap_property(src_command.dst_texture,
-                                            src_command.n_dst_texture_layer,
-                                            src_command.n_dst_texture_mipmap,
-                                            RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                            dst_mip_size + 0);
-            ral_texture_get_mipmap_property(src_command.dst_texture,
-                                            src_command.n_dst_texture_layer,
-                                            src_command.n_dst_texture_mipmap,
-                                            RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                            dst_mip_size + 1);
-            ral_texture_get_mipmap_property(src_command.dst_texture,
-                                            src_command.n_dst_texture_layer,
-                                            src_command.n_dst_texture_mipmap,
-                                            RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-                                            dst_mip_size + 2);
+            ral_texture_view_get_mipmap_property(src_command.dst_texture_view,
+                                                 src_command.n_dst_layer,
+                                                 src_command.n_dst_mipmap,
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                                 dst_mip_size + 0);
+            ral_texture_view_get_mipmap_property(src_command.dst_texture_view,
+                                                 src_command.n_dst_layer,
+                                                 src_command.n_dst_mipmap,
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                                 dst_mip_size + 1);
+            ral_texture_view_get_mipmap_property(src_command.dst_texture_view,
+                                                 src_command.n_dst_layer,
+                                                 src_command.n_dst_mipmap,
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+                                                 dst_mip_size + 2);
 
-            ral_texture_get_mipmap_property(src_command.src_texture,
-                                            src_command.n_src_texture_layer,
-                                            src_command.n_src_texture_mipmap,
-                                            RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                            src_mip_size + 0);
-            ral_texture_get_mipmap_property(src_command.src_texture,
-                                            src_command.n_src_texture_layer,
-                                            src_command.n_src_texture_mipmap,
-                                            RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                            src_mip_size + 1);
-            ral_texture_get_mipmap_property(src_command.src_texture,
-                                            src_command.n_src_texture_layer,
-                                            src_command.n_src_texture_mipmap,
-                                            RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
-                                            src_mip_size + 2);
+            ral_texture_view_get_mipmap_property(src_command.src_texture_view,
+                                                 src_command.n_src_layer,
+                                                 src_command.n_src_mipmap,
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                                 src_mip_size + 0);
+            ral_texture_view_get_mipmap_property(src_command.src_texture_view,
+                                                 src_command.n_src_layer,
+                                                 src_command.n_src_mipmap,
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                                 src_mip_size + 1);
+            ral_texture_view_get_mipmap_property(src_command.src_texture_view,
+                                                 src_command.n_src_layer,
+                                                 src_command.n_src_mipmap,
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+                                                 src_mip_size + 2);
 
-            if (!(src_command.src_start_xyz[0] + src_command.src_size[0] < src_mip_size[0] &&
-                  src_command.src_start_xyz[1] + src_command.src_size[1] < src_mip_size[1] &&
-                  src_command.src_start_xyz[2] + src_command.src_size[2] < src_mip_size[2]) )
+            if (!(src_command.src_start_xyz[0] + src_command.src_size[0] <= src_mip_size[0] &&
+                  src_command.src_start_xyz[1] + src_command.src_size[1] <= src_mip_size[1] &&
+                  src_command.src_start_xyz[2] + src_command.src_size[2] <= src_mip_size[2]) )
             {
-                ASSERT_DEBUG_SYNC(src_command.src_start_xyz[0] + src_command.src_size[0] < src_mip_size[0] &&
-                                  src_command.src_start_xyz[1] + src_command.src_size[1] < src_mip_size[1] &&
-                                  src_command.src_start_xyz[2] + src_command.src_size[2] < src_mip_size[2],
+                ASSERT_DEBUG_SYNC(src_command.src_start_xyz[0] + src_command.src_size[0] <= src_mip_size[0] &&
+                                  src_command.src_start_xyz[1] + src_command.src_size[1] <= src_mip_size[1] &&
+                                  src_command.src_start_xyz[2] + src_command.src_size[2] <= src_mip_size[2],
                                   "Source copy region exceeds source texture size");
 
                 continue;
             }
 
-            if (!(src_command.dst_start_xyz[0] + src_command.dst_size[0] < dst_mip_size[0] &&
-                  src_command.dst_start_xyz[1] + src_command.dst_size[1] < dst_mip_size[1] &&
-                  src_command.dst_start_xyz[2] + src_command.dst_size[2] < dst_mip_size[2]) )
+            if (!(src_command.dst_start_xyz[0] + src_command.dst_size[0] <= dst_mip_size[0] &&
+                  src_command.dst_start_xyz[1] + src_command.dst_size[1] <= dst_mip_size[1] &&
+                  src_command.dst_start_xyz[2] + src_command.dst_size[2] <= dst_mip_size[2]) )
             {
-                ASSERT_DEBUG_SYNC(src_command.dst_start_xyz[0] + src_command.dst_size[0] < dst_mip_size[0] &&
-                                  src_command.dst_start_xyz[1] + src_command.dst_size[1] < dst_mip_size[1] &&
-                                  src_command.dst_start_xyz[2] + src_command.dst_size[2] < dst_mip_size[2],
+                ASSERT_DEBUG_SYNC(src_command.dst_start_xyz[0] + src_command.dst_size[0] <= dst_mip_size[0] &&
+                                  src_command.dst_start_xyz[1] + src_command.dst_size[1] <= dst_mip_size[1] &&
+                                  src_command.dst_start_xyz[2] + src_command.dst_size[2] <= dst_mip_size[2],
                                   "Target copy region exceeds target texture size");
 
                 continue;
@@ -1076,10 +1077,10 @@ PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_co
                 bool dst_texture_has_color_data = false;
                 bool src_texture_has_color_data = false;
 
-                ral_utils_get_format_property(dst_texture_format,
+                ral_utils_get_format_property(dst_texture_view_format,
                                               RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
                                              &dst_texture_has_color_data);
-                ral_utils_get_format_property(src_texture_format,
+                ral_utils_get_format_property(src_texture_view_format,
                                               RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
                                              &src_texture_has_color_data);
 
@@ -1097,10 +1098,10 @@ PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_co
                 bool dst_texture_has_depth_data = false;
                 bool src_texture_has_depth_data = false;
 
-                ral_utils_get_format_property(dst_texture_format,
+                ral_utils_get_format_property(dst_texture_view_format,
                                               RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
                                              &dst_texture_has_depth_data);
-                ral_utils_get_format_property(src_texture_format,
+                ral_utils_get_format_property(src_texture_view_format,
                                               RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
                                              &src_texture_has_depth_data);
 
@@ -1118,10 +1119,10 @@ PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_co
                 bool dst_texture_has_stencil_data = false;
                 bool src_texture_has_stencil_data = false;
 
-                ral_utils_get_format_property(dst_texture_format,
+                ral_utils_get_format_property(dst_texture_view_format,
                                               RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
                                              &dst_texture_has_stencil_data);
-                ral_utils_get_format_property(src_texture_format,
+                ral_utils_get_format_property(src_texture_view_format,
                                               RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
                                              &src_texture_has_stencil_data);
 
@@ -1149,13 +1150,14 @@ PUBLIC EMERALD_API void ral_command_buffer_record_copy_texture_to_texture(ral_co
                src_command.src_start_xyz,
                sizeof(src_command.src_start_xyz) );
 
-        new_command_ptr->copy_texture_to_texture_command.aspect               = src_command.aspect;
-        new_command_ptr->copy_texture_to_texture_command.dst_texture          = src_command.dst_texture;
-        new_command_ptr->copy_texture_to_texture_command.n_dst_texture_layer  = src_command.n_dst_texture_layer;
-        new_command_ptr->copy_texture_to_texture_command.n_dst_texture_mipmap = src_command.n_dst_texture_mipmap;
-        new_command_ptr->copy_texture_to_texture_command.n_src_texture_layer  = src_command.n_src_texture_layer;
-        new_command_ptr->copy_texture_to_texture_command.n_src_texture_mipmap = src_command.n_src_texture_mipmap;
-        new_command_ptr->copy_texture_to_texture_command.scaling_filter       = src_command.scaling_filter;
+        new_command_ptr->copy_texture_to_texture_command.aspect           = src_command.aspect;
+        new_command_ptr->copy_texture_to_texture_command.dst_texture_view = src_command.dst_texture_view;
+        new_command_ptr->copy_texture_to_texture_command.n_dst_layer      = src_command.n_dst_layer;
+        new_command_ptr->copy_texture_to_texture_command.n_dst_mipmap     = src_command.n_dst_mipmap;
+        new_command_ptr->copy_texture_to_texture_command.n_src_layer      = src_command.n_src_layer;
+        new_command_ptr->copy_texture_to_texture_command.n_src_mipmap     = src_command.n_src_mipmap;
+        new_command_ptr->copy_texture_to_texture_command.scaling_filter   = src_command.scaling_filter;
+        new_command_ptr->copy_texture_to_texture_command.src_texture_view = src_command.src_texture_view;
 
         new_command_ptr->type = RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE;
 
@@ -1910,6 +1912,9 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_viewports(ral_command_buff
 
         new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
 
+        memcpy(new_command_ptr->set_viewport_command.depth_range,
+               src_command.depth_range,
+               sizeof(src_command.depth_range) );
         memcpy(new_command_ptr->set_viewport_command.size,
                src_command.size,
                sizeof(src_command.size) );

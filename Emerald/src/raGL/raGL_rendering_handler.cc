@@ -889,16 +889,23 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_han
         }
 
         /* Blit the context FBO's contents to the back buffer */
+        uint32_t window_size[2];
+
+        system_window_get_property(rendering_handler_ptr->context_window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
+
+        rendering_handler_ptr->pGLDisable        (GL_SCISSOR_TEST);
         rendering_handler_ptr->pGLBlitFramebuffer(0,                                /* srcX0 */
                                                   0,                                /* srcY0 */
                                                   presentable_texture_view_size[0], /* srcX1 */
                                                   presentable_texture_view_size[1], /* srcY1 */
                                                   0,                                /* dstX0 */
                                                   0,                                /* dstY0 */
-                                                  presentable_texture_view_size[0], /* dstX1 */
-                                                  presentable_texture_view_size[1], /* dstY1 */
+                                                  window_size[0],                   /* dstX1 */
+                                                  window_size[1],                   /* dstY1 */
                                                   GL_COLOR_BUFFER_BIT,
-                                                  GL_NEAREST);
+                                                  GL_LINEAR);
     }
 
     if (rendering_handler_ptr->is_multisample_pf                   &&

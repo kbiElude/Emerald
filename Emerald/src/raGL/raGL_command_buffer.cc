@@ -1054,7 +1054,7 @@ void _raGL_command_buffer::bake_and_bind_fbo()
 
     for (uint32_t n_color_attachment = 0;
                   n_color_attachment < N_MAX_RENDERTARGETS;
-                ++n_color_attachment)
+                ++n_color_attachment) 
     {
         color_attachments[n_color_attachment] = bake_state.active_rt_color_attachments[n_color_attachment].texture_view;
     }
@@ -2937,28 +2937,28 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
                                       RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
                                      &backend_fbos);
 
-    result &= raGL_backend_get_texture(backend_raGL,
-                                       command_ral_ptr->dst_texture,
-                                       &dst_texture_raGL);
-    result &= raGL_backend_get_texture(backend_raGL,
-                                       command_ral_ptr->src_texture,
-                                       &src_texture_raGL);
+    result &= raGL_backend_get_texture_view(backend_raGL,
+                                            command_ral_ptr->dst_texture_view,
+                                            &dst_texture_raGL);
+    result &= raGL_backend_get_texture_view(backend_raGL,
+                                            command_ral_ptr->src_texture_view,
+                                            &src_texture_raGL);
 
     ASSERT_DEBUG_SYNC(result,
                       "Could not retrieve raGL_texture instances");
 
-    ral_texture_get_property(command_ral_ptr->dst_texture,
-                             RAL_TEXTURE_PROPERTY_FORMAT,
-                            &dst_texture_format_ral);
-    ral_texture_get_property(command_ral_ptr->dst_texture,
-                             RAL_TEXTURE_PROPERTY_TYPE,
-                            &dst_texture_type);
-    ral_texture_get_property(command_ral_ptr->src_texture,
-                             RAL_TEXTURE_PROPERTY_FORMAT,
-                            &src_texture_format_ral);
-    ral_texture_get_property(command_ral_ptr->src_texture,
-                             RAL_TEXTURE_PROPERTY_TYPE,
-                            &src_texture_type);
+    ral_texture_view_get_property(command_ral_ptr->dst_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                 &dst_texture_format_ral);
+    ral_texture_view_get_property(command_ral_ptr->dst_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                 &dst_texture_type);
+    ral_texture_view_get_property(command_ral_ptr->src_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                 &src_texture_format_ral);
+    ral_texture_view_get_property(command_ral_ptr->src_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                 &src_texture_type);
 
     raGL_texture_get_property(dst_texture_raGL,
                               RAGL_TEXTURE_PROPERTY_ID,
@@ -3031,10 +3031,10 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
         }
 
         /* Issue the command */
-        command_args.dst_level     = command_ral_ptr->n_dst_texture_mipmap;
+        command_args.dst_level     = command_ral_ptr->n_dst_mipmap;
         command_args.dst_object_id = dst_texture_id;
         command_args.dst_target    = (dst_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_enum_for_ral_texture_type(dst_texture_type);
-        command_args.src_level     = command_ral_ptr->n_src_texture_mipmap;
+        command_args.src_level     = command_ral_ptr->n_src_mipmap;
         command_args.src_object_id = src_texture_id;
         command_args.src_target    = (src_texture_is_rb) ? GL_RENDERBUFFER : raGL_utils_get_ogl_enum_for_ral_texture_type(src_texture_type);
 
@@ -3059,48 +3059,28 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
     }
     else
     {
-        /* This is a blit op */
-        _raGL_command_blit_framebuffer_command_info& command_args                      = new_command_ptr->blit_framebuffer_command_info;
-        raGL_framebuffer                             draw_fb_raGL                      = nullptr;
-        raGL_framebuffer                             read_fb_raGL                      = nullptr;
-        ral_texture_view_create_info                 texture_view_create_info_items[2];
-        ral_texture_view                             texture_views                 [2];
+        /* This is a blit op.
+         *
+         * TODO: Current implementation does not support any non-trivial cases. Add support by modifying raGL_framebuffer
+         *       accordingly. */
+        _raGL_command_blit_framebuffer_command_info& command_args = new_command_ptr->blit_framebuffer_command_info;
+        raGL_framebuffer                             draw_fb_raGL = nullptr;
+        raGL_framebuffer                             read_fb_raGL = nullptr;
 
-        texture_view_create_info_items[0].aspect       = static_cast<ral_texture_aspect>(command_ral_ptr->aspect);
-        texture_view_create_info_items[0].format       = dst_texture_format_ral;
-        texture_view_create_info_items[0].n_base_layer = command_ral_ptr->n_dst_texture_layer;
-        texture_view_create_info_items[0].n_base_mip   = command_ral_ptr->n_dst_texture_mipmap;
-        texture_view_create_info_items[0].n_layers     = 1;
-        texture_view_create_info_items[0].n_mips       = 1;
-        texture_view_create_info_items[0].texture      = command_ral_ptr->dst_texture;
-        texture_view_create_info_items[0].type         = dst_texture_type;
-
-        texture_view_create_info_items[1].aspect       = static_cast<ral_texture_aspect>(command_ral_ptr->aspect);
-        texture_view_create_info_items[1].format       = src_texture_format_ral;
-        texture_view_create_info_items[1].n_base_layer = command_ral_ptr->n_src_texture_layer;
-        texture_view_create_info_items[1].n_base_mip   = command_ral_ptr->n_src_texture_mipmap;
-        texture_view_create_info_items[1].n_layers     = 1;
-        texture_view_create_info_items[1].n_mips       = 1;
-        texture_view_create_info_items[1].texture      = command_ral_ptr->src_texture;
-        texture_view_create_info_items[1].type         = src_texture_type;
-
-        /* Note: texture views will automatically be released when parent texture is destroyed. */
-        ral_context_create_texture_views(context_ral,
-                                         sizeof(texture_view_create_info_items) / sizeof(texture_view_create_info_items[0]),
-                                         texture_view_create_info_items,
-                                         texture_views);
-
-        ASSERT_DEBUG_SYNC(texture_views[0] != nullptr && texture_views[1] != nullptr,
-                          "Could not create RAL texture views");
+        ASSERT_DEBUG_SYNC(command_ral_ptr->n_dst_layer  == 0 &&
+                          command_ral_ptr->n_src_layer  == 0 &&
+                          command_ral_ptr->n_dst_mipmap == 0 &&
+                          command_ral_ptr->n_src_mipmap == 0,
+                          "TODO");
 
         raGL_framebuffers_get_framebuffer(backend_fbos,
                                           1, /* n_attachments */
-                                          texture_views + 0,
+                                         &command_ral_ptr->dst_texture_view,
                                           nullptr, /* in_opt_ds_attachment */
                                          &draw_fb_raGL);
         raGL_framebuffers_get_framebuffer(backend_fbos,
                                           1, /* n_attachments */
-                                          texture_views + 1,
+                                         &command_ral_ptr->src_texture_view,
                                           nullptr, /* in_opt_ds_attachment */
                                          &read_fb_raGL);
 
@@ -3115,32 +3095,35 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
                           command_ral_ptr->src_start_xyz[2] == 0,
                           "TODO");
 
+        /* Bind the draw & read FBs */
+        _raGL_command* bind_draw_fb_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+        _raGL_command* bind_read_fb_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+        bind_draw_fb_command_ptr->bind_framebuffer_command_info.framebuffer = command_args.draw_fbo_id;
+        bind_draw_fb_command_ptr->bind_framebuffer_command_info.target      = GL_DRAW_FRAMEBUFFER;
+        bind_draw_fb_command_ptr->type                                      = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
+
+        bind_read_fb_command_ptr->bind_framebuffer_command_info.framebuffer = command_args.read_fbo_id;
+        bind_read_fb_command_ptr->bind_framebuffer_command_info.target      = GL_READ_FRAMEBUFFER;
+        bind_read_fb_command_ptr->type                                      = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
+
+        system_resizable_vector_push(commands,
+                                     bind_draw_fb_command_ptr);
+        system_resizable_vector_push(commands,
+                                     bind_read_fb_command_ptr);
+
+        bake_state.active_fbo_draw = draw_fb_raGL;
+
+
         /* Before blitting, ensure both source and destination textures are flushed */
         if (raGL_dep_tracker_is_dirty(dep_tracker,
-                                      command_ral_ptr->dst_texture,
+                                      dst_texture_raGL,
                                       GL_FRAMEBUFFER_BARRIER_BIT) ||
             raGL_dep_tracker_is_dirty(dep_tracker,
-                                      command_ral_ptr->src_texture,
+                                      src_texture_raGL,
                                       GL_FRAMEBUFFER_BARRIER_BIT) )
         {
-            _raGL_command* bind_back_draw_fb_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-            _raGL_command* bind_draw_fb_command_ptr      = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-            _raGL_command* bind_read_fb_command_ptr      = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-            _raGL_command* memory_barrier_command_ptr    = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-
-            /* Bind the draw & read FBs */
-            bind_draw_fb_command_ptr->bind_framebuffer_command_info.framebuffer = command_args.draw_fbo_id;
-            bind_draw_fb_command_ptr->bind_framebuffer_command_info.target      = GL_DRAW_FRAMEBUFFER;
-            bind_draw_fb_command_ptr->type                                      = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
-
-            bind_read_fb_command_ptr->bind_framebuffer_command_info.framebuffer = command_args.read_fbo_id;
-            bind_read_fb_command_ptr->bind_framebuffer_command_info.target      = GL_READ_FRAMEBUFFER;
-            bind_read_fb_command_ptr->type                                      = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
-
-            system_resizable_vector_push(commands,
-                                         bind_draw_fb_command_ptr);
-            system_resizable_vector_push(commands,
-                                         bind_read_fb_command_ptr);
+            _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
             /* Issue the memory barrier */
             memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_FRAMEBUFFER_BARRIER_BIT;
@@ -3148,17 +3131,6 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
 
             system_resizable_vector_push(commands,
                                          memory_barrier_command_ptr);
-
-            /* Restore the draw FB. We don't care about the read FBO. */
-            raGL_framebuffer_get_property(bake_state.active_fbo_draw,
-                                          RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                         &bind_back_draw_fb_command_ptr->bind_framebuffer_command_info.framebuffer);
-
-            bind_back_draw_fb_command_ptr->bind_framebuffer_command_info.target = GL_DRAW_FRAMEBUFFER;
-            bind_back_draw_fb_command_ptr->type                                 = RAGL_COMMAND_TYPE_BIND_FRAMEBUFFER;
-
-            system_resizable_vector_push(commands,
-                                         bind_back_draw_fb_command_ptr);
         }
 
         /* Carry on with the blit */

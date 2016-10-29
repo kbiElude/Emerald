@@ -614,13 +614,17 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
 
             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME:
             {
+                ASSERT_DEBUG_SYNC(false,
+                                  "TODO");
+
+#if 0
                 /* NOTE: We may need the client app to specify the usage pattern in the future */
                 result_objects_ptr[n_object] = ral_texture_create_from_file_name(reinterpret_cast<ral_context>(context_ptr),
                                                                                  system_hashed_ansi_string_create(temp),
                                                                                  *reinterpret_cast<const system_hashed_ansi_string*>(object_create_info_ptrs + n_object),
                                                                                  RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
-                                                                                 _ral_context_notify_backend_about_new_object,
                                                                                  true /* async */);
+#endif
 
                 break;
             }
@@ -641,9 +645,7 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                 result_objects_ptr[n_object] = ral_texture_create_from_gfx_image(reinterpret_cast<ral_context>(context_ptr),
                                                                                  name_has,
                                                                                  *reinterpret_cast<const gfx_image*>(object_create_info_ptrs + n_object),
-                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT,
-                                                                                 _ral_context_notify_backend_about_new_object,
-                                                                                 true /* async */);
+                                                                                 RAL_TEXTURE_USAGE_IMAGE_LOAD_OPS_BIT | RAL_TEXTURE_USAGE_SAMPLED_BIT);
 
                 ral_texture_set_property(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
                                          RAL_TEXTURE_PROPERTY_FILENAME,
@@ -694,16 +696,19 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         system_critical_section_leave(context_ptr->object_to_refcount_cs);
 
         /* Notify the subscribers, if needed */
-        if (object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_FILE_NAME &&
-            object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE)
+        if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE && backend_texture_callback_used ||
+            object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
         {
-            if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE && backend_texture_callback_used ||
-                object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
-            {
-                _ral_context_notify_backend_about_new_object(reinterpret_cast<ral_context>(context_ptr),
-                                                             result_objects_ptr[n_object],
-                                                             object_type);
-            }
+            _ral_context_notify_backend_about_new_object(reinterpret_cast<ral_context>(context_ptr),
+                                                         result_objects_ptr[n_object],
+                                                         object_type);
+        }
+
+        if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_FROM_GFX_IMAGE)
+        {
+            ral_texture_upload_data_from_gfx_image(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
+                                                   *reinterpret_cast<const gfx_image*>(object_create_info_ptrs + n_object),
+                                                   false); /* async */
         }
     }
 
