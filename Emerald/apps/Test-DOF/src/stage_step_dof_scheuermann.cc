@@ -149,7 +149,7 @@ PUBLIC void stage_step_dof_scheuermann_deinit(ral_context context)
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                n_texture_views_to_release,
                                reinterpret_cast<void* const*>(texture_views_to_release) );
-    
+
     ral_program_block_buffer_release   (_dof_scheuermann_combination_po_ub);
     postprocessing_blur_poisson_release(_dof_scheuermann_blur_poisson);
 }

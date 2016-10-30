@@ -126,9 +126,19 @@ PRIVATE void _postprocessing_blur_poisson_release(void* ptr)
 
     if (data_ptr->cached_command_buffer != nullptr)
     {
-        ral_command_buffer_release(data_ptr->cached_command_buffer);
+        ral_context_delete_objects(data_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&data_ptr->cached_command_buffer) );
 
         data_ptr->cached_command_buffer = nullptr;
+    }
+
+    if (data_ptr->cached_present_task != nullptr)
+    {
+        ral_present_task_release(data_ptr->cached_present_task);
+
+        data_ptr->cached_present_task = nullptr;
     }
 
     if (data_ptr->gfx_state != nullptr)

@@ -555,7 +555,13 @@ _raGL_backend::~_raGL_backend()
         if (n_objects_leaking > 0)
         {
             char* error_string = nullptr;
+            void* object_at_0  = nullptr;
             char  temp[128];
+
+            system_hash64map_get_element_at(*objects_map_ptr,
+                                            0, /* n_element */
+                                            &object_at_0,
+                                            nullptr);
 
             switch (n_object_type)
             {

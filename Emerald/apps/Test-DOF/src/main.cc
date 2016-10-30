@@ -29,9 +29,10 @@
 #include "stage_step_julia.h"
 #include "ui/ui.h"
 
-
 INCLUDE_OPTIMUS_SUPPORT;
 
+ral_present_task _background_task           = nullptr;
+ral_present_task _blur_task                 = nullptr;
 float            _blur_radius               = 0.8f;
 ral_context      _context                   = NULL;
 float            _data[4]                   = {.17995f, -0.66f, -0.239f, -0.210f};
@@ -39,10 +40,13 @@ float            _dof_cutoff                = 0.75f;
 float            _dof_far_plane_depth       = 5.4f;
 float            _dof_focal_plane_depth     = 3.79f;
 float            _dof_near_plane_depth      = 4.0f;
+ral_present_task _dof_scheuermann_task      = nullptr;
+ral_present_task _downsample_task           = nullptr;
 float            _epsilon                   = 0.001f;
 float            _escape                    = 1.2f * 1.5f;
 demo_flyby       _flyby                     = NULL;
 float            _fresnel_reflectance       = 0.028f;
+ral_present_task _julia_task                = nullptr;
 float            _light_color[3]            = {1.0f,  1.0f,   1.0f};
 float            _light_position[3]         = {2.76f, 1.619f, 0.0f};
 float            _max_coc_px                = 5.0f;
@@ -65,39 +69,29 @@ PRIVATE ral_present_job _draw_frame(ral_context                                 
                                     void*                                                      user_arg,
                                     const ral_rendering_handler_rendering_callback_frame_data* frame_data_ptr)
 {
-    ral_present_task    background_task         = stage_step_background_get_present_task();
-    ral_present_task_id background_task_id      = -1;
-    ral_present_task    blur_task               = stage_step_dof_scheuermann_get_blur_present_task();
-    ral_present_task_id blur_task_id            = -1;
-    ral_present_task    dof_scheuermann_task    = stage_step_dof_scheuermann_get_present_task(_context,
-                                                                                              stage_step_background_get_bg_texture_view(),
-                                                                                              stage_step_dof_get_blurred_texture_view  (),
-                                                                                              stage_step_julia_get_color_texture_view  (),
-                                                                                              stage_step_julia_get_depth_texture_view  () );
-    ral_present_task_id dof_scheuermann_task_id = -1;
-    ral_present_task    downsample_task         = stage_step_dof_scheuermann_get_downsample_present_task(_context,
-                                                                                                         stage_step_julia_get_color_texture_view() );
-    ral_present_task_id downsample_task_id      = -1;
-    ral_present_task    julia_task              = stage_step_julia_get_present_task();
-    ral_present_task_id julia_task_id           = -1;
-    ral_present_job     present_job             = nullptr;
+    ral_present_task_id background_task_id;
+    ral_present_task_id blur_task_id;
+    ral_present_task_id dof_scheuermann_task_id;
+    ral_present_task_id downsample_task_id;
+    ral_present_task_id julia_task_id;
+    ral_present_job     present_job;
 
     present_job = ral_present_job_create();
 
     ral_present_job_add_task(present_job,
-                             background_task,
+                             _background_task,
                             &background_task_id);
     ral_present_job_add_task(present_job,
-                             blur_task,
+                             _blur_task,
                             &blur_task_id);
     ral_present_job_add_task(present_job,
-                             downsample_task,
+                             _downsample_task,
                             &downsample_task_id);
     ral_present_job_add_task(present_job,
-                             dof_scheuermann_task,
+                             _dof_scheuermann_task,
                             &dof_scheuermann_task_id);
     ral_present_job_add_task(present_job,
-                             julia_task,
+                             _julia_task,
                             &julia_task_id);
 
     ral_present_job_connect_tasks(present_job,
@@ -144,9 +138,6 @@ PRIVATE ral_present_job _draw_frame(ral_context                                 
                                            dof_scheuermann_task_id,
                                            false, /* is_input_io */
                                            0);    /* n_io        */
-
-    ral_present_task_release(dof_scheuermann_task);
-    ral_present_task_release(downsample_task);
 
     return present_job;
 }
@@ -266,6 +257,12 @@ PRIVATE void _set_reflectivity(void*          user_arg,
 
 void _deinit(ral_context context)
 {
+    ral_present_task_release(_background_task);
+    ral_present_task_release(_blur_task);
+    ral_present_task_release(_dof_scheuermann_task);
+    ral_present_task_release(_downsample_task);
+    ral_present_task_release(_julia_task);
+
     stage_step_background_deinit     (_context);
     stage_step_julia_deinit          (_context);
     stage_step_dof_scheuermann_deinit(_context);
@@ -306,6 +303,17 @@ void _init()
 
     /* Initialize UI */
     _init_ui();
+
+    _background_task      = stage_step_background_get_present_task                ();
+    _blur_task            = stage_step_dof_scheuermann_get_blur_present_task      ();
+    _dof_scheuermann_task = stage_step_dof_scheuermann_get_present_task           (_context,
+                                                                                   stage_step_background_get_bg_texture_view(),
+                                                                                   stage_step_dof_get_blurred_texture_view  (),
+                                                                                   stage_step_julia_get_color_texture_view  (),
+                                                                                   stage_step_julia_get_depth_texture_view  () );
+    _downsample_task      = stage_step_dof_scheuermann_get_downsample_present_task(_context,
+                                                                                   stage_step_julia_get_color_texture_view() );
+    _julia_task           = stage_step_julia_get_present_task();
 }
 
 void _init_ui()
