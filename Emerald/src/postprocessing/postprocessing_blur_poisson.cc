@@ -307,7 +307,6 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task(postprocessing_blur_poisson blur_poisson,
                                                                                  ral_texture_view            input_texture_view,
-                                                                                 float                       blur_strength,
                                                                                  ral_texture_view            result_texture_view)
 {
     ral_command_buffer                              cmd_buffer             = nullptr;
@@ -332,7 +331,6 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
 
     if (poisson_ptr->cached_present_task        != nullptr             &&
         poisson_ptr->cached_input_texture_view  == input_texture_view  &&
-        // ignore blur_strength here - the setting is adjusted at run-time
         poisson_ptr->cached_result_texture_view == result_texture_view)
     {
         result = poisson_ptr->cached_present_task;
@@ -560,7 +558,6 @@ PUBLIC EMERALD_API ral_present_task postprocessing_blur_poisson_get_present_task
     ub_update_task = nullptr;
 
 
-    poisson_ptr->cached_blur_strength       = blur_strength;
     poisson_ptr->cached_input_texture_view  = input_texture_view;
     poisson_ptr->cached_present_task        = group_task;
     poisson_ptr->cached_result_texture_view = result_texture_view;
@@ -576,4 +573,28 @@ end:
 PUBLIC EMERALD_API const char* postprocessing_blur_poisson_get_tap_data_shader_code()
 {
     return postprocessing_blur_poisson_tap_data_body;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void postprocessing_blur_poisson_set_property(postprocessing_blur_poisson          blur_poisson,
+                                                                 postprocessing_blur_poisson_property property,
+                                                                 const void*                          data)
+{
+    _postprocessing_blur_poisson* poisson_ptr = reinterpret_cast<_postprocessing_blur_poisson*>(blur_poisson);
+
+    switch (property)
+    {
+        case POSTPROCESSING_BLUR_POISSON_PROPERTY_BLUR_STRENGTH:
+        {
+            poisson_ptr->cached_blur_strength = *reinterpret_cast<const float*>(data);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized postprocessing_blur_poisson_property value.");
+        }
+    }
 }

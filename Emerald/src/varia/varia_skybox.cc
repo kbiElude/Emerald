@@ -86,7 +86,7 @@ const char* fragment_shader_spherical_texture_preview =
     "\r\n"
     "    vec2  texture_uv = asin(view_vector_n.xy) / 3.1415265 + 0.5;\n"
     "\n"
-    "    texture_uv.y = 1.0 - texture_uv.y;\n"
+    //"    texture_uv.y = 1.0 - texture_uv.y;\n"
     "    result       = textureLod(skybox, texture_uv, 0.0).xyz;\r\n"
     "}\n";
 

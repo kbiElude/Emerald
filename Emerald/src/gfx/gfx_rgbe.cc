@@ -37,7 +37,7 @@ __forceinline void _gfx_rgbe_rgbe_to_float(float*         dst_ptr,
 }
 
 /** TODO */
-PRIVATE bool _gfx_rgbe_load_data_rle(float* dst_ptr,
+PRIVATE bool _gfx_rgbe_load_data_rle(float* in_dst_ptr,
                                      char*  src_ptr,
                                      int    width,
                                      int    height)
@@ -160,7 +160,9 @@ PRIVATE bool _gfx_rgbe_load_data_rle(float* dst_ptr,
             }
         }
 
-        /* Convert scanline data to floats */
+        /* Convert scanline data to floats. Make sure to flip Y for the image data to be correctly arranged. */
+        float* dst_ptr = in_dst_ptr + (height - 1) * width * 3;
+
         for (int i = 0;
                  i < width;
                ++i)

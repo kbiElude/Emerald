@@ -93,21 +93,21 @@ static const char* _dof_scheuermann_combination_fragment_shader_main =
     "}\n";
 
 
-PRIVATE void _stage_step_dof_scheuermann_update_ub_data(void* unused);
-
-
-
 /** TODO */
 PRIVATE void _stage_step_dof_scheuermann_update_ub_data(void* unused)
 {
-    const float max_coc_px = main_get_max_coc_px();
+    const float blur_strength = main_get_blur_radius();
+    const float max_coc_px    = main_get_max_coc_px();
 
     ral_program_block_buffer_set_nonarrayed_variable_value(_dof_scheuermann_combination_po_ub,
                                                            _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset,
                                                           &max_coc_px,
                                                            sizeof(float) );
+    ral_program_block_buffer_sync_immediately             (_dof_scheuermann_combination_po_ub);
 
-    ral_program_block_buffer_sync_immediately(_dof_scheuermann_combination_po_ub);
+    postprocessing_blur_poisson_set_property(_dof_scheuermann_blur_poisson,
+                                             POSTPROCESSING_BLUR_POISSON_PROPERTY_BLUR_STRENGTH,
+                                            &blur_strength);
 }
 
 
@@ -166,7 +166,6 @@ PUBLIC ral_present_task stage_step_dof_scheuermann_get_blur_present_task()
     return postprocessing_blur_poisson_get_present_task(
         _dof_scheuermann_blur_poisson,
         _dof_scheuermann_downsampled_texture_view,
-        main_get_blur_radius(),
         _dof_scheuermann_downsampled_blurred_texture_view);
 }
 
@@ -596,8 +595,7 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context context)
     /* Set up postprocessor */
     _dof_scheuermann_blur_poisson = postprocessing_blur_poisson_create(context,
                                                                        system_hashed_ansi_string_create("Poison blurrer"),
-                                                                       POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_UNIFORM
-                                                                       );
+                                                                       POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_UNIFORM);
 
     /* Set up combination program */
     ral_shader  combination_fs              = NULL;
