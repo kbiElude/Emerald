@@ -12,6 +12,7 @@
 #include "gfx/gfx_rgbe.h"
 #include "ral/ral_context.h"
 #include "ral/ral_present_task.h"
+#include "ral/ral_program_block_buffer.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "system/system_matrix4x4.h"
@@ -28,17 +29,40 @@ PRIVATE ral_texture      _skybox_texture      = nullptr;
 
 
 /** TODO */
-PRIVATE void _stage_step_background_update_cpu_data()
+PRIVATE void _stage_step_background_update_cpu_data(void* unused)
 {
-    system_matrix4x4 projection_matrix = main_get_projection_matrix();
+    ral_program_block_buffer block_buffer      = nullptr;
+    uint32_t                 inv_proj_offset;
+    uint32_t                 mv_offset;
+    system_matrix4x4         projection_matrix = main_get_projection_matrix();
 
-    demo_flyby_get_property(_flyby,
-                            DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
-                           &_mv);
+    demo_flyby_get_property  (_flyby,
+                              DEMO_FLYBY_PROPERTY_VIEW_MATRIX,
+                             &_mv);
+    varia_skybox_get_property(_skybox,
+                              VARIA_SKYBOX_PROPERTY_PROGRAM_BLOCK_BUFFER,
+                             &block_buffer);
+    varia_skybox_get_property(_skybox,
+                              VARIA_SKYBOX_PROPERTY_INV_PROJ_MAT4_OFFSET,
+                             &inv_proj_offset);
+    varia_skybox_get_property(_skybox,
+                              VARIA_SKYBOX_PROPERTY_MV_MAT4_OFFSET,
+                             &mv_offset);
 
     system_matrix4x4_set_from_matrix4x4(_inv_projection,
                                         projection_matrix);
     system_matrix4x4_invert            (_inv_projection);
+
+    ral_program_block_buffer_set_nonarrayed_variable_value(block_buffer,
+                                                           inv_proj_offset,
+                                                           system_matrix4x4_get_column_major_data(_inv_projection),
+                                                           sizeof(float) * 16);
+    ral_program_block_buffer_set_nonarrayed_variable_value(block_buffer,
+                                                           mv_offset,
+                                                           system_matrix4x4_get_column_major_data(_mv),
+                                                           sizeof(float) * 16);
+
+    ral_program_block_buffer_sync_immediately(block_buffer);
 }
 
 /* Please see header for specification */
@@ -76,12 +100,39 @@ PUBLIC ral_texture_view stage_step_background_get_bg_texture_view()
 /* Please see header for specification */
 PUBLIC ral_present_task stage_step_background_get_present_task()
 {
-    _stage_step_background_update_cpu_data();
+    ral_program_block_buffer            block_buffer;
+    ral_buffer                          buffer_ral;
+    ral_present_task                    cpu_task;
+    ral_present_task_cpu_create_info    cpu_task_info;
+    ral_present_task_io                 cpu_task_output;
+    ral_present_task                    gpu_task;
 
-    return varia_skybox_get_present_task(_skybox,
-                                         _result_texture_view,
-                                         _mv,
-                                         _inv_projection);
+    varia_skybox_get_property            (_skybox,
+                                          VARIA_SKYBOX_PROPERTY_PROGRAM_BLOCK_BUFFER,
+                                         &block_buffer);
+    ral_program_block_buffer_get_property(block_buffer,
+                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                         &buffer_ral);
+
+    cpu_task_info.cpu_task_callback_user_arg = nullptr;
+    cpu_task_info.n_unique_inputs            = 0;
+    cpu_task_info.n_unique_outputs           = 1;
+    cpu_task_info.pfn_cpu_task_callback_proc = _stage_step_background_update_cpu_data;
+    cpu_task_info.unique_inputs              = nullptr;
+    cpu_task_info.unique_outputs             = &cpu_task_output;
+
+    cpu_task_output.buffer      = buffer_ral;
+    cpu_task_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+    cpu_task = ral_present_task_create_cpu  (system_hashed_ansi_string_create("Stage step background: matrix update"),
+                                            &cpu_task_info);
+    gpu_task = varia_skybox_get_present_task(_skybox,
+                                             _result_texture_view,
+                                             cpu_task);
+
+    ral_present_task_release(cpu_task);
+
+    return gpu_task;
 }
 
 /* Please see header for specification */

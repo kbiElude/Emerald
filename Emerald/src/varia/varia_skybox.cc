@@ -93,7 +93,7 @@ const char* fragment_shader_spherical_texture_preview =
 const char* vertex_shader_preview =
     "#version 430 core\n"
     "\n"
-    "layout(std140) uniform dataVS\n"
+    "layout(binding = 0, std140) uniform dataVS\n"
     "{\n"
     "    mat4 mv;\n"
     "    mat4 inv_projection;\n"
@@ -114,6 +114,18 @@ const char* vertex_shader_preview =
     "}\n";
 
 /** Internal type declarations */
+typedef enum
+{
+#ifdef INCLUDE_OPENCL
+    VARIA_SKYBOX_LIGHT_PROJECTION_SH,
+#endif
+
+    VARIA_SKYBOX_SPHERICAL_PROJECTION_TEXTURE,
+
+    /** TODO: VARIA_SKYBOX_CUBEMAP_TEXTURE */
+} _varia_skybox_type;
+
+
 typedef struct
 {
     ral_context               context;
@@ -126,11 +138,8 @@ typedef struct
     ral_command_buffer       cached_command_buffer;
     ral_gfx_state            cached_gfx_state;
     ral_present_task         cached_present_task;
-    system_matrix4x4         cached_present_task_inv_proj;
-    system_matrix4x4         cached_present_task_mv;
     ral_texture_view         cached_present_task_texture_view;
     ral_sampler              cached_sampler;
-    system_critical_section  matrix_cs;
 
     uint32_t                 inverse_projection_ub_offset;
     uint32_t                 mv_ub_offset;
@@ -391,14 +400,11 @@ PRIVATE void _varia_skybox_init(_varia_skybox*            skybox_ptr,
            0,
            sizeof(_varia_skybox) );
 
-    skybox_ptr->cached_present_task_inv_proj = system_matrix4x4_create();
-    skybox_ptr->cached_present_task_mv       = system_matrix4x4_create();
-    skybox_ptr->context                      = context;
-    skybox_ptr->matrix_cs                    = system_critical_section_create();
-    skybox_ptr->name                         = name;
-    skybox_ptr->samples                      = samples;
-    skybox_ptr->texture                      = texture;
-    skybox_ptr->type                         = type;
+    skybox_ptr->context = context;
+    skybox_ptr->name    = name;
+    skybox_ptr->samples = samples;
+    skybox_ptr->texture = texture;
+    skybox_ptr->type    = type;
 
     ral_context_retain_object(context,
                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
@@ -496,31 +502,6 @@ PRIVATE void _varia_skybox_release(void* skybox)
 
         skybox_ptr->program_ub = nullptr;
     }
-
-    system_matrix4x4_release       (skybox_ptr->cached_present_task_inv_proj);
-    system_matrix4x4_release       (skybox_ptr->cached_present_task_mv);
-    system_critical_section_release(skybox_ptr->matrix_cs);
-}
-
-/** TODO */
-PRIVATE void _varia_skybox_update_ub_cpu_callback(void* skybox_raw_ptr)
-{
-    _varia_skybox* skybox_ptr = reinterpret_cast<_varia_skybox*>(skybox_raw_ptr);
-
-    system_critical_section_enter(skybox_ptr->matrix_cs);
-    {
-        ral_program_block_buffer_set_nonarrayed_variable_value(skybox_ptr->program_ub,
-                                                               skybox_ptr->inverse_projection_ub_offset,
-                                                               system_matrix4x4_get_column_major_data(skybox_ptr->cached_present_task_inv_proj),
-                                                               sizeof(float) * 16);
-        ral_program_block_buffer_set_nonarrayed_variable_value(skybox_ptr->program_ub,
-                                                               skybox_ptr->mv_ub_offset,
-                                                               system_matrix4x4_get_column_major_data(skybox_ptr->cached_present_task_mv),
-                                                               sizeof(float) * 16);
-    }
-    system_critical_section_leave(skybox_ptr->matrix_cs);
-
-    ral_program_block_buffer_sync_immediately(skybox_ptr->program_ub);
 }
 
 #ifdef INCLUDE_OPENCL
@@ -586,10 +567,47 @@ PUBLIC EMERALD_API varia_skybox varia_skybox_create_spherical_projection_texture
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void varia_skybox_get_property(varia_skybox          skybox,
+                                                  varia_skybox_property property,
+                                                  void*                 out_result_ptr)
+{
+    _varia_skybox* skybox_ptr = reinterpret_cast<_varia_skybox*>(skybox);
+
+    switch (property)
+    {
+        case VARIA_SKYBOX_PROPERTY_INV_PROJ_MAT4_OFFSET:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = skybox_ptr->inverse_projection_ub_offset;
+
+            break;
+        }
+
+        case VARIA_SKYBOX_PROPERTY_MV_MAT4_OFFSET:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = skybox_ptr->mv_ub_offset;
+
+            break;
+        }
+
+        case VARIA_SKYBOX_PROPERTY_PROGRAM_BLOCK_BUFFER:
+        {
+            *reinterpret_cast<ral_program_block_buffer*>(out_result_ptr) = skybox_ptr->program_ub;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized varia_skybox_property value.");
+        }
+    }
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API ral_present_task varia_skybox_get_present_task(varia_skybox     skybox,
                                                                   ral_texture_view target_texture_view,
-                                                                  system_matrix4x4 modelview,
-                                                                  system_matrix4x4 inverted_projection)
+                                                                  ral_present_task matrix_update_task)
 {
     ral_buffer       program_ub_bo_ral = nullptr;
     ral_present_task result            = nullptr;
@@ -598,16 +616,6 @@ PUBLIC EMERALD_API ral_present_task varia_skybox_get_present_task(varia_skybox  
     ral_program_block_buffer_get_property(skybox_ptr->program_ub,
                                           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
                                          &program_ub_bo_ral);
-
-    /* Cache the MV & inv_projection matrices */
-    system_critical_section_enter(skybox_ptr->matrix_cs);
-    {
-        system_matrix4x4_set_from_matrix4x4(skybox_ptr->cached_present_task_inv_proj,
-                                            inverted_projection);
-        system_matrix4x4_set_from_matrix4x4(skybox_ptr->cached_present_task_mv,
-                                            modelview);
-    }
-    system_critical_section_leave(skybox_ptr->matrix_cs);
 
     /* We only need to re-create the present task if the request is made for the first time, or
      * if the target texture view is different from the one used before. */
@@ -744,42 +752,31 @@ PUBLIC EMERALD_API ral_present_task varia_skybox_get_present_task(varia_skybox  
     }
 
     /* Set up the present task */
-    ral_present_task                    cpu_task;
-    ral_present_task_cpu_create_info    cpu_task_info;
-    ral_present_task_io                 cpu_task_unique_output;
     ral_present_task                    gpu_task;
     ral_present_task_gpu_create_info    gpu_task_info;
+    ral_present_task_io                 gpu_task_unique_input;
     ral_present_task_io                 gpu_task_unique_output;
     ral_present_task_group_create_info  group_task_info;
     ral_present_task_ingroup_connection group_task_ingroup_connection;
     ral_present_task_group_mapping      group_task_output_mapping;
     ral_present_task                    group_task_subtasks[2];
 
-    cpu_task_unique_output.buffer      = program_ub_bo_ral;
-    cpu_task_unique_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+    gpu_task_unique_input.buffer      = program_ub_bo_ral;
+    gpu_task_unique_input.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
 
     gpu_task_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
     gpu_task_unique_output.texture_view = target_texture_view;
 
-    cpu_task_info.cpu_task_callback_user_arg = skybox_ptr;
-    cpu_task_info.n_unique_inputs            = 0;
-    cpu_task_info.n_unique_outputs           = 1;
-    cpu_task_info.pfn_cpu_task_callback_proc = _varia_skybox_update_ub_cpu_callback;
-    cpu_task_info.unique_inputs              = nullptr;
-    cpu_task_info.unique_outputs             = &cpu_task_unique_output;
-
     gpu_task_info.command_buffer   = skybox_ptr->cached_command_buffer;
     gpu_task_info.n_unique_inputs  = 1;
     gpu_task_info.n_unique_outputs = 1;
-    gpu_task_info.unique_inputs    = &cpu_task_unique_output;
+    gpu_task_info.unique_inputs    = &gpu_task_unique_input;
     gpu_task_info.unique_outputs   = &gpu_task_unique_output;
 
-    cpu_task = ral_present_task_create_cpu(system_hashed_ansi_string_create("Varia skybox: CPU task"),
-                                          &cpu_task_info);
     gpu_task = ral_present_task_create_gpu(system_hashed_ansi_string_create("Varia skybox: GPU task"),
                                           &gpu_task_info);
 
-    group_task_subtasks[0] = cpu_task;
+    group_task_subtasks[0] = matrix_update_task;
     group_task_subtasks[1] = gpu_task;
 
     group_task_ingroup_connection.input_present_task_index     = 1;
@@ -808,7 +805,6 @@ PUBLIC EMERALD_API ral_present_task varia_skybox_get_present_task(varia_skybox  
     skybox_ptr->cached_present_task              = result;
     skybox_ptr->cached_present_task_texture_view = target_texture_view;
 
-    ral_present_task_release(cpu_task);
     ral_present_task_release(gpu_task);
 end:
 

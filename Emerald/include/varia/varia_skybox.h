@@ -15,14 +15,16 @@ REFCOUNT_INSERT_DECLARATIONS(varia_skybox,
 
 typedef enum
 {
-#ifdef INCLUDE_OPENCL
-    VARIA_SKYBOX_LIGHT_PROJECTION_SH,
-#endif
+    /* not settable; uint32_t */
+    VARIA_SKYBOX_PROPERTY_INV_PROJ_MAT4_OFFSET,
 
-    VARIA_SKYBOX_SPHERICAL_PROJECTION_TEXTURE,
+    /* not settable; uint32_t */
+    VARIA_SKYBOX_PROPERTY_MV_MAT4_OFFSET,
 
-    /** TODO: VARIA_SKYBOX_CUBEMAP_TEXTURE */
-} _varia_skybox_type;
+    /* not settable; ral_program_block_buffer */
+    VARIA_SKYBOX_PROPERTY_PROGRAM_BLOCK_BUFFER,
+
+} varia_skybox_property;
 
 /** TODO */
 #ifdef INCLUDE_OPENCL
@@ -36,15 +38,27 @@ PUBLIC EMERALD_API varia_skybox varia_skybox_create_spherical_projection_texture
                                                                                  ral_texture               texture,
                                                                                  system_hashed_ansi_string name);
 
+/** TODO */
+PUBLIC EMERALD_API void varia_skybox_get_property(varia_skybox          skybox,
+                                                  varia_skybox_property property,
+                                                  void*                 out_result_ptr);
 /** TODO.
  *
- *  Present task's structure:
+ *  Note: update_task is a user-specified present task which updates buffer memory with correspondingly:
+ *
+ *  1) modelview matrix (mat4 "mv" uniform)
+ *  2) inverted projection matrix (mat4 "inv_projection" uniform)
+ *
+ *  Matrix data needs to be uploaded to a buffer, whose manager which can be retrieved by querying varia_skybox's
+ *  relevant property. The task needs to expose a single output, referring to the buffer memory.
+ *
+ *
+ *  Result present task's structure:
  *
  *  Output 0: Texture view to render the skybox on.
  */
 PUBLIC EMERALD_API ral_present_task varia_skybox_get_present_task(varia_skybox     skybox,
                                                                   ral_texture_view target_texture_view,
-                                                                  system_matrix4x4 modelview,
-                                                                  system_matrix4x4 inverted_projection);
+                                                                  ral_present_task matrix_update_task);
 
 #endif /* VARIA_SKYBOX_H */
