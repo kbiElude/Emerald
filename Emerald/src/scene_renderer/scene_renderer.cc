@@ -730,7 +730,7 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                                       (system_hash64) mesh_uber,
                                      &uber_ptr) )
             {
-                /* NOTE: This will only be called once, every time ogl_uber is used for the
+                /* NOTE: This will only be called once, every time uber is used for the
                  *       first time for current scene renderer instance. This should be a
                  *       negligible cost, so let's leave this memory allocation here, in order
                  *       to avoid making code more complex.
@@ -865,11 +865,11 @@ PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_ren
             _scene_renderer_update_frustum_preview_assigned_cameras(renderer_ptr);
         }
 
-        frustum_preview_render_present_task = scene_renderer_frustum_preview_render(renderer_ptr->frustum_preview,
-                                                                                    frame_time,
-                                                                                    renderer_ptr->current_vp,
-                                                                                    renderer_ptr->current_color_rt,
-                                                                                    renderer_ptr->current_depth_rt);
+        frustum_preview_render_present_task = scene_renderer_frustum_preview_get_present_task(renderer_ptr->frustum_preview,
+                                                                                              frame_time,
+                                                                                              renderer_ptr->current_vp,
+                                                                                              renderer_ptr->current_color_rt,
+                                                                                              renderer_ptr->current_depth_rt);
     }
 
     if (renderer_ptr->current_helper_visualization & HELPER_VISUALIZATION_LIGHTS)
@@ -940,10 +940,10 @@ PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_ren
                                                          current_light_position_m,
                                                          current_light_position_mvp);
 
-                    scene_renderer_lights_preview_render(renderer_ptr->lights_preview,
-                                                         current_light_position_mvp,
-                                                         current_light_color,
-                                                         nullptr); /* light_pos_plus_direction */
+                    scene_renderer_lights_preview_append_light(renderer_ptr->lights_preview,
+                                                               current_light_position_mvp,
+                                                               current_light_color,
+                                                               nullptr); /* light_pos_plus_direction */
                 }
             }
         }
@@ -1098,8 +1098,8 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
                                                            n_vector_item,
                                                           &mesh_uber_item_ptr);
 
-                    scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
-                                                       mesh_uber_item_ptr->mesh_id);
+                    scene_renderer_bbox_preview_append_mesh(renderer_ptr->bbox_preview,
+                                                            mesh_uber_item_ptr->mesh_id);
                 }
             }
             else
@@ -1114,8 +1114,8 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
                                                            n_custom_mesh,
                                                           &mesh_ptr);
 
-                    scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
-                                                       mesh_ptr->mesh_id);
+                    scene_renderer_bbox_preview_append_mesh(renderer_ptr->bbox_preview,
+                                                            mesh_ptr->mesh_id);
                 }
             }
         }
@@ -1148,8 +1148,8 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
                                                        n_vector_item,
                                                       &mesh_uber_item_ptr);
 
-                scene_renderer_normals_preview_render(renderer_ptr->normals_preview,
-                                                      mesh_uber_item_ptr->mesh_id);
+                scene_renderer_normals_preview_append_mesh(renderer_ptr->normals_preview,
+                                                           mesh_uber_item_ptr->mesh_id);
             }
         }
         normals_preview_present_task = scene_renderer_normals_preview_stop(renderer_ptr->normals_preview);
@@ -1369,7 +1369,7 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
 
             if (use_material_uber)
             {
-                /* Retrieve ogl_uber instance */
+                /* Retrieve uber instance */
                 system_hash64map_get_element_at(renderer_ptr->regular_mesh_ubers_map,
                                                 n_iteration,
                                                &uber_details_ptr,
@@ -1378,7 +1378,7 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                 ASSERT_DEBUG_SYNC(material_hash != 0,
                                   "No scene_renderer_uber instance available!");
 
-                material_uber = (scene_renderer_uber) material_hash;
+                material_uber = reinterpret_cast<scene_renderer_uber>(material_hash);
 
                 /* Make sure its configuration takes the frame-specific light configuration into account. */
                 _scene_renderer_update_uber_light_properties(material_uber,
@@ -2399,8 +2399,8 @@ PUBLIC void scene_renderer_bake_gpu_assets(scene_renderer renderer)
 }
 
 /** Please see header for specification */
-PUBLIC scene_renderer scene_renderer_create(ral_context context,
-                                            scene       scene)
+PUBLIC EMERALD_API scene_renderer scene_renderer_create(ral_context context,
+                                                        scene       scene)
 {
     _scene_renderer* scene_renderer_ptr = new (std::nothrow) _scene_renderer(context,
                                                                              scene);
@@ -2828,88 +2828,16 @@ PUBLIC void scene_renderer_get_indexed_property(const scene_renderer    renderer
 }
 
 /** Please see header for specification */
-PUBLIC void scene_renderer_get_property(const scene_renderer    renderer,
-                                        scene_renderer_property property,
-                                        void*                   out_result_ptr)
-{
-    const _scene_renderer* renderer_ptr = reinterpret_cast<const _scene_renderer*>(renderer);
-
-    switch (property)
-    {
-        case SCENE_RENDERER_PROPERTY_CONTEXT_RAL:
-        {
-            *reinterpret_cast<ral_context *>(out_result_ptr) = renderer_ptr->context;
-
-            break;
-        }
-
-        case SCENE_RENDERER_PROPERTY_GRAPH:
-        {
-            scene_get_property(renderer_ptr->owned_scene,
-                               SCENE_PROPERTY_GRAPH,
-                               out_result_ptr);
-
-            break;
-        }
-
-        case SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX:
-        {
-            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = renderer_ptr->current_model_matrix;
-
-            break;
-        }
-
-        case SCENE_RENDERER_PROPERTY_SHADOW_MAPPING_MANAGER:
-        {
-            *reinterpret_cast<scene_renderer_sm*>(out_result_ptr) = renderer_ptr->shadow_mapping;
-
-            break;
-        }
-
-        case SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX:
-        {
-            memcpy(out_result_ptr,
-                   renderer_ptr->current_camera_visible_world_aabb_max,
-                   sizeof(renderer_ptr->current_camera_visible_world_aabb_max) );
-
-            break;
-        }
-
-        case SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN:
-        {
-            memcpy(out_result_ptr,
-                   renderer_ptr->current_camera_visible_world_aabb_min,
-                   sizeof(renderer_ptr->current_camera_visible_world_aabb_min) );
-
-            break;
-        }
-
-        case SCENE_RENDERER_PROPERTY_VP:
-        {
-            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = renderer_ptr->current_vp;
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized scene_graph property");
-        }
-    }
-}
-
-/** Please see header for specification */
-PUBLIC ral_present_task scene_renderer_render_scene_graph(scene_renderer                      renderer,
-                                                          system_matrix4x4                    view,
-                                                          system_matrix4x4                    projection,
-                                                          scene_camera                        camera,
-                                                          const scene_renderer_render_mode&   render_mode,
-                                                          bool                                apply_shadow_mapping,
-                                                          scene_renderer_helper_visualization helper_visualization,
-                                                          system_time                         frame_time,
-                                                          ral_texture_view                    color_rt,
-                                                          ral_texture_view                    depth_rt)
+PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_graph(scene_renderer                      renderer,
+                                                                                    system_matrix4x4                    view,
+                                                                                    system_matrix4x4                    projection,
+                                                                                    scene_camera                        camera,
+                                                                                    const scene_renderer_render_mode&   render_mode,
+                                                                                    bool                                apply_shadow_mapping,
+                                                                                    scene_renderer_helper_visualization helper_visualization,
+                                                                                    system_time                         frame_time,
+                                                                                    ral_texture_view                    color_rt,
+                                                                                    ral_texture_view                    depth_rt)
 {
     scene_graph      graph               = nullptr;
     _scene_renderer* renderer_ptr        = reinterpret_cast<_scene_renderer*>(renderer);
@@ -3039,7 +2967,79 @@ PUBLIC ral_present_task scene_renderer_render_scene_graph(scene_renderer        
 }
 
 /** Please see header for specification */
-PUBLIC void scene_renderer_release(scene_renderer scene_renderer_instance)
+PUBLIC EMERALD_API void scene_renderer_get_property(const scene_renderer    renderer,
+                                                    scene_renderer_property property,
+                                                    void*                   out_result_ptr)
+{
+    const _scene_renderer* renderer_ptr = reinterpret_cast<const _scene_renderer*>(renderer);
+
+    switch (property)
+    {
+        case SCENE_RENDERER_PROPERTY_CONTEXT_RAL:
+        {
+            *reinterpret_cast<ral_context *>(out_result_ptr) = renderer_ptr->context;
+
+            break;
+        }
+
+        case SCENE_RENDERER_PROPERTY_GRAPH:
+        {
+            scene_get_property(renderer_ptr->owned_scene,
+                               SCENE_PROPERTY_GRAPH,
+                               out_result_ptr);
+
+            break;
+        }
+
+        case SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX:
+        {
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = renderer_ptr->current_model_matrix;
+
+            break;
+        }
+
+        case SCENE_RENDERER_PROPERTY_SHADOW_MAPPING_MANAGER:
+        {
+            *reinterpret_cast<scene_renderer_sm*>(out_result_ptr) = renderer_ptr->shadow_mapping;
+
+            break;
+        }
+
+        case SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX:
+        {
+            memcpy(out_result_ptr,
+                   renderer_ptr->current_camera_visible_world_aabb_max,
+                   sizeof(renderer_ptr->current_camera_visible_world_aabb_max) );
+
+            break;
+        }
+
+        case SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN:
+        {
+            memcpy(out_result_ptr,
+                   renderer_ptr->current_camera_visible_world_aabb_min,
+                   sizeof(renderer_ptr->current_camera_visible_world_aabb_min) );
+
+            break;
+        }
+
+        case SCENE_RENDERER_PROPERTY_VP:
+        {
+            *reinterpret_cast<system_matrix4x4*>(out_result_ptr) = renderer_ptr->current_vp;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_graph property");
+        }
+    }
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void scene_renderer_release(scene_renderer scene_renderer_instance)
 {
     if (scene_renderer_instance != nullptr)
     {
@@ -3050,9 +3050,9 @@ PUBLIC void scene_renderer_release(scene_renderer scene_renderer_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void scene_renderer_set_property(scene_renderer          renderer,
-                                        scene_renderer_property property,
-                                        const void*             data)
+PUBLIC EMERALD_API void scene_renderer_set_property(scene_renderer          renderer,
+                                                    scene_renderer_property property,
+                                                    const void*             data)
 {
     _scene_renderer* renderer_ptr = reinterpret_cast<_scene_renderer*>(renderer);
 

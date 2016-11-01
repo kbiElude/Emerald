@@ -960,7 +960,9 @@ PRIVATE void _mesh_init_mesh_layer_data_stream(_mesh_layer_data_stream*      new
 PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass_ptr,
                                         mesh_type         mesh_type)
 {
-    new_mesh_layer_pass_ptr->material = nullptr;
+    memset(new_mesh_layer_pass_ptr,
+           0,
+           sizeof(*new_mesh_layer_pass_ptr) );
 
     switch (mesh_type)
     {
@@ -992,11 +994,6 @@ PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass_pt
 
             break;
         }
-    }
-
-    if (mesh_type == MESH_TYPE_REGULAR)
-    {
-        
     }
 }
 
@@ -3568,7 +3565,7 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
                 {
                     switch (property)
                     {
-                        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL:
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL:
                         {
                             *reinterpret_cast<ral_buffer*>(out_result_ptr) = stream_ptr->bo;
                             result                                         = true;
@@ -3576,7 +3573,7 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
                             break;
                         }
 
-                        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE:
+                        case MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE:
                         {
                             *reinterpret_cast<unsigned int*>(out_result_ptr) = stream_ptr->bo_stride;
                             result                                           = true;
@@ -5026,7 +5023,7 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(m
     /* Update the property */
     switch (property)
     {
-        case MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL:
+        case MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL:
         {
             data_stream_ptr->bo = bo;
 
@@ -5049,7 +5046,7 @@ PUBLIC EMERALD_API bool mesh_set_layer_data_stream_property_with_buffer_memory(m
                                     RAL_BUFFER_PROPERTY_SIZE,
                                    &bo_size);
 
-            ASSERT_DEBUG_SYNC(bo_size == sizeof(unsigned int),
+            ASSERT_DEBUG_SYNC(bo_size >= sizeof(unsigned int),
                               "Invalid buffer memory region size requested.");
 
             data_stream_ptr->n_items_bo                         = bo;

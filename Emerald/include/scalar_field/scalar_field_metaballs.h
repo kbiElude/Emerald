@@ -37,7 +37,11 @@ typedef enum
      *
      * Default value: 0.
      */
-     SCALAR_FIELD_METABALLS_PROPERTY_N_METABALLS
+     SCALAR_FIELD_METABALLS_PROPERTY_N_METABALLS,
+
+     /* bool; not settable */
+     SCALAR_FIELD_METABALLS_PROPERTY_RESULT_BUFFER_UPDATE_NEEDED,
+
 } scalar_field_metaballs_property;
 
 /** TODO */

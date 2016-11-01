@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_context.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
 
@@ -33,8 +34,6 @@ typedef struct _ral_buffer
                 ral_buffer_property_bits    in_property_bits,
                 ral_buffer_mappability_bits in_mappability_bits)
     {
-        ASSERT_DEBUG_SYNC(in_start_offset == 0, "!!");
-
         callback_manager = system_callback_manager_create( (_callback_id) RAL_BUFFER_CALLBACK_ID_COUNT);
         context          = in_context;
         mappability_bits = in_mappability_bits;
@@ -45,6 +44,13 @@ typedef struct _ral_buffer
         start_offset     = in_start_offset;
         usage_bits       = in_usage_bits;
         user_queue_bits  = in_user_queue_bits;
+
+        if (parent_buffer != nullptr)
+        {
+            ral_context_retain_object(context,
+                                      RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                      parent_buffer);
+        }
     }
 
     ~_ral_buffer()
@@ -54,6 +60,14 @@ typedef struct _ral_buffer
             system_callback_manager_release(callback_manager);
 
             callback_manager = nullptr;
+        }
+
+        if (parent_buffer != nullptr)
+        {
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&parent_buffer) );
         }
     }
 } _ral_buffer;
@@ -204,9 +218,6 @@ PUBLIC ral_buffer ral_buffer_create(ral_context                   context,
 
         goto end;
     }
-
-    ASSERT_DEBUG_SYNC(create_info_ptr->parent_buffer == nullptr,
-                      "TODO");
 
     if (create_info_ptr->mappability_bits >= (1 << (RAL_BUFFER_MAPPABILITY_LAST_USED_BIT + 1)) )
     {

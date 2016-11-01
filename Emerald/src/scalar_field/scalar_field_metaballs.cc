@@ -372,6 +372,9 @@ PRIVATE void _scalar_field_metaballs_init(_scalar_field_metaballs* metaballs_ptr
     metaballs_ptr->po_props_ub_bo_offset_metaball_data = uniform_metaball_data_variable_ral_ptr->block_offset;
     metaballs_ptr->po_props_ub_bo_offset_n_metaballs   = uniform_n_metaballs_variable_ral_ptr->block_offset;
 
+    /* Initialize present tasks */
+    _scalar_field_metaballs_init_present_tasks(metaballs_ptr);
+
     /* All done! */
     ral_context_delete_objects(metaballs_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_SHADER,
@@ -443,11 +446,11 @@ PRIVATE void _scalar_field_metaballs_init_present_tasks(_scalar_field_metaballs*
             binding_info[1].uniform_buffer_binding.offset = 0;
             binding_info[1].uniform_buffer_binding.size   = metaballs_ptr->po_props_ub_bo_size;
 
+            ral_command_buffer_record_set_program(command_buffer,
+                                                  metaballs_ptr->po);
             ral_command_buffer_record_set_bindings(command_buffer,
                                                    sizeof(binding_info) / sizeof(binding_info[0]),
                                                    binding_info);
-            ral_command_buffer_record_set_program(command_buffer,
-                                                  metaballs_ptr->po);
             ral_command_buffer_record_dispatch   (command_buffer,
                                                   metaballs_ptr->global_wg_size);
         }
@@ -485,7 +488,7 @@ PRIVATE void _scalar_field_metaballs_init_present_tasks(_scalar_field_metaballs*
         present_task_gpu_unique_output.buffer      = metaballs_ptr->scalar_field_bo;
         present_task_gpu_unique_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
 
-        present_task_gpu_create_info.command_buffer   = nullptr;
+        present_task_gpu_create_info.command_buffer   = command_buffer;
         present_task_gpu_create_info.n_unique_inputs  = 1;
         present_task_gpu_create_info.n_unique_outputs = 1;
         present_task_gpu_create_info.unique_inputs    = &present_task_gpu_unique_input;
@@ -522,9 +525,13 @@ PRIVATE void _scalar_field_metaballs_init_present_tasks(_scalar_field_metaballs*
                                                                                 &result_present_task_create_info);
 
         /* Clean up */
-        ral_command_buffer_release(command_buffer);
-        ral_present_task_release  (present_task_cpu);
-        ral_present_task_release  (present_task_gpu);
+        ral_context_delete_objects(metaballs_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&command_buffer) );
+
+        ral_present_task_release(present_task_cpu);
+        ral_present_task_release(present_task_gpu);
     }
 }
 
@@ -663,15 +670,15 @@ PUBLIC EMERALD_API ral_present_task scalar_field_metaballs_get_present_task(scal
     _scalar_field_metaballs* metaballs_ptr = reinterpret_cast<_scalar_field_metaballs*>(metaballs);
     ral_present_task         result;
 
-    if (!metaballs_ptr->is_update_needed)
+    if (metaballs_ptr->is_update_needed)
     {
         result = metaballs_ptr->present_task_with_compute;
+
+        metaballs_ptr->is_update_needed = false;
     }
     else
     {
         result = metaballs_ptr->present_task_wo_compute;
-
-        metaballs_ptr->is_update_needed = false;
     }
 
     /* All done */
@@ -692,6 +699,13 @@ PUBLIC EMERALD_API void scalar_field_metaballs_get_property(scalar_field_metabal
         case SCALAR_FIELD_METABALLS_PROPERTY_DATA_BO_RAL:
         {
             *reinterpret_cast<ral_buffer*>(out_result_ptr) = metaballs_ptr->scalar_field_bo;
+
+            break;
+        }
+
+        case SCALAR_FIELD_METABALLS_PROPERTY_RESULT_BUFFER_UPDATE_NEEDED:
+        {
+            *reinterpret_cast<bool*>(out_result_ptr) = metaballs_ptr->is_update_needed;
 
             break;
         }

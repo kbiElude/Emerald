@@ -1063,6 +1063,7 @@ PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
 {
     GLuint                bo_id             = -1;
     system_memory_manager bo_memory_manager = nullptr;
+    uint32_t              bo_size           = 0;
     uint32_t              bo_start_offset   = 0;
     _raGL_buffers*        buffers_ptr       = reinterpret_cast<_raGL_buffers*>(buffers);
 
@@ -1073,12 +1074,16 @@ PUBLIC void raGL_buffers_free_buffer_memory(raGL_buffers buffers,
                              RAGL_BUFFER_PROPERTY_MEMORY_MANAGER,
                             &bo_memory_manager);
     raGL_buffer_get_property(buffer,
+                             RAGL_BUFFER_PROPERTY_SIZE,
+                            &bo_size);
+    raGL_buffer_get_property(buffer,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &bo_start_offset);
 
-    LOG_ERROR("raGL_buffers_free_buffer_memory(): BO id:[%u] offset:[%u]",
+    LOG_ERROR("raGL_buffers_free_buffer_memory(): BO id:[%u] offset:[%u] size:[%u]",
               bo_id,
-              bo_start_offset);
+              bo_start_offset,
+              bo_size);
 
     system_memory_manager_free_block(bo_memory_manager,
                                      bo_start_offset);

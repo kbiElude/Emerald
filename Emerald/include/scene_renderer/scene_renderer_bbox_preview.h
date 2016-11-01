@@ -10,6 +10,10 @@
 #include "scene/scene_types.h"
 #include "scene_renderer/scene_renderer_types.h"
 
+/** TODO */
+PUBLIC void scene_renderer_bbox_preview_append_mesh(scene_renderer_bbox_preview preview,
+                                                    uint32_t                    mesh_id);
+
 /** TODO.
  *
  *  Private usage only.
@@ -17,10 +21,6 @@
 PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_context    context,
                                                                       scene          scene,
                                                                       scene_renderer owner);
-
-/** TODO */
-PUBLIC void scene_renderer_bbox_preview_render(scene_renderer_bbox_preview preview,
-                                               uint32_t                    mesh_id);
 
 /** TODO */
 PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,

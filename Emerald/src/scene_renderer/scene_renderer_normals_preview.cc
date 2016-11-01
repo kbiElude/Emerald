@@ -329,86 +329,8 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC scene_renderer_normals_preview scene_renderer_normals_preview_create(ral_context    context,
-                                                                            scene          scene,
-                                                                            scene_renderer owner)
-{
-    _scene_renderer_normals_preview* new_instance_ptr = new (std::nothrow) _scene_renderer_normals_preview;
-
-    ASSERT_ALWAYS_SYNC(new_instance_ptr != nullptr,
-                       "Out of memory");
-
-    if (new_instance_ptr != nullptr)
-    {
-        new_instance_ptr->cached_command_buffer                   = nullptr;
-        new_instance_ptr->cached_gfx_state                        = nullptr;
-        new_instance_ptr->context                                 = context;
-        new_instance_ptr->owned_scene                             = scene;
-        new_instance_ptr->owner                                   = owner;
-        new_instance_ptr->preview_program                         = nullptr;
-        new_instance_ptr->preview_program_normal_matrix_ub_offset = -1;
-        new_instance_ptr->preview_program_start_offsets_ub_offset = -1;
-        new_instance_ptr->preview_program_stride_ub_offset        = -1;
-        new_instance_ptr->preview_program_vp_ub_offset            = -1;
-
-        scene_retain(scene);
-
-        _scene_renderer_normals_preview_init(new_instance_ptr);
-    }
-
-    return (scene_renderer_normals_preview) new_instance_ptr;
-}
-
-/** Please see header for spec */
-PUBLIC void scene_renderer_normals_preview_release(scene_renderer_normals_preview preview)
-{
-    _scene_renderer_normals_preview* preview_ptr = reinterpret_cast<_scene_renderer_normals_preview*>(preview);
-
-    ral_context_delete_objects(preview_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
-                               1, /* n_objects */
-                               reinterpret_cast<void* const*>(&preview_ptr->cached_gfx_state) );
-    ral_context_delete_objects(preview_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
-                               1, /* n_objects */
-                               reinterpret_cast<void* const*>(&preview_ptr->cached_command_buffer) );
-
-    if (preview_ptr->owned_scene != nullptr)
-    {
-        scene_release(preview_ptr->owned_scene);
-    }
-
-    if (preview_ptr->preview_program != nullptr)
-    {
-        ral_context_delete_objects(preview_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                   1, /* n_objects */
-                                   reinterpret_cast<void* const*>(&preview_ptr->preview_program) );
-
-        preview_ptr->preview_program = nullptr;
-    }
-
-    if (preview_ptr->preview_program_ub_gs != nullptr)
-    {
-        ral_program_block_buffer_release(preview_ptr->preview_program_ub_gs);
-
-        preview_ptr->preview_program_ub_gs = nullptr;
-    }
-
-    if (preview_ptr->preview_program_ub_vs != nullptr)
-    {
-        ral_program_block_buffer_release(preview_ptr->preview_program_ub_vs);
-
-        preview_ptr->preview_program_ub_vs = nullptr;
-    }
-
-    delete preview_ptr;
-    preview_ptr = nullptr;
-}
-
-/** Please see header for spec */
-PUBLIC void scene_renderer_normals_preview_render(scene_renderer_normals_preview preview,
-                                                  uint32_t                       mesh_id)
+PUBLIC void scene_renderer_normals_preview_append_mesh(scene_renderer_normals_preview preview,
+                                                       uint32_t                       mesh_id)
 {
     ral_buffer                       mesh_bo                  = nullptr;
     unsigned int                     mesh_bo_size             = 0;
@@ -513,6 +435,84 @@ PUBLIC void scene_renderer_normals_preview_render(scene_renderer_normals_preview
     ral_command_buffer_record_draw_call_regular(preview_ptr->cached_command_buffer,
                                                 1, /* n_draw_calls */
                                                &draw_call_info);
+}
+
+/** Please see header for spec */
+PUBLIC scene_renderer_normals_preview scene_renderer_normals_preview_create(ral_context    context,
+                                                                            scene          scene,
+                                                                            scene_renderer owner)
+{
+    _scene_renderer_normals_preview* new_instance_ptr = new (std::nothrow) _scene_renderer_normals_preview;
+
+    ASSERT_ALWAYS_SYNC(new_instance_ptr != nullptr,
+                       "Out of memory");
+
+    if (new_instance_ptr != nullptr)
+    {
+        new_instance_ptr->cached_command_buffer                   = nullptr;
+        new_instance_ptr->cached_gfx_state                        = nullptr;
+        new_instance_ptr->context                                 = context;
+        new_instance_ptr->owned_scene                             = scene;
+        new_instance_ptr->owner                                   = owner;
+        new_instance_ptr->preview_program                         = nullptr;
+        new_instance_ptr->preview_program_normal_matrix_ub_offset = -1;
+        new_instance_ptr->preview_program_start_offsets_ub_offset = -1;
+        new_instance_ptr->preview_program_stride_ub_offset        = -1;
+        new_instance_ptr->preview_program_vp_ub_offset            = -1;
+
+        scene_retain(scene);
+
+        _scene_renderer_normals_preview_init(new_instance_ptr);
+    }
+
+    return (scene_renderer_normals_preview) new_instance_ptr;
+}
+
+/** Please see header for spec */
+PUBLIC void scene_renderer_normals_preview_release(scene_renderer_normals_preview preview)
+{
+    _scene_renderer_normals_preview* preview_ptr = reinterpret_cast<_scene_renderer_normals_preview*>(preview);
+
+    ral_context_delete_objects(preview_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&preview_ptr->cached_gfx_state) );
+    ral_context_delete_objects(preview_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&preview_ptr->cached_command_buffer) );
+
+    if (preview_ptr->owned_scene != nullptr)
+    {
+        scene_release(preview_ptr->owned_scene);
+    }
+
+    if (preview_ptr->preview_program != nullptr)
+    {
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&preview_ptr->preview_program) );
+
+        preview_ptr->preview_program = nullptr;
+    }
+
+    if (preview_ptr->preview_program_ub_gs != nullptr)
+    {
+        ral_program_block_buffer_release(preview_ptr->preview_program_ub_gs);
+
+        preview_ptr->preview_program_ub_gs = nullptr;
+    }
+
+    if (preview_ptr->preview_program_ub_vs != nullptr)
+    {
+        ral_program_block_buffer_release(preview_ptr->preview_program_ub_vs);
+
+        preview_ptr->preview_program_ub_vs = nullptr;
+    }
+
+    delete preview_ptr;
+    preview_ptr = nullptr;
 }
 
 /** Please see header for spec */

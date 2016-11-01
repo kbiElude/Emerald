@@ -3902,16 +3902,19 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                         shadow_mapping_ptr->current_light       = current_light;
                         shadow_mapping_ptr->current_target_face = current_target_face;
 
-                        scene_renderer_render_scene_graph(renderer,
-                                                          sm_view_matrix,
-                                                          sm_projection_matrix,
-                                                          target_camera,
-                                                          RENDER_MODE_SHADOW_MAP,
-                                                          false, /* apply_shadow_mapping */
-                                                          HELPER_VISUALIZATION_NONE,
-                                                          frame_time,
-                                                          sm_color_texture_view,
-                                                          sm_depth_texture_view);
+                        ASSERT_DEBUG_SYNC(false,
+                                          "TODO");
+
+                        scene_renderer_get_present_task_for_scene_graph(renderer,
+                                                                        sm_view_matrix,
+                                                                        sm_projection_matrix,
+                                                                        target_camera,
+                                                                        RENDER_MODE_SHADOW_MAP,
+                                                                        false, /* apply_shadow_mapping */
+                                                                        HELPER_VISUALIZATION_NONE,
+                                                                        frame_time,
+                                                                        sm_color_texture_view,
+                                                                        sm_depth_texture_view);
                    }
 
                    /* Clean up */

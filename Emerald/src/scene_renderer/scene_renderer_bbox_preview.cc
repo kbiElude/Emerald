@@ -437,6 +437,48 @@ end:
 }
 
 /** Please see header for spec */
+PUBLIC void scene_renderer_bbox_preview_append_mesh(scene_renderer_bbox_preview preview,
+                                                    uint32_t                    mesh_id)
+{
+    system_matrix4x4              model       = nullptr;
+    _scene_renderer_bbox_preview* preview_ptr = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
+
+    ASSERT_DEBUG_SYNC(preview_ptr->active_command_buffer != nullptr,
+                      "No rendering in progress");
+
+    scene_renderer_get_indexed_property(preview_ptr->owner,
+                                        SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
+                                        mesh_id,
+                                       &model);
+
+    /* NOTE: model may be null at this point if the item was culled out. */
+    if (model != nullptr)
+    {
+        ral_buffer                                        data_bo_ral     = nullptr;
+        ral_command_buffer_draw_call_regular_command_info draw_call_info;
+
+        ral_program_block_buffer_get_property(preview_ptr->preview_program_data_ub,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &data_bo_ral);
+
+        draw_call_info.base_instance = 0;
+        draw_call_info.base_vertex   = mesh_id;
+        draw_call_info.n_instances   = 1;
+        draw_call_info.n_vertices    = 1;
+
+        ral_command_buffer_record_update_buffer(preview_ptr->active_command_buffer,
+                                                data_bo_ral,
+                                                preview_ptr->preview_program_ub_offset_model,
+                                                sizeof(float) * 16,
+                                                system_matrix4x4_get_row_major_data(model));
+
+        ral_command_buffer_record_draw_call_regular(preview_ptr->active_command_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call_info);
+    }
+}
+
+/** Please see header for spec */
 PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_context    context,
                                                                       scene          scene,
                                                                       scene_renderer owner)
@@ -543,48 +585,6 @@ PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview prev
 
     delete preview_ptr;
     preview_ptr = nullptr;
-}
-
-/** Please see header for spec */
-PUBLIC void scene_renderer_bbox_preview_render(scene_renderer_bbox_preview preview,
-                                               uint32_t                    mesh_id)
-{
-    system_matrix4x4              model       = nullptr;
-    _scene_renderer_bbox_preview* preview_ptr = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
-
-    ASSERT_DEBUG_SYNC(preview_ptr->active_command_buffer != nullptr,
-                      "No rendering in progress");
-
-    scene_renderer_get_indexed_property(preview_ptr->owner,
-                                        SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
-                                        mesh_id,
-                                       &model);
-
-    /* NOTE: model may be null at this point if the item was culled out. */
-    if (model != nullptr)
-    {
-        ral_buffer                                        data_bo_ral     = nullptr;
-        ral_command_buffer_draw_call_regular_command_info draw_call_info;
-
-        ral_program_block_buffer_get_property(preview_ptr->preview_program_data_ub,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &data_bo_ral);
-
-        draw_call_info.base_instance = 0;
-        draw_call_info.base_vertex   = mesh_id;
-        draw_call_info.n_instances   = 1;
-        draw_call_info.n_vertices    = 1;
-
-        ral_command_buffer_record_update_buffer(preview_ptr->active_command_buffer,
-                                                data_bo_ral,
-                                                preview_ptr->preview_program_ub_offset_model,
-                                                sizeof(float) * 16,
-                                                system_matrix4x4_get_row_major_data(model));
-
-        ral_command_buffer_record_draw_call_regular(preview_ptr->active_command_buffer,
-                                                    1, /* n_draw_calls */
-                                                   &draw_call_info);
-    }
 }
 
 /** Please see header for spec */

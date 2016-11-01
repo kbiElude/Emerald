@@ -25,9 +25,6 @@ PUBLIC void scene_renderer_frustum_preview_assign_cameras(scene_renderer_frustum
                                                           unsigned int                   n_cameras,
                                                           scene_camera*                  cameras);
 
-/** TODO. **/
-PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_preview preview);
-
 /** TODO
  *
  *  Returns a presene task which:
@@ -35,10 +32,13 @@ PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_previe
  *  - takes 1 or 2 unique inputs    (depending if color RT AND depth RT was specified at call time)
  *  - exposes 1 or 2 unique outputs (as above)
  */
-PUBLIC ral_present_task scene_renderer_frustum_preview_render(scene_renderer_frustum_preview preview,
-                                                              system_time                    time,
-                                                              system_matrix4x4               vp,
-                                                              ral_texture_view               color_rt,
-                                                              ral_texture_view               opt_depth_rt);
+PUBLIC ral_present_task scene_renderer_frustum_preview_get_present_task(scene_renderer_frustum_preview preview,
+                                                                        system_time                    time,
+                                                                        system_matrix4x4               vp,
+                                                                        ral_texture_view               color_rt,
+                                                                        ral_texture_view               opt_depth_rt);
+
+/** TODO. **/
+PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_preview preview);
 
 #endif /* SCENE_RENDERER_FRUSTUM_PREVIEW_H */

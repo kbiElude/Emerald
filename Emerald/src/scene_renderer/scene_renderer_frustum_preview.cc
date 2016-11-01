@@ -323,6 +323,8 @@ PRIVATE void _scene_renderer_frustum_preview_bake_command_buffer(_scene_renderer
         vertex_buffer.start_offset = BO_DATA_VERTEX_DATA_OFFSET;
 
 
+        ral_command_buffer_record_set_program            (preview_ptr->command_buffer,
+                                                          preview_ptr->po);
         ral_command_buffer_record_set_bindings           (preview_ptr->command_buffer,
                                                           1, /* n_bindings */
                                                          &ub_binding);
@@ -331,8 +333,6 @@ PRIVATE void _scene_renderer_frustum_preview_bake_command_buffer(_scene_renderer
                                                          &color_rt);
         ral_command_buffer_record_set_gfx_state          (preview_ptr->command_buffer,
                                                           preview_ptr->gfx_state);
-        ral_command_buffer_record_set_program            (preview_ptr->command_buffer,
-                                                          preview_ptr->po);
         ral_command_buffer_record_set_vertex_buffers     (preview_ptr->command_buffer,
                                                           1, /* n_vertex_buffers */
                                                          &vertex_buffer);
@@ -880,30 +880,28 @@ PUBLIC void scene_renderer_frustum_preview_assign_cameras(scene_renderer_frustum
     }
 
     /* Add the new cameras to the vector */
+    for (uint32_t n_camera = 0;
+                  n_camera < n_cameras;
+                ++n_camera)
     {
-        for (uint32_t n_camera = 0;
-                      n_camera < n_cameras;
-                    ++n_camera)
-        {
-            system_hashed_ansi_string          camera_name   = nullptr;
-            varia_text_renderer_text_string_id label_text_id = varia_text_renderer_add_string(preview_ptr->text_renderer);
+        system_hashed_ansi_string          camera_name   = nullptr;
+        varia_text_renderer_text_string_id label_text_id = varia_text_renderer_add_string(preview_ptr->text_renderer);
 
-            scene_camera_get_property(cameras[n_camera],
-                                      SCENE_CAMERA_PROPERTY_NAME,
-                                      0, /* time - irrelevant */
-                                     &camera_name);
+        scene_camera_get_property(cameras[n_camera],
+                                  SCENE_CAMERA_PROPERTY_NAME,
+                                  0, /* time - irrelevant */
+                                 &camera_name);
 
-            varia_text_renderer_set(preview_ptr->text_renderer,
-                                    label_text_id,
-                                    system_hashed_ansi_string_get_buffer(camera_name) );
+        varia_text_renderer_set(preview_ptr->text_renderer,
+                                label_text_id,
+                                system_hashed_ansi_string_get_buffer(camera_name) );
 
-            _scene_renderer_frustum_preview_camera* current_camera_ptr = new _scene_renderer_frustum_preview_camera(cameras[n_camera],
-                                                                                                                    preview_ptr->text_renderer,
-                                                                                                                    label_text_id);
+        _scene_renderer_frustum_preview_camera* current_camera_ptr = new _scene_renderer_frustum_preview_camera(cameras[n_camera],
+                                                                                                                preview_ptr->text_renderer,
+                                                                                                                label_text_id);
 
-            system_resizable_vector_push(preview_ptr->assigned_cameras,
-                                         current_camera_ptr);
-        }
+        system_resizable_vector_push(preview_ptr->assigned_cameras,
+                                     current_camera_ptr);
     }
 
     /* Re-allocate the data buffer we will use to hold data before updating the BO */
@@ -956,49 +954,11 @@ PUBLIC scene_renderer_frustum_preview scene_renderer_frustum_preview_create(ral_
 }
 
 /** Please see header for spec */
-PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_preview preview)
-{
-    _scene_renderer_frustum_preview* preview_ptr = reinterpret_cast<_scene_renderer_frustum_preview*>(preview);
-
-    /* Release data BO */
-    if (preview_ptr->data_bo != nullptr)
-    {
-        ral_context_delete_objects(preview_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                   1, /* n_objects */
-                                   reinterpret_cast<void* const*>(&preview_ptr->data_bo) );
-
-        preview_ptr->data_bo = nullptr;
-    }
-
-    /* Release PO */
-    if (preview_ptr->po != nullptr)
-    {
-        ral_context_delete_objects(preview_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
-                                   1, /* n_objects */
-                                   reinterpret_cast<void* const*>(&preview_ptr->po) );
-
-        preview_ptr->po = nullptr;
-    }
-
-    if (preview_ptr->po_ub != nullptr)
-    {
-        ral_program_block_buffer_release(preview_ptr->po_ub);
-
-        preview_ptr->po_ub = nullptr;
-    }
-
-    delete preview_ptr;
-    preview_ptr = nullptr;
-}
-
-/** Please see header for spec */
-PUBLIC ral_present_task scene_renderer_frustum_preview_render(scene_renderer_frustum_preview preview,
-                                                              system_time                    time,
-                                                              system_matrix4x4               vp,
-                                                              ral_texture_view               color_rt,
-                                                              ral_texture_view               opt_depth_rt)
+PUBLIC ral_present_task scene_renderer_frustum_preview_get_present_task(scene_renderer_frustum_preview preview,
+                                                                        system_time                    time,
+                                                                        system_matrix4x4               vp,
+                                                                        ral_texture_view               color_rt,
+                                                                        ral_texture_view               opt_depth_rt)
 {
     uint32_t                         n_assigned_cameras    = 0;
     _scene_renderer_frustum_preview* preview_ptr           = reinterpret_cast<_scene_renderer_frustum_preview*>(preview);
@@ -1182,5 +1142,40 @@ PUBLIC ral_present_task scene_renderer_frustum_preview_render(scene_renderer_fru
     return result_task;
 }
 
+/** Please see header for spec */
+PUBLIC void scene_renderer_frustum_preview_release(scene_renderer_frustum_preview preview)
+{
+    _scene_renderer_frustum_preview* preview_ptr = reinterpret_cast<_scene_renderer_frustum_preview*>(preview);
 
+    /* Release data BO */
+    if (preview_ptr->data_bo != nullptr)
+    {
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&preview_ptr->data_bo) );
 
+        preview_ptr->data_bo = nullptr;
+    }
+
+    /* Release PO */
+    if (preview_ptr->po != nullptr)
+    {
+        ral_context_delete_objects(preview_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&preview_ptr->po) );
+
+        preview_ptr->po = nullptr;
+    }
+
+    if (preview_ptr->po_ub != nullptr)
+    {
+        ral_program_block_buffer_release(preview_ptr->po_ub);
+
+        preview_ptr->po_ub = nullptr;
+    }
+
+    delete preview_ptr;
+    preview_ptr = nullptr;
+}

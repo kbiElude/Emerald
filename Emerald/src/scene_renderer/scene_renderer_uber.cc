@@ -479,12 +479,12 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
                                                &mesh_normals_bo);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE,
                                                &mesh_normals_bo_stride);
         }
 
@@ -518,12 +518,12 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
                                                &mesh_texcoords_bo);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE,
                                                &mesh_texcoords_bo_stride);
         }
     }
@@ -553,12 +553,12 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
                                                &mesh_vertex_bo);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                                MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE,
                                                &mesh_vertex_bo_stride);
         }
 
@@ -3112,6 +3112,10 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
 
     ral_command_buffer_start_recording(uber_ptr->preamble_command_buffer);
     {
+        /* Activate the uber program */
+        ral_command_buffer_record_set_program(uber_ptr->preamble_command_buffer,
+                                              uber_ptr->program);
+
         for (unsigned int n_item = 0;
                           n_item < n_items;
                         ++n_item)
@@ -3250,10 +3254,6 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                                                       &ub_vs_binding_info);
             }
         }
-
-        /* Activate the uber program */
-        ral_command_buffer_record_set_program(uber_ptr->preamble_command_buffer,
-                                              uber_ptr->program);
     }
     ral_command_buffer_stop_recording(uber_ptr->preamble_command_buffer);
 

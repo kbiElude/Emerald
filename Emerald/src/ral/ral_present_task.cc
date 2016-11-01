@@ -75,9 +75,16 @@ typedef struct _ral_present_task
     explicit _ral_present_task(system_hashed_ansi_string               in_name,
                                const ral_present_task_gpu_create_info* in_create_info_ptr)
     {
-        ral_command_buffer_get_property(in_create_info_ptr->command_buffer,
-                                        RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
-                                       &context);
+        if (in_create_info_ptr->command_buffer != nullptr)
+        {
+            ral_command_buffer_get_property(in_create_info_ptr->command_buffer,
+                                            RAL_COMMAND_BUFFER_PROPERTY_CONTEXT,
+                                           &context);
+        }
+        else
+        {
+            context = nullptr;
+        }
 
         command_buffer               = in_create_info_ptr->command_buffer;
         cpu_callback_proc_user_arg   = nullptr;
@@ -103,9 +110,12 @@ typedef struct _ral_present_task
                  in_create_info_ptr->n_unique_outputs,
                  in_create_info_ptr->unique_outputs);
 
-        ral_context_retain_object(context,
-                                  RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
-                                  command_buffer);
+        if (command_buffer != nullptr)
+        {
+            ral_context_retain_object(context,
+                                      RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                      command_buffer);
+        }
     }
 
     /** TODO. Group tasks only */

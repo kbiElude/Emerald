@@ -8,6 +8,7 @@ typedef struct
 {
     ral_context_object_type object_type;
 
+    /* TODO: Range information would be more than useful for Vulkan backend */
     union
     {
         ral_buffer       buffer;

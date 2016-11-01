@@ -465,6 +465,8 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
 
         system_critical_section_enter(rendering_handler_ptr->rendering_cs);
         {
+            bool presentable_output_defined = false;
+
             /* Determine current frame index & time */
             _ral_rendering_handler_get_frame_properties(rendering_handler_ptr,
                                                         false, /* should_update_frame_counter */
@@ -593,6 +595,13 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
 
                  if (frame_present_job != nullptr)
                  {
+                     ral_present_job_get_property(frame_present_job,
+                                                  RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
+                                                 &presentable_output_defined);
+                 }
+
+                 if (presentable_output_defined)
+                 {
                      /* If there are UI components to render, also attach relevant tasks */
                      uint32_t n_ui_controls = 0;
 
@@ -710,28 +719,33 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                                                                 false, /* is_input_io */
                                                                 0);    /* n_io        */
                      }
+                }
 
-                     /* We may need to flatten (i.e. unroll any group tasks that may be defined) the graph at this point. */
-                     ral_present_job_flatten(frame_present_job);
+                /* We may need to flatten (i.e. unroll any group tasks that may be defined) the graph at this point. */
+                ral_present_job_flatten(frame_present_job);
 
-                     // ral_present_job_dump(frame_present_job);
+                /* OK, go for it */
+                rendering_handler_ptr->pfn_execute_present_job_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
+                                                                              frame_present_job);
 
-                     /* OK, go for it */
-                     rendering_handler_ptr->pfn_execute_present_job_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
-                                                                                   frame_present_job);
-                 }
-
-                 rendering_handler_ptr->pfn_post_draw_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
-                                                                           frame_present_job);
+                rendering_handler_ptr->pfn_post_draw_frame_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
+                                                                          frame_present_job);
             }
 
-            if (frame_present_job != nullptr)
+            /* Do a buffer flip */
             {
                 bool should_swap_buffers = false;
 
-                ral_present_job_get_property(frame_present_job,
-                                             RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
-                                            &should_swap_buffers);
+                if (presentable_output_defined)
+                {
+                    ral_present_job_get_property(frame_present_job,
+                                                 RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
+                                                &should_swap_buffers);
+                }
+                else
+                {
+                    should_swap_buffers = true;
+                }
 
                 rendering_handler_ptr->last_frame_index = frame_index;
                 rendering_handler_ptr->last_frame_time  = new_frame_time;
@@ -751,7 +765,10 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                     system_event_set  (rendering_handler_ptr->playback_stopped_event);
                 }
 
-                ral_present_job_release(frame_present_job);
+                if (frame_present_job)
+                {
+                    ral_present_job_release(frame_present_job);
+                }
             }
 
             system_critical_section_leave(rendering_handler_ptr->rendering_cs);

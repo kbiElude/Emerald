@@ -95,8 +95,6 @@ typedef struct _mesh_marchingcubes
 } _mesh_marchingcubes;
 
 /* Forward declarations */
-PRIVATE void                      _mesh_marchingcubes_deinit                          (ogl_context                 context,
-                                                                                       void*                       user_arg);
 PRIVATE void                      _mesh_marchingcubes_get_aabb                        (const void*                 user_arg,
                                                                                        float*                      out_aabb_model_vec3_min,
                                                                                        float*                      out_aabb_model_vec3_max);
@@ -918,6 +916,13 @@ PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
             *present_tasks[n_present_task] = nullptr;
         }
     }
+
+    if (mesh_ptr->material_gpu != nullptr)
+    {
+        mesh_material_release(mesh_ptr->material_gpu);
+
+        mesh_ptr->material_gpu = nullptr;
+    }
 }
 
 /** TODO */
@@ -1416,6 +1421,7 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
         ral_command_buffer_create_info command_buffer_create_info;
 
         command_buffer_create_info.compatible_queues                       = RAL_QUEUE_COMPUTE_BIT;
+        command_buffer_create_info.is_executable                           = true;
         command_buffer_create_info.is_invokable_from_other_command_buffers = false;
         command_buffer_create_info.is_resettable                           = false;
         command_buffer_create_info.is_transient                            = false;
@@ -1507,10 +1513,11 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
         ral_present_task_io                 task_cpu_unique_output;
         ral_present_task                    task_gpu;
         ral_present_task_gpu_create_info    task_gpu_create_info;
-        ral_present_task_io                 task_gpu_unique_input;
+        ral_present_task_io                 task_gpu_unique_inputs[2];
         ral_present_task_io                 task_gpu_unique_output;
         ral_present_task_group_create_info  task_result_create_info;
         ral_present_task_ingroup_connection task_result_ingroup_connection;
+        ral_present_task_group_mapping      task_result_input_mapping;
         ral_present_task_group_mapping      task_result_output_mapping;
         ral_present_task                    task_result_present_tasks[2];
 
@@ -1527,15 +1534,18 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
                                               &task_cpu_create_info);
 
 
-        task_gpu_unique_input.buffer       = po_scalar_field_polygonizer_data_ub_bo_ral;
-        task_gpu_unique_input.object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+        task_gpu_unique_inputs[0].buffer       = po_scalar_field_polygonizer_data_ub_bo_ral;
+        task_gpu_unique_inputs[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+        task_gpu_unique_inputs[1].buffer       = mesh_ptr->scalar_data_bo;
+        task_gpu_unique_inputs[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
         task_gpu_unique_output.buffer      = mesh_ptr->polygonized_data_bo;
         task_gpu_unique_output.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
 
         task_gpu_create_info.command_buffer   = command_buffer;
-        task_gpu_create_info.n_unique_inputs  = 1;
+        task_gpu_create_info.n_unique_inputs  = sizeof(task_gpu_unique_inputs) / sizeof(task_gpu_unique_inputs[0]);
         task_gpu_create_info.n_unique_outputs = 1;
-        task_gpu_create_info.unique_inputs    = &task_gpu_unique_input;
+        task_gpu_create_info.unique_inputs    = task_gpu_unique_inputs;
         task_gpu_create_info.unique_outputs   = &task_gpu_unique_output;
 
         task_gpu = ral_present_task_create_gpu(system_hashed_ansi_string_create("Marching cubes mesh: Polygonization"),
@@ -1550,6 +1560,10 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
         task_result_ingroup_connection.output_present_task_index    = 0;
         task_result_ingroup_connection.output_present_task_io_index = 0;
 
+        task_result_input_mapping.group_task_io_index   = 0;
+        task_result_input_mapping.n_present_task        = 1;
+        task_result_input_mapping.present_task_io_index = 1;
+
         task_result_output_mapping.group_task_io_index   = 0;
         task_result_output_mapping.n_present_task        = 1;
         task_result_output_mapping.present_task_io_index = 0;
@@ -1557,11 +1571,12 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
         task_result_create_info.ingroup_connections                      = &task_result_ingroup_connection;
         task_result_create_info.n_ingroup_connections                    = 1;
         task_result_create_info.n_present_tasks                          = sizeof(task_result_present_tasks) / sizeof(task_result_present_tasks[0]);
-        task_result_create_info.n_total_unique_inputs                    = 0;
+        task_result_create_info.n_total_unique_inputs                    = 1;
         task_result_create_info.n_total_unique_outputs                   = 1;
-        task_result_create_info.n_unique_input_to_ingroup_task_mappings  = 0;
+        task_result_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
         task_result_create_info.n_unique_output_to_ingroup_task_mappings = 1;
-        task_result_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
+        task_result_create_info.present_tasks                            = task_result_present_tasks;
+        task_result_create_info.unique_input_to_ingroup_task_mapping     = &task_result_input_mapping;
         task_result_create_info.unique_output_to_ingroup_task_mapping    = &task_result_output_mapping;
 
         mesh_ptr->present_task_with_compute = ral_present_task_create_group(system_hashed_ansi_string_create("Marching cubes: Data generation"),
@@ -1569,6 +1584,11 @@ PRIVATE void _mesh_marchingcubes_init_present_tasks(_mesh_marchingcubes* mesh_pt
 
         ral_present_task_release(task_cpu);
         ral_present_task_release(task_gpu);
+
+        ral_context_delete_objects(mesh_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&command_buffer) );
     }
 
     /* Also prepare a "dummy" present task, which only exposes the data which have been precalculated
@@ -1597,12 +1617,7 @@ PRIVATE void _mesh_marchingcubes_release(void* arg)
 {
     _mesh_marchingcubes* mesh_ptr = reinterpret_cast<_mesh_marchingcubes*>(arg);
 
-    if (mesh_ptr->material_gpu != nullptr)
-    {
-        mesh_material_release(mesh_ptr->material_gpu);
-
-        mesh_ptr->material_gpu = nullptr;
-    }
+    _mesh_marchingcubes_deinit(mesh_ptr);
 }
 
 /** TODO */

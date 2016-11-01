@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * Implements a very simple light preview renderer. If ever necessary,
  * please re-write the implementation to make use of varia_primitive_renderer
@@ -15,6 +15,20 @@
 #include "scene_renderer/scene_renderer_types.h"
 
 
+/** Schedules rendering of a single light instance. Requires a former call to scene_renderer_lights_preview_start().
+ *
+ *  @param preview                  Light preview renderer instance. Must not be NULL.
+ *  @param light_position           Light position in clip space. (XYZW). Must not be NULL.
+ *  @param light_color              Light color (RGBA). Must not be NULL.
+ *  @param light_pos_plus_direction Should be equal to (light_position + direction vector).
+ *                                  The vector needs not be normalized.
+ *                                  May be NULL (eg. for lights that do not have direction).
+ **/
+PUBLIC void scene_renderer_lights_preview_append_light(scene_renderer_lights_preview preview,
+                                                       float*                        light_position,
+                                                       float*                        light_color,
+                                                       float*                        light_pos_plus_direction);
+
 /** Creates a single of light preview renderer.
  *
  *  For scene_renderer usage only.
@@ -28,20 +42,6 @@
  **/
 PUBLIC scene_renderer_lights_preview scene_renderer_lights_preview_create(ral_context context,
                                                                           scene       scene);
-
-/** Renders a single light instance. Requires a former call to scene_renderer_lights_preview_start().
- *
- *  @param preview                  Light preview renderer instance. Must not be NULL.
- *  @param light_position           Light position in clip space. (XYZW). Must not be NULL.
- *  @param light_color              Light color (RGBA). Must not be NULL.
- *  @param light_pos_plus_direction Should be equal to (light_position + direction vector).
- *                                  The vector needs not be normalized.
- *                                  May be NULL (eg. for lights that do not have direction).
- **/
-PUBLIC void scene_renderer_lights_preview_render(scene_renderer_lights_preview preview,
-                                                 float*                        light_position,
-                                                 float*                        light_color,
-                                                 float*                        light_pos_plus_direction);
 
 /** TODO */
 PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview preview,

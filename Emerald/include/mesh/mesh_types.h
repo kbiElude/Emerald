@@ -139,13 +139,13 @@ typedef enum
      *
      * Only used by GPU stream meshes.
      */
-    MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_RAL,
+    MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
 
     /* settable, unsigned int.
      *
      * Only used by GPU stream meshes.
      */
-    MESH_LAYER_DATA_STREAM_PROPERTY_GL_BO_STRIDE,
+    MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE,
 
     /* not settable, uint32_t */
     MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,

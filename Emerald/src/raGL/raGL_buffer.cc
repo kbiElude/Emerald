@@ -19,14 +19,13 @@
 
 typedef struct _raGL_buffer
 {
-    raGL_backend            backend;
-    system_resizable_vector child_buffers; /* DOES NOT own _raGL_buffer* instances */
-    ogl_context             context;       /* NOT owned */
-    GLint                   id;            /* NOT owned */
-    system_memory_manager   memory_manager;
-    _raGL_buffer*           parent_buffer_ptr;
-    uint32_t                size;
-    uint32_t                start_offset;
+    raGL_backend          backend;
+    ogl_context           context;       /* NOT owned */
+    GLint                 id;            /* NOT owned */
+    system_memory_manager memory_manager;
+    _raGL_buffer*         parent_buffer_ptr;
+    uint32_t              size;
+    uint32_t              start_offset;
 
     ogl_context_gl_entrypoints* entrypoints_ptr;
 
@@ -37,7 +36,6 @@ typedef struct _raGL_buffer
                  uint32_t              in_start_offset,
                  uint32_t              in_size)
     {
-        child_buffers     = system_resizable_vector_create(sizeof(_raGL_buffer*) );
         context           = in_context;
         id                = in_id;
         memory_manager    = in_memory_manager;
@@ -62,29 +60,7 @@ typedef struct _raGL_buffer
 
     ~_raGL_buffer()
     {
-        if (child_buffers != nullptr)
-        {
-            system_resizable_vector_release(child_buffers);
-
-            child_buffers = nullptr;
-        }
-
-        if (parent_buffer_ptr != nullptr)
-        {
-            /* Detach this instance from the parent */
-            size_t child_index = system_resizable_vector_find(parent_buffer_ptr->child_buffers,
-                                                              this);
-
-            ASSERT_DEBUG_SYNC(child_index != ITEM_NOT_FOUND,
-                              "Could not detach a child raGL_buffer instance from the parent.");
-            if (child_index != ITEM_NOT_FOUND)
-            {
-                system_resizable_vector_delete_element_at(parent_buffer_ptr->child_buffers,
-                                                          child_index);
-            }
-        }
-
-        /* Do not release the buffer. Object life-time is handled by raGL_buffers. */
+        /* Do not release the GL buffer. Object life-time is handled by raGL_buffers. */
     }
 } _raGL_buffer;
 
@@ -396,14 +372,29 @@ PUBLIC raGL_buffer raGL_buffer_create_raGL_buffer_subregion(raGL_buffer parent_b
         goto end;
     }
 
-    new_start_offset = parent_buffer_ptr->start_offset + start_offset;
-
     if (new_size == 0)
     {
-        ASSERT_DEBUG_SYNC(parent_buffer_ptr->size > new_start_offset,
-                          "Zero-sized buffer region creation attempt");
+        ASSERT_DEBUG_SYNC(new_size != 0,
+                          "raGL_buffer_create_raGL_buffer_subregion() was passed a size of 0.");
 
-        new_size = parent_buffer_ptr->size - new_start_offset;
+        goto end;
+    }
+
+    /* Determine topmost parent buffer */
+    new_start_offset = start_offset;
+
+    while (parent_buffer_ptr != nullptr)
+    {
+        new_start_offset += parent_buffer_ptr->start_offset;
+
+        if (parent_buffer_ptr->parent_buffer_ptr != nullptr)
+        {
+            parent_buffer_ptr = parent_buffer_ptr->parent_buffer_ptr;
+        }
+        else
+        {
+            break;
+        }
     }
 
     if (new_start_offset >= parent_buffer_ptr->size)
@@ -437,10 +428,6 @@ PUBLIC raGL_buffer raGL_buffer_create_raGL_buffer_subregion(raGL_buffer parent_b
 
         goto end;
     }
-
-    /* Register the descriptor as the parent buffer's child */
-    system_resizable_vector_push(parent_buffer_ptr->child_buffers,
-                                 result_ptr);
 
 end:
     return (raGL_buffer) result_ptr;
@@ -479,6 +466,13 @@ PUBLIC void raGL_buffer_get_property(raGL_buffer          buffer,
             break;
         }
 
+        case RAGL_BUFFER_PROPERTY_SIZE:
+        {
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = buffer_ptr->size;
+
+            break;
+        }
+
         case RAGL_BUFFER_PROPERTY_START_OFFSET:
         {
             *reinterpret_cast<uint32_t*>(out_result_ptr) = buffer_ptr->start_offset;
@@ -499,18 +493,10 @@ end:
 /** Please see header for specification */
 PUBLIC void raGL_buffer_release(raGL_buffer buffer)
 {
-    _raGL_buffer* buffer_ptr      = reinterpret_cast<_raGL_buffer*>(buffer);
-    uint32_t      n_child_buffers = 0;
+    _raGL_buffer* buffer_ptr = reinterpret_cast<_raGL_buffer*>(buffer);
 
     ASSERT_DEBUG_SYNC(buffer != nullptr,
                       "Input buffer is nullptr");
-
-    system_resizable_vector_get_property(buffer_ptr->child_buffers,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_child_buffers);
-
-    ASSERT_DEBUG_SYNC(n_child_buffers == 0,
-                      "Releasing a buffer object with children buffers still living!");
 
     delete reinterpret_cast<_raGL_buffer*>(buffer);
 }

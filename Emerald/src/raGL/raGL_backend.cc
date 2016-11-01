@@ -2101,8 +2101,20 @@ PRIVATE void _raGL_backend_release_raGL_object(_raGL_backend*          backend_p
     {
         case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
         {
-            raGL_buffers_free_buffer_memory(backend_ptr->buffers,
-                                            (raGL_buffer) object_raGL);
+            /* Buffer memory only needs to be freed if the object owns the memory allocation,
+             * that is it doesn't have any parent buffer assigned. */
+            ral_buffer buffer_ral        = reinterpret_cast<ral_buffer>(object_ral);
+            ral_buffer parent_buffer_ral = nullptr;
+
+            ral_buffer_get_property(buffer_ral,
+                                    RAL_BUFFER_PROPERTY_PARENT_BUFFER,
+                                   &parent_buffer_ral);
+
+            if (parent_buffer_ral == nullptr)
+            {
+                raGL_buffers_free_buffer_memory(backend_ptr->buffers,
+                                                (raGL_buffer) object_raGL);
+            }
 
             break;
         }

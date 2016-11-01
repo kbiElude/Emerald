@@ -788,6 +788,7 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_han
     if (present_job != nullptr)
     {
         raGL_dep_tracker         dep_tracker                     = nullptr;
+        bool                     presentable_output_defined      = false;
         ral_context_object_type  presentable_output_object_type;
         ral_present_task         presentable_output_task         = nullptr;
         uint32_t                 presentable_output_task_index   = -1;
@@ -803,109 +804,130 @@ PUBLIC void raGL_rendering_handler_post_draw_frame(void*           rendering_han
                                          &dep_tracker);
 
         ral_present_job_get_property(present_job,
-                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_ID,
-                                    &presentable_output_task_index);
-        ral_present_job_get_property(present_job,
-                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_INDEX,
-                                    &presentable_output_task_io);
-        ral_present_job_get_property(present_job,
-                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE,
-                                    &presentable_output_task_io_type);
+                                     RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_DEFINED,
+                                    &presentable_output_defined);
 
-        ral_present_job_get_task_with_id(present_job,
-                                         presentable_output_task_index,
-                                        &presentable_output_task);
-
-        ral_present_task_get_io_property(presentable_output_task,
-                                         presentable_output_task_io_type,
-                                         presentable_output_task_io,
-                                         RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                         reinterpret_cast<void**>(&presentable_texture_view) );
-
-        #ifdef _DEBUG
+        if (presentable_output_defined)
         {
+            ral_present_job_get_property(present_job,
+                                         RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_ID,
+                                        &presentable_output_task_index);
+            ral_present_job_get_property(present_job,
+                                         RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_INDEX,
+                                        &presentable_output_task_io);
+            ral_present_job_get_property(present_job,
+                                         RAL_PRESENT_JOB_PROPERTY_PRESENTABLE_OUTPUT_TASK_IO_TYPE,
+                                        &presentable_output_task_io_type);
+
+            ral_present_job_get_task_with_id(present_job,
+                                             presentable_output_task_index,
+                                            &presentable_output_task);
+
             ral_present_task_get_io_property(presentable_output_task,
                                              presentable_output_task_io_type,
                                              presentable_output_task_io,
-                                             RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
-                                             reinterpret_cast<void**>(&presentable_output_object_type) );
+                                             RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                             reinterpret_cast<void**>(&presentable_texture_view) );
 
-            ASSERT_DEBUG_SYNC(presentable_output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                              "Invalid presentable output object's type");
+            #ifdef _DEBUG
+            {
+                ral_present_task_get_io_property(presentable_output_task,
+                                                 presentable_output_task_io_type,
+                                                 presentable_output_task_io,
+                                                 RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                 reinterpret_cast<void**>(&presentable_output_object_type) );
+
+                ASSERT_DEBUG_SYNC(presentable_output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  "Invalid presentable output object's type");
+            }
+            #endif
+
+            ral_texture_view_get_property(presentable_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                         &presentable_texture_ral);
+
+            raGL_backend_get_texture(rendering_handler_ptr->backend,
+                                     presentable_texture_ral,
+                                    &presentable_texture_raGL);
+
+            ASSERT_DEBUG_SYNC(presentable_texture_raGL != nullptr,
+                              "raGL instance of the presentable texture is null");
+
+            ral_texture_view_get_mipmap_property(presentable_texture_view,
+                                                 0, /* n_layer  */
+                                                 0, /* n_mipmap */
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                                 presentable_texture_view_size + 0);
+            ral_texture_view_get_mipmap_property(presentable_texture_view,
+                                                 0, /* n_layer  */
+                                                 0, /* n_mipmap */
+                                                 RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                                 presentable_texture_view_size + 1);
+
+            /* If the presentable texture is marked as dirty in the dep tracker, make sure to flush it
+             * before we use it as a blit source */
+            raGL_framebuffers fbos            = nullptr;
+            raGL_framebuffer  read_fb_raGL    = nullptr;
+            GLuint            read_fb_raGL_id = -1;
+
+            raGL_backend_get_private_property(rendering_handler_ptr->backend,
+                                              RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
+                                             &fbos);
+
+            raGL_framebuffers_get_framebuffer(fbos,
+                                              1, /* in_n_attachments */
+                                             &presentable_texture_view,
+                                              nullptr, /* in_opt_ds_attachment */
+                                             &read_fb_raGL);
+            raGL_framebuffer_get_property    (read_fb_raGL,
+                                              RAGL_FRAMEBUFFER_PROPERTY_ID,
+                                             &read_fb_raGL_id);
+
+            rendering_handler_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                      0);
+            rendering_handler_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                                      read_fb_raGL_id);
+
+            if (raGL_dep_tracker_is_dirty(dep_tracker,
+                                          presentable_texture_raGL,
+                                          GL_FRAMEBUFFER_BARRIER_BIT) )
+            {
+                rendering_handler_ptr->pGLMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
+            }
+
+            /* Blit the context FBO's contents to the back buffer */
+            uint32_t window_size[2];
+
+            system_window_get_property(rendering_handler_ptr->context_window,
+                                       SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                       window_size);
+
+            rendering_handler_ptr->pGLDisable        (GL_SCISSOR_TEST);
+            rendering_handler_ptr->pGLBlitFramebuffer(0,                                /* srcX0 */
+                                                      0,                                /* srcY0 */
+                                                      presentable_texture_view_size[0], /* srcX1 */
+                                                      presentable_texture_view_size[1], /* srcY1 */
+                                                      0,                                /* dstX0 */
+                                                      0,                                /* dstY0 */
+                                                      window_size[0],                   /* dstX1 */
+                                                      window_size[1],                   /* dstY1 */
+                                                      GL_COLOR_BUFFER_BIT,
+                                                      GL_LINEAR);
         }
-        #endif
-
-        ral_texture_view_get_property(presentable_texture_view,
-                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                     &presentable_texture_ral);
-
-        raGL_backend_get_texture(rendering_handler_ptr->backend,
-                                 presentable_texture_ral,
-                                &presentable_texture_raGL);
-
-        ASSERT_DEBUG_SYNC(presentable_texture_raGL != nullptr,
-                          "raGL instance of the presentable texture is null");
-
-        ral_texture_view_get_mipmap_property(presentable_texture_view,
-                                             0, /* n_layer  */
-                                             0, /* n_mipmap */
-                                             RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
-                                             presentable_texture_view_size + 0);
-        ral_texture_view_get_mipmap_property(presentable_texture_view,
-                                             0, /* n_layer  */
-                                             0, /* n_mipmap */
-                                             RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
-                                             presentable_texture_view_size + 1);
-
-        /* If the presentable texture is marked as dirty in the dep tracker, make sure to flush it
-         * before we use it as a blit source */
-        raGL_framebuffers fbos            = nullptr;
-        raGL_framebuffer  read_fb_raGL    = nullptr;
-        GLuint            read_fb_raGL_id = -1;
-
-        raGL_backend_get_private_property(rendering_handler_ptr->backend,
-                                          RAGL_BACKEND_PRIVATE_PROPERTY_FBOS,
-                                         &fbos);
-
-        raGL_framebuffers_get_framebuffer(fbos,
-                                          1, /* in_n_attachments */
-                                         &presentable_texture_view,
-                                          nullptr, /* in_opt_ds_attachment */
-                                         &read_fb_raGL);
-        raGL_framebuffer_get_property    (read_fb_raGL,
-                                          RAGL_FRAMEBUFFER_PROPERTY_ID,
-                                         &read_fb_raGL_id);
-
-        rendering_handler_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                                  0);
-        rendering_handler_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                                  read_fb_raGL_id);
-
-        if (raGL_dep_tracker_is_dirty(dep_tracker,
-                                      presentable_texture_raGL,
-                                      GL_FRAMEBUFFER_BARRIER_BIT) )
+        else
         {
-            rendering_handler_ptr->pGLMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
+            /* No presentable output is defined. Fill the back buffer with red color to indicate an
+             * app error
+             */
+            rendering_handler_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                      0);
+
+            rendering_handler_ptr->pGLClearColor(1.0f,  /* red   */
+                                                 0.0f,  /* green */
+                                                 0.0f,  /* blue  */
+                                                 1.0f); /* alpha */
+            rendering_handler_ptr->pGLClear     (GL_COLOR_BUFFER_BIT);
         }
-
-        /* Blit the context FBO's contents to the back buffer */
-        uint32_t window_size[2];
-
-        system_window_get_property(rendering_handler_ptr->context_window,
-                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                                   window_size);
-
-        rendering_handler_ptr->pGLDisable        (GL_SCISSOR_TEST);
-        rendering_handler_ptr->pGLBlitFramebuffer(0,                                /* srcX0 */
-                                                  0,                                /* srcY0 */
-                                                  presentable_texture_view_size[0], /* srcX1 */
-                                                  presentable_texture_view_size[1], /* srcY1 */
-                                                  0,                                /* dstX0 */
-                                                  0,                                /* dstY0 */
-                                                  window_size[0],                   /* dstX1 */
-                                                  window_size[1],                   /* dstY1 */
-                                                  GL_COLOR_BUFFER_BIT,
-                                                  GL_LINEAR);
     }
 
     if (rendering_handler_ptr->is_multisample_pf                   &&

@@ -1,10 +1,6 @@
-#if 0
-
-TODO
-
 /**
  *
- * Emerald (kbi/elude @2015)
+ * Emerald (kbi/elude @2015-2016)
  *
  * Procedural texture coordinate generator. Uses a compute shader to calculate texture coordinate data stream contents
  * and updates mesh configuration to use the maintained data buffer(s).
@@ -123,21 +119,12 @@ PUBLIC EMERALD_API procedural_uv_generator procedural_uv_generator_create(ral_co
                                                                           procedural_uv_generator_type in_type,
                                                                           system_hashed_ansi_string    in_name);
 
-/** TODO */
-PUBLIC EMERALD_API void procedural_uv_generator_set_object_property(procedural_uv_generator                 in_generator,
-                                                                    procedural_uv_generator_object_id       in_object_id,
-                                                                    procedural_uv_generator_object_property in_property,
-                                                                    const void*                             in_data);
-
-/** Fills the UV data stream with data.
- *
- *  The specified object MUST define a buffer memory-backed normal data stream before this
- *  call is made.
+/** Creates a return task which fills the UV data stream with data.
  *
  *  The size of the data buffer, into which the UV data will be generated, must be known at call time.
  *  This can either be derived from a non-zero, *client memory-backed* MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS property
  *  value, or the data buffer must have been earlier defined by calling procedural_uv_generator_prealloc_result_buffer_memory().
- *  For the former case, value of the MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS property may not come buffer memory,
+ *  For the former case, value of the MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS property may not come from buffer memory,
  *  since that would require a pipeline finish operation which is something we really do not want to do.
  *
  *  If this is the first _update() call made for the @param generator instance, the call adds
@@ -150,8 +137,13 @@ PUBLIC EMERALD_API void procedural_uv_generator_set_object_property(procedural_u
  *  @param in_object_id ID of a UV generator object the call should be made for.
  *
  */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void procedural_uv_generator_update(procedural_uv_generator           in_generator,
-                                                                              procedural_uv_generator_object_id in_object_id);
+PUBLIC EMERALD_API ral_present_task procedural_uv_generator_get_present_task(procedural_uv_generator           in_generator,
+                                                                             procedural_uv_generator_object_id in_object_id);
+
+/** TODO */
+PUBLIC EMERALD_API void procedural_uv_generator_set_object_property(procedural_uv_generator                 in_generator,
+                                                                    procedural_uv_generator_object_id       in_object_id,
+                                                                    procedural_uv_generator_object_property in_property,
+                                                                    const void*                             in_data);
 
 #endif /* PROCEDURAL_UV_GENERATOR_H */
-#endif

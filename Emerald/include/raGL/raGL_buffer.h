@@ -17,6 +17,9 @@ typedef enum
     RAGL_BUFFER_PROPERTY_MEMORY_MANAGER,
 
     /* not settable, uint32_t */
+    RAGL_BUFFER_PROPERTY_SIZE,
+
+    /* not settable, uint32_t */
     RAGL_BUFFER_PROPERTY_START_OFFSET
 
 } raGL_buffer_property;

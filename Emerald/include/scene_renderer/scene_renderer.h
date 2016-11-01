@@ -93,19 +93,14 @@ PUBLIC bool scene_renderer_cull_against_frustum(scene_renderer                  
                                                 const void*                             behavior_data);
 
 /** TODO. **/
-PUBLIC scene_renderer scene_renderer_create(ral_context context,
-                                            scene       scene);
+PUBLIC EMERALD_API scene_renderer scene_renderer_create(ral_context context,
+                                                        scene       scene);
 
 /** TODO. Internal usage only */
 PUBLIC void scene_renderer_get_indexed_property(const scene_renderer    renderer,
                                                 scene_renderer_property property,
                                                 uint32_t                index,
                                                 void*                   out_result_ptr);
-
-/** TODO */
-PUBLIC void scene_renderer_get_property(const scene_renderer    renderer,
-                                        scene_renderer_property property,
-                                        void*                   out_result_ptr);
 
 /** TODO.
  *
@@ -127,24 +122,29 @@ PUBLIC void scene_renderer_get_property(const scene_renderer    renderer,
  *  @param frame_time           TODO
  *
  **/
-PUBLIC ral_present_task scene_renderer_render_scene_graph(scene_renderer                      renderer,
-                                                          system_matrix4x4                    view,
-                                                          system_matrix4x4                    projection,
-                                                          scene_camera                        camera,
-                                                          const scene_renderer_render_mode&   render_mode,
-                                                          bool                                apply_shadow_mapping,
-                                                          scene_renderer_helper_visualization helper_visualization,
-                                                          system_time                         frame_time,
-                                                          ral_texture_view                    color_rt,
-                                                          ral_texture_view                    depth_rt);
-
-/** TODO. **/
-PUBLIC void scene_renderer_release(scene_renderer renderer);
+PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_graph(scene_renderer                      renderer,
+                                                                                    system_matrix4x4                    view,
+                                                                                    system_matrix4x4                    projection,
+                                                                                    scene_camera                        camera,
+                                                                                    const scene_renderer_render_mode&   render_mode,
+                                                                                    bool                                apply_shadow_mapping,
+                                                                                    scene_renderer_helper_visualization helper_visualization,
+                                                                                    system_time                         frame_time,
+                                                                                    ral_texture_view                    color_rt,
+                                                                                    ral_texture_view                    depth_rt);
 
 /** TODO */
-PUBLIC void scene_renderer_set_property(scene_renderer          renderer,
-                                        scene_renderer_property property,
-                                        const void*             data);
+PUBLIC EMERALD_API void scene_renderer_get_property(const scene_renderer    renderer,
+                                                    scene_renderer_property property,
+                                                    void*                   out_result_ptr);
+
+/** TODO. **/
+PUBLIC EMERALD_API void scene_renderer_release(scene_renderer renderer);
+
+/** TODO */
+PUBLIC EMERALD_API void scene_renderer_set_property(scene_renderer          renderer,
+                                                    scene_renderer_property property,
+                                                    const void*             data);
 
 /** TODO.
  *

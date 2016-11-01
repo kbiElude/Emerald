@@ -68,7 +68,7 @@ PUBLIC EMERALD_API mesh_marchingcubes mesh_marchingcubes_create(ral_context     
                                                                 float                     isolevel,
                                                                 scene_material            material,
                                                                 system_hashed_ansi_string name,
-                                                                unsigned int              polygonized_data_size_reduction = 10);
+                                                                unsigned int              polygonized_data_size_reduction = 2);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_marchingcubes_get_property(const mesh_marchingcubes    in_mesh,
@@ -79,11 +79,12 @@ PUBLIC EMERALD_API void mesh_marchingcubes_get_property(const mesh_marchingcubes
  *  in a buffer object. The buffers are attached to a mesh instance, which can be extracted by querying the
  *  MESH_MARCHINGCUBES_PROPERTY_MESH property.
  *
- *  The present task exposes a single unique output which holds the polygonized data.
+ *  The present task exposes a single unique buffer output which holds the polygonized data.
+ *
  *
  *  NOTE: This function performs an indirect draw call.
- *  NOTE: If mesh_marchingcubes detects the scalar field needs to be refreshed (eg. after the isovalue property
- *        value is changed), it will perform polygonization if necessary before issuing the draw call.
+ *  NOTE: This function may return different present tasks, depending on pending workload. Never cache
+ *        the returned present task.
  *
  *  @param in_mesh                  mesh_marchingcubes instance to use. Must not be NULL.
  *  @param has_scalar_field_changed true to force the polygonization, false otherwise.
