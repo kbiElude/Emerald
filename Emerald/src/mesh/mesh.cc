@@ -40,10 +40,10 @@ typedef struct
     mesh_type                 type;
 
     /* Custom mesh-specifics */
-    void*                   get_custom_mesh_aabb_proc_user_arg;
-    PFNGETMESHAABBPROC      pfn_get_custom_mesh_aabb_proc;
-    PFNRENDERCUSTOMMESHPROC pfn_render_custom_mesh_proc;
-    void*                   render_custom_mesh_proc_user_arg;
+    void*                              get_custom_mesh_aabb_proc_user_arg;
+    void*                              get_present_task_for_custom_mesh_user_arg;
+    PFNGETMESHAABBPROC                 pfn_get_custom_mesh_aabb_proc;
+    PFNGETPRESENTTASKFORCUSTOMMESHPROC pfn_get_present_task_for_custom_mesh_proc;
 
     /* GPU stream mesh-specifics */
     void*                   get_gpu_stream_mesh_aabb_proc_user_arg;
@@ -886,32 +886,32 @@ PRIVATE void _mesh_init_mesh(_mesh*                    new_mesh_ptr,
            0,
            sizeof(new_mesh_ptr->aabb_min) );
 
-    new_mesh_ptr->aabb_max[3]                            = 1;
-    new_mesh_ptr->aabb_min[3]                            = 1;
-    new_mesh_ptr->creation_flags                         = flags;
-    new_mesh_ptr->get_custom_mesh_aabb_proc_user_arg     = nullptr;
-    new_mesh_ptr->get_gpu_stream_mesh_aabb_proc_user_arg = nullptr;
-    new_mesh_ptr->bo                                     = nullptr;
-    new_mesh_ptr->bo_index_type                          = MESH_INDEX_TYPE_UNKNOWN;
-    new_mesh_ptr->bo_processed_data                      = nullptr;
-    new_mesh_ptr->bo_processed_data_size                 = 0;
-    new_mesh_ptr->bo_processed_data_stride               = -1;
-    new_mesh_ptr->bo_storage_initialized                 = false;
-    new_mesh_ptr->instantiation_parent                   = nullptr;
-    new_mesh_ptr->layers                                 = nullptr;
-    new_mesh_ptr->materials                              = nullptr;
-    new_mesh_ptr->n_bo_unique_vertices                   = 0;
-    new_mesh_ptr->n_sh_bands                             = 0;
-    new_mesh_ptr->n_sh_components                        = SH_COMPONENTS_UNDEFINED;
-    new_mesh_ptr->name                                   = name;
-    new_mesh_ptr->pfn_get_custom_mesh_aabb_proc          = nullptr;
-    new_mesh_ptr->pfn_get_gpu_stream_mesh_aabb_proc      = nullptr;
-    new_mesh_ptr->pfn_render_custom_mesh_proc            = nullptr;
-    new_mesh_ptr->ral_context                            = nullptr;
-    new_mesh_ptr->render_custom_mesh_proc_user_arg       = nullptr;
-    new_mesh_ptr->set_id_counter                         = 0;
-    new_mesh_ptr->timestamp_last_modified                = system_time_now();
-    new_mesh_ptr->vertex_ordering                        = MESH_VERTEX_ORDERING_CCW;
+    new_mesh_ptr->aabb_max[3]                               = 1;
+    new_mesh_ptr->aabb_min[3]                               = 1;
+    new_mesh_ptr->creation_flags                            = flags;
+    new_mesh_ptr->get_custom_mesh_aabb_proc_user_arg        = nullptr;
+    new_mesh_ptr->get_gpu_stream_mesh_aabb_proc_user_arg    = nullptr;
+    new_mesh_ptr->bo                                        = nullptr;
+    new_mesh_ptr->bo_index_type                             = MESH_INDEX_TYPE_UNKNOWN;
+    new_mesh_ptr->bo_processed_data                         = nullptr;
+    new_mesh_ptr->bo_processed_data_size                    = 0;
+    new_mesh_ptr->bo_processed_data_stride                  = -1;
+    new_mesh_ptr->bo_storage_initialized                    = false;
+    new_mesh_ptr->get_present_task_for_custom_mesh_user_arg = nullptr;
+    new_mesh_ptr->instantiation_parent                      = nullptr;
+    new_mesh_ptr->layers                                    = nullptr;
+    new_mesh_ptr->materials                                 = nullptr;
+    new_mesh_ptr->n_bo_unique_vertices                      = 0;
+    new_mesh_ptr->n_sh_bands                                = 0;
+    new_mesh_ptr->n_sh_components                           = SH_COMPONENTS_UNDEFINED;
+    new_mesh_ptr->name                                      = name;
+    new_mesh_ptr->pfn_get_custom_mesh_aabb_proc             = nullptr;
+    new_mesh_ptr->pfn_get_gpu_stream_mesh_aabb_proc         = nullptr;
+    new_mesh_ptr->pfn_get_present_task_for_custom_mesh_proc = nullptr;
+    new_mesh_ptr->ral_context                               = nullptr;
+    new_mesh_ptr->set_id_counter                            = 0;
+    new_mesh_ptr->timestamp_last_modified                   = system_time_now();
+    new_mesh_ptr->vertex_ordering                           = MESH_VERTEX_ORDERING_CCW;
 
     for (unsigned int n_stream_type = 0;
                       n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -1908,11 +1908,11 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data_for_regular_mesh(mesh    
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_custom_mesh_proc,
-                                                void*                     render_custom_mesh_proc_user_arg,
-                                                PFNGETMESHAABBPROC        pfn_get_custom_mesh_aabb_proc,
-                                                void*                     get_custom_mesh_aabb_proc_user_arg,
-                                                system_hashed_ansi_string name)
+PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNGETPRESENTTASKFORCUSTOMMESHPROC pfn_get_present_task_for_custom_mesh_proc,
+                                                void*                              get_present_task_for_custom_mesh_user_arg,
+                                                PFNGETMESHAABBPROC                 pfn_get_custom_mesh_aabb_proc,
+                                                void*                              get_custom_mesh_aabb_proc_user_arg,
+                                                system_hashed_ansi_string          name)
 {
     _mesh* new_mesh_ptr = new (std::nothrow) _mesh;
 
@@ -1926,11 +1926,11 @@ PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_re
                         0); /* flags */
 
         /* Initialize fields specific to custom meshes */
-        new_mesh_ptr->get_custom_mesh_aabb_proc_user_arg = get_custom_mesh_aabb_proc_user_arg;
-        new_mesh_ptr->pfn_get_custom_mesh_aabb_proc      = pfn_get_custom_mesh_aabb_proc;
-        new_mesh_ptr->pfn_render_custom_mesh_proc        = pfn_render_custom_mesh_proc;
-        new_mesh_ptr->render_custom_mesh_proc_user_arg   = render_custom_mesh_proc_user_arg;
-        new_mesh_ptr->type                               = MESH_TYPE_CUSTOM;
+        new_mesh_ptr->get_custom_mesh_aabb_proc_user_arg        = get_custom_mesh_aabb_proc_user_arg;
+        new_mesh_ptr->get_present_task_for_custom_mesh_user_arg = get_present_task_for_custom_mesh_user_arg;
+        new_mesh_ptr->pfn_get_custom_mesh_aabb_proc             = pfn_get_custom_mesh_aabb_proc;
+        new_mesh_ptr->pfn_get_present_task_for_custom_mesh_proc = pfn_get_present_task_for_custom_mesh_proc;
+        new_mesh_ptr->type                                      = MESH_TYPE_CUSTOM;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh_ptr,
                                                        _mesh_release,
@@ -3706,10 +3706,10 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
 
     #ifdef _DEBUG
     {
-        const bool is_custom_mesh_property = (property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR      ||
-                                              property == MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG);
-        const bool is_shared_mesh_property = (property == MESH_PROPERTY_MODEL_AABB_MAX                   ||
-                                              property == MESH_PROPERTY_MODEL_AABB_MIN                   ||
+        const bool is_custom_mesh_property = (property == MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_PTR      ||
+                                              property == MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_USER_ARG);
+        const bool is_shared_mesh_property = (property == MESH_PROPERTY_MODEL_AABB_MAX                                 ||
+                                              property == MESH_PROPERTY_MODEL_AABB_MIN                                 ||
                                               property == MESH_PROPERTY_TYPE);
 
         ASSERT_DEBUG_SYNC(mesh_ptr->type == MESH_TYPE_CUSTOM     && ( is_custom_mesh_property || is_shared_mesh_property) ||
@@ -3817,15 +3817,16 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         {
             if (mesh_ptr->instantiation_parent == nullptr)
             {
-                if (!mesh_ptr->bo_storage_initialized)
+                if (!mesh_ptr->bo_storage_initialized    &&
+                     mesh_ptr->type == MESH_TYPE_REGULAR)
                 {
                     mesh_fill_ral_buffers(instance,
                                           mesh_ptr->ral_context,
                                           false /* async */);
-                }
 
-                ASSERT_DEBUG_SYNC(mesh_ptr->bo_storage_initialized,
-                                  "BO storage initialization failed.");
+                    ASSERT_DEBUG_SYNC(mesh_ptr->bo_storage_initialized,
+                                      "BO storage initialization failed.");
+                }
 
                 *reinterpret_cast<ral_buffer*>(out_result_ptr) = mesh_ptr->bo;
             }
@@ -3880,6 +3881,20 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         case MESH_PROPERTY_CREATION_FLAGS:
         {
             *reinterpret_cast<mesh_creation_flags*>(out_result_ptr) = mesh_ptr->creation_flags;
+
+            break;
+        }
+
+        case MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_PTR:
+        {
+            *reinterpret_cast<PFNGETPRESENTTASKFORCUSTOMMESHPROC*>(out_result_ptr) = mesh_ptr->pfn_get_present_task_for_custom_mesh_proc;
+
+            break;
+        }
+
+        case MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_USER_ARG:
+        {
+            *reinterpret_cast<void**>(out_result_ptr) = mesh_ptr->get_present_task_for_custom_mesh_user_arg;
 
             break;
         }
@@ -3942,20 +3957,6 @@ PUBLIC EMERALD_API bool mesh_get_property(mesh          instance,
         case MESH_PROPERTY_NAME:
         {
             *reinterpret_cast<system_hashed_ansi_string*>(out_result_ptr) = mesh_ptr->name;
-
-            break;
-        }
-
-        case MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR:
-        {
-            *reinterpret_cast<PFNRENDERCUSTOMMESHPROC*>(out_result_ptr) = mesh_ptr->pfn_render_custom_mesh_proc;
-
-            break;
-        }
-
-        case MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG:
-        {
-            *reinterpret_cast<void**>(out_result_ptr) = mesh_ptr->render_custom_mesh_proc_user_arg;
 
             break;
         }

@@ -3743,16 +3743,16 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             ASSERT_DEBUG_SYNC(variable_ral_ptr != nullptr,
                               "No ral_program_variable instance exposed for output variable [%s]",
                               system_hashed_ansi_string_get_buffer(command_ral_ptr->name) );
-            ASSERT_DEBUG_SYNC(variable_ral_ptr->location < N_MAX_RENDERTARGETS,
+            ASSERT_DEBUG_SYNC(variable_ral_ptr->location_index < N_MAX_RENDERTARGETS,
                               "Too many output variables defined in the shader.");
 
             ASSERT_DEBUG_SYNC(command_ral_ptr->rendertarget_binding.rt_index < N_MAX_RENDERTARGETS,
                               "Invalid rendertarget index specified");
 
-            if (bake_state.active_fbo_draw_buffers[variable_ral_ptr->location] != (GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index))
+            if (bake_state.active_fbo_draw_buffers[variable_ral_ptr->location_index] != (GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index))
             {
-                bake_state.active_fbo_draw_buffers[variable_ral_ptr->location] = GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index;
-                bake_state.active_fbo_draw_buffers_dirty                       = true;
+                bake_state.active_fbo_draw_buffers[variable_ral_ptr->location_index] = GL_COLOR_ATTACHMENT0 + command_ral_ptr->rendertarget_binding.rt_index;
+                bake_state.active_fbo_draw_buffers_dirty                             = true;
             }
 
             break;

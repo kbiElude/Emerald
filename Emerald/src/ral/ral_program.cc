@@ -148,7 +148,7 @@ typedef struct _ral_program_metadata
         blocks_ub_by_name_hashmap        = system_hash64map_create       (sizeof(_ral_program_metadata_block*) );
         metadata_ready_event             = system_event_create           (true); /* manual_reset */
         output_variables                 = system_resizable_vector_create(4 /* capacity */);
-        output_variables_by_name_hashmap = system_hash64map_create       (sizeof(ral_program_variable) );
+        output_variables_by_name_hashmap = system_hash64map_create       (sizeof(ral_program_variable*) );
         owner_program                    = in_owner_program;
     }
 

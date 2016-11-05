@@ -280,6 +280,7 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program           pro
     static const GLenum piq_property_array_stride           = GL_ARRAY_STRIDE;
     static const GLenum piq_property_block_index            = GL_BLOCK_INDEX;
     static const GLenum piq_property_is_row_major           = GL_IS_ROW_MAJOR;
+    static const GLenum piq_property_location_index         = GL_LOCATION_INDEX;
     static const GLenum piq_property_matrix_stride          = GL_MATRIX_STRIDE;
     static const GLenum piq_property_name_length            = GL_NAME_LENGTH;
     static const GLenum piq_property_offset                 = GL_OFFSET;
@@ -300,6 +301,7 @@ PUBLIC void raGL_program_get_program_variable_details(raGL_program           pro
         variable_ral_ptr->is_row_major_matrix    = false;
         variable_ral_ptr->length                 = 0;
         variable_ral_ptr->location               = -1;
+        variable_ral_ptr->location_index         = -1;
         variable_ral_ptr->matrix_stride          = 0;
         variable_ral_ptr->name                   = nullptr;
         variable_ral_ptr->size                   = 0;
@@ -998,10 +1000,12 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                       n_output_variable < static_cast<uint32_t>(n_output_variables);
                     ++n_output_variable)
         {
-            static const GLenum location_piq             = GL_LOCATION;
-            GLint               output_variable_location = -1;
+            static const GLenum location_piq                   = GL_LOCATION;
+            static const GLenum location_index_piq             = GL_LOCATION_INDEX;
+            GLint               output_variable_location       = -1;
+            GLint               output_variable_location_index = -1;
             GLint               output_variable_type;
-            static const GLenum type_piq                 = GL_TYPE;
+            static const GLenum type_piq                       = GL_TYPE;
 
             ral_program_variable* new_variable_ral_ptr = new ral_program_variable;
 
@@ -1024,6 +1028,14 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                                                    GL_PROGRAM_OUTPUT,
                                                    n_output_variable,
                                                    1, /* propCount */
+                                                  &location_index_piq,
+                                                   sizeof(output_variable_location_index),
+                                                   nullptr, /* length */
+                                                  &output_variable_location_index);
+            program_ptr->pGLGetProgramResourceiv  (program_ptr->id,
+                                                   GL_PROGRAM_OUTPUT,
+                                                   n_output_variable,
+                                                   1, /* propCount */
                                                   &type_piq,
                                                    sizeof(output_variable_type),
                                                    nullptr, /* length */
@@ -1035,9 +1047,10 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                                                    nullptr, /* length */
                                                    output_variable_name);
 
-            new_variable_ral_ptr->location = location_piq;
-            new_variable_ral_ptr->name     = system_hashed_ansi_string_create                     (output_variable_name);
-            new_variable_ral_ptr->type     = raGL_utils_get_ral_program_variable_type_for_ogl_enum(output_variable_type);
+            new_variable_ral_ptr->location       = output_variable_location;
+            new_variable_ral_ptr->location_index = output_variable_location_index;
+            new_variable_ral_ptr->name           = system_hashed_ansi_string_create                     (output_variable_name);
+            new_variable_ral_ptr->type           = raGL_utils_get_ral_program_variable_type_for_ogl_enum(output_variable_type);
 
             ral_program_attach_output_variable(program_ptr->program_ral,
                                                new_variable_ral_ptr);
@@ -2360,19 +2373,20 @@ PUBLIC bool raGL_program_link(raGL_program program)
 
         if (all_shaders_compiled)
         {
-            /* Let's go. */
+            /* Link the program from within a rendering thread.
+             *
+             * Programs in GL are shareable, which means we don't really mind which context
+             * this request gets scheduled to.
+             */
             ogl_context           current_context     = ogl_context_get_current_context();
             ral_context           current_context_ral = nullptr;
             ral_rendering_handler current_context_rh  = nullptr;
-            ogl_context           program_context     = nullptr;
 
-            ral_context_get_property(program_ptr->context,
-                                     RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
-                                    &program_context);
-
-            if (current_context != program_context)
+            if (current_context == nullptr)
             {
-                current_context = program_context;
+                ral_context_get_property(program_ptr->context,
+                                         RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
+                                        &current_context);
             }
 
             ogl_context_get_property(current_context,

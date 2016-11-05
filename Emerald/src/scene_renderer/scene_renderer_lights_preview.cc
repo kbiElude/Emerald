@@ -251,6 +251,72 @@ end:
 
 
 /** Please see header for spec */
+PUBLIC void scene_renderer_lights_preview_append_light(scene_renderer_lights_preview preview,
+                                                       float*                        light_position,
+                                                       float*                        light_color,
+                                                       float*                        light_pos_plus_direction)
+{
+    _scene_renderer_lights_preview* preview_ptr = reinterpret_cast<_scene_renderer_lights_preview*>(preview);
+
+    /* Set the uniforms */
+    float merged_light_positions[8];
+
+    memcpy(merged_light_positions,
+           light_position,
+           sizeof(float) * 4);
+
+    if (light_pos_plus_direction != nullptr)
+    {
+        memcpy(merged_light_positions + 4,
+               light_pos_plus_direction,
+               sizeof(float) * 4);
+    }
+
+    ral_program_block_buffer_set_arrayed_variable_value   (preview_ptr->preview_program_ub,
+                                                           preview_ptr->preview_program_position_ub_offset,
+                                                           merged_light_positions,
+                                                           sizeof(float) * 4,
+                                                           0, /* dst_array_start_index */
+                                                           ((light_pos_plus_direction != nullptr) ? 2 : 1) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(preview_ptr->preview_program_ub,
+                                                           preview_ptr->preview_program_color_ub_offset,
+                                                           light_color,
+                                                           sizeof(float) * 3);
+
+    ral_program_block_buffer_sync_via_command_buffer(preview_ptr->preview_program_ub,
+                                                     preview_ptr->cached_command_buffer);
+
+    /* Draw. This probably beats the world's worst way of achieving this functionality,
+     * but light preview is only used for debugging purposes, so not much sense
+     * in writing an overbloated implementation.
+     */
+    ral_command_buffer_draw_call_regular_command_info draw_call_info;
+
+    draw_call_info.base_instance = 0;
+    draw_call_info.base_vertex   = 0;
+    draw_call_info.n_instances   = 1;
+    draw_call_info.n_vertices    = 1;
+
+    ral_command_buffer_record_set_gfx_state    (preview_ptr->cached_command_buffer,
+                                                preview_ptr->cached_gfx_state_points);
+    ral_command_buffer_record_draw_call_regular(preview_ptr->cached_command_buffer,
+                                                1, /* n_draw_calls */
+                                               &draw_call_info);
+
+
+    if (light_pos_plus_direction != nullptr)
+    {
+        draw_call_info.n_vertices = 2;
+
+        ral_command_buffer_record_set_gfx_state    (preview_ptr->cached_command_buffer,
+                                                    preview_ptr->cached_gfx_state_lines);
+        ral_command_buffer_record_draw_call_regular(preview_ptr->cached_command_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call_info);
+    }
+}
+
+/** Please see header for spec */
 PUBLIC scene_renderer_lights_preview scene_renderer_lights_preview_create(ral_context context,
                                                                           scene       scene)
 {
@@ -325,72 +391,6 @@ PUBLIC void scene_renderer_lights_preview_release(scene_renderer_lights_preview 
 
     delete preview_ptr;
     preview_ptr = nullptr;
-}
-
-/** Please see header for spec */
-PUBLIC void scene_renderer_lights_preview_render(scene_renderer_lights_preview preview,
-                                                 float*                        light_position,
-                                                 float*                        light_color,
-                                                 float*                        light_pos_plus_direction)
-{
-    _scene_renderer_lights_preview* preview_ptr = reinterpret_cast<_scene_renderer_lights_preview*>(preview);
-
-    /* Set the uniforms */
-    float merged_light_positions[8];
-
-    memcpy(merged_light_positions,
-           light_position,
-           sizeof(float) * 4);
-
-    if (light_pos_plus_direction != nullptr)
-    {
-        memcpy(merged_light_positions + 4,
-               light_pos_plus_direction,
-               sizeof(float) * 4);
-    }
-
-    ral_program_block_buffer_set_arrayed_variable_value   (preview_ptr->preview_program_ub,
-                                                           preview_ptr->preview_program_position_ub_offset,
-                                                           merged_light_positions,
-                                                           sizeof(float) * 4,
-                                                           0, /* dst_array_start_index */
-                                                           ((light_pos_plus_direction != nullptr) ? 2 : 1) );
-    ral_program_block_buffer_set_nonarrayed_variable_value(preview_ptr->preview_program_ub,
-                                                           preview_ptr->preview_program_color_ub_offset,
-                                                           light_color,
-                                                           sizeof(float) * 3);
-
-    ral_program_block_buffer_sync_via_command_buffer(preview_ptr->preview_program_ub,
-                                                     preview_ptr->cached_command_buffer);
-
-    /* Draw. This probably beats the world's worst way of achieving this functionality,
-     * but light preview is only used for debugging purposes, so not much sense
-     * in writing an overbloated implementation.
-     */
-    ral_command_buffer_draw_call_regular_command_info draw_call_info;
-
-    draw_call_info.base_instance = 0;
-    draw_call_info.base_vertex   = 0;
-    draw_call_info.n_instances   = 1;
-    draw_call_info.n_vertices    = 1;
-
-    ral_command_buffer_record_set_gfx_state    (preview_ptr->cached_command_buffer,
-                                                preview_ptr->cached_gfx_state_points);
-    ral_command_buffer_record_draw_call_regular(preview_ptr->cached_command_buffer,
-                                                1, /* n_draw_calls */
-                                               &draw_call_info);
-
-
-    if (light_pos_plus_direction != nullptr)
-    {
-        draw_call_info.n_vertices = 2;
-
-        ral_command_buffer_record_set_gfx_state    (preview_ptr->cached_command_buffer,
-                                                    preview_ptr->cached_gfx_state_lines);
-        ral_command_buffer_record_draw_call_regular(preview_ptr->cached_command_buffer,
-                                                    1, /* n_draw_calls */
-                                                   &draw_call_info);
-    }
 }
 
 /** Please see header for spec */

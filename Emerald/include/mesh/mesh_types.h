@@ -84,6 +84,18 @@ typedef enum
     /* not settable, mesh_creation_flags */
     MESH_PROPERTY_CREATION_FLAGS,
 
+    /* not settable, PFNGETPRESENTTASKFORCUSTOMMESHPROC
+     *
+     * Property only valid for custom meshes.
+     */
+    MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_PTR,
+
+    /* not settable, void*
+     *
+     * Property only valid for custom meshes.
+     */
+    MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_USER_ARG,
+
     /* not settable, system_resizable_vector - DO NOT MODIFY OR RELEASE */
     MESH_PROPERTY_MATERIALS,
 
@@ -98,18 +110,6 @@ typedef enum
 
     /* settable ONCE, uint32_t */
     MESH_PROPERTY_N_SH_BANDS,
-
-    /* not settable, PFNRENDERCUSTOMMESH
-     *
-     * Property only valid for custom meshes.
-     */
-    MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR,
-
-    /* not settable, void*
-     *
-     * Property only valid for custom meshes.
-     */
-    MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG,
 
     /* not settable, system_time    */
     MESH_PROPERTY_TIMESTAMP_MODIFICATION,

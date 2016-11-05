@@ -29,7 +29,7 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
 
 /** Returns a new present task which encapsulates a GPU task which draws the bounding boxl.
  *
- *  The result present task takes no unique inputs, and exposes a single output corresponding
+ *  The result present task takes and exposes a single IO corresponding
  *  to the texture view the bboxes are going to be rasterized to, as specified at
  *  scene_renderer_bbox_preview_start() call time.
  **/

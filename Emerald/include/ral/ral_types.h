@@ -442,6 +442,9 @@ typedef struct
     /* Output variables + uniforms (default & regular uniform block): */
     int32_t location;
 
+    /* Output variables */
+    int32_t location_index;
+
     /* Common */
     system_hashed_ansi_string name;
     ral_program_variable_type type;

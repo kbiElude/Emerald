@@ -627,6 +627,10 @@ PUBLIC ral_present_task ui_scrollbar_get_present_task(void*            internal_
             rt_info.blend_enabled          = true;
             rt_info.blend_op_alpha         = RAL_BLEND_OP_ADD;
             rt_info.blend_op_color         = RAL_BLEND_OP_ADD;
+            rt_info.channel_writes.color0  = true;
+            rt_info.channel_writes.color1  = true;
+            rt_info.channel_writes.color2  = true;
+            rt_info.channel_writes.color3  = true;
             rt_info.dst_alpha_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
             rt_info.dst_color_blend_factor = RAL_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
             rt_info.rendertarget_index     = 0;

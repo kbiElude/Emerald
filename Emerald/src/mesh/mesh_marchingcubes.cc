@@ -410,30 +410,30 @@ static const char* _mesh_marchingcubes_cs_body =
     "const uint n_ids_per_row    = BLOB_SIZE_X;\n"
     "const uint n_ids_per_slice  = BLOB_SIZE_X * BLOB_SIZE_Y;\n"
     "\n"
-    "layout(packed) uniform dataUB\n"
+    "layout(binding = 0, packed) uniform dataUB\n"
     "{\n"
     "    float isolevel;\n"
     "};\n"
     "\n"
-    "layout(std430) buffer indirect_draw_callSSB\n"
+    "layout(binding = 1, std430) buffer indirect_draw_callSSB\n"
     "{\n"
     "    restrict uint indirect_draw_call_count;\n"
     "};\n"
     "\n"
-    "layout(std140) uniform precomputed_tablesUB\n"
+    "layout(binding = 2, std140) uniform precomputed_tablesUB\n"
     "{\n"
     "    int edge_table    [256];\n"
     "    int triangle_table[256 * 15];\n"
     "};\n"
     "\n"
-    "layout(std430) writeonly buffer result_dataSSB\n"
+    "layout(binding = 3, std430) writeonly buffer result_dataSSB\n"
     "{\n"
     /* 4 floats: vertex data (model space). We need to include W since some of the vertices need to be discarded.
      * 3 floats: normal data (model space) */
     "    restrict float result_data[];\n"
     "};\n"
     "\n"
-    "layout(std430) readonly buffer scalar_field_dataSSB\n"
+    "layout(binding = 4, std430) readonly buffer scalar_field_dataSSB\n"
     "{\n"
     "    restrict vec4 scalar_field[];\n"
     "};\n"
@@ -915,6 +915,13 @@ PRIVATE void _mesh_marchingcubes_deinit(_mesh_marchingcubes* mesh_ptr)
 
             *present_tasks[n_present_task] = nullptr;
         }
+    }
+
+    if (mesh_ptr->material != nullptr)
+    {
+        scene_material_release(mesh_ptr->material);
+
+        mesh_ptr->material = nullptr;
     }
 
     if (mesh_ptr->material_gpu != nullptr)

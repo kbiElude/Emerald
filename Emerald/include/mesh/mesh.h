@@ -51,17 +51,17 @@ typedef enum
     MESH_INDEX_TYPE_UNKNOWN
 } _mesh_index_type;
 
-typedef void             (*PFNGETMESHAABBPROC)     (const void*            user_arg,
-                                                    float*                 out_aabb_model_vec3_min,
-                                                    float*                 out_aabb_model_vec3_max);
-typedef ral_present_task (*PFNRENDERCUSTOMMESHPROC)(ral_context            context_ral,
-                                                    const void*            user_arg,
-                                                    const system_matrix4x4 model_matrix,
-                                                    const system_matrix4x4 vp_matrix,
-                                                    const system_matrix4x4 normal_matrix,
-                                                    bool                   is_depth_prepass,
-                                                    ral_texture_view       color_rt,
-                                                    ral_texture_view       opt_depth_rt);
+typedef void             (*PFNGETMESHAABBPROC)                (const void*            user_arg,
+                                                               float*                 out_aabb_model_vec3_min,
+                                                               float*                 out_aabb_model_vec3_max);
+typedef ral_present_task (*PFNGETPRESENTTASKFORCUSTOMMESHPROC)(ral_context            context_ral,
+                                                               const void*            user_arg,
+                                                               const system_matrix4x4 model_matrix,
+                                                               const system_matrix4x4 vp_matrix,
+                                                               const system_matrix4x4 normal_matrix,
+                                                               bool                   is_depth_prepass,
+                                                               ral_texture_view       color_rt,
+                                                               ral_texture_view       opt_depth_rt);
 
 
 /** TODO
@@ -155,11 +155,11 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data_for_regular_mesh(mesh    
                                                                         unsigned int                max_index);
 
 /** TODO */
-PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNRENDERCUSTOMMESHPROC   pfn_render_custom_mesh_proc,
-                                                void*                     render_custom_mesh_proc_user_arg,
-                                                PFNGETMESHAABBPROC        pfn_get_custom_mesh_aabb_proc,
-                                                void*                     get_custom_mesh_aabb_proc_user_arg,
-                                                system_hashed_ansi_string name);
+PUBLIC EMERALD_API mesh mesh_create_custom_mesh(PFNGETPRESENTTASKFORCUSTOMMESHPROC pfn_get_present_task_for_custom_mesh_proc,
+                                                void*                              get_present_task_for_custom_mesh_proc_user_arg,
+                                                PFNGETMESHAABBPROC                 pfn_get_custom_mesh_aabb_proc,
+                                                void*                              get_custom_mesh_aabb_proc_user_arg,
+                                                system_hashed_ansi_string          name);
 
 /** TODO */
 PUBLIC EMERALD_API mesh mesh_create_gpu_stream_mesh(PFNGETMESHAABBPROC        pfn_get_gpu_stream_mesh_aabb_proc,

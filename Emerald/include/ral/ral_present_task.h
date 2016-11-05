@@ -253,6 +253,13 @@ PUBLIC EMERALD_API bool ral_present_task_get_ingroup_connection(ral_present_task
                                                                 uint32_t*        out_output_present_task_index_ptr,
                                                                 uint32_t*        out_output_present_task_io_index_ptr);
 
+/** TODO */
+PUBLIC EMERALD_API bool ral_present_task_get_io_index(ral_present_task         task,
+                                                      ral_present_task_io_type io_type,
+                                                      ral_context_object_type  object_type,
+                                                      void*                    object,
+                                                      uint32_t*                out_io_index_ptr);
+
 /** TODO
  *
  *  NOTE: Only valid for group present tasks.

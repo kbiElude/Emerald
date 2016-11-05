@@ -350,6 +350,9 @@ PRIVATE void _init_scene()
     /* Set up the scene renderer */
     _scene_renderer = scene_renderer_create(_context,
                                             _scene);
+
+    /* Clean up */
+    scene_material_release(material);
 }
 
 /** TODO */
@@ -387,8 +390,8 @@ PRIVATE ral_present_job _render(ral_context                                     
     system_matrix4x4    light_node_transformation_matrix = nullptr;
     ral_present_task    polygonization_task;
     ral_present_task_id polygonization_task_id;
-    //ral_present_task    render_task;
-    //ral_present_task_id render_task_id;
+    ral_present_task    render_task;
+    ral_present_task_id render_task_id;
     ral_present_job     result_job;
     bool                scalar_field_update_needed;
     ral_present_task    scalar_field_update_task;
@@ -463,17 +466,17 @@ PRIVATE ral_present_job _render(ral_context                                     
     system_matrix4x4_invert            (light_node_transformation_matrix);
 
     /* Render the scene */
-    //render_task = scene_renderer_get_present_task_for_scene_graph(_scene_renderer,
-    //                                                              _view_matrix,
-    //                                                              _projection_matrix,
-    //                                                              _scene_camera,
-    //                                                              //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
-    //                                                              RENDER_MODE_TEXCOORDS_ONLY,
-    //                                                              false, /* apply_shadow_mapping */
-    //                                                              HELPER_VISUALIZATION_BOUNDING_BOXES,
-    //                                                              frame_data_ptr->frame_time,
-    //                                                              _rt_color_view,
-    //                                                              _rt_depth_view);
+    render_task = scene_renderer_get_present_task_for_scene_graph(_scene_renderer,
+                                                                  _view_matrix,
+                                                                  _projection_matrix,
+                                                                  _scene_camera,
+                                                                  //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
+                                                                  RENDER_MODE_TEXCOORDS_ONLY,
+                                                                  false, /* apply_shadow_mapping */
+                                                                  HELPER_VISUALIZATION_BOUNDING_BOXES,
+                                                                  frame_data_ptr->frame_time,
+                                                                  _rt_color_view,
+                                                                  _rt_depth_view);
 
     /* Form the result job */
     result_job = ral_present_job_create();
@@ -484,9 +487,9 @@ PRIVATE ral_present_job _render(ral_context                                     
     ral_present_job_add_task(result_job,
                              polygonization_task,
                             &polygonization_task_id);
-    //ral_present_job_add_task(result_job,
-    //                         render_task,
-    //                        &render_task_id);
+    ral_present_job_add_task(result_job,
+                             render_task,
+                            &render_task_id);
 
     if (uv_data_update_task != nullptr)
     {
@@ -504,14 +507,14 @@ PRIVATE ral_present_job _render(ral_context                                     
 
     /* TODO: polygonization -> render task connection */
 
-    //ral_present_job_set_presentable_output(result_job,
-    //                                       render_task_id,
-    //                                       false, /* is_input_io */
-    //                                       0);    /* n_io        */
+    ral_present_job_set_presentable_output(result_job,
+                                           render_task_id,
+                                           false, /* is_input_io */
+                                           0);    /* n_io        */
 
     /* Clean up */
     ral_present_task_release(polygonization_task);
-    //ral_present_task_release(render_task);
+    ral_present_task_release(render_task);
     ral_present_task_release(scalar_field_update_task);
 
     if (uv_data_update_task != nullptr)
@@ -607,6 +610,13 @@ PRIVATE void _window_closing_callback_handler(system_window window,
         scene_camera_release(_scene_camera);
 
         _scene_camera = nullptr;
+    }
+
+    if (_scene_light != nullptr)
+    {
+        scene_light_release(_scene_light);
+
+        _scene_light = nullptr;
     }
 
     if (_scene_renderer != nullptr)

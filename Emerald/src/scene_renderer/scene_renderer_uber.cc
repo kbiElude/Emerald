@@ -545,7 +545,7 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                             MESH_LAYER_DATA_STREAM_PROPERTY_N_COMPONENTS,
                                            &mesh_vertex_bo_n_components);
 
-        ASSERT_DEBUG_SYNC(mesh_vertex_bo_n_components == 3,
+        ASSERT_DEBUG_SYNC(mesh_vertex_bo_n_components >= 3,
                           "Format specified for vertex data in vertex_data_va below is invalid");
 
         if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
@@ -562,7 +562,8 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                                &mesh_vertex_bo_stride);
         }
 
-        vertex_data_va.format     = RAL_FORMAT_RGB32_FLOAT;
+        vertex_data_va.format     = (mesh_vertex_bo_n_components == 3) ? RAL_FORMAT_RGB32_FLOAT
+                                                                       : RAL_FORMAT_RGBA32_FLOAT;
         vertex_data_va.input_rate = RAL_VERTEX_INPUT_RATE_PER_VERTEX;
         vertex_data_va.name       = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_vertex);
         vertex_data_va.offset     = mesh_vertex_bo_offset;
@@ -2186,6 +2187,9 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                                                                    n_preamble_commands);
         }
 
+        ral_command_buffer_record_set_gfx_state(mesh_data_material_ptr->command_buffer,
+                                                mesh_data_ptr->gfx_state);
+
         /* Set up rendertarget bindings */
         if (uber_ptr->active_color_rt != nullptr)
         {
@@ -3272,12 +3276,19 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     ASSERT_DEBUG_SYNC(uber_ptr->is_rendering,
                       "Not started");
 
-    ral_program_block_buffer_get_property(uber_ptr->ub_fs,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &ub_fs_bo);
-    ral_program_block_buffer_get_property(uber_ptr->ub_vs,
-                                          RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                         &ub_vs_bo);
+    if (uber_ptr->ub_fs != nullptr)
+    {
+        ral_program_block_buffer_get_property(uber_ptr->ub_fs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &ub_fs_bo);
+    }
+
+    if (uber_ptr->ub_vs != nullptr)
+    {
+        ral_program_block_buffer_get_property(uber_ptr->ub_vs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &ub_vs_bo);
+    }
 
     /* Form the result present task */
     ral_present_task                     global_cpu_update_task;
@@ -3286,11 +3297,13 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     uint32_t                             n_render_command_buffers = 0;
     uint32_t                             n_render_unique_outputs  = 0;
     ral_present_task*                    render_gpu_tasks         = nullptr;
+    ral_present_task_io                  render_gpu_task_unique_inputs [3];
     ral_present_task_io                  render_gpu_task_unique_outputs[2];
     ral_present_task*                    result_present_tasks = nullptr;
     ral_present_task_group_create_info   result_task_create_info;
-    ral_present_task_ingroup_connection* result_task_ingroup_connections = nullptr;
-    ral_present_task_group_mapping*      result_task_unique_mappings     = nullptr;
+    ral_present_task_ingroup_connection* result_task_ingroup_connections    = nullptr;
+    ral_present_task_group_mapping*      result_task_unique_input_mappings  = nullptr;
+    ral_present_task_group_mapping*      result_task_unique_output_mappings = nullptr;
 
     system_resizable_vector_get_property(uber_ptr->scheduled_mesh_command_buffers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -3313,16 +3326,24 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                                         &global_cpu_update_task_info);
 
 
+    render_gpu_task_unique_inputs[0] = global_cpu_update_task_output;
+
     if (uber_ptr->active_color_rt != nullptr)
     {
-        render_gpu_task_unique_outputs[n_render_unique_outputs]  .texture_view = uber_ptr->active_color_rt;
-        render_gpu_task_unique_outputs[n_render_unique_outputs++].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        render_gpu_task_unique_outputs[n_render_unique_outputs].texture_view = uber_ptr->active_color_rt;
+        render_gpu_task_unique_outputs[n_render_unique_outputs].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        render_gpu_task_unique_inputs [1 + n_render_unique_outputs]          = render_gpu_task_unique_outputs[n_render_unique_outputs];
+
+        ++n_render_unique_outputs;
     }
 
     if (uber_ptr->active_depth_rt != nullptr)
     {
-        render_gpu_task_unique_outputs[n_render_unique_outputs]  .texture_view = uber_ptr->active_depth_rt;
-        render_gpu_task_unique_outputs[n_render_unique_outputs++].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        render_gpu_task_unique_outputs[n_render_unique_outputs].texture_view = uber_ptr->active_depth_rt;
+        render_gpu_task_unique_outputs[n_render_unique_outputs].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        render_gpu_task_unique_inputs [1 + n_render_unique_outputs]          = render_gpu_task_unique_outputs[n_render_unique_outputs];
+
+        ++n_render_unique_outputs;
     }
 
     render_gpu_tasks = reinterpret_cast<ral_present_task*>(_malloca(n_render_command_buffers * sizeof(ral_present_task) ));
@@ -3339,9 +3360,9 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                               &render_command_buffer);
 
         render_gpu_task_info.command_buffer   = render_command_buffer;
-        render_gpu_task_info.n_unique_inputs  = 1;
+        render_gpu_task_info.n_unique_inputs  = 1 /* UB buffer */ + n_render_unique_outputs;
         render_gpu_task_info.n_unique_outputs = n_render_unique_outputs;
-        render_gpu_task_info.unique_inputs    = &global_cpu_update_task_output;
+        render_gpu_task_info.unique_inputs    = render_gpu_task_unique_inputs;
         render_gpu_task_info.unique_outputs   = render_gpu_task_unique_outputs;
 
         render_gpu_tasks[n_render_command_buffer] = ral_present_task_create_gpu(system_hashed_ansi_string_create("Uber render command buffer: rasterization"),
@@ -3349,18 +3370,14 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     }
 
 
-    result_task_create_info.ingroup_connections                      = result_task_ingroup_connections;
     result_task_create_info.n_ingroup_connections                    = n_render_command_buffers;
     result_task_create_info.n_present_tasks                          = 1 + n_render_command_buffers;
     result_task_create_info.n_total_unique_inputs                    = n_render_unique_outputs;
     result_task_create_info.n_total_unique_outputs                   = n_render_unique_outputs;
     result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_render_unique_outputs * n_render_command_buffers;
     result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_render_unique_outputs * n_render_command_buffers;
-    result_task_create_info.present_tasks                            = result_present_tasks;
-    result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_unique_mappings;
-    result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_unique_mappings;
 
-    result_task_ingroup_connections = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(result_task_create_info.n_ingroup_connections * sizeof(ral_present_task_ingroup_connection)) );
+    result_task_ingroup_connections = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(n_render_command_buffers * sizeof(ral_present_task_ingroup_connection)) );
 
     for (uint32_t n_ingroup_connection = 0;
                   n_ingroup_connection < result_task_create_info.n_ingroup_connections;
@@ -3383,7 +3400,8 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
            sizeof(ral_present_task) * result_task_create_info.n_present_tasks);
 
 
-    result_task_unique_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_input_to_ingroup_task_mappings * sizeof(ral_present_task_group_mapping) ));
+    result_task_unique_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_input_to_ingroup_task_mappings  * sizeof(ral_present_task_group_mapping) ));
+    result_task_unique_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_output_to_ingroup_task_mappings * sizeof(ral_present_task_group_mapping) ));
 
     ASSERT_DEBUG_SYNC(result_task_create_info.n_unique_input_to_ingroup_task_mappings == result_task_create_info.n_unique_output_to_ingroup_task_mappings,
                       "Size mismatch detected");
@@ -3392,10 +3410,24 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                   n_mapping < result_task_create_info.n_unique_input_to_ingroup_task_mappings;
                 ++n_mapping)
     {
-        result_task_unique_mappings[n_mapping].group_task_io_index   = n_mapping % n_render_unique_outputs;
-        result_task_unique_mappings[n_mapping].present_task_io_index = n_mapping % n_render_unique_outputs;
-        result_task_unique_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_outputs;
+        result_task_unique_input_mappings[n_mapping].group_task_io_index   =     n_mapping % n_render_unique_outputs;
+        result_task_unique_input_mappings[n_mapping].present_task_io_index = 1 + n_mapping % n_render_unique_outputs;
+        result_task_unique_input_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_outputs;
     }
+
+    for (uint32_t n_mapping = 0;
+                  n_mapping < result_task_create_info.n_unique_output_to_ingroup_task_mappings;
+                ++n_mapping)
+    {
+        result_task_unique_output_mappings[n_mapping].group_task_io_index   =     n_mapping % n_render_unique_outputs;
+        result_task_unique_output_mappings[n_mapping].present_task_io_index =     n_mapping % n_render_unique_outputs;
+        result_task_unique_output_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_outputs;
+    }
+
+    result_task_create_info.ingroup_connections                      = result_task_ingroup_connections;
+    result_task_create_info.present_tasks                            = result_present_tasks;
+    result_task_create_info.unique_input_to_ingroup_task_mapping     = result_task_unique_input_mappings;
+    result_task_create_info.unique_output_to_ingroup_task_mapping    = result_task_unique_output_mappings;
 
     result_task = ral_present_task_create_group(system_hashed_ansi_string_create("Uber: rasterization"),
                                                 &result_task_create_info);
@@ -3404,10 +3436,30 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     uber_ptr->is_rendering = false;
 
     /* Clean up */
+    uint32_t            n_scheduled_cmd_buffers = 0;
+    ral_command_buffer* scheduled_cmd_buffers   = nullptr;
+
     _freea(render_gpu_tasks);
     _freea(result_task_ingroup_connections);
     _freea(result_present_tasks);
-    _freea(result_task_unique_mappings);
+    _freea(result_task_unique_input_mappings);
+    _freea(result_task_unique_output_mappings);
+
+    system_resizable_vector_get_property(uber_ptr->scheduled_mesh_command_buffers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_scheduled_cmd_buffers);
+    system_resizable_vector_get_property(uber_ptr->scheduled_mesh_command_buffers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                         &scheduled_cmd_buffers);
+
+    if (n_scheduled_cmd_buffers > 0)
+    {
+        ral_context_delete_objects(uber_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                   n_scheduled_cmd_buffers,
+                                   reinterpret_cast<void* const*>(scheduled_cmd_buffers) );
+    }
+    system_resizable_vector_clear(uber_ptr->scheduled_mesh_command_buffers);
 
     return result_task;
 }

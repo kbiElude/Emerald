@@ -361,27 +361,30 @@ private:
                     ASSERT_DEBUG_SYNC(current_io_user != nullptr,
                                       "Null present task specified");
 
-                    ral_present_task_get_io_property(current_io_user,
-                                                     io_type,
-                                                     mapping.present_task_io_index,
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                     (void**) &current_io_object);
-                    ral_present_task_get_io_property(current_io_user,
-                                                     io_type,
-                                                     mapping.present_task_io_index,
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
-                                                     (void**) &current_io_object_type);
-                    ral_present_task_get_io_property(last_io_user,
-                                                     io_type,
-                                                     mapping.present_task_io_index,
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                     (void**) &last_io_object);
-
-                    ral_present_task_get_io_property(last_io_user,
-                                                     io_type,
-                                                     mapping.present_task_io_index,
-                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
-                                                     (void**) &last_io_object_type);
+                    if (!ral_present_task_get_io_property(current_io_user,
+                                                          io_type,
+                                                          mapping.present_task_io_index,
+                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                          (void**) &current_io_object)          ||
+                        !ral_present_task_get_io_property(current_io_user,
+                                                          io_type,
+                                                          mapping.present_task_io_index,
+                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                          (void**) &current_io_object_type)     ||
+                        !ral_present_task_get_io_property(last_io_user,
+                                                          io_type,
+                                                          mapping.present_task_io_index,
+                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                          (void**) &last_io_object)             ||
+                        !ral_present_task_get_io_property(last_io_user,
+                                                          io_type,
+                                                          mapping.present_task_io_index,
+                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                          (void**) &last_io_object_type) )
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not validate group task mappings.");
+                    }
 
                     ASSERT_DEBUG_SYNC(current_io_object_type == last_io_object_type,
                                       "A group IO maps to present task IOs of different object types");
@@ -469,6 +472,20 @@ private:
                           n_io < n_ios;
                         ++n_io)
             {
+                #ifdef _DEBUG
+                {
+                    uint32_t io_index;
+                    bool     already_defined = ral_present_task_get_io_index(reinterpret_cast<ral_present_task>(this),
+                                                                             io_type,
+                                                                             src_ios[n_io].object_type,
+                                                                             src_ios[n_io].object,
+                                                                            &io_index);
+
+                    ASSERT_DEBUG_SYNC(!already_defined,
+                                      "Duplicate IO detected.");
+                }
+                #endif
+
                 dst_ios[n_io].object      = src_ios[n_io].object;
                 dst_ios[n_io].object_type = src_ios[n_io].object_type;
 
@@ -1033,6 +1050,44 @@ PUBLIC EMERALD_API bool ral_present_task_get_ingroup_connection(ral_present_task
     /* All done */
     result = true;
 end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ral_present_task_get_io_index(ral_present_task         task,
+                                                      ral_present_task_io_type io_type,
+                                                      ral_context_object_type  object_type,
+                                                      void*                    object,
+                                                      uint32_t*                out_io_index_ptr)
+{
+    ral_present_task_io* ios_ptr  = nullptr;
+    uint32_t             n_ios    = 0;
+    bool                 result   = false;
+    _ral_present_task*   task_ptr = reinterpret_cast<_ral_present_task*>(task);
+
+    ASSERT_DEBUG_SYNC(io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT ||
+                      io_type == RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                      "Invalid IO type specified");
+    ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
+                      "TODO");
+
+    ios_ptr = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->inputs   : task_ptr->outputs;
+    n_ios   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->n_inputs : task_ptr->n_outputs;
+
+    for (uint32_t n_io = 0;
+                  n_io < n_ios && !result;
+                ++n_io)
+    {
+        if (ios_ptr[n_io].object_type == object_type &&
+            ios_ptr[n_io].object      == object)
+        {
+            *out_io_index_ptr = n_io;
+            result            = true;
+
+            break;
+        }
+    }
+
     return result;
 }
 

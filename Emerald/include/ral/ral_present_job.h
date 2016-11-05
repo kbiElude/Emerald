@@ -101,10 +101,6 @@ PUBLIC EMERALD_API bool ral_present_job_is_connection_defined(ral_present_job   
 PUBLIC EMERALD_API void ral_present_job_release(ral_present_job job);
 
 /** TODO */
-PUBLIC void ral_present_job_retain(ral_present_job job);
-
-
-/** TODO */
 PUBLIC EMERALD_API bool ral_present_job_set_presentable_output(ral_present_job     job,
                                                                ral_present_task_id task_id,
                                                                bool                is_input_io,

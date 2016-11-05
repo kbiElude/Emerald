@@ -197,6 +197,12 @@ private:
             {
                 switch (set_binding_command.binding_type)
                 {
+                    case RAL_BINDING_TYPE_RENDERTARGET:
+                    {
+                        /* Nop */
+                        break;
+                    }
+
                     case RAL_BINDING_TYPE_SAMPLED_IMAGE:
                     case RAL_BINDING_TYPE_STORAGE_IMAGE:
                     {
@@ -1552,6 +1558,12 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_bindings(ral_command_buffe
             /* Sanity checks */
             switch (src_command.binding_type)
             {
+                case RAL_BINDING_TYPE_RENDERTARGET:
+                {
+                    /* No sanity checks to perform at RAL level. */
+                    break;
+                }
+
                 case RAL_BINDING_TYPE_SAMPLED_IMAGE:
                 {
                     ASSERT_DEBUG_SYNC(src_command.sampled_image_binding.sampler != nullptr,

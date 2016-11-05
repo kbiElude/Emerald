@@ -273,6 +273,42 @@ PUBLIC EMERALD_API bool ral_present_job_connect_tasks(ral_present_job           
         goto end;
     }
 
+    #ifdef _DEBUG
+    {
+        /* Make sure the specified connection has not already been defined. Doing so will break
+         * the flattening operation.
+         */
+        uint32_t n_connections_defined;
+
+        system_hash64map_get_property(job_ptr->connections,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_connections_defined);
+
+        for (uint32_t n_connection = 0;
+                      n_connection < n_connections_defined;
+                    ++n_connection)
+        {
+            _ral_present_job_connection* connection_ptr = nullptr;
+
+            system_hash64map_get_element_at(job_ptr->connections,
+                                            n_connection,
+                                           &connection_ptr,
+                                            nullptr); /* result_hash_ptr */
+
+            if (connection_ptr->dst_task_id       == dst_task_id       &&
+                connection_ptr->n_dst_task_input  == n_dst_task_input  &&
+                connection_ptr->n_src_task_output == n_src_task_output &&
+                connection_ptr->src_task_id       == src_task_id)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Application is about to create a duplicate inter-node connection. This will cause flattening to fail.");
+
+                break;
+            }
+        }
+    }
+    #endif
+
     /* Create & store the new connection */
     new_connection_id = job_ptr->n_total_connections_added++;
 

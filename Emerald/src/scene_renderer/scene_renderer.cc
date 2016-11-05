@@ -53,8 +53,8 @@ typedef struct _scene_renderer_mesh
     system_matrix4x4 normal_matrix;
 
     /* Custom mesh fields only: */
-    void*                   custom_mesh_render_proc_user_arg;
-    PFNRENDERCUSTOMMESHPROC pfn_render_custom_mesh_proc;
+    void*                              get_present_task_for_custom_mesh_user_arg;
+    PFNGETPRESENTTASKFORCUSTOMMESHPROC pfn_get_present_task_for_custom_mesh_proc;
 
 } _scene_renderer_mesh;
 
@@ -777,21 +777,20 @@ PRIVATE void _scene_renderer_process_mesh_for_forward_rendering(scene_mesh scene
                           "Unrecognized mesh type.");
 
         /* This mesh is rendered by the user. */
-        void*                   custom_mesh_render_proc_user_arg = nullptr;
-        _scene_renderer_mesh*   new_entry_ptr                    = reinterpret_cast<_scene_renderer_mesh*>(system_resource_pool_get_from_pool(renderer_ptr->mesh_pool) );
-        PFNRENDERCUSTOMMESHPROC pfn_custom_mesh_render_proc      = nullptr;
+        void*                              custom_mesh_render_proc_user_arg = nullptr;
+        _scene_renderer_mesh*              new_entry_ptr                    = reinterpret_cast<_scene_renderer_mesh*>(system_resource_pool_get_from_pool(renderer_ptr->mesh_pool) );
+        PFNGETPRESENTTASKFORCUSTOMMESHPROC pfn_custom_mesh_render_proc      = nullptr;
 
         mesh_get_property(mesh_gpu,
-                          MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_PTR,
-                         &new_entry_ptr->pfn_render_custom_mesh_proc);
+                          MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_PTR,
+                         &new_entry_ptr->pfn_get_present_task_for_custom_mesh_proc);
         mesh_get_property(mesh_gpu,
-                          MESH_PROPERTY_RENDER_CUSTOM_MESH_FUNC_USER_ARG,
-                         &new_entry_ptr->custom_mesh_render_proc_user_arg);
+                          MESH_PROPERTY_GET_PRESENT_TASK_FOR_CUSTOM_MESH_FUNC_USER_ARG,
+                         &new_entry_ptr->get_present_task_for_custom_mesh_user_arg);
 
-        new_entry_ptr->mesh_id                          = mesh_id;
-        new_entry_ptr->mesh_instance                    = mesh_gpu;
-        new_entry_ptr->mesh_type                        = MESH_TYPE_CUSTOM;
-        new_entry_ptr->custom_mesh_render_proc_user_arg = custom_mesh_render_proc_user_arg;
+        new_entry_ptr->mesh_id       = mesh_id;
+        new_entry_ptr->mesh_instance = mesh_gpu;
+        new_entry_ptr->mesh_type     = MESH_TYPE_CUSTOM;
 
         _scene_renderer_create_model_normal_matrices(renderer_ptr,
                                                     &new_entry_ptr->model_matrix,
@@ -1169,7 +1168,6 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
         uint32_t                            n_result_task_subtasks        = 0;
         uint32_t                            n_input_mappings              = 0;
         uint32_t                            n_output_mappings             = 0;
-        uint32_t                            n_unique_ios                  = (renderer_ptr->current_depth_rt != nullptr) ? 2 : 1;
         ral_present_task                    result_task_subtasks[2];
         ral_present_task_group_create_info  result_task_create_info;
         ral_present_task_group_mapping      result_task_input_mappings[3];
@@ -1227,8 +1225,8 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
         result_task_create_info.ingroup_connections                      = nullptr;
         result_task_create_info.n_ingroup_connections                    = 0;
         result_task_create_info.n_present_tasks                          = n_result_task_subtasks;
-        result_task_create_info.n_total_unique_inputs                    = n_unique_ios;
-        result_task_create_info.n_total_unique_outputs                   = n_unique_ios;
+        result_task_create_info.n_total_unique_inputs                    = n_input_mappings;
+        result_task_create_info.n_total_unique_outputs                   = n_output_mappings;
         result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_input_mappings;
         result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_output_mappings;
         result_task_create_info.present_tasks                            = result_task_subtasks;
@@ -1263,7 +1261,7 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
     scene_renderer_uber      material_uber              = nullptr;
     scene_renderer_materials materials                  = nullptr;
     uint32_t                 n_custom_meshes_to_render  = 0;
-    system_resizable_vector  pass_level_present_tasks   = system_resizable_vector_create(128); /* TODO: We should avoid vector creation at frame render time */
+    system_resizable_vector  present_subtasks           = system_resizable_vector_create(128); /* TODO: We should avoid vector creation at frame render time */
 
     demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
                          &materials);
@@ -1418,7 +1416,7 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_iteration_items);
 
-            /* Update global properties of ogl_uber's vertex shader  */
+            /* Update global properties of uber's vertex shader  */
             scene_renderer_uber_set_shader_general_property(material_uber,
                                                             SCENE_RENDERER_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
                                                             camera_location);
@@ -1521,12 +1519,12 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
 
                     if (helper_vis_task != nullptr)
                     {
-                        system_resizable_vector_push(pass_level_present_tasks,
+                        system_resizable_vector_push(present_subtasks,
                                                      helper_vis_task);
                     }
                 }
             }
-            system_resizable_vector_push(pass_level_present_tasks,
+            system_resizable_vector_push(present_subtasks,
                                          scene_renderer_uber_rendering_stop(material_uber) );
 
             /* Clean up */
@@ -1554,43 +1552,114 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
             }
         }
 
-        /* Form a group present task which is going to run all cached pass-level present sub-tasks
-         * in parallel.
-         */
-        ral_present_task                   current_subtask              = nullptr;
-        uint32_t                           n_pass_input_mappings        = 0;
-        uint32_t                           n_pass_output_mappings       = 0;
-        uint32_t                           n_pass_level_present_tasks   = 0;
-        ral_present_task_group_mapping*    pass_input_mappings          = nullptr;
-        ral_present_task_group_mapping*    pass_output_mappings         = nullptr;
-        ral_present_task*                  pass_level_present_tasks_raw = nullptr;
+        /* Continue with custom meshes. */
+        system_resizable_vector_get_property(renderer_ptr->current_custom_meshes_to_render,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_custom_meshes_to_render);
+
+        if (n_custom_meshes_to_render > 0)
+        {
+            ral_present_task helper_vis_task = _scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
+                                                                                                 nullptr); /* uber_details_ptr */
+
+            if (helper_vis_task != nullptr)
+            {
+                system_resizable_vector_push(present_subtasks,
+                                             helper_vis_task); 
+            }
+        }
+
+        for (uint32_t n_custom_mesh = 0;
+                      n_custom_mesh < n_custom_meshes_to_render;
+                    ++n_custom_mesh)
+        {
+            _scene_renderer_mesh* custom_mesh_ptr = nullptr;
+
+            if (!system_resizable_vector_get_element_at(renderer_ptr->current_custom_meshes_to_render,
+                                                        n_custom_mesh,
+                                                       &custom_mesh_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve descriptor for the custom mesh at index [%d]",
+                                  n_custom_mesh);
+
+                continue;
+            }
+
+            system_resizable_vector_push(present_subtasks,
+                                         custom_mesh_ptr->pfn_get_present_task_for_custom_mesh_proc(renderer_ptr->context,
+                                                                                                    custom_mesh_ptr->get_present_task_for_custom_mesh_user_arg,
+                                                                                                    custom_mesh_ptr->model_matrix,
+                                                                                                    renderer_ptr->current_vp,
+                                                                                                    custom_mesh_ptr->normal_matrix,
+                                                                                                    is_depth_prepass,
+                                                                                                    renderer_ptr->current_color_rt,
+                                                                                                    renderer_ptr->current_depth_rt) );
+
+            if (n_pass == (n_passes - 1) )
+            {
+                _scene_renderer_release_mesh_matrices(custom_mesh_ptr);
+
+                system_resource_pool_return_to_pool(renderer_ptr->mesh_pool,
+                                                    (system_resource_pool_block) custom_mesh_ptr);
+            }
+        }
+
+        /* Any helper visualization? */
+        ral_present_task helper_vis_task = nullptr;
+
+        helper_vis_task = _scene_renderer_render_helper_visualizations(renderer_ptr,
+                                                                       frame_time);
+
+        if (helper_vis_task != nullptr)
+        {
+            system_resizable_vector_push(present_subtasks,
+                                         helper_vis_task);
+        }
+
+        /* Form a group present task which is going to run all cached present sub-tasks in parallel. */
+        ral_present_task                   current_subtask        = nullptr;
+        uint32_t                           n_pass_input_mappings  = 0;
+        uint32_t                           n_pass_output_mappings = 0;
+        uint32_t                           n_present_subtasks     = 0;
+        ral_present_task_group_mapping*    pass_input_mappings    = nullptr;
+        ral_present_task_group_mapping*    pass_output_mappings   = nullptr;
+        ral_present_task*                  present_subtasks_raw   = nullptr;
         ral_present_task_group_create_info subtask_create_info;
 
-        system_resizable_vector_get_property(pass_level_present_tasks,
+        system_resizable_vector_get_property(present_subtasks,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
-                                            &pass_level_present_tasks_raw);
-        system_resizable_vector_get_property(pass_level_present_tasks,
+                                            &present_subtasks_raw);
+        system_resizable_vector_get_property(present_subtasks,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_pass_level_present_tasks);
+                                            &n_present_subtasks);
 
-        pass_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_pass_level_present_tasks) );
-        pass_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_pass_level_present_tasks) );
+        pass_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_present_subtasks) );
+        pass_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_present_subtasks) );
 
-        for (uint32_t n_pass_level_present_task = 0;
-                      n_pass_level_present_task < n_pass_level_present_tasks;
-                    ++n_pass_level_present_task)
+        for (uint32_t n_present_subtask = 0;
+                      n_present_subtask < n_present_subtasks;
+                    ++n_present_subtask)
         {
-            uint32_t n_task_inputs   = 0;
-            uint32_t n_task_outputs  = 0;
+            uint32_t              n_task_inputs    = 0;
+            uint32_t              n_task_outputs   = 0;
+            ral_present_task_type subtask_type;
 
-            ral_present_task_get_property(pass_level_present_tasks_raw[n_pass_level_present_task],
-                                          RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
+            ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
+                                          RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                         &subtask_type);
+
+            ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS
+                                                                                        : RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
                                          &n_task_inputs);
-            ral_present_task_get_property(pass_level_present_tasks_raw[n_pass_level_present_task],
-                                          RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
+            ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS
+                                                                                        : RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
                                          &n_task_outputs);
 
-            ASSERT_DEBUG_SYNC(n_task_inputs == 1 || n_task_inputs == 2 || n_task_outputs == 1 || n_task_outputs == 2,
+            ASSERT_DEBUG_SYNC((n_task_inputs  == 1 || n_task_inputs  == 2) &&
+                              (n_task_outputs == 1 || n_task_outputs == 2),
                               "Invalid number of task IOs");
 
             for (uint32_t n_io_type = 0;
@@ -1612,11 +1681,26 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                                                                                : pass_output_mappings[n_mappings++];
                     ral_texture_view                io_object               = nullptr;
 
-                    ral_present_task_get_io_property(pass_level_present_tasks_raw[n_pass_level_present_task],
+                    ral_present_task_get_io_property(present_subtasks_raw[n_present_subtask],
                                                      io_type,
                                                      n_io,
                                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
                                                      (void**) &io_object);
+
+                    #ifdef _DEBUG
+                    {
+                        ral_context_object_type io_object_type;
+
+                        ral_present_task_get_io_property(present_subtasks_raw[n_present_subtask],
+                                                         io_type,
+                                                         n_io,
+                                                         RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                         (void**) &io_object_type);
+
+                        ASSERT_DEBUG_SYNC(io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                          "Invalid object attached to the IO");
+                    }
+                    #endif
 
                     ASSERT_DEBUG_SYNC(io_object != nullptr,
                                       "Null task IO was specified.");
@@ -1624,14 +1708,14 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                     if (io_object == renderer_ptr->current_color_rt)
                     {
                         current_pass_io_mapping.group_task_io_index   = 0;
-                        current_pass_io_mapping.n_present_task        = n_pass_level_present_task;
+                        current_pass_io_mapping.n_present_task        = n_present_subtask;
                         current_pass_io_mapping.present_task_io_index = 0;
                     }
                     else
                     if (io_object == renderer_ptr->current_depth_rt)
                     {
                         current_pass_io_mapping.group_task_io_index   = 1;
-                        current_pass_io_mapping.n_present_task        = n_pass_level_present_task;
+                        current_pass_io_mapping.n_present_task        = n_present_subtask;
                         current_pass_io_mapping.present_task_io_index = 1;
                     }
                     else
@@ -1648,12 +1732,12 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
 
         subtask_create_info.ingroup_connections                      = nullptr;
         subtask_create_info.n_ingroup_connections                    = 0;
-        subtask_create_info.n_present_tasks                          = n_pass_level_present_tasks;
+        subtask_create_info.n_present_tasks                          = n_present_subtasks;
         subtask_create_info.n_total_unique_inputs                    = n_ios;
         subtask_create_info.n_total_unique_outputs                   = n_ios;
         subtask_create_info.n_unique_input_to_ingroup_task_mappings  = n_pass_input_mappings;
         subtask_create_info.n_unique_output_to_ingroup_task_mappings = n_pass_output_mappings;
-        subtask_create_info.present_tasks                            = pass_level_present_tasks_raw;
+        subtask_create_info.present_tasks                            = present_subtasks_raw;
         subtask_create_info.unique_input_to_ingroup_task_mapping     = pass_input_mappings;
         subtask_create_info.unique_output_to_ingroup_task_mapping    = pass_output_mappings;
 
@@ -1669,7 +1753,7 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
         /* Clean up */
         ral_present_task temp;
 
-        while (system_resizable_vector_pop(pass_level_present_tasks,
+        while (system_resizable_vector_pop(present_subtasks,
                                           &temp) )
         {
             ral_present_task_release(temp);
@@ -1679,92 +1763,13 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
         _freea(pass_output_mappings);
     }
 
-    /* This code is going to require a working RAL for debugging purposes. Deferring implementation till
-     * we have it.
-     */
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO TODO TODO");
-
-#if 0
-    /* Continue with custom meshes. */
-    system_resizable_vector_get_property(renderer_ptr->current_custom_meshes_to_render,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_custom_meshes_to_render);
-
-    if (n_custom_meshes_to_render > 0)
-    {
-        ral_present_task helper_vis_task = _scene_renderer_render_mesh_helper_visualizations(renderer_ptr,
-                                                                                             nullptr); /* uber_details_ptr */
-
-        if (helper_vis_task != nullptr)
-        {
-            system_resizable_vector_push(scene_render_present_tasks,
-                                         helper_vis_task); 
-        }
-    }
-
-    for (uint32_t n_pass = 0;
-                  n_pass < n_passes;
-                ++n_pass)
-    {
-        const bool is_depth_prepass = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS && n_pass == 0);
-
-        for (uint32_t n_custom_mesh = 0;
-                      n_custom_mesh < n_custom_meshes_to_render;
-                    ++n_custom_mesh)
-        {
-            _scene_renderer_mesh* custom_mesh_ptr = nullptr;
-
-            if (!system_resizable_vector_get_element_at(renderer_ptr->current_custom_meshes_to_render,
-                                                        n_custom_mesh,
-                                                       &custom_mesh_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve descriptor for the custom mesh at index [%d]",
-                                  n_custom_mesh);
-
-                continue;
-            }
-
-            system_resizable_vector_push(scene_render_present_tasks,
-                                         custom_mesh_ptr->pfn_render_custom_mesh_proc(renderer_ptr->context,
-                                                                                      custom_mesh_ptr->custom_mesh_render_proc_user_arg,
-                                                                                      custom_mesh_ptr->model_matrix,
-                                                                                      renderer_ptr->current_vp,
-                                                                                      custom_mesh_ptr->normal_matrix,
-                                                                                      is_depth_prepass,
-                                                                                      renderer_ptr->current_color_rt,
-                                                                                      renderer_ptr->current_depth_rt) );
-
-            if (n_pass == (n_passes - 1) )
-            {
-                _scene_renderer_release_mesh_matrices(custom_mesh_ptr);
-
-                system_resource_pool_return_to_pool(renderer_ptr->mesh_pool,
-                                                    (system_resource_pool_block) custom_mesh_ptr);
-            }
-        }
-    }
-
     system_resizable_vector_clear(renderer_ptr->current_custom_meshes_to_render);
 
-    /* Any helper visualization, handle it at this point */
-    {
-        ral_present_task helper_vis_task = _scene_renderer_render_helper_visualizations(renderer_ptr,
-                                                                                        frame_time);
-
-        if (helper_vis_task != nullptr)
-        {
-            system_resizable_vector_push(scene_render_present_tasks,
-                                         helper_vis_task);
-        }
-    }
-
     /* Form the final present task */
-    todo;
-#endif
+    ASSERT_DEBUG_SYNC(n_passes == 1,
+                      "Two-pass scenario is TODO");
 
-    return nullptr;
+    return result_present_task_subtasks[0];
 }
 
 /** TODO */
@@ -2919,6 +2924,7 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
     ref_gfx_state_create_info.culling               = true;
     ref_gfx_state_create_info.depth_test            = true;
     ref_gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_LESS;
+    ref_gfx_state_create_info.depth_writes          = (depth_rt != nullptr);
 
     /* 2. Start uber rendering. Issue as many render requests as there are materials. */
     if (render_mode == RENDER_MODE_SHADOW_MAP)

@@ -638,14 +638,16 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
                                       &preview_ptr->active_command_buffer);
 
     ral_command_buffer_start_recording               (preview_ptr->active_command_buffer);
+    ral_command_buffer_record_set_program            (preview_ptr->active_command_buffer,
+                                                      preview_ptr->preview_program);
     ral_command_buffer_record_set_bindings           (preview_ptr->active_command_buffer,
                                                       sizeof(bindings) / sizeof(bindings[0]),
                                                       bindings);
     ral_command_buffer_record_set_color_rendertargets(preview_ptr->active_command_buffer,
                                                       1, /* n_rendertargets */
                                                      &rt_info);
-    ral_command_buffer_record_set_program            (preview_ptr->active_command_buffer,
-                                                      preview_ptr->preview_program);
+    ral_command_buffer_record_set_gfx_state          (preview_ptr->active_command_buffer,
+                                                      preview_ptr->gfx_state);
 
     ral_command_buffer_record_update_buffer(preview_ptr->active_command_buffer,
                                             data_bo_ral,
@@ -675,9 +677,9 @@ PUBLIC ral_present_task scene_renderer_bbox_preview_stop(scene_renderer_bbox_pre
     task_unique_output.texture_view = preview_ptr->active_rendertarget;
 
     task_create_info.command_buffer   = preview_ptr->active_command_buffer;
-    task_create_info.n_unique_inputs  = 0;
+    task_create_info.n_unique_inputs  = 1;
     task_create_info.n_unique_outputs = 1;
-    task_create_info.unique_inputs    = nullptr;
+    task_create_info.unique_inputs    = &task_unique_output;
     task_create_info.unique_outputs   = &task_unique_output;
 
     result = ral_present_task_create_gpu(system_hashed_ansi_string_create("Scene renderre (BBox preview): Rasterization"),
@@ -688,10 +690,6 @@ PUBLIC ral_present_task scene_renderer_bbox_preview_stop(scene_renderer_bbox_pre
                                RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                1, /* n_objects */
                                reinterpret_cast<void* const*>(&preview_ptr->active_command_buffer) );
-    ral_context_delete_objects(preview_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               1, /* n_objects */
-                               reinterpret_cast<void* const*>(&preview_ptr->active_rendertarget) );
 
     preview_ptr->active_command_buffer = nullptr;
     preview_ptr->active_rendertarget   = nullptr;
