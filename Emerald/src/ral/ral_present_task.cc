@@ -340,6 +340,9 @@ private:
                     void*                                 last_io_object         = nullptr;
                     ral_context_object_type               last_io_object_type    = RAL_CONTEXT_OBJECT_TYPE_UNKNOWN;
 
+                    uint32_t                              n_max_present_task_ios = 0;
+                    ral_present_task_type                 present_task_type;
+
                     ASSERT_DEBUG_SYNC(mapping.group_task_io_index < n_max_ios,
                                       "Invalid group task IO index specified");
                     ASSERT_DEBUG_SYNC(mapping.n_present_task < in_create_info_ptr->n_present_tasks,
@@ -348,81 +351,128 @@ private:
                     if (io_last_mapping_id_ptr[mapping.group_task_io_index] == unused_mapping_id)
                     {
                         io_last_mapping_id_ptr[mapping.group_task_io_index] = n_mapping;
+                        current_io_user                                     = in_create_info_ptr->present_tasks[mapping.n_present_task];
 
-                        continue;
-                    }
+                        ASSERT_DEBUG_SYNC(current_io_user != nullptr,
+                                          "Null present task specified");
 
-                    /* Group IOs may be assigned data coming from multiple present task IOs. For validation, we need
-                     * to ensure that all such IOs use the same underlying ral_buffer or ral_texture instance, and are
-                     * assigned the same type of object. */
-                    current_io_user = in_create_info_ptr->present_tasks[mapping.n_present_task];
-                    last_io_user    = in_create_info_ptr->present_tasks[io_last_mapping_id_ptr[mapping.group_task_io_index] ];
+                        ral_present_task_get_property(current_io_user,
+                                                      RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                                     &present_task_type);
+                        ral_present_task_get_property(current_io_user,
+                                                      (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP ? RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS  : RAL_PRESENT_TASK_PROPERTY_N_INPUTS)
+                                                                                                  : (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP ? RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS : RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS),
+                                                     &n_max_present_task_ios);
 
-                    ASSERT_DEBUG_SYNC(current_io_user != nullptr,
-                                      "Null present task specified");
+                        ASSERT_DEBUG_SYNC(mapping.present_task_io_index < n_max_present_task_ios,
+                                          "Invalid group task IO index specified");
 
-                    if (!ral_present_task_get_io_property(current_io_user,
-                                                          io_type,
-                                                          mapping.present_task_io_index,
-                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                          (void**) &current_io_object)          ||
-                        !ral_present_task_get_io_property(current_io_user,
-                                                          io_type,
-                                                          mapping.present_task_io_index,
-                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
-                                                          (void**) &current_io_object_type)     ||
-                        !ral_present_task_get_io_property(last_io_user,
-                                                          io_type,
-                                                          mapping.present_task_io_index,
-                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                          (void**) &last_io_object)             ||
-                        !ral_present_task_get_io_property(last_io_user,
-                                                          io_type,
-                                                          mapping.present_task_io_index,
-                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
-                                                          (void**) &last_io_object_type) )
-                    {
-                        ASSERT_DEBUG_SYNC(false,
-                                          "Could not validate group task mappings.");
-                    }
-
-                    ASSERT_DEBUG_SYNC(current_io_object_type == last_io_object_type,
-                                      "A group IO maps to present task IOs of different object types");
-
-                    switch (current_io_object_type)
-                    {
-                        case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
-                        {
-                            ASSERT_DEBUG_SYNC(current_io_object == last_io_object,
-                                              "A group IO maps to present task IOs which make use of different RAL buffer objects");
-
-                            break;
-                        }
-
-                        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
-                        {
-                            ral_texture      current_io_user_parent_texture = nullptr;
-                            ral_texture_view current_io_user_texture_view   = reinterpret_cast<ral_texture_view>(current_io_object);
-                            ral_texture      last_io_user_parent_texture    = nullptr;
-                            ral_texture_view last_io_user_texture_view      = reinterpret_cast<ral_texture_view>(last_io_object);
-
-                            ral_texture_view_get_property(current_io_user_texture_view,
-                                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                                         &current_io_user_parent_texture);
-                            ral_texture_view_get_property(last_io_user_texture_view,
-                                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                                         &last_io_user_parent_texture);
-
-                            ASSERT_DEBUG_SYNC(current_io_user_parent_texture == last_io_user_parent_texture,
-                                              "A group IO maps to present task IOs which make use of different RAL texture objects");
-
-                            break;
-                        }
-
-                        default:
+                        if (!ral_present_task_get_io_property(current_io_user,
+                                                              io_type,
+                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                              (void**) &current_io_object)          ||
+                            !ral_present_task_get_io_property(current_io_user,
+                                                              io_type,
+                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                              (void**) &current_io_object_type) )
                         {
                             ASSERT_DEBUG_SYNC(false,
-                                              "TODO: Unsupported IO object type");
+                                              "Could not validate group task mappings.");
+                        }
+                        else
+                        {
+                            ASSERT_DEBUG_SYNC(current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_BUFFER      ||
+                                              current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                              "An object of an invalid type is assigned to an IO");
+                        }
+                    }
+                    else
+                    {
+                        /* Group IOs may be assigned data coming from multiple present task IOs. For validation, we need
+                         * to ensure that all such IOs use the same underlying ral_buffer or ral_texture instance, and are
+                         * assigned the same type of object. */
+                        current_io_user = in_create_info_ptr->present_tasks[mapping.n_present_task];
+                        last_io_user    = in_create_info_ptr->present_tasks[io_last_mapping_id_ptr[mapping.group_task_io_index] ];
+
+                        ASSERT_DEBUG_SYNC(current_io_user != nullptr,
+                                          "Null present task specified");
+
+                        ral_present_task_get_property(current_io_user,
+                                                      RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                                     &present_task_type);
+                        ral_present_task_get_property(current_io_user,
+                                                      (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP ? RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS  : RAL_PRESENT_TASK_PROPERTY_N_INPUTS)
+                                                                                                  : (present_task_type == RAL_PRESENT_TASK_TYPE_GROUP ? RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS : RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS),
+                                                     &n_max_present_task_ios);
+
+                        ASSERT_DEBUG_SYNC(mapping.present_task_io_index < n_max_present_task_ios,
+                                          "Invalid group task IO index specified");
+
+                        if (!ral_present_task_get_io_property(current_io_user,
+                                                              io_type,
+                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                              (void**) &current_io_object)          ||
+                            !ral_present_task_get_io_property(current_io_user,
+                                                              io_type,
+                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                              (void**) &current_io_object_type)     ||
+                            !ral_present_task_get_io_property(last_io_user,
+                                                              io_type,
+                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                              (void**) &last_io_object)             ||
+                            !ral_present_task_get_io_property(last_io_user,
+                                                              io_type,
+                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                              (void**) &last_io_object_type) )
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Could not validate group task mappings.");
+                        }
+
+                        ASSERT_DEBUG_SYNC(current_io_object_type == last_io_object_type,
+                                          "A group IO maps to present task IOs of different object types");
+
+                        switch (current_io_object_type)
+                        {
+                            case RAL_CONTEXT_OBJECT_TYPE_BUFFER:
+                            {
+                                ASSERT_DEBUG_SYNC(current_io_object == last_io_object,
+                                                  "A group IO maps to present task IOs which make use of different RAL buffer objects");
+
+                                break;
+                            }
+
+                            case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
+                            {
+                                ral_texture      current_io_user_parent_texture = nullptr;
+                                ral_texture_view current_io_user_texture_view   = reinterpret_cast<ral_texture_view>(current_io_object);
+                                ral_texture      last_io_user_parent_texture    = nullptr;
+                                ral_texture_view last_io_user_texture_view      = reinterpret_cast<ral_texture_view>(last_io_object);
+
+                                ral_texture_view_get_property(current_io_user_texture_view,
+                                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                             &current_io_user_parent_texture);
+                                ral_texture_view_get_property(last_io_user_texture_view,
+                                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                             &last_io_user_parent_texture);
+
+                                ASSERT_DEBUG_SYNC(current_io_user_parent_texture == last_io_user_parent_texture,
+                                                  "A group IO maps to present task IOs which make use of different RAL texture objects");
+
+                                break;
+                            }
+
+                            default:
+                            {
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "TODO: Unsupported IO object type");
+                            }
                         }
                     }
                 }
@@ -483,6 +533,10 @@ private:
 
                     ASSERT_DEBUG_SYNC(!already_defined,
                                       "Duplicate IO detected.");
+
+                    ASSERT_DEBUG_SYNC(src_ios[n_io].object_type >= RAL_CONTEXT_OBJECT_TYPE_FIRST &&
+                                      src_ios[n_io].object_type <  RAL_CONTEXT_OBJECT_TYPE_COUNT,
+                                      "Invalid type of an object specified for IO");
                 }
                 #endif
 
@@ -1068,23 +1122,70 @@ PUBLIC EMERALD_API bool ral_present_task_get_io_index(ral_present_task         t
     ASSERT_DEBUG_SYNC(io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT ||
                       io_type == RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
                       "Invalid IO type specified");
-    ASSERT_DEBUG_SYNC(task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP,
-                      "TODO");
 
-    ios_ptr = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->inputs   : task_ptr->outputs;
-    n_ios   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->n_inputs : task_ptr->n_outputs;
-
-    for (uint32_t n_io = 0;
-                  n_io < n_ios && !result;
-                ++n_io)
+    if (task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP)
     {
-        if (ios_ptr[n_io].object_type == object_type &&
-            ios_ptr[n_io].object      == object)
-        {
-            *out_io_index_ptr = n_io;
-            result            = true;
+        const ral_present_task_group_mapping* mappings   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->group_task_input_mappings
+                                                                                                       : task_ptr->group_task_output_mappings;
+        const uint32_t                        n_mappings = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->n_group_task_input_mappings
+                                                                                                       : task_ptr->n_group_task_output_mappings;
 
-            break;
+        for (uint32_t n_base_mapping = 0;
+                      n_base_mapping < n_mappings && !result;
+                    ++n_base_mapping)
+        {
+            const ral_present_task_group_mapping& base_mapping    = mappings[n_base_mapping];
+            ral_present_task                      current_subtask = task_ptr->group_task_subtasks[base_mapping.n_present_task];
+            uint32_t                              result_io_index = -1;
+
+            /* Use a recursive approach. */
+            result = ral_present_task_get_io_index(current_subtask,
+                                                   io_type,
+                                                   object_type,
+                                                   object,
+                                                  &result_io_index);
+
+            if (result)
+            {
+                /* We know which current_subtask's IO exposes the object we're looking for. However,
+                 * we still need to find a mapping which takes us to this IO */
+                ASSERT_DEBUG_SYNC(result_io_index != -1,
+                                  "Result IO index should not be -1 at this point!");
+
+                result = false;
+
+                for (uint32_t n_seek_mapping = 0;
+                              n_seek_mapping < n_mappings && !result;
+                            ++n_seek_mapping)
+                {
+                    const ral_present_task_group_mapping& seek_mapping = mappings[n_seek_mapping];
+
+                    if (seek_mapping.present_task_io_index == result_io_index)
+                    {
+                        *out_io_index_ptr = seek_mapping.group_task_io_index;
+                        result            = true;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        ios_ptr = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->inputs   : task_ptr->outputs;
+        n_ios   = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? task_ptr->n_inputs : task_ptr->n_outputs;
+
+        for (uint32_t n_io = 0;
+                      n_io < n_ios && !result;
+                    ++n_io)
+        {
+            if (ios_ptr[n_io].object_type == object_type &&
+                ios_ptr[n_io].object      == object)
+            {
+                *out_io_index_ptr = n_io;
+                result            = true;
+
+                break;
+            }
         }
     }
 
@@ -1271,7 +1372,7 @@ PUBLIC EMERALD_API bool ral_present_task_get_io_property(ral_present_task       
         if (task_ptr == nullptr)
         {
             ASSERT_DEBUG_SYNC(task_ptr != nullptr,
-                              "Invalid IO index specified");
+                              "Mapping error");
 
             goto end;
         }
@@ -1281,9 +1382,9 @@ PUBLIC EMERALD_API bool ral_present_task_get_io_property(ral_present_task       
     {
         case RAL_PRESENT_TASK_IO_TYPE_INPUT:
         {
-            if (task_ptr->n_inputs < n_io)
+            if (task_ptr->n_inputs <= n_io)
             {
-                ASSERT_DEBUG_SYNC(!(task_ptr->n_inputs < n_io),
+                ASSERT_DEBUG_SYNC(!(task_ptr->n_inputs <= n_io),
                                   "Invalid input index [%d] requested.",
                                   n_io);
 
@@ -1297,9 +1398,9 @@ PUBLIC EMERALD_API bool ral_present_task_get_io_property(ral_present_task       
 
         case RAL_PRESENT_TASK_IO_TYPE_OUTPUT:
         {
-            if (task_ptr->n_outputs < n_io)
+            if (task_ptr->n_outputs <= n_io)
             {
-                ASSERT_DEBUG_SYNC(!(task_ptr->n_outputs < n_io),
+                ASSERT_DEBUG_SYNC(!(task_ptr->n_outputs <= n_io),
                                   "Invalid output index [%d] requested.",
                                   n_io);
 

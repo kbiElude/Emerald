@@ -324,6 +324,27 @@ PUBLIC EMERALD_API void ral_buffer_get_property(const ral_buffer    buffer,
             break;
         }
 
+        case RAL_BUFFER_PROPERTY_PARENT_BUFFER_TOPMOST:
+        {
+            if (buffer_ptr->parent_buffer == nullptr)
+            {
+                *reinterpret_cast<ral_buffer*>(out_result_ptr) = nullptr;
+            }
+            else
+            {
+                const _ral_buffer* result_buffer_ptr = reinterpret_cast<_ral_buffer*>(buffer_ptr->parent_buffer);
+
+                while (result_buffer_ptr->parent_buffer != nullptr)
+                {
+                    result_buffer_ptr = reinterpret_cast<_ral_buffer*>(result_buffer_ptr->parent_buffer);
+                }
+
+                *reinterpret_cast<const _ral_buffer**>(out_result_ptr) = result_buffer_ptr;
+            }
+
+            break;
+        }
+
         case RAL_BUFFER_PROPERTY_PROPERTY_BITS:
         {
             *reinterpret_cast<ral_buffer_property_bits*>(out_result_ptr) = buffer_ptr->property_bits;

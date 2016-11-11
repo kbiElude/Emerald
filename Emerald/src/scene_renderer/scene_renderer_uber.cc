@@ -262,6 +262,7 @@ typedef struct _scene_renderer_uber
 
     system_hash64map        mesh_to_mesh_data_map;
     ral_command_buffer      preamble_command_buffer;
+    system_resizable_vector scheduled_mesh_buffers;
     system_resizable_vector scheduled_mesh_command_buffers;
 
     REFCOUNT_INSERT_VARIABLES
@@ -288,22 +289,23 @@ _scene_renderer_uber::_scene_renderer_uber(ral_context               in_context,
                                            system_hashed_ansi_string in_name,
                                            _scene_renderer_uber_type in_type)
 {
-    added_items                        = system_resizable_vector_create(4 /* capacity */);
-    context                            = in_context;    /* DO NOT retain, or face circular dependencies! */
-    current_vp                         = system_matrix4x4_create();
-    dirty                              = true;
-    graph_rendering_current_matrix     = system_matrix4x4_create();
-    is_rendering                       = false;
-    mesh_to_mesh_data_map              = system_hash64map_create(sizeof(_scene_renderer_uber_mesh_data*),
-                                                                 false);
-    name                               = in_name;
-    program                            = nullptr;
-    scheduled_mesh_command_buffers     = system_resizable_vector_create(16); /* capacity */
-    shader_fragment                    = nullptr;
-    shader_vertex                      = nullptr;
-    type                               = in_type;
-    ub_fs                              = nullptr;
-    ub_vs                              = nullptr;
+    added_items                    = system_resizable_vector_create(4 /* capacity */);
+    context                        = in_context;    /* DO NOT retain, or face circular dependencies! */
+    current_vp                     = system_matrix4x4_create();
+    dirty                          = true;
+    graph_rendering_current_matrix = system_matrix4x4_create();
+    is_rendering                   = false;
+    mesh_to_mesh_data_map          = system_hash64map_create(sizeof(_scene_renderer_uber_mesh_data*),
+                                                             false);
+    name                           = in_name;
+    program                        = nullptr;
+    scheduled_mesh_buffers         = system_resizable_vector_create(16); /* capacity */
+    scheduled_mesh_command_buffers = system_resizable_vector_create(16); /* capacity */
+    shader_fragment                = nullptr;
+    shader_vertex                  = nullptr;
+    type                           = in_type;
+    ub_fs                          = nullptr;
+    ub_vs                          = nullptr;
 
     _scene_renderer_uber_reset_uniform_offsets(this);
 
@@ -831,6 +833,26 @@ PRIVATE void _scene_renderer_uber_release(void* uber)
             system_matrix4x4_release(uber_ptr->graph_rendering_current_matrix);
 
             uber_ptr->graph_rendering_current_matrix = nullptr;
+        }
+
+        if (uber_ptr->scheduled_mesh_buffers != nullptr)
+        {
+            #ifdef _DEBUG
+            {
+                uint32_t n_buffers = 0;
+
+                system_resizable_vector_get_property(uber_ptr->scheduled_mesh_buffers,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_buffers);
+
+                ASSERT_DEBUG_SYNC(n_buffers == 0,
+                                  "Number of scheduled buffers > 0 at destruction time.");
+            }
+            #endif
+
+            system_resizable_vector_release(uber_ptr->scheduled_mesh_buffers);
+
+            uber_ptr->scheduled_mesh_buffers = nullptr;
         }
 
         if (uber_ptr->scheduled_mesh_command_buffers != nullptr)
@@ -2108,9 +2130,10 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
     }
 
     /* Need to bake new mesh data material instance? Do it now */
-    _scene_renderer_uber_mesh_data_material* mesh_data_material_ptr      = nullptr;
-    _scene_renderer_uber_mesh_data*          mesh_data_ptr               = nullptr;
-    system_time                              mesh_modification_timestamp = 0;
+    _scene_renderer_uber_mesh_data_material* mesh_data_material_ptr       = nullptr;
+    _scene_renderer_uber_mesh_data*          mesh_data_ptr                = nullptr;
+    system_time                              mesh_modification_timestamp  = 0;
+    bool                                     should_record_command_buffer = true;
 
     mesh_get_property(mesh_instantiation_parent_gpu,
                       MESH_PROPERTY_TIMESTAMP_MODIFICATION,
@@ -2162,481 +2185,545 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
             mesh_data_material_ptr->depth_rt                    == uber_ptr->active_depth_rt)
         {
             /* No need to re-record commands */
-            goto end;
+            should_record_command_buffer = true;
         }
     }
 
-    mesh_data_material_ptr->mesh_modification_timestamp = mesh_modification_timestamp;
-    mesh_data_material_ptr->color_rt                    = uber_ptr->active_color_rt;
-    mesh_data_material_ptr->depth_rt                    = uber_ptr->active_depth_rt;
-
-    /* Start recording the command buffer and append the preamble */
-    ral_command_buffer_start_recording(mesh_data_material_ptr->command_buffer);
+    if (should_record_command_buffer)
     {
-        uint32_t n_preamble_commands = 0;
+        mesh_data_material_ptr->mesh_modification_timestamp = mesh_modification_timestamp;
+        mesh_data_material_ptr->color_rt                    = uber_ptr->active_color_rt;
+        mesh_data_material_ptr->depth_rt                    = uber_ptr->active_depth_rt;
 
-        ral_command_buffer_get_property(uber_ptr->preamble_command_buffer,
-                                        RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
-                                       &n_preamble_commands);
-
-        if (n_preamble_commands > 0)
+        /* Start recording the command buffer and append the preamble */
+        ral_command_buffer_start_recording(mesh_data_material_ptr->command_buffer);
         {
-            ral_command_buffer_append_commands_from_command_buffer(mesh_data_material_ptr->command_buffer,
-                                                                   uber_ptr->preamble_command_buffer,
-                                                                   0, /* n_start_command */
-                                                                   n_preamble_commands);
-        }
+            uint32_t n_preamble_commands = 0;
 
-        ral_command_buffer_record_set_gfx_state(mesh_data_material_ptr->command_buffer,
-                                                mesh_data_ptr->gfx_state);
+            ral_command_buffer_get_property(uber_ptr->preamble_command_buffer,
+                                            RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
+                                           &n_preamble_commands);
 
-        /* Set up rendertarget bindings */
-        if (uber_ptr->active_color_rt != nullptr)
-        {
-            ral_command_buffer_set_binding_command_info            rt_binding;
-            ral_command_buffer_set_color_rendertarget_command_info rt_info    = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+            if (n_preamble_commands > 0)
+            {
+                ral_command_buffer_append_commands_from_command_buffer(mesh_data_material_ptr->command_buffer,
+                                                                       uber_ptr->preamble_command_buffer,
+                                                                       0, /* n_start_command */
+                                                                       n_preamble_commands);
+            }
 
-            /* Make sure color writes are enabled. */
-            ASSERT_DEBUG_SYNC(!ref_gfx_state_create_info_ptr->rasterizer_discard,
-                              "Color rendertarget specified even though rasterizer discard mode is enabled.");
+            ral_command_buffer_record_set_gfx_state(mesh_data_material_ptr->command_buffer,
+                                                    mesh_data_ptr->gfx_state);
 
-            /* Configure the bindings */
-            rt_binding.binding_type                  = RAL_BINDING_TYPE_RENDERTARGET;
-            rt_binding.name                          = system_hashed_ansi_string_create("result_fragment");
-            rt_binding.rendertarget_binding.rt_index = 0;
+            /* Set up rendertarget bindings */
+            if (uber_ptr->active_color_rt != nullptr)
+            {
+                ral_command_buffer_set_binding_command_info            rt_binding;
+                ral_command_buffer_set_color_rendertarget_command_info rt_info    = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
 
-            rt_info.rendertarget_index = 0;
-            rt_info.texture_view       = uber_ptr->active_color_rt;
+                /* Make sure color writes are enabled. */
+                ASSERT_DEBUG_SYNC(!ref_gfx_state_create_info_ptr->rasterizer_discard,
+                                  "Color rendertarget specified even though rasterizer discard mode is enabled.");
 
-            ral_command_buffer_record_set_color_rendertargets(mesh_data_material_ptr->command_buffer,
-                                                              1, /* n_rendertargets */
-                                                             &rt_info);
-            ral_command_buffer_record_set_bindings           (mesh_data_material_ptr->command_buffer,
-                                                              1, /* n_rendertargets */
-                                                             &rt_binding);
-        }
+                /* Configure the bindings */
+                rt_binding.binding_type                  = RAL_BINDING_TYPE_RENDERTARGET;
+                rt_binding.name                          = system_hashed_ansi_string_create("result_fragment");
+                rt_binding.rendertarget_binding.rt_index = 0;
 
-        if (uber_ptr->active_depth_rt != nullptr)
-        {
-            ral_command_buffer_record_set_depth_rendertarget(mesh_data_material_ptr->command_buffer,
-                                                             uber_ptr->active_depth_rt);
-        }
-        else
-        {
-            /* Make sure depth writes are disabled */
-            ASSERT_DEBUG_SYNC(!ref_gfx_state_create_info_ptr->depth_writes,
-                              "Depth writes enabled despite no depth rendertarget being specified.");
-        }
+                rt_info.rendertarget_index = 0;
+                rt_info.texture_view       = uber_ptr->active_color_rt;
 
-        /* Update model matrix */
-        ASSERT_DEBUG_SYNC(uber_ptr->model_ub_offset != -1,
-                          "No model matrix uniform found");
+                ral_command_buffer_record_set_color_rendertargets(mesh_data_material_ptr->command_buffer,
+                                                                  1, /* n_rendertargets */
+                                                                 &rt_info);
+                ral_command_buffer_record_set_bindings           (mesh_data_material_ptr->command_buffer,
+                                                                  1, /* n_rendertargets */
+                                                                 &rt_binding);
+            }
 
-        ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
-                                                               uber_ptr->model_ub_offset,
-                                                               system_matrix4x4_get_row_major_data(model),
-                                                               sizeof(float) * 16);
+            if (uber_ptr->active_depth_rt != nullptr)
+            {
+                ral_command_buffer_record_set_depth_rendertarget(mesh_data_material_ptr->command_buffer,
+                                                                 uber_ptr->active_depth_rt);
+            }
+            else
+            {
+                /* Make sure depth writes are disabled */
+                ASSERT_DEBUG_SYNC(!ref_gfx_state_create_info_ptr->depth_writes,
+                                  "Depth writes enabled despite no depth rendertarget being specified.");
+            }
 
-        /* Update normal matrix */
-        if (uber_ptr->normal_matrix_ub_offset != -1)
-        {
-            ASSERT_DEBUG_SYNC(normal_matrix != nullptr,
-                              "Normal matrix is nullptr but is required.");
+            /* Update model matrix */
+            ASSERT_DEBUG_SYNC(uber_ptr->model_ub_offset != -1,
+                              "No model matrix uniform found");
 
             ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
-                                                                   uber_ptr->normal_matrix_ub_offset,
-                                                                   system_matrix4x4_get_row_major_data(normal_matrix),
+                                                                   uber_ptr->model_ub_offset,
+                                                                   system_matrix4x4_get_row_major_data(model),
                                                                    sizeof(float) * 16);
-        }
 
-        /* Iterate over all layers.. */
-        mesh_type  instance_type;
-        ral_buffer mesh_data_bo = nullptr;
-        uint32_t   n_layers     = 0;
-
-        mesh_get_property(mesh_instantiation_parent_gpu,
-                          MESH_PROPERTY_BO_RAL,
-                         &mesh_data_bo);
-        mesh_get_property(mesh_instantiation_parent_gpu,
-                          MESH_PROPERTY_N_LAYERS,
-                         &n_layers);
-        mesh_get_property(mesh_instantiation_parent_gpu,
-                          MESH_PROPERTY_TYPE,
-                         &instance_type);
-
-        for (uint32_t n_layer = 0;
-                      n_layer < n_layers;
-                    ++n_layer)
-        {
-            const uint32_t n_layer_passes = mesh_get_number_of_layer_passes(mesh_instantiation_parent_gpu,
-                                                                            n_layer);
-
-            /* Iterate over all layer passes */
-            for (uint32_t n_layer_pass = 0;
-                          n_layer_pass < n_layer_passes;
-                        ++n_layer_pass)
+            /* Update normal matrix */
+            if (uber_ptr->normal_matrix_ub_offset != -1)
             {
-                mesh_material layer_pass_material = nullptr;
+                ASSERT_DEBUG_SYNC(normal_matrix != nullptr,
+                                  "Normal matrix is nullptr but is required.");
 
-                /* Retrieve layer pass properties */
-                mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                             n_layer,
-                                             n_layer_pass,
-                                             MESH_LAYER_PROPERTY_MATERIAL,
-                                            &layer_pass_material);
+                ral_program_block_buffer_set_nonarrayed_variable_value(uber_ptr->ub_vs,
+                                                                       uber_ptr->normal_matrix_ub_offset,
+                                                                       system_matrix4x4_get_row_major_data(normal_matrix),
+                                                                       sizeof(float) * 16);
+            }
 
-                if (layer_pass_material              != mesh_data_material_ptr->material &&
-                    mesh_data_material_ptr->material != nullptr)
+            /* Iterate over all layers.. */
+            mesh_type  instance_type;
+            ral_buffer mesh_data_bo = nullptr;
+            uint32_t   n_layers     = 0;
+
+            mesh_get_property(mesh_instantiation_parent_gpu,
+                              MESH_PROPERTY_BO_RAL,
+                             &mesh_data_bo);
+            mesh_get_property(mesh_instantiation_parent_gpu,
+                              MESH_PROPERTY_N_LAYERS,
+                             &n_layers);
+            mesh_get_property(mesh_instantiation_parent_gpu,
+                              MESH_PROPERTY_TYPE,
+                             &instance_type);
+
+            for (uint32_t n_layer = 0;
+                          n_layer < n_layers;
+                        ++n_layer)
+            {
+                const uint32_t n_layer_passes = mesh_get_number_of_layer_passes(mesh_instantiation_parent_gpu,
+                                                                                n_layer);
+
+                /* Iterate over all layer passes */
+                for (uint32_t n_layer_pass = 0;
+                              n_layer_pass < n_layer_passes;
+                            ++n_layer_pass)
                 {
-                    continue;
-                }
+                    mesh_material layer_pass_material = nullptr;
 
-                /* Bind shading data for each supported shading property */
-                struct _attachment
-                {
-                    mesh_material_shading_property property;
-                    const char*                    shader_sampler_name;
-                    uint32_t                       shader_scalar_ub_offset;
-                    const char*                    shader_uv_attribute_name;
-                    bool                           convert_to_linear;
-                } attachments[] =
-                {
+                    /* Retrieve layer pass properties */
+                    mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
+                                                 n_layer,
+                                                 n_layer_pass,
+                                                 MESH_LAYER_PROPERTY_MATERIAL,
+                                                &layer_pass_material);
+
+                    if (layer_pass_material              != mesh_data_material_ptr->material &&
+                        mesh_data_material_ptr->material != nullptr)
                     {
-                        MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
-                        _scene_renderer_uber_uniform_name_ambient_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->ambient_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        true,
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-                        _scene_renderer_uber_uniform_name_diffuse_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->diffuse_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        true,
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
-                        _scene_renderer_uber_uniform_name_luminosity_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->luminosity_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        false
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-                        _scene_renderer_uber_uniform_name_shininess_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->shininess_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        false
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
-                        _scene_renderer_uber_uniform_name_specular_material_sampler,
-                        mesh_data_material_ptr->uber_ptr->specular_material_ub_offset,
-                        _scene_renderer_uber_attribute_name_object_uv,
-                        false
-                    },
-                };
-                const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
-
-                for (uint32_t n_attachment = 0;
-                              n_attachment < n_attachments;
-                            ++n_attachment)
-                {
-                    const _attachment&                      attachment      = attachments[n_attachment];
-                    const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
-                                                                                                                                 attachment.property);
-
-                    switch (attachment_type)
-                    {
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
-                        {
-                            /* Nothing to be done here */
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
-                        {
-                            float        data_vec3[3];
-                            unsigned int n_components = 1;
-
-                            if (attachment.shader_scalar_ub_offset == -1)
-                            {
-                                continue;
-                            }
-
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
-                            {
-                                mesh_material_get_shading_property_value_float(layer_pass_material,
-                                                                               attachment.property,
-                                                                               data_vec3 + 0);
-                            }
-                            else
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
-                            {
-                                mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
-                                                                                               attachment.property,
-                                                                                               time,
-                                                                                               data_vec3 + 0);
-                            }
-                            else
-                            {
-                                mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
-                                                                                              attachment.property,
-                                                                                              time,
-                                                                                              data_vec3);
-
-                                n_components = 3;
-                            }
-
-                            if (attachment.convert_to_linear)
-                            {
-                                for (unsigned int n_component = 0;
-                                                  n_component < n_components;
-                                                ++n_component)
-                                {
-                                    data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
-                                }
-                            }
-
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
-                                attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
-                            {
-                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                       attachment.shader_scalar_ub_offset,
-                                                                                       data_vec3,
-                                                                                       sizeof(float) );
-                            }
-                            else
-                            {
-                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                       attachment.shader_scalar_ub_offset,
-                                                                                       data_vec3,
-                                                                                       sizeof(float) * 3);
-                            }
-
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-                        {
-                            /* Nothing to do here - will be handled by the GPU task's command buffer instead */
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
-                        {
-                            float data_vec4[4];
-
-                            if (attachment.shader_scalar_ub_offset == -1)
-                            {
-                                continue;
-                            }
-
-                            mesh_material_get_shading_property_value_vec4(layer_pass_material,
-                                                                          attachment.property,
-                                                                          data_vec4);
-
-                            if (attachment.convert_to_linear)
-                            {
-                                for (unsigned int n_component = 0;
-                                                  n_component < 4;
-                                                ++n_component)
-                                {
-                                    data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
-                                }
-                            }
-
-                            ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                   attachment.shader_scalar_ub_offset,
-                                                                                   data_vec4,
-                                                                                   sizeof(float) * 4);
-
-                            break;
-                        }
-
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false, "Unrecognized material property attachment");
-                        }
+                        continue;
                     }
-                }
 
-                if (mesh_data_material_ptr->uber_ptr->ub_fs != nullptr)
-                {
-                    ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                     mesh_data_material_ptr->command_buffer);
-                }
-
-                if (mesh_data_material_ptr->uber_ptr->ub_vs != nullptr)
-                {
-                    ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_vs,
-                                                                     mesh_data_material_ptr->command_buffer);
-                }
-
-                /* Issue the draw call. We need to handle two separate cases here:
-                 *
-                 * 1) We're dealing with a regular mesh:    need to do an indexed draw call.
-                 * 2) We're dealing with a GPU stream mesh: trickier! need to check what kind of draw call
-                 *                                          we need to make and act accordingly.
-                 */
-                if (instance_type == MESH_TYPE_REGULAR)
-                {
-                    /* Retrieve mesh index type */
-                    _mesh_index_type index_type = MESH_INDEX_TYPE_UNKNOWN;
-
-                    mesh_get_property(mesh_instantiation_parent_gpu,
-                                      MESH_PROPERTY_BO_INDEX_TYPE,
-                                     &index_type);
-
-                    /* Proceed with the actual draw call */
-                    ral_command_buffer_draw_call_indexed_command_info draw_call_info;
-                    uint32_t                                          layer_pass_index_data_offset = 0;
-                    uint32_t                                          layer_pass_index_max_value   = 0;
-                    uint32_t                                          layer_pass_index_min_value   = 0;
-                    uint32_t                                          layer_pass_n_indices         = 0;
-
-                    mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                                 n_layer,
-                                                 n_layer_pass,
-                                                 MESH_LAYER_PROPERTY_BO_ELEMENTS_OFFSET,
-                                                &layer_pass_index_data_offset);
-                    mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                                 n_layer,
-                                                 n_layer_pass,
-                                                 MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MAX_INDEX,
-                                                &layer_pass_index_max_value);
-                    mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                                 n_layer,
-                                                 n_layer_pass,
-                                                 MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MIN_INDEX,
-                                                &layer_pass_index_min_value);
-                    mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                                 n_layer,
-                                                 n_layer_pass,
-                                                 MESH_LAYER_PROPERTY_N_ELEMENTS,
-                                                &layer_pass_n_indices);
-
-                    switch (index_type)
+                    /* Bind shading data for each supported shading property */
+                    struct _attachment
                     {
-                        case MESH_INDEX_TYPE_UNSIGNED_CHAR:
+                        mesh_material_shading_property property;
+                        const char*                    shader_sampler_name;
+                        uint32_t                       shader_scalar_ub_offset;
+                        const char*                    shader_uv_attribute_name;
+                        bool                           convert_to_linear;
+                    } attachments[] =
+                    {
                         {
-                            draw_call_info.first_index = layer_pass_index_data_offset;
-                            draw_call_info.index_type  = RAL_INDEX_TYPE_8BIT;
+                            MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                            _scene_renderer_uber_uniform_name_ambient_material_sampler,
+                            mesh_data_material_ptr->uber_ptr->ambient_material_ub_offset,
+                            _scene_renderer_uber_attribute_name_object_uv,
+                            true,
+                        },
 
-                            break;
-                        }
-
-                        case MESH_INDEX_TYPE_UNSIGNED_SHORT:
                         {
-                            ASSERT_DEBUG_SYNC((layer_pass_index_data_offset % sizeof(uint16_t)) == 0,
-                                              "Invalid index data offset");
+                            MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                            _scene_renderer_uber_uniform_name_diffuse_material_sampler,
+                            mesh_data_material_ptr->uber_ptr->diffuse_material_ub_offset,
+                            _scene_renderer_uber_attribute_name_object_uv,
+                            true,
+                        },
 
-                            draw_call_info.first_index = layer_pass_index_data_offset / sizeof(uint16_t);
-                            draw_call_info.index_type  = RAL_INDEX_TYPE_16BIT;
-
-                            break;
-                        }
-
-                        case MESH_INDEX_TYPE_UNSIGNED_INT:
                         {
-                            ASSERT_DEBUG_SYNC((layer_pass_index_data_offset % sizeof(uint32_t)) == 0,
-                                              "Invalid index data offset");
+                            MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+                            _scene_renderer_uber_uniform_name_luminosity_material_sampler,
+                            mesh_data_material_ptr->uber_ptr->luminosity_material_ub_offset,
+                            _scene_renderer_uber_attribute_name_object_uv,
+                            false
+                        },
 
-                            draw_call_info.first_index = layer_pass_index_data_offset / sizeof(uint32_t);
-                            draw_call_info.index_type  = RAL_INDEX_TYPE_32BIT;
-
-                            break;
-                        }
-
-                        default:
                         {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Unrecognized mesh index type");
+                            MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+                            _scene_renderer_uber_uniform_name_shininess_material_sampler,
+                            mesh_data_material_ptr->uber_ptr->shininess_material_ub_offset,
+                            _scene_renderer_uber_attribute_name_object_uv,
+                            false
+                        },
+
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+                            _scene_renderer_uber_uniform_name_specular_material_sampler,
+                            mesh_data_material_ptr->uber_ptr->specular_material_ub_offset,
+                            _scene_renderer_uber_attribute_name_object_uv,
+                            false
+                        },
+                    };
+                    const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
+
+                    for (uint32_t n_attachment = 0;
+                                  n_attachment < n_attachments;
+                                ++n_attachment)
+                    {
+                        const _attachment&                      attachment      = attachments[n_attachment];
+                        const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
+                                                                                                                                     attachment.property);
+
+                        switch (attachment_type)
+                        {
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
+                            {
+                                /* Nothing to be done here */
+                                break;
+                            }
+
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
+                            {
+                                float        data_vec3[3];
+                                unsigned int n_components = 1;
+
+                                if (attachment.shader_scalar_ub_offset == -1)
+                                {
+                                    continue;
+                                }
+
+                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
+                                {
+                                    mesh_material_get_shading_property_value_float(layer_pass_material,
+                                                                                   attachment.property,
+                                                                                   data_vec3 + 0);
+                                }
+                                else
+                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                                {
+                                    mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
+                                                                                                   attachment.property,
+                                                                                                   time,
+                                                                                                   data_vec3 + 0);
+                                }
+                                else
+                                {
+                                    mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
+                                                                                                  attachment.property,
+                                                                                                  time,
+                                                                                                  data_vec3);
+
+                                    n_components = 3;
+                                }
+
+                                if (attachment.convert_to_linear)
+                                {
+                                    for (unsigned int n_component = 0;
+                                                      n_component < n_components;
+                                                    ++n_component)
+                                    {
+                                        data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
+                                    }
+                                }
+
+                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
+                                    attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                                {
+                                    ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                           attachment.shader_scalar_ub_offset,
+                                                                                           data_vec3,
+                                                                                           sizeof(float) );
+                                }
+                                else
+                                {
+                                    ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                           attachment.shader_scalar_ub_offset,
+                                                                                           data_vec3,
+                                                                                           sizeof(float) * 3);
+                                }
+
+                                break;
+                            }
+
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+                            {
+                                /* Nothing to do here - will be handled by the GPU task's command buffer instead */
+                                break;
+                            }
+
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
+                            {
+                                float data_vec4[4];
+
+                                if (attachment.shader_scalar_ub_offset == -1)
+                                {
+                                    continue;
+                                }
+
+                                mesh_material_get_shading_property_value_vec4(layer_pass_material,
+                                                                              attachment.property,
+                                                                              data_vec4);
+
+                                if (attachment.convert_to_linear)
+                                {
+                                    for (unsigned int n_component = 0;
+                                                      n_component < 4;
+                                                    ++n_component)
+                                    {
+                                        data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
+                                    }
+                                }
+
+                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                       attachment.shader_scalar_ub_offset,
+                                                                                       data_vec4,
+                                                                                       sizeof(float) * 4);
+
+                                break;
+                            }
+
+                            default:
+                            {
+                                ASSERT_DEBUG_SYNC(false, "Unrecognized material property attachment");
+                            }
                         }
                     }
 
-                    draw_call_info.base_instance = 0;
-                    draw_call_info.base_vertex   = 0;
-                    draw_call_info.index_buffer  = mesh_data_bo;
-                    draw_call_info.n_indices     = layer_pass_n_indices;
-                    draw_call_info.n_instances   = 1;
-
-                    ral_command_buffer_record_draw_call_indexed(mesh_data_material_ptr->command_buffer,
-                                                                1, /* n_draw_calls */
-                                                               &draw_call_info);
-                }
-                else
-                {
-                    mesh_draw_call_arguments draw_call_arguments;
-                    mesh_draw_call_type      draw_call_type = MESH_DRAW_CALL_TYPE_UNKNOWN;
-
-                    ASSERT_DEBUG_SYNC(instance_type == MESH_TYPE_GPU_STREAM,
-                                      "Unrecognized mesh type encountered.");
-
-                    mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                                 n_layer,
-                                                 n_layer_pass,
-                                                 MESH_LAYER_PROPERTY_DRAW_CALL_ARGUMENTS,
-                                                &draw_call_arguments);
-                    mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
-                                                 n_layer,
-                                                 n_layer_pass,
-                                                 MESH_LAYER_PROPERTY_DRAW_CALL_TYPE,
-                                                &draw_call_type);
-
-                    switch (draw_call_type)
+                    if (mesh_data_material_ptr->uber_ptr->ub_fs != nullptr)
                     {
-                        case MESH_DRAW_CALL_TYPE_NONINDEXED:
+                        ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                         mesh_data_material_ptr->command_buffer);
+                    }
+
+                    if (mesh_data_material_ptr->uber_ptr->ub_vs != nullptr)
+                    {
+                        ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_vs,
+                                                                         mesh_data_material_ptr->command_buffer);
+                    }
+
+                    /* Issue the draw call. We need to handle two separate cases here:
+                     *
+                     * 1) We're dealing with a regular mesh:    need to do an indexed draw call.
+                     * 2) We're dealing with a GPU stream mesh: trickier! need to check what kind of draw call
+                     *                                          we need to make and act accordingly.
+                     */
+                    if (instance_type == MESH_TYPE_REGULAR)
+                    {
+                        /* Retrieve mesh index type */
+                        _mesh_index_type index_type = MESH_INDEX_TYPE_UNKNOWN;
+
+                        mesh_get_property(mesh_instantiation_parent_gpu,
+                                          MESH_PROPERTY_BO_INDEX_TYPE,
+                                         &index_type);
+
+                        /* Proceed with the actual draw call */
+                        ral_command_buffer_draw_call_indexed_command_info draw_call_info;
+                        uint32_t                                          layer_pass_index_data_offset = 0;
+                        uint32_t                                          layer_pass_index_max_value   = 0;
+                        uint32_t                                          layer_pass_index_min_value   = 0;
+                        uint32_t                                          layer_pass_n_indices         = 0;
+
+                        mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
+                                                     n_layer,
+                                                     n_layer_pass,
+                                                     MESH_LAYER_PROPERTY_BO_ELEMENTS_OFFSET,
+                                                    &layer_pass_index_data_offset);
+                        mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
+                                                     n_layer,
+                                                     n_layer_pass,
+                                                     MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MAX_INDEX,
+                                                    &layer_pass_index_max_value);
+                        mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
+                                                     n_layer,
+                                                     n_layer_pass,
+                                                     MESH_LAYER_PROPERTY_BO_ELEMENTS_DATA_MIN_INDEX,
+                                                    &layer_pass_index_min_value);
+                        mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
+                                                     n_layer,
+                                                     n_layer_pass,
+                                                     MESH_LAYER_PROPERTY_N_ELEMENTS,
+                                                    &layer_pass_n_indices);
+
+                        switch (index_type)
                         {
-                            ral_command_buffer_draw_call_regular_command_info draw_call_info;
+                            case MESH_INDEX_TYPE_UNSIGNED_CHAR:
+                            {
+                                draw_call_info.first_index = layer_pass_index_data_offset;
+                                draw_call_info.index_type  = RAL_INDEX_TYPE_8BIT;
 
-                            draw_call_info.base_instance = 0;
-                            draw_call_info.base_vertex   = draw_call_arguments.n_base_vertex;
-                            draw_call_info.n_instances   = 1;
-                            draw_call_info.n_vertices    = draw_call_arguments.n_vertices;
+                                break;
+                            }
 
-                            ral_command_buffer_record_draw_call_regular(mesh_data_material_ptr->command_buffer,
-                                                                        1, /* n_draw_calls */
-                                                                       &draw_call_info);
+                            case MESH_INDEX_TYPE_UNSIGNED_SHORT:
+                            {
+                                ASSERT_DEBUG_SYNC((layer_pass_index_data_offset % sizeof(uint16_t)) == 0,
+                                                  "Invalid index data offset");
 
-                            break;
+                                draw_call_info.first_index = layer_pass_index_data_offset / sizeof(uint16_t);
+                                draw_call_info.index_type  = RAL_INDEX_TYPE_16BIT;
+
+                                break;
+                            }
+
+                            case MESH_INDEX_TYPE_UNSIGNED_INT:
+                            {
+                                ASSERT_DEBUG_SYNC((layer_pass_index_data_offset % sizeof(uint32_t)) == 0,
+                                                  "Invalid index data offset");
+
+                                draw_call_info.first_index = layer_pass_index_data_offset / sizeof(uint32_t);
+                                draw_call_info.index_type  = RAL_INDEX_TYPE_32BIT;
+
+                                break;
+                            }
+
+                            default:
+                            {
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Unrecognized mesh index type");
+                            }
                         }
 
-                        case MESH_DRAW_CALL_TYPE_NONINDEXED_INDIRECT:
+                        draw_call_info.base_instance = 0;
+                        draw_call_info.base_vertex   = 0;
+                        draw_call_info.index_buffer  = mesh_data_bo;
+                        draw_call_info.n_indices     = layer_pass_n_indices;
+                        draw_call_info.n_instances   = 1;
+
+                        ral_command_buffer_record_draw_call_indexed(mesh_data_material_ptr->command_buffer,
+                                                                    1, /* n_draw_calls */
+                                                                   &draw_call_info);
+                    }
+                    else
+                    {
+                        mesh_draw_call_arguments draw_call_arguments;
+                        mesh_draw_call_type      draw_call_type = MESH_DRAW_CALL_TYPE_UNKNOWN;
+
+                        ASSERT_DEBUG_SYNC(instance_type == MESH_TYPE_GPU_STREAM,
+                                          "Unrecognized mesh type encountered.");
+
+                        mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
+                                                     n_layer,
+                                                     n_layer_pass,
+                                                     MESH_LAYER_PROPERTY_DRAW_CALL_ARGUMENTS,
+                                                    &draw_call_arguments);
+                        mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
+                                                     n_layer,
+                                                     n_layer_pass,
+                                                     MESH_LAYER_PROPERTY_DRAW_CALL_TYPE,
+                                                    &draw_call_type);
+
+                        switch (draw_call_type)
                         {
-                            ral_command_buffer_draw_call_indirect_command_info draw_call_info;
+                            case MESH_DRAW_CALL_TYPE_NONINDEXED:
+                            {
+                                ral_command_buffer_draw_call_regular_command_info draw_call_info;
 
-                            draw_call_info.index_buffer    = nullptr;
-                            draw_call_info.index_type      = RAL_INDEX_TYPE_COUNT;
-                            draw_call_info.indirect_buffer = draw_call_arguments.draw_indirect_bo;
-                            draw_call_info.offset          = draw_call_arguments.indirect_offset;
-                            draw_call_info.stride          = 0;
+                                draw_call_info.base_instance = 0;
+                                draw_call_info.base_vertex   = draw_call_arguments.n_base_vertex;
+                                draw_call_info.n_instances   = 1;
+                                draw_call_info.n_vertices    = draw_call_arguments.n_vertices;
 
-                            ral_command_buffer_record_draw_call_indirect_regular(mesh_data_material_ptr->command_buffer,
-                                                                                 1, /* n_draw_calls */
-                                                                                &draw_call_info);
+                                ral_command_buffer_record_draw_call_regular(mesh_data_material_ptr->command_buffer,
+                                                                            1, /* n_draw_calls */
+                                                                           &draw_call_info);
 
-                            break;
-                        }
+                                break;
+                            }
 
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Unrecognized draw call type requested for a GPU stream mesh.");
+                            case MESH_DRAW_CALL_TYPE_NONINDEXED_INDIRECT:
+                            {
+                                ral_command_buffer_draw_call_indirect_command_info draw_call_info;
+
+                                draw_call_info.index_buffer    = nullptr;
+                                draw_call_info.index_type      = RAL_INDEX_TYPE_COUNT;
+                                draw_call_info.indirect_buffer = draw_call_arguments.draw_indirect_bo;
+                                draw_call_info.offset          = draw_call_arguments.indirect_offset;
+                                draw_call_info.stride          = 0;
+
+                                ral_command_buffer_record_draw_call_indirect_regular(mesh_data_material_ptr->command_buffer,
+                                                                                     1, /* n_draw_calls */
+                                                                                    &draw_call_info);
+
+                                break;
+                            }
+
+                            default:
+                            {
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Unrecognized draw call type requested for a GPU stream mesh.");
+                            }
                         }
                     }
                 }
             }
         }
+        ral_command_buffer_stop_recording(mesh_data_material_ptr->command_buffer);
     }
-    ral_command_buffer_stop_recording(mesh_data_material_ptr->command_buffer);
+
+    /* Iterate over mesh layers and cache any RAL buffers used by the draw calls.
+     * These will have to be exposed as inputs of the result present task.
+     */
+    uint32_t n_mesh_layers = 0;
+
+    mesh_get_property(mesh_gpu,
+                      MESH_PROPERTY_N_LAYERS,
+                      &n_mesh_layers);
+
+    for (uint32_t n_mesh_layer = 0;
+                  n_mesh_layer < n_mesh_layers;
+                ++n_mesh_layer)
+    {
+        for (mesh_layer_data_stream_type stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
+                                         stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
+                                ++((int&)stream_type) )
+        {
+            ral_buffer stream_buffers[2] = {nullptr};
+
+            mesh_get_layer_data_stream_property(mesh_gpu,
+                                                n_mesh_layer,
+                                                stream_type,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
+                                                stream_buffers + 0);
+            mesh_get_layer_data_stream_property(mesh_gpu,
+                                                n_mesh_layer,
+                                                stream_type,
+                                                MESH_LAYER_DATA_STREAM_PROPERTY_N_ITEMS_BO_RAL,
+                                                stream_buffers + 1);
+
+            for (uint32_t n_stream_buffer = 0;
+                          n_stream_buffer < sizeof(stream_buffers) / sizeof(stream_buffers[0]);
+                        ++n_stream_buffer)
+            {
+                ral_buffer buffer         = stream_buffers[n_stream_buffer];
+                ral_buffer buffer_topmost;
+
+                if (buffer == nullptr)
+                {
+                    continue;
+                }
+
+                ral_buffer_get_property(buffer,
+                                        RAL_BUFFER_PROPERTY_PARENT_BUFFER_TOPMOST,
+                                       &buffer_topmost);
+
+                if (buffer_topmost != nullptr)
+                {
+                    buffer = buffer_topmost;
+                }
+
+                if (system_resizable_vector_find(uber_ptr->scheduled_mesh_buffers,
+                                                 buffer) == ITEM_NOT_FOUND)
+                {
+                    system_resizable_vector_push(uber_ptr->scheduled_mesh_buffers,
+                                                 buffer);
+                }
+            }
+        }
+    }
 
 end:
     system_resizable_vector_push(uber_ptr->scheduled_mesh_command_buffers,
@@ -3294,17 +3381,22 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     ral_present_task                     global_cpu_update_task;
     ral_present_task_cpu_create_info     global_cpu_update_task_info;
     ral_present_task_io                  global_cpu_update_task_output;
-    uint32_t                             n_render_command_buffers = 0;
-    uint32_t                             n_render_unique_outputs  = 0;
-    ral_present_task*                    render_gpu_tasks         = nullptr;
-    ral_present_task_io                  render_gpu_task_unique_inputs [3];
+    uint32_t                             n_render_command_buffers           = 0;
+    uint32_t                             n_render_unique_inputs             = 0;
+    uint32_t                             n_render_unique_outputs            = 0;
+    uint32_t                             n_scheduled_mesh_buffers           = 0;
+    ral_present_task*                    render_gpu_tasks                   = nullptr;
+    ral_present_task_io*                 render_gpu_task_unique_inputs      = nullptr;
     ral_present_task_io                  render_gpu_task_unique_outputs[2];
-    ral_present_task*                    result_present_tasks = nullptr;
+    ral_present_task*                    result_present_tasks               = nullptr;
     ral_present_task_group_create_info   result_task_create_info;
     ral_present_task_ingroup_connection* result_task_ingroup_connections    = nullptr;
     ral_present_task_group_mapping*      result_task_unique_input_mappings  = nullptr;
     ral_present_task_group_mapping*      result_task_unique_output_mappings = nullptr;
 
+    system_resizable_vector_get_property(uber_ptr->scheduled_mesh_buffers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_scheduled_mesh_buffers);
     system_resizable_vector_get_property(uber_ptr->scheduled_mesh_command_buffers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_render_command_buffers);
@@ -3326,14 +3418,25 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                                         &global_cpu_update_task_info);
 
 
+    render_gpu_task_unique_inputs    = reinterpret_cast<ral_present_task_io*>(_malloca(sizeof(ral_present_task_io) * (3 /* UB buffers + color rt (potentially) + ds rt (potentially) */ + n_scheduled_mesh_buffers) ));
     render_gpu_task_unique_inputs[0] = global_cpu_update_task_output;
+    n_render_unique_inputs           = 1;
 
+    /* Render tasks need to take color/depth RTs as inputs & outputs. If any of the tasks depends on any other input (eg. buffers),
+     * we also need to expose it as well. This is especially important for custom meshes which may rely on data generated prior to
+     * scene rasterization.
+     *
+     * TODO: Right now, all render tasks for a given uber will depend on all buffers used by meshes assigned to a given uber.
+     *       This is not needed. While it won't matter for OpenGL, making these dependencies explicit could potentially reduce
+     *       the number of buffer barriers in Vulkan.
+     */
     if (uber_ptr->active_color_rt != nullptr)
     {
         render_gpu_task_unique_outputs[n_render_unique_outputs].texture_view = uber_ptr->active_color_rt;
         render_gpu_task_unique_outputs[n_render_unique_outputs].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
-        render_gpu_task_unique_inputs [1 + n_render_unique_outputs]          = render_gpu_task_unique_outputs[n_render_unique_outputs];
+        render_gpu_task_unique_inputs [n_render_unique_inputs]               = render_gpu_task_unique_outputs[n_render_unique_outputs];
 
+        ++n_render_unique_inputs;
         ++n_render_unique_outputs;
     }
 
@@ -3341,9 +3444,21 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     {
         render_gpu_task_unique_outputs[n_render_unique_outputs].texture_view = uber_ptr->active_depth_rt;
         render_gpu_task_unique_outputs[n_render_unique_outputs].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
-        render_gpu_task_unique_inputs [1 + n_render_unique_outputs]          = render_gpu_task_unique_outputs[n_render_unique_outputs];
+        render_gpu_task_unique_inputs [n_render_unique_inputs]               = render_gpu_task_unique_outputs[n_render_unique_outputs];
 
+        ++n_render_unique_inputs;
         ++n_render_unique_outputs;
+    }
+
+    for (uint32_t n_scheduled_mesh_buffer = 0;
+                  n_scheduled_mesh_buffer < n_scheduled_mesh_buffers;
+                ++n_scheduled_mesh_buffer)
+    {
+        system_resizable_vector_get_element_at(uber_ptr->scheduled_mesh_buffers,
+                                               n_scheduled_mesh_buffer,
+                                              &render_gpu_task_unique_inputs[n_render_unique_inputs].object);
+
+        render_gpu_task_unique_inputs[n_render_unique_inputs++].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
     }
 
     render_gpu_tasks = reinterpret_cast<ral_present_task*>(_malloca(n_render_command_buffers * sizeof(ral_present_task) ));
@@ -3360,7 +3475,7 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                               &render_command_buffer);
 
         render_gpu_task_info.command_buffer   = render_command_buffer;
-        render_gpu_task_info.n_unique_inputs  = 1 /* UB buffer */ + n_render_unique_outputs;
+        render_gpu_task_info.n_unique_inputs  = n_render_unique_inputs;
         render_gpu_task_info.n_unique_outputs = n_render_unique_outputs;
         render_gpu_task_info.unique_inputs    = render_gpu_task_unique_inputs;
         render_gpu_task_info.unique_outputs   = render_gpu_task_unique_outputs;
@@ -3370,11 +3485,22 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     }
 
 
+    /* Result task needs to:
+     *
+     * 1) expose rendertargets both as input & output
+     * 2) expose any buffers required by meshes to render as inputs.
+     *
+     * Step 2) is simple to solve right now, due to the TODO above, but will become cumbersome
+     * as soon as we improve the situation, because that is going to mean we will suddenly need
+     * to map result task buffer inputs onto corresponding mesh render tasks' inputs. That could
+     * be a lot of work for scenes with large numbers of geometry. Current implementation is undeniably
+     * hamfisted and will need to be optimized in the future.
+     **/
     result_task_create_info.n_ingroup_connections                    = n_render_command_buffers;
     result_task_create_info.n_present_tasks                          = 1 + n_render_command_buffers;
-    result_task_create_info.n_total_unique_inputs                    = n_render_unique_outputs;
+    result_task_create_info.n_total_unique_inputs                    = (n_render_unique_inputs - 1 /* ub_vs_bo */);
     result_task_create_info.n_total_unique_outputs                   = n_render_unique_outputs;
-    result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_render_unique_outputs * n_render_command_buffers;
+    result_task_create_info.n_unique_input_to_ingroup_task_mappings  = result_task_create_info.n_total_unique_inputs * n_render_command_buffers;
     result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_render_unique_outputs * n_render_command_buffers;
 
     result_task_ingroup_connections = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(n_render_command_buffers * sizeof(ral_present_task_ingroup_connection)) );
@@ -3403,16 +3529,13 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     result_task_unique_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_input_to_ingroup_task_mappings  * sizeof(ral_present_task_group_mapping) ));
     result_task_unique_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_output_to_ingroup_task_mappings * sizeof(ral_present_task_group_mapping) ));
 
-    ASSERT_DEBUG_SYNC(result_task_create_info.n_unique_input_to_ingroup_task_mappings == result_task_create_info.n_unique_output_to_ingroup_task_mappings,
-                      "Size mismatch detected");
-
     for (uint32_t n_mapping = 0;
                   n_mapping < result_task_create_info.n_unique_input_to_ingroup_task_mappings;
                 ++n_mapping)
     {
-        result_task_unique_input_mappings[n_mapping].group_task_io_index   =     n_mapping % n_render_unique_outputs;
-        result_task_unique_input_mappings[n_mapping].present_task_io_index = 1 + n_mapping % n_render_unique_outputs;
-        result_task_unique_input_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_outputs;
+        result_task_unique_input_mappings[n_mapping].group_task_io_index   =     n_mapping % n_render_unique_inputs;
+        result_task_unique_input_mappings[n_mapping].present_task_io_index = 1 + n_mapping % n_render_unique_inputs;
+        result_task_unique_input_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_inputs;
     }
 
     for (uint32_t n_mapping = 0;
@@ -3439,6 +3562,7 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     uint32_t            n_scheduled_cmd_buffers = 0;
     ral_command_buffer* scheduled_cmd_buffers   = nullptr;
 
+    _freea(render_gpu_task_unique_inputs);
     _freea(render_gpu_tasks);
     _freea(result_task_ingroup_connections);
     _freea(result_present_tasks);
@@ -3459,6 +3583,8 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                    n_scheduled_cmd_buffers,
                                    reinterpret_cast<void* const*>(scheduled_cmd_buffers) );
     }
+
+    system_resizable_vector_clear(uber_ptr->scheduled_mesh_buffers);
     system_resizable_vector_clear(uber_ptr->scheduled_mesh_command_buffers);
 
     return result_task;

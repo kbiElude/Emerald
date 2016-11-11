@@ -1618,13 +1618,19 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
         }
 
         /* Form a group present task which is going to run all cached present sub-tasks in parallel. */
-        ral_present_task                   current_subtask        = nullptr;
-        uint32_t                           n_pass_input_mappings  = 0;
-        uint32_t                           n_pass_output_mappings = 0;
-        uint32_t                           n_present_subtasks     = 0;
-        ral_present_task_group_mapping*    pass_input_mappings    = nullptr;
-        ral_present_task_group_mapping*    pass_output_mappings   = nullptr;
-        ral_present_task*                  present_subtasks_raw   = nullptr;
+        ral_present_task                   current_subtask               = nullptr;
+        uint32_t                           n_max_input_mappings_needed   = 0;
+        uint32_t                           n_max_output_mappings_needed  = 0;
+        uint32_t                           n_pass_input_mappings_filled  = 0;
+        uint32_t                           n_pass_input_objects_exposed  = 0;
+        uint32_t                           n_pass_output_mappings_filled = 0;
+        uint32_t                           n_pass_output_objects_exposed = 0;
+        uint32_t                           n_present_subtasks            = 0;
+        ral_present_task_group_mapping*    pass_input_mappings           = nullptr;
+        void**                             pass_input_objects            = nullptr;
+        ral_present_task_group_mapping*    pass_output_mappings          = nullptr;
+        void**                             pass_output_objects           = nullptr;
+        ral_present_task*                  present_subtasks_raw          = nullptr;
         ral_present_task_group_create_info subtask_create_info;
 
         system_resizable_vector_get_property(present_subtasks,
@@ -1634,8 +1640,35 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                             &n_present_subtasks);
 
-        pass_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_present_subtasks) );
-        pass_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * 2 * n_present_subtasks) );
+        for (uint32_t n_present_subtask = 0;
+                      n_present_subtask < n_present_subtasks;
+                    ++n_present_subtask)
+        {
+            uint32_t              n_subtask_inputs  = 0;
+            uint32_t              n_subtask_outputs = 0;
+            ral_present_task_type subtask_type;
+
+            ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
+                                          RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                         &subtask_type);
+
+            ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS
+                                                                                        : RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
+                                         &n_subtask_inputs);
+            ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS
+                                                                                        : RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
+                                         &n_subtask_outputs);
+
+            n_max_input_mappings_needed  += n_subtask_inputs;
+            n_max_output_mappings_needed += n_subtask_outputs;
+        }
+
+        pass_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_max_input_mappings_needed) );
+        pass_input_objects   = reinterpret_cast<void**>                         (_malloca(sizeof(void*)                          * n_max_input_mappings_needed) );
+        pass_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_max_output_mappings_needed) );
+        pass_output_objects  = reinterpret_cast<void**>                         (_malloca(sizeof(void*)                          * n_max_output_mappings_needed) );
 
         for (uint32_t n_present_subtask = 0;
                       n_present_subtask < n_present_subtasks;
@@ -1658,28 +1691,28 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                                                                         : RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
                                          &n_task_outputs);
 
-            ASSERT_DEBUG_SYNC((n_task_inputs  == 1 || n_task_inputs  == 2) &&
-                              (n_task_outputs == 1 || n_task_outputs == 2),
-                              "Invalid number of task IOs");
-
             for (uint32_t n_io_type = 0;
                           n_io_type < 2;
                         ++n_io_type)
             {
-                const ral_present_task_io_type io_type    = (n_io_type == 0) ? RAL_PRESENT_TASK_IO_TYPE_INPUT
-                                                                             : RAL_PRESENT_TASK_IO_TYPE_OUTPUT;
-                const uint32_t                 n_ios      = (n_io_type == 0) ? n_task_inputs
-                                                                             : n_task_outputs;
-                uint32_t&                      n_mappings = (n_io_type == 0) ? n_pass_input_mappings
-                                                                             : n_pass_output_mappings;
+                const ral_present_task_io_type io_type           = (n_io_type == 0) ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                                    : RAL_PRESENT_TASK_IO_TYPE_OUTPUT;
+                const uint32_t                 n_ios             = (n_io_type == 0) ? n_task_inputs
+                                                                                    : n_task_outputs;
+                uint32_t&                      n_mappings_filled = (n_io_type == 0) ? n_pass_input_mappings_filled
+                                                                                    : n_pass_output_mappings_filled;
+                uint32_t&                      n_objects_exposed = (n_io_type == 0) ? n_pass_input_objects_exposed
+                                                                                    : n_pass_output_objects_exposed;
 
                 for (uint32_t n_io = 0;
                               n_io < n_ios;
                             ++n_io)
                 {
-                    ral_present_task_group_mapping& current_pass_io_mapping = (n_io_type == 0) ? pass_input_mappings [n_mappings++]
-                                                                                               : pass_output_mappings[n_mappings++];
-                    ral_texture_view                io_object               = nullptr;
+                    ral_present_task_group_mapping& current_pass_io_mapping = (n_io_type == 0) ? pass_input_mappings [n_mappings_filled++]
+                                                                                               : pass_output_mappings[n_mappings_filled++];
+                    void**                          exposed_objects         = (n_io_type == 0) ? pass_input_objects
+                                                                                               : pass_output_objects;
+                    void*                           io_object               = nullptr;
 
                     ral_present_task_get_io_property(present_subtasks_raw[n_present_subtask],
                                                      io_type,
@@ -1688,7 +1721,7 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                                      (void**) &io_object);
 
                     #ifdef _DEBUG
-                    {
+                   { 
                         ral_context_object_type io_object_type;
 
                         ral_present_task_get_io_property(present_subtasks_raw[n_present_subtask],
@@ -1697,7 +1730,8 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                                          RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                                          (void**) &io_object_type);
 
-                        ASSERT_DEBUG_SYNC(io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                        ASSERT_DEBUG_SYNC(io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW ||
+                                          io_object_type == RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                           "Invalid object attached to the IO");
                     }
                     #endif
@@ -1705,38 +1739,48 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                     ASSERT_DEBUG_SYNC(io_object != nullptr,
                                       "Null task IO was specified.");
 
-                    if (io_object == renderer_ptr->current_color_rt)
+                    /* If the object is already exposed, map to the existing IO. Otherwise,
+                     * we first need to create a new IO.
+                     *
+                     * TODO: We really should be using a hashmap here.
+                     */
+                    uint32_t n_exposed_object;
+
+                    for (n_exposed_object = 0;
+                         n_exposed_object < n_objects_exposed;
+                       ++n_exposed_object)
                     {
-                        current_pass_io_mapping.group_task_io_index   = 0;
-                        current_pass_io_mapping.n_present_task        = n_present_subtask;
-                        current_pass_io_mapping.present_task_io_index = 0;
+                        if (exposed_objects[n_exposed_object] == io_object)
+                        {
+                            current_pass_io_mapping.group_task_io_index   = n_exposed_object;
+                            current_pass_io_mapping.n_present_task        = n_present_subtask;
+                            current_pass_io_mapping.present_task_io_index = n_io;
+
+                            break;
+                        }
                     }
-                    else
-                    if (io_object == renderer_ptr->current_depth_rt)
+
+                    if (n_exposed_object == n_objects_exposed)
                     {
-                        current_pass_io_mapping.group_task_io_index   = 1;
+                        exposed_objects[n_exposed_object] = io_object;
+
+                        current_pass_io_mapping.group_task_io_index   = n_exposed_object;
                         current_pass_io_mapping.n_present_task        = n_present_subtask;
-                        current_pass_io_mapping.present_task_io_index = 1;
-                    }
-                    else
-                    {
-                        ASSERT_DEBUG_SYNC(false,
-                                          "Unrecognized IO object was specified.");
+                        current_pass_io_mapping.present_task_io_index = n_io;
+
+                        ++n_objects_exposed;
                     }
                 }
             }
         }
 
-        const uint32_t n_ios = ((are_color_writes_enabled)               ? 1 : 0) +
-                               ((ref_gfx_state_create_info.depth_writes) ? 1 : 0);
-
         subtask_create_info.ingroup_connections                      = nullptr;
         subtask_create_info.n_ingroup_connections                    = 0;
         subtask_create_info.n_present_tasks                          = n_present_subtasks;
-        subtask_create_info.n_total_unique_inputs                    = n_ios;
-        subtask_create_info.n_total_unique_outputs                   = n_ios;
-        subtask_create_info.n_unique_input_to_ingroup_task_mappings  = n_pass_input_mappings;
-        subtask_create_info.n_unique_output_to_ingroup_task_mappings = n_pass_output_mappings;
+        subtask_create_info.n_total_unique_inputs                    = n_pass_input_objects_exposed;
+        subtask_create_info.n_total_unique_outputs                   = n_pass_output_objects_exposed;
+        subtask_create_info.n_unique_input_to_ingroup_task_mappings  = n_pass_input_mappings_filled;
+        subtask_create_info.n_unique_output_to_ingroup_task_mappings = n_pass_output_mappings_filled;
         subtask_create_info.present_tasks                            = present_subtasks_raw;
         subtask_create_info.unique_input_to_ingroup_task_mapping     = pass_input_mappings;
         subtask_create_info.unique_output_to_ingroup_task_mapping    = pass_output_mappings;
@@ -1760,7 +1804,9 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
         }
 
         _freea(pass_input_mappings);
+        _freea(pass_input_objects);
         _freea(pass_output_mappings);
+        _freea(pass_output_objects);
     }
 
     system_resizable_vector_clear(renderer_ptr->current_custom_meshes_to_render);

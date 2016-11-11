@@ -125,7 +125,7 @@ PRIVATE void _init()
     _init_scene();
 
     /* Initialize the UI */
-    _init_ui();
+    // temp _init_ui();
 
     /* Initialize projection & view matrices */
     _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(34),  /* fov_y */
@@ -473,7 +473,8 @@ PRIVATE ral_present_job _render(ral_context                                     
                                                                   //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                                                   RENDER_MODE_TEXCOORDS_ONLY,
                                                                   false, /* apply_shadow_mapping */
-                                                                  HELPER_VISUALIZATION_BOUNDING_BOXES,
+                                                                  // TODO: BB renderer present task's IOs are not connected to anything ! HELPER_VISUALIZATION_BOUNDING_BOXES,
+                                                                  HELPER_VISUALIZATION_NONE,
                                                                   frame_data_ptr->frame_time,
                                                                   _rt_color_view,
                                                                   _rt_depth_view);
@@ -490,13 +491,9 @@ PRIVATE ral_present_job _render(ral_context                                     
     ral_present_job_add_task(result_job,
                              render_task,
                             &render_task_id);
-
-    if (uv_data_update_task != nullptr)
-    {
-        ral_present_job_add_task(result_job,
-                                 uv_data_update_task,
-                                &uv_data_update_task_id);
-    }
+    ral_present_job_add_task(result_job,
+                             uv_data_update_task,
+                            &uv_data_update_task_id);
 
     ral_present_job_connect_tasks(result_job,
                                   scalar_field_update_task_id,
@@ -505,7 +502,50 @@ PRIVATE ral_present_job _render(ral_context                                     
                                   0,        /* n_dst_task_input          */
                                   nullptr); /* out_opt_connection_id_ptr */
 
-    /* TODO: polygonization -> render task connection */
+    /* polygonization | uv_data_update  -> render task connection */
+    ral_buffer polygonized_data_buffer_ral           = nullptr;
+    uint32_t   render_task_polygonized_data_io_index = -1;
+    uint32_t   render_task_uv_data_io_index          = -1;
+    ral_buffer uv_data_buffer_ral                    = nullptr;
+
+    ral_present_task_get_io_property(polygonization_task,
+                                     RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                     0, /* n_io */
+                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                     reinterpret_cast<void**>(&polygonized_data_buffer_ral) );
+    ral_present_task_get_io_property(uv_data_update_task,
+                                     RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                     0, /* n_io */
+                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                     reinterpret_cast<void**>(&uv_data_buffer_ral) );
+    ral_present_task_get_io_index   (render_task,
+                                     RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                     RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                     polygonized_data_buffer_ral,
+                                    &render_task_polygonized_data_io_index);
+    ral_present_task_get_io_index   (render_task,
+                                     RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                     RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                     uv_data_buffer_ral,
+                                    &render_task_uv_data_io_index);
+
+    ASSERT_DEBUG_SYNC(render_task_polygonized_data_io_index != -1,
+                      "No render task IO which takes a polygonized data buffer");
+    ASSERT_DEBUG_SYNC(render_task_uv_data_io_index != -1,
+                      "No render task IO which takes a UV data buffer");
+
+    ral_present_job_connect_tasks(result_job,
+                                  polygonization_task_id,
+                                  0, /* n_src_task_output */
+                                  render_task_id,
+                                  render_task_polygonized_data_io_index,
+                                  nullptr); /* out_opt_connection_id_ptr */
+    ral_present_job_connect_tasks(result_job,
+                                  uv_data_update_task_id,
+                                  0, /* n_src_task_output */
+                                  render_task_id,
+                                  render_task_uv_data_io_index,
+                                  nullptr); /* out_opt_connection_id_ptr */
 
     ral_present_job_set_presentable_output(result_job,
                                            render_task_id,

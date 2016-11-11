@@ -95,6 +95,12 @@ typedef enum
      */
     RAL_BUFFER_PROPERTY_PARENT_BUFFER,
 
+    /* not settable, ral_buffer
+     *
+     * Topmost parent buffer. The returned buffer (if not null on its own) is guaranteed to have a null parent buffer.
+     */
+    RAL_BUFFER_PROPERTY_PARENT_BUFFER_TOPMOST,
+
     /* not settable, ral_buffer_property_bits */
     RAL_BUFFER_PROPERTY_PROPERTY_BITS,
 
