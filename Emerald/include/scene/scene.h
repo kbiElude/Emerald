@@ -61,6 +61,9 @@ enum scene_property
 
 typedef enum
 {
+    /* Scene instance about to be released; callback_proc_data: scene instance */
+    SCENE_CALLBACK_ID_ABOUT_TO_BE_DELETED,
+
     /* new_light_added; callback_proc_data: new scene_light */
     SCENE_CALLBACK_ID_LIGHT_ADDED,
 

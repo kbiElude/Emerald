@@ -211,6 +211,18 @@ PRIVATE void _mesh_material_on_material_invalidation_needed(const void* not_used
 }
 
 /** TODO */
+PRIVATE void _mesh_material_on_scene_about_to_be_deleted(const void* scene_to_be_dealloced,
+                                                         void*       material)
+{
+    _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(material);
+
+    _mesh_material_subscribe_for_notifications(material_ptr,
+                                               false); /* should_subscribe */
+
+    material_ptr->owner_scene = nullptr;
+}
+
+/** TODO */
 PRIVATE void _mesh_material_release(void* data_ptr)
 {
     _mesh_material* material_ptr = reinterpret_cast<_mesh_material*>(data_ptr);
@@ -334,6 +346,11 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
     if (should_subscribe)
     {
         system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
+                                                        SCENE_CALLBACK_ID_ABOUT_TO_BE_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _mesh_material_on_scene_about_to_be_deleted,
+                                                        material_ptr);
+        system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
                                                         SCENE_CALLBACK_ID_LIGHT_ADDED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                         _mesh_material_on_material_invalidation_needed,
@@ -376,9 +393,15 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
     else
     {
         system_callback_manager_unsubscribe_from_callbacks(scene_callback_manager,
+                                                           SCENE_CALLBACK_ID_ABOUT_TO_BE_DELETED,
+                                                           _mesh_material_on_scene_about_to_be_deleted,
+                                                           material_ptr,
+                                                           true); /* allowed_deferred_execution */
+        system_callback_manager_unsubscribe_from_callbacks(scene_callback_manager,
                                                            SCENE_CALLBACK_ID_LIGHT_ADDED,
                                                            _mesh_material_on_material_invalidation_needed,
-                                                           material_ptr);
+                                                           material_ptr,
+                                                           true); /* allowed_deferred_execution */
 
         for (unsigned int n_scene_light = 0;
                           n_scene_light < n_scene_lights;
@@ -395,19 +418,23 @@ PRIVATE void _mesh_material_subscribe_for_notifications(_mesh_material* material
             system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
                                                                _mesh_material_on_material_invalidation_needed,
-                                                               material_ptr);
+                                                               material_ptr,
+                                                               true); /* allowed_deferred_execution */
             system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
                                                                _mesh_material_on_material_invalidation_needed,
-                                                               material_ptr);
+                                                               material_ptr,
+                                                               true); /* allowed_deferred_execution */
             system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
                                                                _mesh_material_on_material_invalidation_needed,
-                                                               material_ptr);
+                                                               material_ptr,
+                                                               true); /* allowed_deferred_execution */
             system_callback_manager_unsubscribe_from_callbacks(current_light_callback_manager,
                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
                                                                _mesh_material_on_material_invalidation_needed,
-                                                               material_ptr);
+                                                               material_ptr,
+                                                               true); /* allowed_deferred_execution */
         }
     }
 

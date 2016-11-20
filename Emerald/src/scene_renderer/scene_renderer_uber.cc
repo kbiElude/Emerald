@@ -172,6 +172,7 @@ typedef struct _scene_renderer_uber_mesh_data
 typedef struct _scene_renderer_uber_mesh_data_material
 {
     ral_command_buffer              command_buffer;
+    ral_context                     context;
     mesh_material                   material;
     _scene_renderer_uber_mesh_data* mesh_data_ptr;
     system_time                     mesh_modification_timestamp;
@@ -199,6 +200,7 @@ typedef struct _scene_renderer_uber_mesh_data_material
                                            &command_buffer);
 
         color_rt                    = nullptr;
+        context                     = in_context;
         depth_rt                    = nullptr;
         material                    = in_material;
         mesh_data_ptr               = in_mesh_data_ptr;
@@ -210,7 +212,10 @@ typedef struct _scene_renderer_uber_mesh_data_material
     {
         if (command_buffer != nullptr)
         {
-            ral_command_buffer_release(command_buffer);
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&command_buffer) );
 
             command_buffer = nullptr;
         }
@@ -911,7 +916,10 @@ PRIVATE void _scene_renderer_uber_release(void* uber)
 
         if (uber_ptr->preamble_command_buffer != nullptr)
         {
-            ral_command_buffer_release(uber_ptr->preamble_command_buffer);
+            ral_context_delete_objects(uber_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&uber_ptr->preamble_command_buffer) );
 
             uber_ptr->preamble_command_buffer = nullptr;
         }

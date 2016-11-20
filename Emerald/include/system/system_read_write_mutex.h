@@ -15,13 +15,13 @@
 PUBLIC EMERALD_API system_read_write_mutex system_read_write_mutex_create();
 
 /** TODO */
-PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(system_read_write_mutex mutex);
+PUBLIC EMERALD_API system_thread_id system_read_write_mutex_get_write_thread_id(system_read_write_mutex mutex);
 
-/** Releases a read/write mutex object. Do not use the object afterward.
- *
- *  @param system_read_write_mutex Mutex to release.
- */
-PUBLIC EMERALD_API void system_read_write_mutex_release(system_read_write_mutex mutex);
+/** TODO */
+PUBLIC EMERALD_API bool system_read_write_mutex_is_locked(system_read_write_mutex mutex);
+
+/** TODO */
+PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(system_read_write_mutex mutex);
 
 /** Locks a read/write mutex object for either read or write access.
  *
@@ -33,6 +33,12 @@ PUBLIC EMERALD_API void system_read_write_mutex_release(system_read_write_mutex 
  */
 PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex             mutex,
                                                      system_read_write_mutex_access_type access_type);
+
+/** Releases a read/write mutex object. Do not use the object afterward.
+ *
+ *  @param system_read_write_mutex Mutex to release.
+ */
+PUBLIC EMERALD_API void system_read_write_mutex_release(system_read_write_mutex mutex);
 
 /** Unlocks a read/write mutex object from either read or write access.
  *

@@ -35,6 +35,9 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(PFNSYSTEMTHREADSENTRYPO
                                                          system_hashed_ansi_string           thread_name = NULL,
                                                          system_thread*                      out_thread_ptr = NULL);
 
+/** TODO */
+PUBLIC void system_threads_yield();
+
 /** Initializes threads module. Should only be called once from DLL entry point */
 PUBLIC void _system_threads_init();
 

@@ -13,6 +13,7 @@
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_capabilities.h"
+#include "system/system_dpc.h"
 #include "system/system_event_monitor.h"
 #include "system/system_file_monitor.h"
 #include "system/system_global.h"
@@ -113,6 +114,8 @@ void main_init()
     _system_window_init();
     _system_variants_init();
 
+    system_dpc_init();
+
     #ifdef INCLUDE_WEBCAM_MANAGER
         _webcam_manager_init();
     #endif
@@ -147,6 +150,7 @@ int main_deinit()
         raGL_command_buffer_deinit();
         ral_command_buffer_deinit();
 
+        system_dpc_deinit();
         _system_resources_deinit();
 
         _system_assertions_deinit();

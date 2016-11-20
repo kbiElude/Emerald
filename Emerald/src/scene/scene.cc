@@ -60,6 +60,10 @@ PRIVATE void _scene_release(void* arg)
 {
     _scene* scene_ptr = reinterpret_cast<_scene*>(arg);
 
+    system_callback_manager_call_back(scene_ptr->callback_manager,
+                                      SCENE_CALLBACK_ID_ABOUT_TO_BE_DELETED,
+                                      arg);
+
     if (scene_ptr->cameras != nullptr)
     {
         scene_camera camera = nullptr;

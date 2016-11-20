@@ -318,6 +318,19 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(PFNSYSTEMTHREADSENTRYPO
 }
 
 /** Please see header for specification */
+PUBLIC void system_threads_yield()
+{
+    #ifdef _WIN32
+    {
+        ::SwitchToThread();
+    }
+    #else
+    {
+        todo;
+    }
+    #endif
+}
+/** Please see header for specification */
 PUBLIC void _system_threads_init()
 {
     ASSERT_ALWAYS_SYNC(active_threads_vector == NULL,

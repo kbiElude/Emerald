@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2012-2016)
  *
  */
 #include "shared.h"
@@ -13,17 +13,12 @@
     #include <pthread.h>
 #endif
 
-#ifdef _WIN32
-    /* Maximum amount of threads to be accesing the mutex at one go */
-    #define MAX_SEMAPHORE_COUNT (8)
-#endif
-
-
 /* TODO */
 struct _system_read_write_mutex
 {
     system_critical_section cs_write;
     volatile unsigned int   n_read_locks;
+    volatile unsigned int   n_write_owner_read_locks;
     volatile unsigned int   n_write_locks;
     system_thread_id        write_owner_thread_id;
 
@@ -67,10 +62,10 @@ PRIVATE void _init_read_write_mutex(_system_read_write_mutex* rw_mutex_ptr)
 
     if (rw_mutex_ptr != NULL)
     {
-        rw_mutex_ptr->cs_write              = system_critical_section_create();
-        rw_mutex_ptr->n_read_locks          = 0;
-        rw_mutex_ptr->n_write_locks         = 0;
-        rw_mutex_ptr->write_owner_thread_id = 0;
+        rw_mutex_ptr->cs_write                 = system_critical_section_create();
+        rw_mutex_ptr->n_write_locks            = 0;
+        rw_mutex_ptr->n_write_owner_read_locks = 0;
+        rw_mutex_ptr->write_owner_thread_id    = 0;
 
 #ifdef _WIN32
         InitializeSRWLock(&rw_mutex_ptr->lock);
@@ -84,11 +79,29 @@ PRIVATE void _init_read_write_mutex(_system_read_write_mutex* rw_mutex_ptr)
 /** Please see header for specification */
 PUBLIC EMERALD_API system_read_write_mutex system_read_write_mutex_create()
 {
-    _system_read_write_mutex* rw_mutex_ptr = new _system_read_write_mutex;
+    _system_read_write_mutex* rw_mutex_ptr = new _system_read_write_mutex();
 
     _init_read_write_mutex(rw_mutex_ptr);
 
     return (system_read_write_mutex) rw_mutex_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API system_thread_id system_read_write_mutex_get_write_thread_id(system_read_write_mutex mutex)
+{
+    _system_read_write_mutex* mutex_ptr = reinterpret_cast<_system_read_write_mutex*>(mutex);
+
+    return mutex_ptr->write_owner_thread_id;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool system_read_write_mutex_is_locked(system_read_write_mutex mutex)
+{
+    _system_read_write_mutex* mutex_ptr = reinterpret_cast<_system_read_write_mutex*>(mutex);
+
+    return mutex_ptr->n_read_locks             > 0 ||
+           mutex_ptr->n_write_owner_read_locks > 0 ||
+           mutex_ptr->n_write_locks            > 0;
 }
 
 /** Please see header for specification */
@@ -102,7 +115,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex    
                                                      system_read_write_mutex_access_type access_type)
 {
     system_thread_id          current_thread_id = system_threads_get_thread_id();
-    _system_read_write_mutex* rw_mutex_ptr      = (_system_read_write_mutex*) mutex;
+    _system_read_write_mutex* rw_mutex_ptr      = reinterpret_cast<_system_read_write_mutex*>(mutex);
 
     /* Whatever the requested access is, ignore multiple lock requests if the calling thread owns the mtuex for write access */
     bool can_continue = true;
@@ -113,7 +126,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex    
             rw_mutex_ptr->write_owner_thread_id == current_thread_id)
         {
             /* Ignore the request - the caller already owns a write lock. */
-            rw_mutex_ptr->n_read_locks++;
+            rw_mutex_ptr->n_write_owner_read_locks++;
 
             system_critical_section_leave(rw_mutex_ptr->cs_write);
             return;
@@ -145,6 +158,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(system_read_write_mutex    
         }
         #endif
 
+        ++rw_mutex_ptr->n_read_locks;
         return;
     }
     else
@@ -191,7 +205,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_release(system_read_write_mutex 
 
     if (mutex != NULL)
     {
-        _system_read_write_mutex* rw_mutex_ptr = (_system_read_write_mutex*) mutex;
+        _system_read_write_mutex* rw_mutex_ptr = reinterpret_cast<_system_read_write_mutex*>(mutex);
 
         _deinit_read_write_mutex(rw_mutex_ptr);
 
@@ -206,16 +220,16 @@ PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex  
                                                        system_read_write_mutex_access_type access_type)
 {
     system_thread_id          current_thread_id = system_threads_get_thread_id();
-    _system_read_write_mutex* rw_mutex_ptr      = (_system_read_write_mutex*) mutex;
+    _system_read_write_mutex* rw_mutex_ptr      = reinterpret_cast<_system_read_write_mutex*>(mutex);
 
     if (access_type == ACCESS_READ)
     {
         if (rw_mutex_ptr->write_owner_thread_id == current_thread_id)
         {
-            ASSERT_DEBUG_SYNC(rw_mutex_ptr->n_read_locks > 0,
+            ASSERT_DEBUG_SYNC(rw_mutex_ptr->n_write_owner_read_locks > 0,
                               "Invalid unlock request");
 
-            rw_mutex_ptr->n_read_locks--;
+            rw_mutex_ptr->n_write_owner_read_locks--;
         }
         else
         {
@@ -228,8 +242,10 @@ PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex  
                 pthread_rwlock_unlock(&rw_mutex_ptr->lock);
             }
             #endif
+
+            --rw_mutex_ptr->n_read_locks;
         }
-    } /* if (access_type == ACCESS_READ) */
+    }
     else
     {
         ASSERT_DEBUG_SYNC(access_type == ACCESS_WRITE,
@@ -239,7 +255,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_unlock(system_read_write_mutex  
 
         if (rw_mutex_ptr->n_write_locks == 1)
         {
-            ASSERT_DEBUG_SYNC(rw_mutex_ptr->n_read_locks == 0,
+            ASSERT_DEBUG_SYNC(rw_mutex_ptr->n_write_owner_read_locks == 0,
                               "Read locks acquired when about to release a write lock. Please release all read locks prior to releasing a write lock");
 
             rw_mutex_ptr->write_owner_thread_id = 0;

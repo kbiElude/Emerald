@@ -80,10 +80,15 @@ PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(system_c
  *
  *  NOTE: Subscriptions are ref-counted. The specified subscription will only be cancelled once this function is
  *        called for exactly the same number of times the _subscribe_ func was called for the specified configuration.
+ *
+ *  @param allow_deferred_execution If true, the action is going to be delegated to a worker thread, should the
+ *                                  function need to lock, waiting for a mutex to be released for write access.
+ *
  */
 PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(system_callback_manager callback_manager,
                                                                            int                     callback_id,
                                                                            PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
-                                                                           void*                   callback_proc_user_arg);
+                                                                           void*                   callback_proc_user_arg,
+                                                                           bool                    allow_deferred_execution = false);
 
 #endif /* SYSTEM_CALLBACK_MANAGER_H */
