@@ -12,6 +12,7 @@
 #include "mesh/mesh_marchingcubes.h"
 #include "procedural/procedural_uv_generator.h"
 #include "ral/ral_buffer.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_present_job.h"
 #include "ral/ral_present_task.h"
@@ -41,6 +42,8 @@
 
 PRIVATE const unsigned int _blob_size[] = {50, 50, 50};
 
+PRIVATE ral_command_buffer                _clear_rts_cmd_buffer   = nullptr;
+PRIVATE ral_present_task                  _clear_rts_present_task = nullptr;
 PRIVATE ral_context                       _context                = nullptr;
 PRIVATE demo_flyby                        _flyby                  = nullptr;
 PRIVATE mesh_marchingcubes                _marching_cubes         = nullptr;
@@ -125,7 +128,77 @@ PRIVATE void _init()
     _init_scene();
 
     /* Initialize the UI */
-    // temp _init_ui();
+    _init_ui();
+
+    /* Initialize the clear RTs command buffer */
+    {
+        ral_command_buffer_create_info clear_rts_cmd_buffer_create_info;
+
+        clear_rts_cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+        clear_rts_cmd_buffer_create_info.is_executable                           = true;
+        clear_rts_cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
+        clear_rts_cmd_buffer_create_info.is_resettable                           = false;
+        clear_rts_cmd_buffer_create_info.is_transient                            = false;
+
+        ral_context_create_command_buffers(_context,
+                                           1, /* n_command_buffers */
+                                          &clear_rts_cmd_buffer_create_info,
+                                          &_clear_rts_cmd_buffer);
+
+        ral_command_buffer_start_recording(_clear_rts_cmd_buffer);
+        {
+            ral_command_buffer_clear_rt_binding_command_info       clear_op;
+            ral_command_buffer_set_color_rendertarget_command_info color_rt_info = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+
+            clear_op.clear_regions[0].n_base_layer             = 0;
+            clear_op.clear_regions[0].n_layers                 = 1;
+            clear_op.clear_regions[0].size[0]                  = _window_size[0];
+            clear_op.clear_regions[0].size[1]                  = _window_size[1];
+            clear_op.clear_regions[0].xy  [0]                  = 0;
+            clear_op.clear_regions[0].xy  [1]                  = 0;
+            clear_op.n_clear_regions                           = 1;
+            clear_op.n_rendertargets                           = 2;
+            clear_op.rendertargets[0].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
+            clear_op.rendertargets[0].clear_value.color.f32[0] = 0.0f;
+            clear_op.rendertargets[0].clear_value.color.f32[1] = 0.0f;
+            clear_op.rendertargets[0].clear_value.color.f32[2] = 0.0f;
+            clear_op.rendertargets[0].clear_value.color.f32[3] = 1.0f;
+            clear_op.rendertargets[0].rt_index                 = 0;
+            clear_op.rendertargets[1].aspect                   = RAL_TEXTURE_ASPECT_DEPTH_BIT;
+            clear_op.rendertargets[1].clear_value.depth        = 1.0f;
+
+            color_rt_info.rendertarget_index = 0;
+            color_rt_info.texture_view       = _rt_color_view;
+
+            ral_command_buffer_record_set_color_rendertargets   (_clear_rts_cmd_buffer,
+                                                                 1, /* n_rendertargets */
+                                                                &color_rt_info);
+            ral_command_buffer_record_set_depth_rendertarget    (_clear_rts_cmd_buffer,
+                                                                 _rt_depth_view);
+            ral_command_buffer_record_clear_rendertarget_binding(_clear_rts_cmd_buffer,
+                                                                 1, /* n_clear_ops */
+                                                                &clear_op);
+        }
+        ral_command_buffer_stop_recording(_clear_rts_cmd_buffer);
+
+        // .. and a related present task
+        ral_present_task_gpu_create_info present_task_create_info;
+        ral_present_task_io              present_task_unique_outputs[2];
+
+        present_task_unique_outputs[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        present_task_unique_outputs[0].texture_view = _rt_color_view;
+        present_task_unique_outputs[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        present_task_unique_outputs[1].texture_view = _rt_depth_view;
+
+        present_task_create_info.command_buffer   = _clear_rts_cmd_buffer;
+        present_task_create_info.n_unique_inputs  = 0;
+        present_task_create_info.n_unique_outputs = sizeof(present_task_unique_outputs) / sizeof(present_task_unique_outputs[0]);
+        present_task_create_info.unique_inputs    = nullptr;
+        present_task_create_info.unique_outputs   = present_task_unique_outputs;
+
+        _clear_rts_present_task = ral_present_task_create_gpu(system_hashed_ansi_string_create("Clear RTs"),
+                                                             &present_task_create_info);
+    }
 
     /* Initialize projection & view matrices */
     _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(34),  /* fov_y */
@@ -386,6 +459,7 @@ PRIVATE ral_present_job _render(ral_context                                     
                                 void*                                                      user_arg,
                                 const ral_rendering_handler_rendering_callback_frame_data* frame_data_ptr)
 {
+    ral_present_task_id clear_rts_task_id;
     bool                has_scalar_field_changed         = false;
     system_matrix4x4    light_node_transformation_matrix = nullptr;
     ral_present_task    polygonization_task;
@@ -483,6 +557,9 @@ PRIVATE ral_present_job _render(ral_context                                     
     result_job = ral_present_job_create();
 
     ral_present_job_add_task(result_job,
+                             _clear_rts_present_task,
+                            &clear_rts_task_id);
+    ral_present_job_add_task(result_job,
                              scalar_field_update_task,
                             &scalar_field_update_task_id);
     ral_present_job_add_task(result_job,
@@ -495,6 +572,18 @@ PRIVATE ral_present_job _render(ral_context                                     
                              uv_data_update_task,
                             &uv_data_update_task_id);
 
+    ral_present_job_connect_tasks(result_job,
+                                  clear_rts_task_id,
+                                  0, /* n_src_task_output */
+                                  render_task_id,
+                                  0,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
+    ral_present_job_connect_tasks(result_job,
+                                  clear_rts_task_id,
+                                  1,        /* n_src_task_output */
+                                  render_task_id,
+                                  1,        /* n_dst_task_input          */
+                                  nullptr); /* out_opt_connection_id_ptr */
     ral_present_job_connect_tasks(result_job,
                                   scalar_field_update_task_id,
                                   0, /* n_src_task_output */
@@ -595,6 +684,14 @@ PRIVATE void _window_closed_callback_handler(system_window window,
 PRIVATE void _window_closing_callback_handler(system_window window,
                                               void*         unused)
 {
+    ral_command_buffer command_buffers_to_release[] =
+    {
+        _clear_rts_cmd_buffer
+    };
+    ral_present_task present_tasks_to_release[] =
+    {
+        _clear_rts_present_task
+    };
     ral_texture textures_to_release[] =
     {
         _rt_color,
@@ -605,9 +702,15 @@ PRIVATE void _window_closing_callback_handler(system_window window,
         _rt_color_view,
         _rt_depth_view
     };
-    const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release) / sizeof(texture_views_to_release[0]);
-    const uint32_t n_textures_to_release      = sizeof(textures_to_release)      / sizeof(textures_to_release     [0]);
+    const uint32_t n_cmd_buffers_to_release   = sizeof(command_buffers_to_release) / sizeof(command_buffers_to_release[0]);
+    const uint32_t n_present_tasks_to_release = sizeof(present_tasks_to_release)   / sizeof(present_tasks_to_release  [0]);
+    const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release)   / sizeof(texture_views_to_release  [0]);
+    const uint32_t n_textures_to_release      = sizeof(textures_to_release)        / sizeof(textures_to_release       [0]);
 
+    ral_context_delete_objects(_context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               n_cmd_buffers_to_release,
+                               reinterpret_cast<void* const*>(command_buffers_to_release) );
     ral_context_delete_objects(_context,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                n_textures_to_release,
@@ -616,6 +719,13 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                n_texture_views_to_release,
                                reinterpret_cast<void* const*>(texture_views_to_release) );
+
+    for (uint32_t n_present_task = 0;
+                  n_present_task < n_present_tasks_to_release;
+                ++n_present_task)
+    {
+        ral_present_task_release(present_tasks_to_release[n_present_task]);
+    }
 
     if (_marching_cubes != nullptr)
     {

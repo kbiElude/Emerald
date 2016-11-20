@@ -154,7 +154,17 @@ typedef struct _scene_renderer_uber_mesh_data
     system_hash64map material_to_mesh_data_material_map; /* maos "mesh_material" to a _scene_renderer_uber_mesh_data_material instance */
     mesh             mesh_instance; /* do NOT release */
 
-     _scene_renderer_uber_mesh_data(ral_context context);
+    ral_buffer   normals_stream_buffer_ral;
+    unsigned int normals_stream_offset;
+    unsigned int normals_stream_stride;
+    ral_buffer   texcoords_stream_buffer_ral;
+    unsigned int texcoords_stream_offset;
+    unsigned int texcoords_stream_stride;
+    ral_buffer   vertex_stream_buffer_ral;
+    unsigned int vertex_stream_offset;
+    unsigned int vertex_stream_stride;
+
+    _scene_renderer_uber_mesh_data(ral_context context);
     ~_scene_renderer_uber_mesh_data();
 
 } _scene_renderer_uber_mesh_data;
@@ -330,6 +340,16 @@ _scene_renderer_uber_mesh_data::_scene_renderer_uber_mesh_data(ral_context conte
     gfx_state                          = nullptr;
     material_to_mesh_data_material_map = system_hash64map_create(sizeof(void*) );
     mesh_instance                      = nullptr;
+
+    normals_stream_buffer_ral   = nullptr;
+    normals_stream_offset       = 0;
+    normals_stream_stride       = 0;
+    texcoords_stream_buffer_ral = nullptr;
+    texcoords_stream_offset     = 0;
+    texcoords_stream_stride     = 0;
+    vertex_stream_buffer_ral    = nullptr;
+    vertex_stream_offset        = 0;
+    vertex_stream_stride        = 0;
 }
 
 /** TODO */
@@ -411,22 +431,16 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                                  _scene_renderer_uber_mesh_data*  mesh_data_ptr,
                                                  const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr)
 {
-    unsigned int mesh_texcoords_bo_n_components = 2;
-    unsigned int mesh_vertex_bo_n_components    = 3;
+    const ral_program_attribute* mesh_normal_attribute_ral_ptr    = nullptr;
+    const ral_program_attribute* mesh_texcoords_attribute_ral_ptr = nullptr;
+    unsigned int                 mesh_texcoords_bo_n_components   = 2;
+    const ral_program_attribute* mesh_vertex_attribute_ral_ptr    = nullptr;
+    unsigned int                 mesh_vertex_bo_n_components      = 3;
 
     mesh_type                                   mesh_instance_type;
-    ral_buffer                                  mesh_normals_bo          = 0;
-    unsigned int                                mesh_normals_bo_offset   = 0;
-    unsigned int                                mesh_normals_bo_stride   = 0;
-    ral_primitive_type                          mesh_primitive_type      = RAL_PRIMITIVE_TYPE_UNKNOWN;
-    ral_buffer                                  mesh_texcoords_bo        = nullptr;
-    unsigned int                                mesh_texcoords_bo_offset = 0;
-    unsigned int                                mesh_texcoords_bo_stride = 0;
-    std::vector<ral_gfx_state_vertex_attribute> mesh_vas;
-    ral_buffer                                  mesh_vertex_bo           = nullptr;
-    unsigned int                                mesh_vertex_bo_offset    = 0;
-    unsigned int                                mesh_vertex_bo_stride    = 0;
-    uint32_t                                    n_layers                 = 0;
+    ral_primitive_type                          mesh_primitive_type = RAL_PRIMITIVE_TYPE_UNKNOWN;
+    std::vector<ral_gfx_state_vertex_attribute> mesh_vas(8);
+    uint32_t                                    n_layers            = 0;
 
     LOG_INFO("Performance warning: _scene_renderer_uber_bake_mesh_data() invoked");
 
@@ -453,20 +467,29 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
         /* Regular meshes use the same stride and BO ID for all streams */
         mesh_get_property(mesh,
                           MESH_PROPERTY_BO_RAL,
-                         &mesh_texcoords_bo);
+                         &mesh_data_ptr->texcoords_stream_buffer_ral);
         mesh_get_property(mesh,
                           MESH_PROPERTY_BO_STRIDE,
-                         &mesh_texcoords_bo_stride);
+                         &mesh_data_ptr->texcoords_stream_stride);
 
-        mesh_normals_bo        = mesh_texcoords_bo;
-        mesh_normals_bo_stride = mesh_texcoords_bo_stride;
-        mesh_vertex_bo         = mesh_texcoords_bo;
-        mesh_vertex_bo_stride  = mesh_texcoords_bo_stride;
+        mesh_data_ptr->normals_stream_buffer_ral = mesh_data_ptr->texcoords_stream_buffer_ral;
+        mesh_data_ptr->normals_stream_stride     = mesh_data_ptr->texcoords_stream_stride;
+        mesh_data_ptr->vertex_stream_buffer_ral  = mesh_data_ptr->texcoords_stream_buffer_ral;
+        mesh_data_ptr->vertex_stream_stride      = mesh_data_ptr->texcoords_stream_stride;
+    }
+    else
+    {
+        mesh_data_ptr->normals_stream_buffer_ral   = nullptr;
+        mesh_data_ptr->normals_stream_stride       = -1;
+        mesh_data_ptr->texcoords_stream_buffer_ral = nullptr;
+        mesh_data_ptr->texcoords_stream_stride     = -1;
+        mesh_data_ptr->vertex_stream_buffer_ral    = nullptr;
+        mesh_data_ptr->vertex_stream_stride        = -1;
     }
 
     if (ral_program_get_vertex_attribute_by_name(uber_ptr->program,
                                                  system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_normal),
-                                                 nullptr) )  /* out_attribute_ral_ptr_ptr */
+                                                 &mesh_normal_attribute_ral_ptr) )
     {
         ral_gfx_state_vertex_attribute normal_data_va;
 
@@ -474,7 +497,7 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                             0, /* layer_id - please see "sanity check" comment above for explanation */
                                             MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                             MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
-                                           &mesh_normals_bo_offset);
+                                           &mesh_data_ptr->normals_stream_offset);
 
         if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
         {
@@ -482,32 +505,32 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
-                                               &mesh_normals_bo);
+                                               &mesh_data_ptr->normals_stream_buffer_ral);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE,
-                                               &mesh_normals_bo_stride);
+                                               &mesh_data_ptr->normals_stream_stride);
         }
 
         normal_data_va.format     = RAL_FORMAT_RGB32_FLOAT;
         normal_data_va.input_rate = RAL_VERTEX_INPUT_RATE_PER_VERTEX;
         normal_data_va.name       = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_normal);
-        normal_data_va.offset     = mesh_normals_bo_offset;
-        normal_data_va.stride     = mesh_normals_bo_stride;
+        normal_data_va.offset     = mesh_data_ptr->normals_stream_offset;
+        normal_data_va.stride     = mesh_data_ptr->normals_stream_stride;
 
-        mesh_vas.push_back(normal_data_va);
+        mesh_vas.at(mesh_normal_attribute_ral_ptr->location) = normal_data_va;
     }
 
     if (ral_program_get_vertex_attribute_by_name(uber_ptr->program,
                                                  system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_uv),
-                                                 nullptr) )  /* out_attribute_ral_ptr_ptr */
+                                                 &mesh_texcoords_attribute_ral_ptr) )
     {
         mesh_get_layer_data_stream_property(mesh,
                                             0, /* layer_id - please see "sanity check" comment above for explanation */
                                             MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
                                             MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
-                                           &mesh_texcoords_bo_offset);
+                                           &mesh_data_ptr->texcoords_stream_offset);
 
         mesh_get_layer_data_stream_property(mesh,
                                             0, /* layer_id - please see "sanity check" comment above for explanation */
@@ -521,18 +544,18 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
-                                               &mesh_texcoords_bo);
+                                               &mesh_data_ptr->texcoords_stream_buffer_ral);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE,
-                                               &mesh_texcoords_bo_stride);
+                                               &mesh_data_ptr->texcoords_stream_stride);
         }
     }
 
     if (ral_program_get_vertex_attribute_by_name(uber_ptr->program,
                                                  system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_vertex),
-                                                 nullptr) )  /* out_attribute_ral_ptr_ptr */
+                                                 &mesh_vertex_attribute_ral_ptr) )
     {
         ral_gfx_state_vertex_attribute vertex_data_va;
 
@@ -540,7 +563,7 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                             0, /* layer_id - please see "sanity check" comment above for explanation */
                                             MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                             MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
-                                           &mesh_vertex_bo_offset);
+                                           &mesh_data_ptr->vertex_stream_offset);
         mesh_get_layer_data_stream_property(mesh,
                                             0, /* layer_id - please see "sanity check" comment above for explanation */
                                             MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
@@ -556,26 +579,26 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL,
-                                               &mesh_vertex_bo);
+                                               &mesh_data_ptr->vertex_stream_buffer_ral);
             mesh_get_layer_data_stream_property(mesh,
                                                 0, /* layer_id - please see "sanity check" comment above for explanation */
                                                 MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
                                                 MESH_LAYER_DATA_STREAM_PROPERTY_BUFFER_RAL_STRIDE,
-                                               &mesh_vertex_bo_stride);
+                                               &mesh_data_ptr->vertex_stream_stride);
         }
 
         vertex_data_va.format     = (mesh_vertex_bo_n_components == 3) ? RAL_FORMAT_RGB32_FLOAT
                                                                        : RAL_FORMAT_RGBA32_FLOAT;
         vertex_data_va.input_rate = RAL_VERTEX_INPUT_RATE_PER_VERTEX;
         vertex_data_va.name       = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_vertex);
-        vertex_data_va.offset     = mesh_vertex_bo_offset;
-        vertex_data_va.stride     = mesh_vertex_bo_stride;
+        vertex_data_va.offset     = mesh_data_ptr->vertex_stream_offset;
+        vertex_data_va.stride     = mesh_data_ptr->vertex_stream_stride;
 
-        mesh_vas.push_back(vertex_data_va);
+        mesh_vas.at(mesh_vertex_attribute_ral_ptr->location) = vertex_data_va;
     }
 
     /* A few sanity checks never hurt anyone.. */
-    ASSERT_ALWAYS_SYNC(mesh_vertex_bo != nullptr,
+    ASSERT_ALWAYS_SYNC(mesh_data_ptr->vertex_stream_buffer_ral != nullptr,
                       "Mesh BO is nullptr");
 
     /* Iterate over all layers.. */
@@ -600,7 +623,7 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
         {
             {
                 system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_uv),
-                mesh_texcoords_bo_offset,
+                mesh_data_ptr->texcoords_stream_offset,
                 2
             },
         };
@@ -617,8 +640,8 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
             {
                 ral_gfx_state_vertex_attribute uv_data_va;
 
-                ASSERT_DEBUG_SYNC(mesh_texcoords_bo != nullptr,
-                                  "Material requires texture coordinates, but none are provided by the mesh.");
+                ASSERT_DEBUG_SYNC(mesh_data_ptr->texcoords_stream_buffer_ral != nullptr,
+                                  "Material requires a texture coordinate stream, but none are provided by the mesh.");
                 ASSERT_DEBUG_SYNC(item.size == 2,
                                   "Format used by uv_data_va is invalid.");
 
@@ -626,9 +649,9 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                 uv_data_va.input_rate = RAL_VERTEX_INPUT_RATE_PER_VERTEX;
                 uv_data_va.name       = item.attribute_name;
                 uv_data_va.offset     = item.offset;
-                uv_data_va.stride     = mesh_texcoords_bo_stride;
+                uv_data_va.stride     = mesh_data_ptr->texcoords_stream_stride;
 
-                mesh_vas.push_back(uv_data_va);
+                mesh_vas.at(mesh_texcoords_attribute_ral_ptr->location) = uv_data_va;
             }
         }
 
@@ -720,7 +743,7 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                         {
                             ral_gfx_state_vertex_attribute uv_data_va;
 
-                            ASSERT_DEBUG_SYNC(mesh_texcoords_bo != nullptr,
+                            ASSERT_DEBUG_SYNC(mesh_data_ptr->texcoords_stream_buffer_ral != nullptr,
                                               "Material requires texture coordinates, but none are provided by the mesh.");
                             ASSERT_DEBUG_SYNC(mesh_texcoords_bo_n_components == 2,
                                               "Format used by uv_data_va is invalid.");
@@ -728,13 +751,10 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                             uv_data_va.format     = RAL_FORMAT_RG32_FLOAT;
                             uv_data_va.input_rate = RAL_VERTEX_INPUT_RATE_PER_VERTEX;
                             uv_data_va.name       = attachment.shader_uv_attribute_name;
-                            uv_data_va.offset     = mesh_texcoords_bo_offset;
-                            uv_data_va.stride     = mesh_texcoords_bo_stride;
+                            uv_data_va.offset     = mesh_data_ptr->texcoords_stream_offset;
+                            uv_data_va.stride     = mesh_data_ptr->texcoords_stream_stride;
 
-                            mesh_vas.push_back(uv_data_va);
-
-                            ASSERT_DEBUG_SYNC(mesh_texcoords_bo != nullptr,
-                                              "Material requires texture coordinates, but none are provided by the mesh.");
+                            mesh_vas.at(mesh_texcoords_attribute_ral_ptr->location) = uv_data_va;
                         }
 
                         break;
@@ -2253,6 +2273,49 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                                   "Depth writes enabled despite no depth rendertarget being specified.");
             }
 
+            /* Set up vertex buffers */
+            {
+                uint32_t                                          n_vertex_buffers = 0;
+                ral_command_buffer_set_vertex_buffer_command_info vertex_buffers[3];
+
+                if (mesh_data_ptr->normals_stream_buffer_ral != nullptr)
+                {
+                    ral_command_buffer_set_vertex_buffer_command_info* vb_ptr = vertex_buffers + n_vertex_buffers;
+
+                    vb_ptr->buffer       = mesh_data_ptr->normals_stream_buffer_ral;
+                    vb_ptr->name         = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_normal);
+                    vb_ptr->start_offset = mesh_data_ptr->normals_stream_offset;
+
+                    ++n_vertex_buffers;
+                }
+
+                if (mesh_data_ptr->texcoords_stream_buffer_ral != nullptr)
+                {
+                    ral_command_buffer_set_vertex_buffer_command_info* vb_ptr = vertex_buffers + n_vertex_buffers;
+
+                    vb_ptr->buffer       = mesh_data_ptr->texcoords_stream_buffer_ral;
+                    vb_ptr->name         = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_uv);
+                    vb_ptr->start_offset = mesh_data_ptr->texcoords_stream_offset;
+
+                    ++n_vertex_buffers;
+                }
+
+                if (mesh_data_ptr->vertex_stream_buffer_ral != nullptr)
+                {
+                    ral_command_buffer_set_vertex_buffer_command_info* vb_ptr = vertex_buffers + n_vertex_buffers;
+
+                    vb_ptr->buffer       = mesh_data_ptr->vertex_stream_buffer_ral;
+                    vb_ptr->name         = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_vertex);
+                    vb_ptr->start_offset = mesh_data_ptr->vertex_stream_offset;
+
+                    ++n_vertex_buffers;
+                }
+
+                ral_command_buffer_record_set_vertex_buffers(mesh_data_material_ptr->command_buffer,
+                                                             n_vertex_buffers,
+                                                             vertex_buffers);
+            }
+
             /* Update model matrix */
             ASSERT_DEBUG_SYNC(uber_ptr->model_ub_offset != -1,
                               "No model matrix uniform found");
@@ -2726,6 +2789,10 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
     }
 
 end:
+    ral_context_retain_object(uber_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                              mesh_data_material_ptr->command_buffer);
+
     system_resizable_vector_push(uber_ptr->scheduled_mesh_command_buffers,
                                  mesh_data_material_ptr->command_buffer);
 }
@@ -3561,6 +3628,13 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     /* Clean up */
     uint32_t            n_scheduled_cmd_buffers = 0;
     ral_command_buffer* scheduled_cmd_buffers   = nullptr;
+
+    for (uint32_t n_present_task = 0;
+                  n_present_task < result_task_create_info.n_present_tasks;
+                ++n_present_task)
+    {
+        ral_present_task_release(result_present_tasks[n_present_task]);
+    }
 
     _freea(render_gpu_task_unique_inputs);
     _freea(render_gpu_tasks);

@@ -603,11 +603,6 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
             goto end;
         }
 
-        if (task_id == 3)
-        {
-            int a = 1; a++;
-        }
-
         ral_present_task_get_property(task_ptr->task,
                                       RAL_PRESENT_TASK_PROPERTY_TYPE,
                                      &task_type);

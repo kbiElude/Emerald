@@ -18,6 +18,7 @@ typedef struct _raGL_vaos_vao_vertex_attribute
 {
     ral_vertex_input_rate input_rate;
     bool                  is_integer;
+    uint32_t              location;
     GLboolean             normalized;
     GLuint                relativeoffset;
     GLint                 size;
@@ -33,7 +34,8 @@ typedef struct _raGL_vaos_vao_vertex_attribute
         type           = UINT32_MAX;
     }
 
-    static _raGL_vaos_vao_vertex_attribute create_from_ral_gfx_state_va(const ral_gfx_state_vertex_attribute& attribute)
+    static _raGL_vaos_vao_vertex_attribute create_from_ral_gfx_state_va(const ral_gfx_state_vertex_attribute& attribute,
+                                                                        uint32_t                              location)
     {
         uint32_t                        format_n_components;
         ral_format_type                 format_type;
@@ -48,6 +50,7 @@ typedef struct _raGL_vaos_vao_vertex_attribute
 
         result.is_integer     = (format_type == RAL_FORMAT_TYPE_SINT)  ||
                                 (format_type == RAL_FORMAT_TYPE_UINT);
+        result.location       = location;
         result.normalized     = (format_type == RAL_FORMAT_TYPE_SNORM) ||
                                 (format_type == RAL_FORMAT_TYPE_UNORM);
         result.input_rate     = attribute.input_rate;
@@ -97,8 +100,10 @@ typedef struct _raGL_vao
     raGL_buffer                     index_buffer;
     uint32_t                        n_vbs;
     GLuint                          vao_id;
-    ral_gfx_state_vertex_attribute* vas; /* does NOT correspond to VAO VA state */
-    raGL_vaos_vertex_buffer*        vbs; /* does NOT correspond to VAO VB state */
+    ral_gfx_state_vertex_attribute* vas_gl;
+    ral_gfx_state_vertex_attribute* vas_ref;
+    raGL_vaos_vertex_buffer*        vbs_gl;
+    raGL_vaos_vertex_buffer*        vbs_ref;
 
     bool is_a_match(raGL_buffer                           in_index_buffer,
                     uint32_t                              in_n_vertex_buffers,
@@ -133,8 +138,10 @@ _raGL_vao::_raGL_vao()
     index_buffer = nullptr;
     n_vbs        = 0;
     vao_id       = 0;
-    vas          = nullptr;
-    vbs          = nullptr;
+    vas_gl       = nullptr;
+    vas_ref      = nullptr;
+    vbs_gl       = nullptr;
+    vbs_ref      = nullptr;
 }
 
 /** TODO */
@@ -145,18 +152,32 @@ _raGL_vao::~_raGL_vao()
     ASSERT_DEBUG_SYNC(vao_id == 0,
                       "VAO not released GL-side at _raGL_vaos_vao destruction time");
 
-    if (vas != nullptr)
+    if (vas_gl != nullptr)
     {
-        delete [] vas;
+        delete [] vas_gl;
 
-        vas = nullptr;
+        vas_gl = nullptr;
     }
 
-    if (vbs != nullptr)
+    if (vas_ref != nullptr)
     {
-        delete[] vbs;
+        delete [] vas_ref;
 
-        vbs = nullptr;
+        vas_ref = nullptr;
+    }
+
+    if (vbs_gl != nullptr)
+    {
+        delete[] vbs_gl;
+
+        vbs_gl = nullptr;
+    }
+
+    if (vbs_ref != nullptr)
+    {
+        delete[] vbs_ref;
+
+        vbs_ref = nullptr;
     }
 }
 
@@ -175,12 +196,23 @@ bool _raGL_vao::is_a_match(raGL_buffer                           in_index_buffer
 
     if (result)
     {
+        result  = (in_vertex_attributes == nullptr && vas_ref == nullptr) ||
+                  (in_vertex_attributes != nullptr && vas_ref != nullptr);
+    }
+
+    if (result                          &&
+        in_vertex_attributes != nullptr &&
+        in_vertex_buffers    != nullptr)
+    {
         for (uint32_t n_vb = 0;
                       n_vb < in_n_vertex_buffers && result;
                     ++n_vb)
         {
-            result = (in_vertex_buffers   [n_vb] == vbs[n_vb]) &&
-                     (in_vertex_attributes[n_vb] == vas[n_vb]);
+            if (in_vertex_buffers[n_vb].buffer_raGL != nullptr)
+            {
+                result = in_vertex_buffers   [n_vb] == vbs_ref[n_vb] && 
+                         in_vertex_attributes[n_vb] == vas_ref[n_vb];
+            }
         }
     }
 
@@ -264,7 +296,7 @@ _raGL_vaos::~_raGL_vaos()
 /** TODO */
 PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_vaos_ptr,
                                        raGL_buffer                           in_index_buffer,
-                                       uint32_t                              in_n_vertex_attributes,
+                                       uint32_t                              in_n_vertex_buffers,
                                        const ral_gfx_state_vertex_attribute* in_vertex_attributes,
                                        const raGL_vaos_vertex_buffer*        in_vertex_buffers)
 {
@@ -283,32 +315,33 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
     std::vector<_raGL_vaos_vao_vertex_attribute> baked_vas;
     std::vector<_raGL_vaos_vao_vertex_buffer>    baked_vbs;
 
-    for (uint32_t n_va = 0;
-                  n_va < in_n_vertex_attributes;
-                ++n_va)
+    for (uint32_t n_vb = 0;
+                  n_vb < in_n_vertex_buffers;
+                ++n_vb)
     {
-        const ral_gfx_state_vertex_attribute* attribute_ptr = in_vertex_attributes + n_va;
-        _raGL_vaos_vao_vertex_attribute       current_va    = _raGL_vaos_vao_vertex_attribute::create_from_ral_gfx_state_va(*attribute_ptr);
+        const raGL_vaos_vertex_buffer* vb_ptr = in_vertex_buffers + n_vb;
+
+        if (vb_ptr->buffer_raGL == nullptr)
+        {
+            continue;
+        }
+
+        const ral_gfx_state_vertex_attribute* attribute_ptr     = in_vertex_attributes + n_vb;
+        _raGL_vaos_vao_vertex_attribute       current_va        = _raGL_vaos_vao_vertex_attribute::create_from_ral_gfx_state_va(*attribute_ptr,
+                                                                                                                                n_vb);
+        _raGL_vaos_vao_vertex_buffer          current_vb;
+        auto                                  baked_va_iterator = std::find(baked_vas.begin(),
+                                                                            baked_vas.end(),
+                                                                            current_va);
 
         if (std::find(baked_vas.begin(),
                       baked_vas.end(),
                       current_va) == baked_vas.end() )
         {
             baked_vas.push_back(current_va);
-        }
-    }
 
-    for (uint32_t n_vb = 0;
-                  n_vb < in_n_vertex_attributes;
-                ++n_vb)
-    {
-        const ral_gfx_state_vertex_attribute* attribute_ptr     = in_vertex_attributes + n_vb;
-        _raGL_vaos_vao_vertex_attribute       current_va        = _raGL_vaos_vao_vertex_attribute::create_from_ral_gfx_state_va(*attribute_ptr);
-        _raGL_vaos_vao_vertex_buffer          current_vb;
-        const raGL_vaos_vertex_buffer*        vb_ptr            = in_vertex_buffers + n_vb;
-        auto                                  baked_va_iterator = std::find(baked_vas.begin(),
-                                                                            baked_vas.end(),
-                                                                            current_va);
+            baked_va_iterator = baked_vas.begin() + (baked_vas.size() - 1);
+        }
 
         ASSERT_DEBUG_SYNC(baked_va_iterator != baked_vas.end(),
                           "This should never happen");
@@ -316,7 +349,7 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
         current_vb.buffer   = vb_ptr->buffer_raGL;
         current_vb.offset   = (GLintptr) (vb_ptr->start_offset);
         current_vb.stride   = attribute_ptr->stride;
-        current_vb.va_index = baked_va_iterator - baked_vas.begin();
+        current_vb.va_index = n_vb;
 
         baked_vbs.push_back(current_vb);
     }
@@ -327,7 +360,7 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
 
         in_vaos_ptr->bake_index_buffer  = in_index_buffer;
         in_vaos_ptr->bake_n_vas         = baked_vas.size();
-        in_vaos_ptr->bake_vas_ptr       = (in_vaos_ptr->bake_n_vas> 0) ? &baked_vas[0] : nullptr;
+        in_vaos_ptr->bake_vas_ptr       = (in_vaos_ptr->bake_n_vas > 0) ? &baked_vas[0] : nullptr;
         in_vaos_ptr->bake_n_vbs         = baked_vbs.size();
         in_vaos_ptr->bake_result_vao_id = 0;
         in_vaos_ptr->bake_vbs_ptr       = (in_vaos_ptr->bake_n_vbs > 0) ? &baked_vbs[0] : nullptr;
@@ -346,29 +379,52 @@ PRIVATE _raGL_vao* _raGL_vaos_bake_vao(_raGL_vaos*                           in_
                       "Failed to bake a VAO");
 
     new_vao_ptr->index_buffer = in_index_buffer;
-    new_vao_ptr->n_vbs        = in_n_vertex_attributes;
+    new_vao_ptr->n_vbs        = in_n_vertex_buffers;
     new_vao_ptr->vao_id       = result_vao_id;
 
-    if (in_n_vertex_attributes != 0)
+    if (baked_vbs.size() != 0)
     {
-        new_vao_ptr->vas = new (std::nothrow) ral_gfx_state_vertex_attribute[in_n_vertex_attributes];
-        new_vao_ptr->vbs = new (std::nothrow) raGL_vaos_vertex_buffer       [in_n_vertex_attributes];
+        new_vao_ptr->vas_gl  = new (std::nothrow) ral_gfx_state_vertex_attribute[baked_vas.size()];
+        new_vao_ptr->vbs_gl  = new (std::nothrow) raGL_vaos_vertex_buffer       [baked_vbs.size()];
 
-        ASSERT_ALWAYS_SYNC(new_vao_ptr->vas != nullptr &&
-                           new_vao_ptr->vbs != nullptr,
+        ASSERT_ALWAYS_SYNC(new_vao_ptr->vas_gl != nullptr &&
+                           new_vao_ptr->vbs_gl != nullptr,
                            "Out of memory");
 
-        memcpy(new_vao_ptr->vas,
-               in_vertex_attributes,
-               sizeof(ral_gfx_state_vertex_attribute) * in_n_vertex_attributes);
-        memcpy(new_vao_ptr->vbs,
-               in_vertex_buffers,
-               sizeof(raGL_vaos_vertex_buffer) * in_n_vertex_attributes);
+        memcpy(new_vao_ptr->vas_gl,
+               &baked_vas[0],
+               sizeof(ral_gfx_state_vertex_attribute) * baked_vas.size());
+        memcpy(new_vao_ptr->vbs_gl,
+              &baked_vbs[0],
+               sizeof(raGL_vaos_vertex_buffer) * baked_vbs.size());
     }
     else
     {
-        new_vao_ptr->vas = nullptr;
-        new_vao_ptr->vbs = nullptr;
+        new_vao_ptr->vas_gl = nullptr;
+        new_vao_ptr->vbs_gl = nullptr;
+    }
+
+    if (in_vertex_attributes != nullptr &&
+        in_vertex_buffers    != nullptr)
+    {
+        new_vao_ptr->vas_ref = new (std::nothrow) ral_gfx_state_vertex_attribute[in_n_vertex_buffers];
+        new_vao_ptr->vbs_ref = new (std::nothrow) raGL_vaos_vertex_buffer       [in_n_vertex_buffers];
+
+        ASSERT_ALWAYS_SYNC(new_vao_ptr->vas_ref != nullptr &&
+                           new_vao_ptr->vbs_ref != nullptr,
+                           "Out of memory");
+
+        memcpy(new_vao_ptr->vas_ref,
+               in_vertex_attributes,
+               sizeof(ral_gfx_state_vertex_attribute) * in_n_vertex_buffers);
+        memcpy(new_vao_ptr->vbs_ref,
+               in_vertex_buffers,
+               sizeof(raGL_vaos_vertex_buffer) * in_n_vertex_buffers);
+    }
+    else
+    {
+        new_vao_ptr->vas_ref = nullptr;
+        new_vao_ptr->vbs_ref = nullptr;
     }
 
     return new_vao_ptr;
@@ -424,14 +480,14 @@ PRIVATE ral_present_job _raGL_vaos_bake_vao_renderer_thread_callback(ral_context
             ASSERT_DEBUG_SYNC(current_va_ptr->normalized == GL_FALSE,
                               "An integer VA cannot be normalized.");
 
-            entrypoints_ptr->pGLVertexAttribIFormat(n_va,
+            entrypoints_ptr->pGLVertexAttribIFormat(current_va_ptr->location,
                                                     current_va_ptr->size,
                                                     current_va_ptr->type,
                                                     current_va_ptr->relativeoffset);
         }
         else
         {
-            entrypoints_ptr->pGLVertexAttribFormat(n_va,
+            entrypoints_ptr->pGLVertexAttribFormat(current_va_ptr->location,
                                                    current_va_ptr->size,
                                                    current_va_ptr->type,
                                                    current_va_ptr->normalized,
@@ -441,7 +497,7 @@ PRIVATE ral_present_job _raGL_vaos_bake_vao_renderer_thread_callback(ral_context
         ASSERT_DEBUG_SYNC(current_va_ptr->input_rate != RAL_VERTEX_INPUT_RATE_UNKNOWN,
                           "Invalid input rate specified for a vertex array");
 
-        entrypoints_ptr->pGLVertexBindingDivisor(n_va,
+        entrypoints_ptr->pGLVertexBindingDivisor(current_va_ptr->location,
                                                  (current_va_ptr->input_rate == RAL_VERTEX_INPUT_RATE_PER_VERTEX) ? 0
                                                                                                                   : 1);
     }
@@ -466,7 +522,7 @@ PRIVATE ral_present_job _raGL_vaos_bake_vao_renderer_thread_callback(ral_context
 
     /* Set up VA/VB bindings */
     for (uint32_t n_vb = 0;
-                  n_vb < vaos_ptr->bake_n_vas;
+                  n_vb < vaos_ptr->bake_n_vbs;
                 ++n_vb)
     {
         const _raGL_vaos_vao_vertex_buffer* current_vb_ptr = vaos_ptr->bake_vbs_ptr + n_vb;

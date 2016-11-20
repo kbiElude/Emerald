@@ -1131,35 +1131,11 @@ void _raGL_command_buffer::bake_and_bind_vao()
                                RAL_GFX_STATE_PROPERTY_VERTEX_ATTRIBUTES,
                               &vas);
 
-    /* Count the number of VBS used */
-    bool null_vb_entry_found = false;
-
-    for (uint32_t n_vb = 0;
-                  n_vb < sizeof(bake_state.vbs) / sizeof(bake_state.vbs[0]);
-                ++n_vb)
-    {
-        if (bake_state.vbs[n_vb].buffer_raGL != nullptr)
-        {
-            /* TODO: We need a "VB" reset command to reset all VB bindings */
-            ASSERT_DEBUG_SYNC(!null_vb_entry_found,
-                              "Vertex buffer bindings must be contiguous.");
-
-            ++n_vbs;
-        }
-        else
-        {
-            null_vb_entry_found = true;
-        }
-    }
-
-    ASSERT_DEBUG_SYNC(n_vas == n_vbs,
-                      "n_VAS / n_VBS mismatch detected"); /* TODO */
-
     /* Retrieve the VAO. Note that raGL_vaos takes care of baking the VAO, if a new one
      * is needed. */
     vao = raGL_vaos_get_vao(vaos,
                             bake_state.vao_index_buffer,
-                            n_vbs,
+                            sizeof(bake_state.vbs) / sizeof(bake_state.vbs[0]),
                             vas,
                             bake_state.vbs);
 
@@ -2322,7 +2298,7 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
     bool scissor_test_pre_enabled          = false;
     bool should_restore_color_writes       = !bake_state.active_rt_attachments_dirty;
-    bool should_restore_depth_writes       = !bake_state.active_gfx_state_dirty;
+    bool should_restore_depth_writes       = !bake_state.active_gfx_state_dirty && bake_state.active_gfx_state != nullptr;
     bool should_restore_draw_buffers       = false;
     bool should_restore_scissor_test_state = false;
 
@@ -3364,8 +3340,9 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
 void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_buffer_draw_call_indirect_command_info* command_ral_ptr)
 {
     /* TODO: Coalesce multiple indirect draw calls into a single multi-draw call. */
-    raGL_backend   backend_raGL     = nullptr;
-    _raGL_command* draw_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    raGL_backend   backend_raGL      = nullptr;
+    _raGL_command* draw_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    raGL_buffer    index_buffer_raGL = nullptr;
 
     ASSERT_DEBUG_SYNC(command_ral_ptr->indirect_buffer != nullptr,
                       "Indirect buffer is nullptr");
@@ -3443,9 +3420,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
     if (command_ral_ptr->index_buffer == nullptr)
     {
-        bake_pre_dispatch_draw_memory_barriers();
-
-        /* Issue the draw call */
+        /* Cache draw call arguments */
         _raGL_command_multi_draw_arrays_indirect_command_info& command_args = draw_command_ptr->multi_draw_arrays_indirect_command_info;
 
         command_args.drawcount = 1;
@@ -3457,48 +3432,17 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
     else
     {
         /* Bind the index buffer */
+        raGL_backend_get_buffer(backend_raGL,
+                                command_ral_ptr->index_buffer,
+                               &index_buffer_raGL);
+
+        if (index_buffer_raGL != bake_state.vao_index_buffer)
         {
-            raGL_buffer index_buffer_raGL = nullptr;
-
-            raGL_backend_get_buffer(backend_raGL,
-                                    command_ral_ptr->index_buffer,
-                                   &index_buffer_raGL);
-
-            /* Bind the index buffer */
-            if (index_buffer_raGL != bake_state.vao_index_buffer)
-            {
-                bake_state.vao_dirty        = true;
-                bake_state.vao_index_buffer = index_buffer_raGL;
-            }
-
-            /* If no VAO is currently bound, or current VAO configuration does not match bake state,
-            * we need to bind a different vertex array object. */
-            if (bake_state.vao_dirty)
-            {
-                bake_and_bind_vao();
-
-                ASSERT_DEBUG_SYNC(!bake_state.vao_dirty,
-                    "VA state still marked as dirty.");
-            }
-
-            /* If the index buffer is dirty, flush it now */
-            if (raGL_dep_tracker_is_dirty(dep_tracker,
-                                          index_buffer_raGL,
-                                          GL_ELEMENT_ARRAY_BARRIER_BIT) )
-            {
-                _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-
-                memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_ELEMENT_ARRAY_BARRIER_BIT;
-                memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
-
-                system_resizable_vector_push(commands,
-                                             memory_barrier_command_ptr);
-            }
+            bake_state.vao_dirty        = true;
+            bake_state.vao_index_buffer = index_buffer_raGL;
         }
 
-        bake_pre_dispatch_draw_memory_barriers();
-
-        /* Issue the draw call */
+        /* Cache draw call arguments */
         _raGL_command_multi_draw_elements_indirect_command_info& command_args = draw_command_ptr->multi_draw_elements_indirect_command_info;
 
         command_args.drawcount = 1;
@@ -3509,6 +3453,34 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
         draw_command_ptr->type = RAGL_COMMAND_TYPE_MULTI_DRAW_ELEMENTS_INDIRECT;
     }
 
+    /* If no VAO is currently bound, or current VAO configuration does not match bake state,
+    * we need to bind a different vertex array object. */
+    if (bake_state.vao_dirty)
+    {
+        bake_and_bind_vao();
+
+        ASSERT_DEBUG_SYNC(!bake_state.vao_dirty,
+            "VA state still marked as dirty.");
+    }
+
+    /* If the index buffer is dirty, flush it now */
+    if (command_ral_ptr->index_buffer != nullptr &&
+        raGL_dep_tracker_is_dirty(dep_tracker,
+                                  index_buffer_raGL,
+                                  GL_ELEMENT_ARRAY_BARRIER_BIT) )
+    {
+        _raGL_command* memory_barrier_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+        memory_barrier_command_ptr->memory_barriers_command_info.barriers = GL_ELEMENT_ARRAY_BARRIER_BIT;
+        memory_barrier_command_ptr->type                                  = RAGL_COMMAND_TYPE_MEMORY_BARRIER;
+
+        system_resizable_vector_push(commands,
+                                     memory_barrier_command_ptr);
+    }
+
+    bake_pre_dispatch_draw_memory_barriers();
+
+    /* Issue the draw call */
     system_resizable_vector_push(commands,
                                  draw_command_ptr);
 }
@@ -4129,17 +4101,21 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
      *
      * In order to avoid doing insensible bind calls all the time, we cache configured VA state
      * and bind corresponding VAOs at draw call time. */
-    const raGL_program_attribute* attribute_ptr            = nullptr;
-    raGL_backend                  backend_raGL             = nullptr;
-    raGL_buffer                   buffer_raGL              = nullptr;
-    uint32_t                      buffer_raGL_start_offset = 0;
-    uint32_t                      buffer_ral_start_offset  = 0;
+    const ral_program_attribute* attribute_ral_ptr        = nullptr;
+    raGL_backend                 backend_raGL             = nullptr;
+    raGL_buffer                  buffer_raGL              = nullptr;
+    uint32_t                     buffer_raGL_start_offset = 0;
+    uint32_t                     buffer_ral_start_offset  = 0;
+    ral_program                  program_ral              = nullptr;
 
-    raGL_program_get_vertex_attribute_by_name(bake_state.active_program,
-                                              command_ral_ptr->name,
-                                             &attribute_ptr);
+    raGL_program_get_property               (bake_state.active_program,
+                                             RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
+                                            &program_ral);
+    ral_program_get_vertex_attribute_by_name(program_ral,
+                                             command_ral_ptr->name,
+                                            &attribute_ral_ptr);
 
-    ASSERT_DEBUG_SYNC(attribute_ptr != nullptr,
+    ASSERT_DEBUG_SYNC(attribute_ral_ptr != nullptr,
                       "Invalid vertex attribute requested.");
 
     ogl_context_get_property(context,
@@ -4160,13 +4136,13 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
                              RAL_BUFFER_PROPERTY_START_OFFSET,
                             &buffer_ral_start_offset);
 
-    if (bake_state.vbs[attribute_ptr->location].buffer_raGL  != buffer_raGL                                                                        ||
-        bake_state.vbs[attribute_ptr->location].start_offset != command_ral_ptr->start_offset + buffer_raGL_start_offset + buffer_ral_start_offset)
+    if (bake_state.vbs[attribute_ral_ptr->location].buffer_raGL  != buffer_raGL                                                                        ||
+        bake_state.vbs[attribute_ral_ptr->location].start_offset != command_ral_ptr->start_offset + buffer_raGL_start_offset + buffer_ral_start_offset)
     {
         /* Need to update the VA configuration */
-        bake_state.vbs[attribute_ptr->location].buffer_raGL  = buffer_raGL;
-        bake_state.vbs[attribute_ptr->location].start_offset = command_ral_ptr->start_offset + buffer_raGL_start_offset + buffer_ral_start_offset;
-        bake_state.vao_dirty                                 = true;
+        bake_state.vbs[attribute_ral_ptr->location].buffer_raGL  = buffer_raGL;
+        bake_state.vbs[attribute_ral_ptr->location].start_offset = command_ral_ptr->start_offset + buffer_raGL_start_offset + buffer_ral_start_offset;
+        bake_state.vao_dirty                                     = true;
     }
 }
 

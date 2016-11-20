@@ -11,18 +11,6 @@
 #include "ral/ral_types.h"
 #include "system/system_types.h"
 
-typedef struct raGL_program_attribute
-{
-    int32_t                   location;
-    system_hashed_ansi_string name;
-
-    raGL_program_attribute()
-    {
-        location = -1;
-        name     = nullptr;
-    }
-} raGL_program_attribute;
-
 typedef enum
 {
     /* settable; uint32_t */
@@ -116,11 +104,6 @@ PUBLIC bool raGL_program_get_uniform_by_location(const raGL_program            p
 PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program            program,
                                              system_hashed_ansi_string     name,
                                              const raGL_program_variable** out_uniform_ptr);
-
-/** TODO */
-PUBLIC bool raGL_program_get_vertex_attribute_by_name(const raGL_program             program,
-                                                      system_hashed_ansi_string      name,
-                                                      const raGL_program_attribute** out_attribute_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *

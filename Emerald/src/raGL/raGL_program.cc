@@ -52,7 +52,6 @@ typedef struct _raGL_program_block_binding
 
 typedef struct
 {
-    system_resizable_vector   active_attributes_raGL; /* holds raGL_program_attribute instances */
     system_resizable_vector   active_uniforms_raGL;   /* holds raGL_program_variable instances */
     ral_context               context;                /* DO NOT retain - context owns the instance! */
     GLuint                    id;
@@ -121,7 +120,6 @@ PRIVATE ral_present_job _raGL_program_link_callback            (ral_context     
 PRIVATE bool            _raGL_program_load_binary_blob         (ogl_context,
                                                                 _raGL_program*                                             program_ptr);
 PRIVATE void            _raGL_program_release                  (void*                                                      program);
-PRIVATE void            _raGL_program_release_active_attributes(system_resizable_vector                                    active_attributes);
 PRIVATE void            _raGL_program_release_active_uniforms  (system_resizable_vector                                    active_uniforms);
 PRIVATE ral_present_job _raGL_program_release_callback         (ral_context                                                context,
                                                                 void*                                                      in_arg,
@@ -207,7 +205,6 @@ PRIVATE ral_present_job _raGL_program_create_callback(ral_context               
     /* Create a new program */
     program_ptr->id = program_ptr->pGLCreateProgram();
 
-    program_ptr->active_attributes_raGL           = system_resizable_vector_create(4 /* capacity */);
     program_ptr->active_uniforms_raGL             = system_resizable_vector_create(4 /* capacity */);
     program_ptr->uniform_location_to_variable_map = system_hash64map_create       (sizeof(raGL_program_variable*) );
 
@@ -959,21 +956,10 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                    n_active_attribute < n_active_attributes;
                  ++n_active_attribute)
         {
-            raGL_program_attribute* new_attribute_raGL_ptr = new raGL_program_attribute;
-            ral_program_attribute*  new_attribute_ral_ptr  = new ral_program_attribute;
+            ral_program_attribute* new_attribute_ral_ptr  = new ral_program_attribute;
 
-            ASSERT_ALWAYS_SYNC(new_attribute_raGL_ptr != nullptr &&
-                               new_attribute_ral_ptr  != nullptr,
+            ASSERT_ALWAYS_SYNC(new_attribute_ral_ptr != nullptr,
                                "Out of memory while allocating space for vertex attribute descriptors.");
-
-            new_attribute_ral_ptr->length = 0;
-            new_attribute_ral_ptr->name   = nullptr;
-            new_attribute_ral_ptr->size   = 0;
-            new_attribute_ral_ptr->type   = RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
-
-            memset(attribute_name,
-                   0,
-                   new_attribute_ral_ptr->length + 1);
 
             program_ptr->pGLGetActiveAttrib(program_ptr->id,
                                             n_active_attribute,
@@ -983,16 +969,16 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
                                             reinterpret_cast<GLenum*>(&new_attribute_ral_ptr->type),
                                             attribute_name);
 
-            new_attribute_raGL_ptr->name     = system_hashed_ansi_string_create (attribute_name);
-            new_attribute_raGL_ptr->location = program_ptr->pGLGetAttribLocation(program_ptr->id,
-                                                                                 attribute_name);
-            new_attribute_ral_ptr->name      = new_attribute_raGL_ptr->name;
+            attribute_name[new_attribute_ral_ptr->length] = 0;
+
+            new_attribute_ral_ptr->location = program_ptr->pGLGetAttribLocation(program_ptr->id,
+                                                                                attribute_name);
+            new_attribute_ral_ptr->name     = system_hashed_ansi_string_create (attribute_name);
+            new_attribute_ral_ptr->type     = RAL_PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
+
 
             ral_program_attach_vertex_attribute(program_ptr->program_ral,
                                                 new_attribute_ral_ptr);
-
-            system_resizable_vector_push(program_ptr->active_attributes_raGL,
-                                         new_attribute_raGL_ptr);
         }
 
         /* Proceed with output variables */
@@ -1453,14 +1439,7 @@ PRIVATE void _raGL_program_release(void* program)
     ral_program_attribute* attribute_ptr = nullptr;
     ral_program_variable*  uniform_ptr   = nullptr;
 
-    _raGL_program_release_active_attributes(program_ptr->active_attributes_raGL);
-    _raGL_program_release_active_uniforms  (program_ptr->active_uniforms_raGL);
-
-    if (program_ptr->active_attributes_raGL != nullptr)
-    {
-        system_resizable_vector_release(program_ptr->active_attributes_raGL);
-        program_ptr->active_attributes_raGL = nullptr;
-    }
+    _raGL_program_release_active_uniforms(program_ptr->active_uniforms_raGL);
 
     if (program_ptr->active_uniforms_raGL != nullptr)
     {
@@ -1470,24 +1449,6 @@ PRIVATE void _raGL_program_release(void* program)
 
     _raGL_program_clear_bindings_metadata(program_ptr,
                                           true /* should_release */);
-}
-
-/** TODO */
-PRIVATE void _raGL_program_release_active_attributes(system_resizable_vector active_attributes)
-{
-    while (true)
-    {
-        ral_program_attribute* program_attribute_ptr = nullptr;
-        bool                   result_get            = system_resizable_vector_pop(active_attributes,
-                                                                                  &program_attribute_ptr);
-
-        if (!result_get)
-        {
-            break;
-        }
-
-        delete program_attribute_ptr;
-    }
 }
 
 /** TODO */
@@ -1843,7 +1804,6 @@ PUBLIC raGL_program raGL_program_create(ral_context context,
 
     if (new_program_ptr != nullptr)
     {
-        new_program_ptr->active_attributes_raGL    = nullptr;
         new_program_ptr->active_uniforms_raGL      = nullptr;
         new_program_ptr->block_name_to_binding_map = system_hash64map_create(sizeof(_raGL_program_block_binding*) );
         new_program_ptr->context                   = context;
@@ -2229,56 +2189,6 @@ PUBLIC bool raGL_program_get_uniform_by_name(const raGL_program            progr
 }
 
 /** Please see header for specification */
-PUBLIC bool raGL_program_get_vertex_attribute_by_name(const raGL_program             program,
-                                                      system_hashed_ansi_string      name,
-                                                      const raGL_program_attribute** out_attribute_ptr)
-{
-    _raGL_program* program_ptr = reinterpret_cast<_raGL_program*>(program);
-    bool           result      = false;
-
-    system_event_wait_single(program_ptr->queries_enabled_event);
-
-    ASSERT_DEBUG_SYNC(program_ptr->link_status,
-                      "You cannot retrieve an attribute descriptor without linking the program beforehand.");
-
-    if (program_ptr->link_status)
-    {
-        unsigned int n_attributes = 0;
-
-        system_resizable_vector_get_property(program_ptr->active_attributes_raGL,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_attributes);
-
-        for (unsigned int n_attribute = 0;
-                          n_attribute < n_attributes;
-                        ++n_attribute)
-        {
-            raGL_program_attribute* attribute_ptr = nullptr;
-
-            result = system_resizable_vector_get_element_at(program_ptr->active_attributes_raGL,
-                                                            n_attribute,
-                                                           &attribute_ptr);
-
-            if (result                                                                &&
-                system_hashed_ansi_string_is_equal_to_hash_string(attribute_ptr->name,
-                                                                  name) )
-            {
-                *out_attribute_ptr = attribute_ptr;
-                result             = true;
-
-                break;
-            }
-            else
-            {
-                result = false;
-            }
-        }
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
 PUBLIC bool raGL_program_link(raGL_program program)
 {
     _raGL_program* program_ptr        = reinterpret_cast<_raGL_program*>(program);
@@ -2307,8 +2217,7 @@ PUBLIC bool raGL_program_link(raGL_program program)
                                 &context_backend);
 
         /* Clean up */
-        _raGL_program_release_active_attributes(program_ptr->active_attributes_raGL);
-        _raGL_program_release_active_uniforms  (program_ptr->active_uniforms_raGL);
+        _raGL_program_release_active_uniforms(program_ptr->active_uniforms_raGL);
 
         system_hash64map_clear(program_ptr->uniform_location_to_variable_map);
 

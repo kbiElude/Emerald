@@ -724,8 +724,6 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
                 /* We may need to flatten (i.e. unroll any group tasks that may be defined) the graph at this point. */
                 ral_present_job_flatten(frame_present_job);
 
-                ral_present_job_dump(frame_present_job);
-
                 /* OK, go for it */
                 rendering_handler_ptr->pfn_execute_present_job_raBackend_proc(rendering_handler_ptr->rendering_handler_backend,
                                                                               frame_present_job);

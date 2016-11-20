@@ -1372,6 +1372,8 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                                MESH_MATERIAL_PROPERTY_CONTEXT,
                               &context);
 
+    todo_podpiac_sie_pod_scene_deleted_callback_i_wypierdzielic_wszystkie_powiazane_materialy_wtenczas;
+
     /* First, iterate over existing uber containers and check if there's a match */
     unsigned int n_materials = 0;
 

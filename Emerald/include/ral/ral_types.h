@@ -260,6 +260,7 @@ typedef struct
 {
     system_hashed_ansi_string  name;
     int32_t                    length;
+    int32_t                    location;
     int32_t                    size;
     ral_program_attribute_type type;
 
