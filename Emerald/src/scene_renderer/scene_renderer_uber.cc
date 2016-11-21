@@ -640,13 +640,12 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
         {
             _attribute_item& item = attribute_items[n_attribute_item];
 
-            if (item.attribute_name != nullptr                                              &&
-                item.attribute_name != system_hashed_ansi_string_get_default_empty_string() )
+            if (item.attribute_name                        != nullptr                                              &&
+                item.attribute_name                        != system_hashed_ansi_string_get_default_empty_string() &&
+                mesh_data_ptr->texcoords_stream_buffer_ral != nullptr)
             {
                 ral_gfx_state_vertex_attribute uv_data_va;
 
-                ASSERT_DEBUG_SYNC(mesh_data_ptr->texcoords_stream_buffer_ral != nullptr,
-                                  "Material requires a texture coordinate stream, but none are provided by the mesh.");
                 ASSERT_DEBUG_SYNC(item.size == 2,
                                   "Format used by uv_data_va is invalid.");
 

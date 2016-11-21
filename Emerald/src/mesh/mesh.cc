@@ -3631,14 +3631,9 @@ PUBLIC EMERALD_API bool mesh_get_layer_data_stream_property(mesh                
 
                         case MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET:
                         {
-#if 0
-                            raGL_buffer_get_property(stream_ptr->bo,
-                                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                                     out_result_ptr);
-#else
                             /* ral_buffer defines where the buffer memory region starts from. */
                             *reinterpret_cast<uint32_t*>(out_result_ptr) = 0;
-#endif
+
                             break;
                         }
 
