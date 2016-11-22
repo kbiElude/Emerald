@@ -24,7 +24,7 @@
 static const char* preview_fragment_shader =
     "#version 430 core\n"
     "\n"
-    "uniform data\n"
+    "layout(binding = 0, std140) uniform data\n"
     "{\n"
     "    vec3 color;\n"
     "    vec4 position[2];\n"
@@ -40,7 +40,7 @@ static const char* preview_fragment_shader =
 static const char* preview_vertex_shader =
     "#version 430 core\n"
     "\n"
-    "uniform data\n"
+    "layout(binding = 0, std140) uniform data\n"
     "{\n"
     "    vec3 color;\n"
     "    vec4 position[2];\n"
@@ -116,6 +116,10 @@ PRIVATE void _scene_renderer_lights_preview_init(_scene_renderer_lights_preview*
     ral_shader                      vs         = nullptr;
     const system_hashed_ansi_string vs_body    = system_hashed_ansi_string_create(preview_vertex_shader);
 
+    scene_get_property(preview_ptr->owned_scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
     const ral_shader_create_info fs_create_info =
     {
         system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer lights preview FS shader ",
@@ -145,10 +149,6 @@ PRIVATE void _scene_renderer_lights_preview_init(_scene_renderer_lights_preview*
 
     ral_shader result_shaders[n_shader_create_info_items];
 
-
-    scene_get_property(preview_ptr->owned_scene,
-                       SCENE_PROPERTY_NAME,
-                      &scene_name);
 
     if (!ral_context_create_shaders(preview_ptr->context,
                                     n_shader_create_info_items,
@@ -518,14 +518,14 @@ PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview pr
         binding_info_items[1].name                          = system_hashed_ansi_string_create("result");
         binding_info_items[1].rendertarget_binding.rt_index = 0;
 
+        ral_command_buffer_record_set_program            (preview_ptr->cached_command_buffer,
+                                                          preview_ptr->preview_program);
         ral_command_buffer_record_set_bindings           (preview_ptr->cached_command_buffer,
                                                           sizeof(binding_info_items) / sizeof(binding_info_items[0]),
                                                           binding_info_items);
         ral_command_buffer_record_set_color_rendertargets(preview_ptr->cached_command_buffer,
                                                           1, /* n_rendertargets */
                                                          &color_rt_info);
-        ral_command_buffer_record_set_program            (preview_ptr->cached_command_buffer,
-                                                          preview_ptr->preview_program);
     }
 
     preview_ptr->cached_color_rt = color_rt;

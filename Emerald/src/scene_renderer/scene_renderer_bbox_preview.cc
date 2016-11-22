@@ -37,7 +37,7 @@ static const char* preview_geometry_shader =
     "layout(points)                       in;\n"
     "layout(line_strip, max_vertices=18) out;\n"
     "\n"
-    "in uint vertex_id[];\n"
+    "layout(location = 0) in uint vertex_id[];\n"
     "\n"
     "layout(std140) uniform data\n"
     "{\n"
@@ -105,7 +105,7 @@ static const char* preview_geometry_shader =
 static const char* preview_vertex_shader =
     "#version 430 core\n"
     "\n"
-    "out uint vertex_id;\n"
+    "layout(location = 0) out uint vertex_id;\n"
     "\n"
     "void main()\n"
     "{\n"
@@ -118,8 +118,9 @@ typedef struct _scene_renderer_bbox_preview
     /* DO NOT release. */
     ral_context context;
 
+    ral_texture_view         active_color_rendertarget;
     ral_command_buffer       active_command_buffer;
-    ral_texture_view         active_rendertarget;
+    ral_texture_view         active_depth_rendertarget;
     uint32_t                 data_n_meshes;
     ral_gfx_state            gfx_state;
     scene                    owned_scene;
@@ -392,7 +393,7 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
 
                 memcpy(traveller_ptr,
                        aabb_max_ptr,
-                       sizeof(float) * 3);
+                       sizeof(float) * 4);
             }
             else
             {
@@ -400,7 +401,7 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
 
                 memcpy(traveller_ptr,
                        aabb_min_ptr,
-                       sizeof(float) * 3);
+                       sizeof(float) * 4);
             }
         }
     }
@@ -421,7 +422,7 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
                                                         preview_ptr->data_n_meshes);
     ral_program_block_buffer_set_arrayed_variable_value(preview_ptr->preview_program_data_ub,
                                                         min_bbox_ub_offset,
-                                                        ub_data,
+                                                        ub_data + sizeof(float) * 4,
                                                         matrix_data_size / 2, /* src_data_size         */
                                                         0,                    /* dst_array_start_index */
                                                         preview_ptr->data_n_meshes);
@@ -490,8 +491,9 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
 
     if (new_instance_ptr != nullptr)
     {
+        new_instance_ptr->active_color_rendertarget       = nullptr;
         new_instance_ptr->active_command_buffer           = nullptr;
-        new_instance_ptr->active_rendertarget             = nullptr;
+        new_instance_ptr->active_depth_rendertarget       = nullptr;
         new_instance_ptr->context                         = context;
         new_instance_ptr->data_n_meshes                   = 0;
         new_instance_ptr->gfx_state                       = nullptr;
@@ -505,6 +507,8 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
         /* Set up the gfx state instance */
         ral_gfx_state_create_info gfx_state_create_info;
 
+        gfx_state_create_info.depth_test     = true;
+        gfx_state_create_info.depth_writes   = true;
         gfx_state_create_info.primitive_type = RAL_PRIMITIVE_TYPE_POINTS;
 
         ral_context_create_gfx_states(context,
@@ -519,17 +523,14 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
                           "Could not initialize preview program");
 
         /* Initialize a BO store */
-        if (new_instance_ptr->preview_program_data_ub == nullptr)
-        {
-            _scene_renderer_bbox_preview_init_ub_data(new_instance_ptr);
-        }
-
-        /* Wrap up */
-        scene_retain(scene);
-
         scene_get_property(scene,
                            SCENE_PROPERTY_N_MESH_INSTANCES,
                           &new_instance_ptr->data_n_meshes);
+
+        _scene_renderer_bbox_preview_init_ub_data(new_instance_ptr);
+
+        /* Wrap up */
+        scene_retain(scene);
     }
 
     return (scene_renderer_bbox_preview) new_instance_ptr;
@@ -540,8 +541,9 @@ PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview prev
 {
     _scene_renderer_bbox_preview* preview_ptr = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
 
-    ASSERT_DEBUG_SYNC(preview_ptr->active_command_buffer == nullptr &&
-                      preview_ptr->active_rendertarget   == nullptr,
+    ASSERT_DEBUG_SYNC(preview_ptr->active_command_buffer     == nullptr &&
+                      preview_ptr->active_color_rendertarget == nullptr &&
+                      preview_ptr->active_depth_rendertarget == nullptr,
                       "Rendering needs to be stopped at scene_renderer_bbox_preview_release() call time.");
 
     if (preview_ptr->gfx_state != nullptr)
@@ -589,7 +591,8 @@ PUBLIC void scene_renderer_bbox_preview_release(scene_renderer_bbox_preview prev
 
 /** Please see header for spec */
 PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,
-                                              ral_texture_view            rendertarget,
+                                              ral_texture_view            color_rendertarget,
+                                              ral_texture_view            depth_rendertarget,
                                               system_matrix4x4            vp)
 {
     ral_buffer                    data_bo_ral          = nullptr;
@@ -597,7 +600,8 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
     uint32_t                      data_bo_start_offset = -1;
     _scene_renderer_bbox_preview* preview_ptr          = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
 
-    ASSERT_DEBUG_SYNC(rendertarget != nullptr,
+    ASSERT_DEBUG_SYNC(color_rendertarget != nullptr &&
+                      depth_rendertarget != nullptr,
                       "Null rendertarget was specified");
 
     ral_program_block_buffer_get_property(preview_ptr->preview_program_data_ub,
@@ -611,7 +615,7 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
     /* Start recording the result command buffer */
     ral_command_buffer_set_binding_command_info            bindings[2];
     ral_command_buffer_create_info                         cmd_buffer_create_info;
-    ral_command_buffer_set_color_rendertarget_command_info rt_info                = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+    ral_command_buffer_set_color_rendertarget_command_info color_rt_info           = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
 
     cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
     cmd_buffer_create_info.is_executable                           = true;
@@ -629,8 +633,8 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
     bindings[1].name                          = system_hashed_ansi_string_create("result");
     bindings[1].rendertarget_binding.rt_index = 0;
 
-    rt_info.rendertarget_index = 0;
-    rt_info.texture_view       = rendertarget;
+    color_rt_info.rendertarget_index = 0;
+    color_rt_info.texture_view       = color_rendertarget;
 
     ral_context_create_command_buffers(preview_ptr->context,
                                        1, /* n_command_buffers */
@@ -645,7 +649,9 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
                                                       bindings);
     ral_command_buffer_record_set_color_rendertargets(preview_ptr->active_command_buffer,
                                                       1, /* n_rendertargets */
-                                                     &rt_info);
+                                                     &color_rt_info);
+    ral_command_buffer_record_set_depth_rendertarget (preview_ptr->active_command_buffer,
+                                                      depth_rendertarget);
     ral_command_buffer_record_set_gfx_state          (preview_ptr->active_command_buffer,
                                                       preview_ptr->gfx_state);
 
@@ -655,7 +661,8 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
                                             sizeof(float) * 16,
                                             system_matrix4x4_get_row_major_data(vp));
 
-    preview_ptr->active_rendertarget = rendertarget;
+    preview_ptr->active_color_rendertarget = color_rendertarget;
+    preview_ptr->active_depth_rendertarget = depth_rendertarget;
 }
 
 /** Please see header for spec */
@@ -671,16 +678,18 @@ PUBLIC ral_present_task scene_renderer_bbox_preview_stop(scene_renderer_bbox_pre
 
     /* Stop recording and form a GPU present task */
     ral_present_task_gpu_create_info task_create_info;
-    ral_present_task_io              task_unique_output;
+    ral_present_task_io              task_unique_ios[2];
 
-    task_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
-    task_unique_output.texture_view = preview_ptr->active_rendertarget;
+    task_unique_ios[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    task_unique_ios[0].texture_view = preview_ptr->active_color_rendertarget;
+    task_unique_ios[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    task_unique_ios[1].texture_view = preview_ptr->active_depth_rendertarget;
 
     task_create_info.command_buffer   = preview_ptr->active_command_buffer;
-    task_create_info.n_unique_inputs  = 1;
-    task_create_info.n_unique_outputs = 1;
-    task_create_info.unique_inputs    = &task_unique_output;
-    task_create_info.unique_outputs   = &task_unique_output;
+    task_create_info.n_unique_inputs  = sizeof(task_unique_ios) / sizeof(task_unique_ios[0]);
+    task_create_info.n_unique_outputs = sizeof(task_unique_ios) / sizeof(task_unique_ios[0]);
+    task_create_info.unique_inputs    = task_unique_ios;
+    task_create_info.unique_outputs   = task_unique_ios;
 
     result = ral_present_task_create_gpu(system_hashed_ansi_string_create("Scene renderre (BBox preview): Rasterization"),
                                         &task_create_info);
@@ -691,8 +700,9 @@ PUBLIC ral_present_task scene_renderer_bbox_preview_stop(scene_renderer_bbox_pre
                                1, /* n_objects */
                                reinterpret_cast<void* const*>(&preview_ptr->active_command_buffer) );
 
-    preview_ptr->active_command_buffer = nullptr;
-    preview_ptr->active_rendertarget   = nullptr;
+    preview_ptr->active_color_rendertarget = nullptr;
+    preview_ptr->active_command_buffer     = nullptr;
+    preview_ptr->active_depth_rendertarget = nullptr;
 
     /* All done */
     return result;

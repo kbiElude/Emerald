@@ -544,11 +544,9 @@ PRIVATE ral_present_job _render(ral_context                                     
                                                                   _view_matrix,
                                                                   _projection_matrix,
                                                                   _scene_camera,
-                                                                  //RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
-                                                                  RENDER_MODE_NORMALS_ONLY,
+                                                                  RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                                                   false, /* apply_shadow_mapping */
-                                                                  // TODO: BB renderer present task's IOs are not connected to anything ! HELPER_VISUALIZATION_BOUNDING_BOXES,
-                                                                  HELPER_VISUALIZATION_NONE,
+                                                                  HELPER_VISUALIZATION_BOUNDING_BOXES,
                                                                   frame_data_ptr->frame_time,
                                                                   _rt_color_view,
                                                                   _rt_depth_view);

@@ -24,7 +24,8 @@ PUBLIC scene_renderer_bbox_preview scene_renderer_bbox_preview_create(ral_contex
 
 /** TODO */
 PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview preview,
-                                              ral_texture_view            rendertarget,
+                                              ral_texture_view            color_rendertarget,
+                                              ral_texture_view            depth_rendertarget,
                                               system_matrix4x4            vp);
 
 /** Returns a new present task which encapsulates a GPU task which draws the bounding boxl.

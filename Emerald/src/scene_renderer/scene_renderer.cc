@@ -1017,8 +1017,8 @@ PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_ren
         result_task_create_info.ingroup_connections                      = nullptr;
         result_task_create_info.n_ingroup_connections                    = 0;
         result_task_create_info.n_present_tasks                          = n_result_task_subtasks;
-        result_task_create_info.n_total_unique_inputs                    = n_unique_ios;
-        result_task_create_info.n_total_unique_outputs                   = n_unique_ios;
+        result_task_create_info.n_total_unique_inputs                    = n_input_mappings;
+        result_task_create_info.n_total_unique_outputs                   = n_output_mappings;
         result_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_input_mappings;
         result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_output_mappings;
         result_task_create_info.present_tasks                            = result_task_subtasks;
@@ -1083,6 +1083,7 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
 
         scene_renderer_bbox_preview_start(renderer_ptr->bbox_preview,
                                           renderer_ptr->current_color_rt,
+                                          renderer_ptr->current_depth_rt,
                                           renderer_ptr->current_vp);
         {
             if (uber_details_ptr != nullptr)

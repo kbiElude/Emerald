@@ -141,6 +141,10 @@ PRIVATE void _scene_renderer_normals_preview_init(_scene_renderer_normals_previe
     system_hashed_ansi_string scene_name = nullptr;
     ral_shader                vs         = nullptr;
 
+    scene_get_property(preview_ptr->owned_scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
     const system_hashed_ansi_string fs_body_has    = system_hashed_ansi_string_create(preview_fragment_shader);
     const ral_shader_create_info    fs_create_info =
     {
@@ -171,11 +175,6 @@ PRIVATE void _scene_renderer_normals_preview_init(_scene_renderer_normals_previe
     };
     const uint32_t               n_shader_create_info_items = sizeof(shader_create_info_items) / sizeof(shader_create_info_items[0]);
     ral_shader                   result_shaders[n_shader_create_info_items];
-
-
-    scene_get_property(preview_ptr->owned_scene,
-                       SCENE_PROPERTY_NAME,
-                      &scene_name);
 
 
     const ral_program_create_info program_create_info =
@@ -293,7 +292,6 @@ PRIVATE void _scene_renderer_normals_preview_init(_scene_renderer_normals_previe
     preview_ptr->preview_program_ub_vs = ral_program_block_buffer_create(preview_ptr->context,
                                                                          preview_ptr->preview_program,
                                                                          system_hashed_ansi_string_create("dataVS") );
-    preview_ptr->preview_program_ub_vs = nullptr;
 
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program_ub_gs != nullptr &&
                       preview_ptr->preview_program_ub_vs != nullptr,
