@@ -5,13 +5,13 @@
  */
 #include "shared.h"
 #include "demo/demo_app.h"
+#include "demo/demo_materials.h"
 #include "demo/demo_window.h"
 #include "mesh/mesh_material.h"
 #include "ral/ral_context.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
-#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "scene_renderer/scene_renderer_uber.h"
 #include "shaders/shaders_fragment_uber.h"
@@ -24,20 +24,20 @@
 
 
 /* Private type definitions */
-typedef struct _scene_renderer_materials_mesh_material_setting
+typedef struct _demo_materials_mesh_material_setting
 {
     mesh_material_property_attachment attachment;
     void*                             attachment_data;
     mesh_material_shading_property    property;
 
-    _scene_renderer_materials_mesh_material_setting()
+    _demo_materials_mesh_material_setting()
     {
         attachment      = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
         attachment_data = nullptr;
         property        = MESH_MATERIAL_SHADING_PROPERTY_UNKNOWN;
     }
 
-    ~_scene_renderer_materials_mesh_material_setting()
+    ~_demo_materials_mesh_material_setting()
     {
         if (attachment_data != nullptr)
         {
@@ -77,22 +77,22 @@ typedef struct _scene_renderer_materials_mesh_material_setting
             }
         }
     }
-} _scene_renderer_materials_mesh_material_setting;
+} _demo_materials_mesh_material_setting;
 
-typedef struct _scene_renderer_materials_uber_context_data
+typedef struct _demo_materials_uber_context_data
 {
     mesh_material       material;
     scene               owner_scene; /* do not release */
     scene_renderer_uber uber;
 
-    explicit _scene_renderer_materials_uber_context_data()
+    explicit _demo_materials_uber_context_data()
     {
         material    = nullptr;
         owner_scene = nullptr;
         uber        = nullptr;
     }
 
-    ~_scene_renderer_materials_uber_context_data()
+    ~_demo_materials_uber_context_data()
     {
         if (material != nullptr)
         {
@@ -108,20 +108,20 @@ typedef struct _scene_renderer_materials_uber_context_data
             uber = nullptr;
         }
     }
-} _scene_renderer_materials_uber_context_data;
+} _demo_materials_uber_context_data;
 
-typedef struct _scene_renderer_materials_uber
+typedef struct _demo_materials_uber
 {
-    system_hash64map per_context_data; /* holds _scene_renderer_materials_uber_context_data instances */
+    system_hash64map per_context_data; /* holds _demo_materials_uber_context_data instances */
     bool             use_shadow_maps;
 
-    _scene_renderer_materials_uber()
+    _demo_materials_uber()
     {
-        per_context_data = system_hash64map_create(sizeof(_scene_renderer_materials_uber_context_data*) );
+        per_context_data = system_hash64map_create(sizeof(_demo_materials_uber_context_data*) );
         use_shadow_maps  = false;
     }
 
-    ~_scene_renderer_materials_uber()
+    ~_demo_materials_uber()
     {
         if (per_context_data != nullptr)
         {
@@ -135,7 +135,7 @@ typedef struct _scene_renderer_materials_uber
                           n_data_item < n_per_context_data_items;
                         ++n_data_item)
             {
-                _scene_renderer_materials_uber_context_data* data_ptr = nullptr;
+                _demo_materials_uber_context_data* data_ptr = nullptr;
 
                 system_hash64map_get_element_at(per_context_data,
                                                 n_data_item,
@@ -149,48 +149,48 @@ typedef struct _scene_renderer_materials_uber
             per_context_data = nullptr;
         }
     }
-} _scene_renderer_materials_uber;
+} _demo_materials_uber;
 
-typedef struct _scene_renderer_materials
+typedef struct _demo_materials
 {
     system_resizable_vector callback_enabled_scenes;
     system_resizable_vector forced_mesh_material_settings;
     system_hash64map        per_context_special_materials[SPECIAL_MATERIAL_COUNT]; /* maps ral_context to mesh_material instances */
-    system_resizable_vector ubers; /* stores _scene_renderer_materials_uber* */
+    system_resizable_vector ubers; /* stores _demo_materials_uber* */
 
-     _scene_renderer_materials();
-    ~_scene_renderer_materials();
-} _scene_renderer_materials;
+     _demo_materials();
+    ~_demo_materials();
+} _demo_materials;
 
 
 /* Forward declarations */
-PRIVATE scene_renderer_uber       _scene_renderer_materials_bake_uber                   (scene_renderer_materials materials,
-                                                                                         mesh_material            material,
-                                                                                         scene                    scene,
-                                                                                         bool                     use_shadow_maps);
-PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name               (mesh_material            material,
-                                                                                         scene                    scene,
-                                                                                         bool                     use_shadow_maps);
-PRIVATE void                      _scene_renderer_materials_on_scene_about_to_be_deleted(const void*              callback_data,
-                                                                                         void*                    user_arg);
+PRIVATE scene_renderer_uber       _demo_materials_bake_uber                   (demo_materials materials,
+                                                                               mesh_material  material,
+                                                                               scene          scene,
+                                                                               bool           use_shadow_maps);
+PRIVATE system_hashed_ansi_string _demo_materials_get_uber_name               (mesh_material  material,
+                                                                               scene          scene,
+                                                                               bool           use_shadow_maps);
+PRIVATE void                      _demo_materials_on_scene_about_to_be_deleted(const void*    callback_data,
+                                                                               void*          user_arg);
 
 
-PRIVATE bool _scene_renderer_materials_does_uber_match_scene (scene_renderer_uber                uber,
-                                                              scene                              scene,
-                                                              bool                               use_shadow_maps);
-PRIVATE void _scene_renderer_materials_get_forced_setting    (scene_renderer_materials           materials,
-                                                              mesh_material_shading_property,
-                                                              mesh_material_property_attachment* out_attachment,
-                                                              void**                             out_attachment_data);
-PRIVATE void _scene_renderer_materials_init_special_materials(_scene_renderer_materials*         materials_ptr,
-                                                              ral_context                        context);
+PRIVATE bool _demo_materials_does_uber_match_scene (scene_renderer_uber                uber,
+                                                    scene                              scene,
+                                                    bool                               use_shadow_maps);
+PRIVATE void _demo_materials_get_forced_setting    (demo_materials                     materials,
+                                                    mesh_material_shading_property,
+                                                    mesh_material_property_attachment* out_attachment,
+                                                    void**                             out_attachment_data);
+PRIVATE void _demo_materials_init_special_materials(_demo_materials*                   materials_ptr,
+                                                    ral_context                        context);
 
-PRIVATE void _scene_renderer_materials_register_for_callbacks(_scene_renderer_materials*         materials_ptr,
-                                                              scene                              scene_to_use,
-                                                              bool                               should_register);
+PRIVATE void _demo_materials_register_for_callbacks(_demo_materials* materials_ptr,
+                                                    scene            scene_to_use,
+                                                    bool             should_register);
 
 
-_scene_renderer_materials::_scene_renderer_materials()
+_demo_materials::_demo_materials()
 {
     callback_enabled_scenes       = system_resizable_vector_create(4 /* capacity */);
     forced_mesh_material_settings = system_resizable_vector_create(4 /* capacity */);
@@ -204,7 +204,7 @@ _scene_renderer_materials::_scene_renderer_materials()
     }
 }
 
-_scene_renderer_materials::~_scene_renderer_materials()
+_demo_materials::~_demo_materials()
 {
     if (callback_enabled_scenes != nullptr)
     {
@@ -213,9 +213,9 @@ _scene_renderer_materials::~_scene_renderer_materials()
         while (system_resizable_vector_pop(callback_enabled_scenes,
                                           &current_scene))
         {
-            _scene_renderer_materials_register_for_callbacks(this,
-                                                             current_scene,
-                                                             false); /* should_register */
+            _demo_materials_register_for_callbacks(this,
+                                                   current_scene,
+                                                   false); /* should_register */
         }
 
         system_resizable_vector_release(callback_enabled_scenes);
@@ -224,7 +224,7 @@ _scene_renderer_materials::~_scene_renderer_materials()
 
     if (forced_mesh_material_settings != nullptr)
     {
-        _scene_renderer_materials_mesh_material_setting* mesh_material_setting_ptr = nullptr;
+        _demo_materials_mesh_material_setting* mesh_material_setting_ptr = nullptr;
 
         while (system_resizable_vector_pop(forced_mesh_material_settings,
                                           &mesh_material_setting_ptr) )
@@ -235,9 +235,9 @@ _scene_renderer_materials::~_scene_renderer_materials()
         }
     }
 
-    for (scene_renderer_materials_special_material special_material  = SPECIAL_MATERIAL_FIRST;
-                                                   special_material != SPECIAL_MATERIAL_COUNT;
-                                            ((int&)special_material)++)
+    for (demo_materials_special_material special_material  = SPECIAL_MATERIAL_FIRST;
+                                         special_material != SPECIAL_MATERIAL_COUNT;
+                                  ((int&)special_material)++)
     {
         uint32_t n_contexts = 0;
 
@@ -265,7 +265,7 @@ _scene_renderer_materials::~_scene_renderer_materials()
 
     if (ubers != nullptr)
     {
-        _scene_renderer_materials_uber* uber_ptr = nullptr;
+        _demo_materials_uber* uber_ptr = nullptr;
 
         while (system_resizable_vector_pop(ubers,
                                           &uber_ptr) )
@@ -279,22 +279,22 @@ _scene_renderer_materials::~_scene_renderer_materials()
 }
 
 /** TODO */
-PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_materials materials,
-                                                                mesh_material            material,
-                                                                scene                    scene,
-                                                                bool                     use_shadow_maps)
+PRIVATE scene_renderer_uber _demo_materials_bake_uber(demo_materials materials,
+                                                      mesh_material  material,
+                                                      scene          scene,
+                                                      bool           use_shadow_maps)
 {
-    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(materials);
-    ral_context                context       = nullptr;
+    _demo_materials* materials_ptr = reinterpret_cast<_demo_materials*>(materials);
+    ral_context      context       = nullptr;
 
-    LOG_INFO("Performance warning: _scene_renderer_materials_bake_uber() called.");
+    LOG_INFO("Performance warning: _demo_materials_bake_uber() called.");
 
     /* Spawn a new uber  */
     mesh_material_type        material_type = MESH_MATERIAL_TYPE_UNDEFINED;
     scene_renderer_uber       new_uber      = nullptr;
-    system_hashed_ansi_string uber_name     = _scene_renderer_materials_get_uber_name(material,
-                                                                                      scene,
-                                                                                      use_shadow_maps);
+    system_hashed_ansi_string uber_name     = _demo_materials_get_uber_name(material,
+                                                                            scene,
+                                                                            use_shadow_maps);
 
     mesh_material_get_property(material,
                                MESH_MATERIAL_PROPERTY_CONTEXT,
@@ -374,10 +374,10 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
                         mesh_material_property_attachment material_attachment = mesh_material_get_shading_property_attachment_type(material,
                                                                                                                                    mapping.material_property);
 
-                        _scene_renderer_materials_get_forced_setting(materials,
-                                                                     mapping.material_property,
-                                                                    &material_attachment,
-                                                                    nullptr /* out_attachment_data */);
+                        _demo_materials_get_forced_setting(materials,
+                                                          mapping.material_property,
+                                                         &material_attachment,
+                                                          nullptr /* out_attachment_data */);
 
                         if (material_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
                         {
@@ -655,9 +655,9 @@ PRIVATE scene_renderer_uber _scene_renderer_materials_bake_uber(scene_renderer_m
 }
 
 /** TODO. **/
-PRIVATE bool _scene_renderer_materials_does_uber_match_scene(scene_renderer_uber uber,
-                                                             scene               scene,
-                                                             bool                use_shadow_mapping)
+PRIVATE bool _demo_materials_does_uber_match_scene(scene_renderer_uber uber,
+                                                   scene               scene,
+                                                   bool                use_shadow_mapping)
 {
     bool result = true;
 
@@ -865,13 +865,13 @@ end:
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_materials_get_forced_setting(scene_renderer_materials           materials,
-                                                          mesh_material_shading_property     shading_property,
-                                                          mesh_material_property_attachment* out_attachment,
-                                                          void**                             out_attachment_data)
+PRIVATE void _demo_materials_get_forced_setting(demo_materials                     materials,
+                                                mesh_material_shading_property     shading_property,
+                                                mesh_material_property_attachment* out_attachment,
+                                                void**                             out_attachment_data)
 {
-    const _scene_renderer_materials* materials_ptr     = reinterpret_cast<const _scene_renderer_materials*>(materials);
-    unsigned int                     n_forced_settings = 0;
+    const _demo_materials* materials_ptr     = reinterpret_cast<const _demo_materials*>(materials);
+    unsigned int           n_forced_settings = 0;
 
     system_resizable_vector_get_property(materials_ptr->forced_mesh_material_settings,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -881,7 +881,7 @@ PRIVATE void _scene_renderer_materials_get_forced_setting(scene_renderer_materia
                       n_setting < n_forced_settings;
                     ++n_setting)
     {
-        _scene_renderer_materials_mesh_material_setting* setting_ptr = nullptr;
+        _demo_materials_mesh_material_setting* setting_ptr = nullptr;
 
         if (system_resizable_vector_get_element_at(materials_ptr->forced_mesh_material_settings,
                                                    n_setting,
@@ -911,9 +911,9 @@ PRIVATE void _scene_renderer_materials_get_forced_setting(scene_renderer_materia
 }
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_material material,
-                                                                          scene         scene,
-                                                                          bool          use_shadow_maps)
+PRIVATE system_hashed_ansi_string _demo_materials_get_uber_name(mesh_material material,
+                                                                scene         scene,
+                                                                bool          use_shadow_maps)
 {
     system_hashed_ansi_string material_name = nullptr;
     std::stringstream         name_sstream;
@@ -1105,8 +1105,8 @@ PRIVATE system_hashed_ansi_string _scene_renderer_materials_get_uber_name(mesh_m
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_materials_init_special_materials(_scene_renderer_materials* materials_ptr,
-                                                              ral_context                context)
+PRIVATE void _demo_materials_init_special_materials(_demo_materials* materials_ptr,
+                                                    ral_context      context)
 {
     const mesh_material_shading shading_type_attribute_data = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
     const mesh_material_shading shading_type_none           = MESH_MATERIAL_SHADING_NONE;
@@ -1225,12 +1225,12 @@ PRIVATE void _scene_renderer_materials_init_special_materials(_scene_renderer_ma
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_materials_on_scene_about_to_be_deleted(const void* callback_data,
-                                                                    void*       user_arg)
+PRIVATE void _demo_materials_on_scene_about_to_be_deleted(const void* callback_data,
+                                                          void*       user_arg)
 {
-    uint32_t                   scene_index   = UINT32_MAX;
-    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(user_arg);
-    uint32_t                   n_ubers       = 0;
+    uint32_t         scene_index   = UINT32_MAX;
+    _demo_materials* materials_ptr = reinterpret_cast<_demo_materials*>(user_arg);
+    uint32_t         n_ubers       = 0;
 
     system_resizable_vector_get_property(materials_ptr->ubers,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1248,8 +1248,8 @@ PRIVATE void _scene_renderer_materials_on_scene_about_to_be_deleted(const void* 
                   n_uber < n_ubers;
                 ++n_uber)
     {
-        uint32_t                        n_items  = 0;
-        _scene_renderer_materials_uber* uber_ptr = nullptr;
+        uint32_t              n_items  = 0;
+        _demo_materials_uber* uber_ptr = nullptr;
 
         system_resizable_vector_get_element_at(materials_ptr->ubers,
                                                n_uber,
@@ -1262,8 +1262,8 @@ PRIVATE void _scene_renderer_materials_on_scene_about_to_be_deleted(const void* 
                      n_item < static_cast<int32_t>(n_items);
                    ++n_item)
         {
-            system_hash64                                item_hash;
-            _scene_renderer_materials_uber_context_data* item_ptr = nullptr;
+            system_hash64                      item_hash;
+            _demo_materials_uber_context_data* item_ptr = nullptr;
 
             system_hash64map_get_element_at(uber_ptr->per_context_data,
                                             n_item,
@@ -1282,9 +1282,9 @@ PRIVATE void _scene_renderer_materials_on_scene_about_to_be_deleted(const void* 
         }
     }
 
-    _scene_renderer_materials_register_for_callbacks(materials_ptr,
-                                                     (scene) callback_data,
-                                                     false); /* should_register */
+    _demo_materials_register_for_callbacks(materials_ptr,
+                                           (scene) callback_data,
+                                           false); /* should_register */
 
     system_resizable_vector_delete_element_at(materials_ptr->callback_enabled_scenes,
                                               scene_index);
@@ -1294,9 +1294,9 @@ end:
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_materials_register_for_callbacks(_scene_renderer_materials* materials_ptr,
-                                                              scene                      scene_to_use,
-                                                              bool                       should_register)
+PRIVATE void _demo_materials_register_for_callbacks(_demo_materials* materials_ptr,
+                                                    scene            scene_to_use,
+                                                    bool             should_register)
 {
     system_callback_manager scene_callback_manager = nullptr;
 
@@ -1312,7 +1312,7 @@ PRIVATE void _scene_renderer_materials_register_for_callbacks(_scene_renderer_ma
         system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
                                                         SCENE_CALLBACK_ID_ABOUT_TO_BE_DELETED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _scene_renderer_materials_on_scene_about_to_be_deleted,
+                                                        _demo_materials_on_scene_about_to_be_deleted,
                                                         materials_ptr);
     }
     else
@@ -1324,18 +1324,18 @@ PRIVATE void _scene_renderer_materials_register_for_callbacks(_scene_renderer_ma
          */
         system_callback_manager_unsubscribe_from_callbacks(scene_callback_manager,
                                                            SCENE_CALLBACK_ID_ABOUT_TO_BE_DELETED,
-                                                           _scene_renderer_materials_on_scene_about_to_be_deleted,
+                                                           _demo_materials_on_scene_about_to_be_deleted,
                                                            materials_ptr,
                                                            true); /* allow_deferred_execution */
     }
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_materials_window_about_to_be_destroyed_callback(const void* callback_data,
-                                                                             void*       user_arg)
+PRIVATE void _demo_materials_window_about_to_be_destroyed_callback(const void* callback_data,
+                                                                   void*       user_arg)
 {
-    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(user_arg);
-    demo_window                window        = (demo_window)                               (callback_data);
+    _demo_materials* materials_ptr = reinterpret_cast<_demo_materials*>(user_arg);
+    demo_window      window        = (demo_window)                     (callback_data);
 
     /* Iterate over all ubers and release those which have been created for the context attached to
      * the window, which is about to be destroyed. */
@@ -1354,8 +1354,8 @@ PRIVATE void _scene_renderer_materials_window_about_to_be_destroyed_callback(con
                   n_uber < n_ubers;
                 ++n_uber)
     {
-        _scene_renderer_materials_uber*              uber_ptr                  = nullptr;
-        _scene_renderer_materials_uber_context_data* uber_per_context_data_ptr = nullptr;
+        _demo_materials_uber*              uber_ptr                  = nullptr;
+        _demo_materials_uber_context_data* uber_per_context_data_ptr = nullptr;
 
         if (!system_resizable_vector_get_element_at(materials_ptr->ubers,
                                                     n_uber,
@@ -1403,26 +1403,26 @@ PRIVATE void _scene_renderer_materials_window_about_to_be_destroyed_callback(con
 }
 
 /** TODO */
-PRIVATE void _scene_renderer_materials_window_created_callback(const void* callback_data,
-                                                               void*       user_arg)
+PRIVATE void _demo_materials_window_created_callback(const void* callback_data,
+                                                     void*       user_arg)
 {
-    ral_context                context       = nullptr;
-    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(user_arg);
-    demo_window                window        = (demo_window)                               (callback_data);
+    ral_context      context       = nullptr;
+    _demo_materials* materials_ptr = reinterpret_cast<_demo_materials*>(user_arg);
+    demo_window      window        = (demo_window)                     (callback_data);
 
     demo_window_get_property(window,
                              DEMO_WINDOW_PROPERTY_RENDERING_CONTEXT,
                             &context);
 
-    _scene_renderer_materials_init_special_materials(materials_ptr,
-                                                     context);
+    _demo_materials_init_special_materials(materials_ptr,
+                                           context);
 }
 
 
 /** Please see header for specification */
-PUBLIC scene_renderer_materials scene_renderer_materials_create()
+PUBLIC demo_materials demo_materials_create()
 {
-    _scene_renderer_materials* materials_ptr = new (std::nothrow) _scene_renderer_materials;
+    _demo_materials* materials_ptr = new (std::nothrow) _demo_materials;
 
     ASSERT_ALWAYS_SYNC(materials_ptr != nullptr,
                        "Out of memory");
@@ -1438,26 +1438,26 @@ PUBLIC scene_renderer_materials scene_renderer_materials_create()
         system_callback_manager_subscribe_for_callbacks(app_callback_manager,
                                                         DEMO_APP_CALLBACK_ID_WINDOW_ABOUT_TO_BE_DESTROYED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _scene_renderer_materials_window_about_to_be_destroyed_callback,
+                                                        _demo_materials_window_about_to_be_destroyed_callback,
                                                         materials_ptr);
         system_callback_manager_subscribe_for_callbacks(app_callback_manager,
                                                         DEMO_APP_CALLBACK_ID_WINDOW_CREATED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _scene_renderer_materials_window_created_callback,
+                                                        _demo_materials_window_created_callback,
                                                         materials_ptr);
     }
 
-    return (scene_renderer_materials) materials_ptr;
+    return (demo_materials) materials_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void scene_renderer_materials_force_mesh_material_shading_property_attachment(scene_renderer_materials          materials,
-                                                                                                 mesh_material_shading_property    property,
-                                                                                                 mesh_material_property_attachment attachment,
-                                                                                                 void*                             attachment_data)
+PUBLIC EMERALD_API void demo_materials_force_mesh_material_shading_property_attachment(demo_materials                    materials,
+                                                                                       mesh_material_shading_property    property,
+                                                                                       mesh_material_property_attachment attachment,
+                                                                                       void*                             attachment_data)
 {
-    _scene_renderer_materials*                       materials_ptr   = reinterpret_cast<_scene_renderer_materials*>(materials);
-    _scene_renderer_materials_mesh_material_setting* new_setting_ptr = new _scene_renderer_materials_mesh_material_setting;
+    _demo_materials*                       materials_ptr   = reinterpret_cast<_demo_materials*>(materials);
+    _demo_materials_mesh_material_setting* new_setting_ptr = new _demo_materials_mesh_material_setting;
 
     ASSERT_ALWAYS_SYNC(new_setting_ptr != nullptr,
                        "Out of memory");
@@ -1475,12 +1475,12 @@ PUBLIC EMERALD_API void scene_renderer_materials_force_mesh_material_shading_pro
 }
 
 /** Please see header for specification */
-PUBLIC mesh_material scene_renderer_materials_get_special_material(scene_renderer_materials                  materials,
-                                                                   ral_context                               context,
-                                                                   scene_renderer_materials_special_material special_material)
+PUBLIC mesh_material demo_materials_get_special_material(demo_materials                  materials,
+                                                         ral_context                     context,
+                                                         demo_materials_special_material special_material)
 {
-    _scene_renderer_materials* materials_ptr = reinterpret_cast<_scene_renderer_materials*>(materials);
-    mesh_material              result        = nullptr;
+    _demo_materials* materials_ptr = reinterpret_cast<_demo_materials*>(materials);
+    mesh_material    result        = nullptr;
 
     system_hash64map_get(materials_ptr->per_context_special_materials[special_material],
                          (system_hash64) context,
@@ -1493,16 +1493,16 @@ PUBLIC mesh_material scene_renderer_materials_get_special_material(scene_rendere
 }
 
 /** Please see header for specification */
-PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_materials materials,
-                                                             mesh_material            material,
-                                                             scene                    scene,
-                                                             bool                     use_shadow_maps)
+PUBLIC scene_renderer_uber demo_materials_get_uber(demo_materials materials,
+                                                   mesh_material  material,
+                                                   scene          scene,
+                                                   bool           use_shadow_maps)
 {
-    ral_context                     context                   = nullptr;
-    _scene_renderer_materials*      materials_ptr             = reinterpret_cast<_scene_renderer_materials*>(materials);
-    _scene_renderer_materials_uber* parent_materials_uber_ptr = nullptr;
-    uint32_t                        scene_index;
-    scene_renderer_uber             result                    = nullptr;
+    ral_context           context                   = nullptr;
+    _demo_materials*      materials_ptr             = reinterpret_cast<_demo_materials*>(materials);
+    _demo_materials_uber* parent_materials_uber_ptr = nullptr;
+    uint32_t              scene_index;
+    scene_renderer_uber   result                    = nullptr;
 
     mesh_material_get_property(material,
                                MESH_MATERIAL_PROPERTY_CONTEXT,
@@ -1511,9 +1511,9 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
     if ( (scene_index = system_resizable_vector_find(materials_ptr->callback_enabled_scenes,
                                                      scene) ) == ITEM_NOT_FOUND)
     {
-        _scene_renderer_materials_register_for_callbacks(materials_ptr,
-                                                         scene,
-                                                         true); /* should_register */
+        _demo_materials_register_for_callbacks(materials_ptr,
+                                               scene,
+                                               true); /* should_register */
     }
     else
     {
@@ -1528,8 +1528,8 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                           n_material < n_materials;
                         ++n_material)
         {
-            _scene_renderer_materials_uber_context_data* uber_context_data_ptr = nullptr;
-            _scene_renderer_materials_uber*              uber_ptr              = nullptr;
+            _demo_materials_uber_context_data* uber_context_data_ptr = nullptr;
+            _demo_materials_uber*              uber_ptr              = nullptr;
 
             if (system_resizable_vector_get_element_at(materials_ptr->ubers,
                                                        n_material,
@@ -1559,10 +1559,10 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
 
                 if (do_materials_match)
                 {
-                    does_material_match_scene = (scene == nullptr                                                                                ||
-                                                 scene != nullptr && _scene_renderer_materials_does_uber_match_scene(uber_context_data_ptr->uber,
-                                                                                                                  scene,
-                                                                                                                  use_shadow_maps) );
+                    does_material_match_scene = (scene == nullptr                                                                      ||
+                                                 scene != nullptr && _demo_materials_does_uber_match_scene(uber_context_data_ptr->uber,
+                                                                                                           scene,
+                                                                                                           use_shadow_maps) );
 
                     /* Do not take scene input into account if IFA shading is used */
                     mesh_material_shading material_shading = MESH_MATERIAL_SHADING_NONE;
@@ -1608,7 +1608,7 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
         /* Nope? Gotta bake a new uber then */
         if (parent_materials_uber_ptr == nullptr)
         {
-            parent_materials_uber_ptr = new _scene_renderer_materials_uber;
+            parent_materials_uber_ptr = new _demo_materials_uber;
 
             ASSERT_ALWAYS_SYNC(parent_materials_uber_ptr != nullptr,
                                "Out of memory");
@@ -1619,19 +1619,19 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
                                          parent_materials_uber_ptr);
         }
 
-        new_uber = _scene_renderer_materials_bake_uber(materials,
-                                                       material,
-                                                       scene,
-                                                       use_shadow_maps);
+        new_uber = _demo_materials_bake_uber(materials,
+                                             material,
+                                             scene,
+                                             use_shadow_maps);
 
         ASSERT_DEBUG_SYNC(new_uber != nullptr,
                           "Could not bake a new uber");
 
         if (new_uber != nullptr)
         {
-            _scene_renderer_materials_uber_context_data* new_uber_context_data_ptr = nullptr;
+            _demo_materials_uber_context_data* new_uber_context_data_ptr = nullptr;
 
-            new_uber_context_data_ptr = new (std::nothrow) _scene_renderer_materials_uber_context_data;
+            new_uber_context_data_ptr = new (std::nothrow) _demo_materials_uber_context_data;
 
             ASSERT_ALWAYS_SYNC(new_uber_context_data_ptr != nullptr,
                                "Out of memory");
@@ -1672,12 +1672,12 @@ PUBLIC scene_renderer_uber scene_renderer_materials_get_uber(scene_renderer_mate
 }
 
 /** Please see header for specification */
-PUBLIC void scene_renderer_materials_release(scene_renderer_materials materials)
+PUBLIC void demo_materials_release(demo_materials materials)
 {
     if (materials != nullptr)
     {
         /* Release the container */
-        delete reinterpret_cast<_scene_renderer_materials*>(materials);
+        delete reinterpret_cast<_demo_materials*>(materials);
 
         materials = nullptr;
     }

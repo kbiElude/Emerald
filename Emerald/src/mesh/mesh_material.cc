@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "demo/demo_app.h"
+#include "demo/demo_materials.h"
 #include "mesh/mesh_material.h"
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
@@ -15,7 +16,6 @@
 #include "scene/scene.h"
 #include "scene/scene_light.h"
 #include "scene/scene_material.h"
-#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_uber.h"
 #include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
@@ -1353,9 +1353,9 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
 
     if (material_ptr->dirty)
     {
-        scene_renderer_materials materials = nullptr;
+        demo_materials materials = nullptr;
 
-        demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+        demo_app_get_property(DEMO_APP_PROPERTY_MATERIALS,
                              &materials);
 
         LOG_INFO("Material is dirty - baking..");
@@ -1375,23 +1375,23 @@ PUBLIC EMERALD_API scene_renderer_uber mesh_material_get_uber(mesh_material mate
 
         if (material_ptr->type == MESH_MATERIAL_TYPE_GENERAL)
         {
-            material_ptr->uber_sm     = scene_renderer_materials_get_uber(materials,
-                                                                          material,
-                                                                          scene,
-                                                                          true); /* use_shadow_maps */
+            material_ptr->uber_sm     = demo_materials_get_uber(materials,
+                                                                material,
+                                                                scene,
+                                                                true); /* use_shadow_maps */
 
-            material_ptr->uber_non_sm = scene_renderer_materials_get_uber(materials,
-                                                                          material,
-                                                                          scene,
-                                                                          false); /* use_shadow_maps */
+            material_ptr->uber_non_sm = demo_materials_get_uber(materials,
+                                                                material,
+                                                                scene,
+                                                                false); /* use_shadow_maps */
         }
         else
         {
             /* SM does not affect ogl_program-driven materials */
-            material_ptr->uber_sm = scene_renderer_materials_get_uber(materials,
-                                                                      material,
-                                                                      scene,
-                                                                      true); /* use any value */
+            material_ptr->uber_sm = demo_materials_get_uber(materials,
+                                                            material,
+                                                            scene,
+                                                            true); /* use any value */
 
             material_ptr->uber_non_sm = material_ptr->uber_sm;
         }

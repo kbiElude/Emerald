@@ -13,6 +13,7 @@
 DECLARE_HANDLE(demo_app);
 DECLARE_HANDLE(demo_flyby);
 DECLARE_HANDLE(demo_loader);
+DECLARE_HANDLE(demo_materials);
 DECLARE_HANDLE(demo_timeline);
 DECLARE_HANDLE(demo_timeline_segment);
 DECLARE_HANDLE(demo_timeline_segment_graph);

@@ -35,8 +35,8 @@ typedef enum
     /* not settable; ral_scheduler */
     DEMO_APP_PROPERTY_GPU_SCHEDULER,
 
-    /* not settable; scene_renderer_materials */
-    DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+    /* not settable; demo_materials */
+    DEMO_APP_PROPERTY_MATERIALS,
 
     /* not settable; varia_primitive_renderer */
     DEMO_APP_PROPERTY_PRIMITIVE_RENDERER,

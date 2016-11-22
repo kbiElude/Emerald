@@ -5,6 +5,7 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "demo/demo_app.h"
+#include "demo/demo_materials.h"
 #include "glsl/glsl_shader_constructor.h"
 #include "mesh/mesh.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
@@ -23,7 +24,6 @@
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "scene_renderer/scene_renderer.h"
-#include "scene_renderer/scene_renderer_materials.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "scene_renderer/scene_renderer_uber.h"
 #include "system/system_log.h"
@@ -3412,19 +3412,19 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
                                                                    system_time                      frame_time,
                                                                    const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr)
 {
-    scene_renderer_materials materials          = nullptr;
-    ral_present_task         result_task        = nullptr;
-    _scene_renderer_sm*      shadow_mapping_ptr = reinterpret_cast<_scene_renderer_sm*>(shadow_mapping);
-    mesh_material            sm_material        = nullptr;
-    scene_renderer_uber      sm_material_uber   = nullptr;
+    demo_materials      materials          = nullptr;
+    ral_present_task    result_task        = nullptr;
+    _scene_renderer_sm* shadow_mapping_ptr = reinterpret_cast<_scene_renderer_sm*>(shadow_mapping);
+    mesh_material       sm_material        = nullptr;
+    scene_renderer_uber sm_material_uber   = nullptr;
 
-    demo_app_get_property(DEMO_APP_PROPERTY_MATERIAL_MANAGER,
+    demo_app_get_property(DEMO_APP_PROPERTY_MATERIALS,
                          &materials);
 
     /* Retrieve the material and associated uber, which
      * should be used for the rendering process. */
-    scene_light_shadow_map_algorithm          sm_algo             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
-    scene_renderer_materials_special_material sm_special_material = SPECIAL_MATERIAL_UNKNOWN;
+    scene_light_shadow_map_algorithm sm_algo             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+    demo_materials_special_material  sm_special_material = SPECIAL_MATERIAL_UNKNOWN;
 
     scene_light_get_property(shadow_mapping_ptr->current_light,
                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
@@ -3461,12 +3461,12 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
         }
     }
 
-    sm_material      = scene_renderer_materials_get_special_material(materials,
-                                                                     shadow_mapping_ptr->context,
-                                                                     sm_special_material);
-    sm_material_uber = mesh_material_get_uber                       (sm_material,
-                                                                     scene,
-                                                                     false); /* use_shadow_maps */
+    sm_material      = demo_materials_get_special_material(materials,
+                                                           shadow_mapping_ptr->context,
+                                                           sm_special_material);
+    sm_material_uber = mesh_material_get_uber             (sm_material,
+                                                           scene,
+                                                           false); /* use_shadow_maps */
 
     /* Configure the uber.
      *

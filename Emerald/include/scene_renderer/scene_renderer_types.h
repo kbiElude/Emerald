@@ -13,7 +13,6 @@ DECLARE_HANDLE(scene_renderer);
 DECLARE_HANDLE(scene_renderer_bbox_preview);
 DECLARE_HANDLE(scene_renderer_frustum_preview);
 DECLARE_HANDLE(scene_renderer_lights_preview);
-DECLARE_HANDLE(scene_renderer_materials);
 DECLARE_HANDLE(scene_renderer_normals_preview);
 DECLARE_HANDLE(scene_renderer_sm);
 DECLARE_HANDLE(scene_renderer_uber);

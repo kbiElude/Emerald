@@ -5,9 +5,9 @@
  */
 #include "shared.h"
 #include "demo/demo_app.h"
+#include "demo/demo_materials.h"
 #include "demo/demo_window.h"
 #include "main.h"
-#include "scene_renderer/scene_renderer_materials.h"
 #include "ral/ral_scheduler.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
@@ -19,18 +19,18 @@ typedef struct _demo_app
 {
     system_callback_manager  callback_manager;
     system_critical_section  cs;
-    scene_renderer_materials materials;
+    demo_materials           materials;
     ral_scheduler            scheduler;
     system_hash64map         window_name_to_window_map;
     varia_primitive_renderer primitive_renderer;
 
     _demo_app()
     {
-        callback_manager          = system_callback_manager_create ((_callback_id) DEMO_APP_CALLBACK_ID_COUNT);
-        cs                        = system_critical_section_create ();
-        materials                 = scene_renderer_materials_create();
-        scheduler                 = ral_scheduler_create           ();
-        window_name_to_window_map = system_hash64map_create        (sizeof(demo_window) );
+        callback_manager          = system_callback_manager_create((_callback_id) DEMO_APP_CALLBACK_ID_COUNT);
+        cs                        = system_critical_section_create();
+        materials                 = demo_materials_create         ();
+        scheduler                 = ral_scheduler_create          ();
+        window_name_to_window_map = system_hash64map_create       (sizeof(demo_window) );
     }
 
     void close()
@@ -46,7 +46,7 @@ typedef struct _demo_app
 
             if (materials != nullptr)
             {
-                scene_renderer_materials_release(materials);
+                demo_materials_release(materials);
 
                 materials = nullptr;
             }
@@ -233,9 +233,9 @@ PUBLIC EMERALD_API void demo_app_get_property(demo_app_property property,
             break;
         }
 
-        case DEMO_APP_PROPERTY_MATERIAL_MANAGER:
+        case DEMO_APP_PROPERTY_MATERIALS:
         {
-            *reinterpret_cast<scene_renderer_materials*>(out_result_ptr) = app.materials;
+            *reinterpret_cast<demo_materials*>(out_result_ptr) = app.materials;
 
             break;
         }
