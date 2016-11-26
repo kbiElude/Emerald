@@ -8,7 +8,6 @@
 
 #include "curve/curve_types.h"
 #include "mesh/mesh_types.h"
-#include "ogl/ogl_types.h"
 #include "ral/ral_types.h"
 #include "scene/scene_types.h"
 #include "scene_renderer/scene_renderer_types.h"

@@ -1,12 +1,11 @@
 /**
  *
- * Internal Emerald scene viewer (kbi/elude @2014)
+ * Emerald scene viewer (kbi/elude @2014-2016)
  *
  */
 #include "shared.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
+#include "ral/ral_rendering_handler.h"
 #include "scene/scene_camera.h"
 #include "system/system_critical_section.h"
 #include "system/system_resources.h"
@@ -14,16 +13,14 @@
 #include "ui/ui.h"
 #include "ui/ui_dropdown.h"
 #include "ui/ui_texture_preview.h"
-#include "varia/varia_text_renderer.h"
 #include "app_config.h"
 #include "include/main.h"
 #include "state.h"
 
-PRIVATE varia_text_renderer _text_renderer                = NULL;
-PRIVATE ui                  _ui                           = NULL;
-PRIVATE ui_control          _ui_active_camera_control     = NULL;
-PRIVATE ui_control          _ui_active_path_control       = NULL;
-PRIVATE ui_control          _ui_texture_preview           = NULL;
+PRIVATE ui         _ui                       = nullptr;
+PRIVATE ui_control _ui_active_camera_control = nullptr;
+PRIVATE ui_control _ui_active_path_control   = nullptr;
+PRIVATE ui_control _ui_texture_preview       = nullptr;
 
 
 /* Forward declarations */
@@ -43,17 +40,17 @@ PRIVATE void _callback_on_dropdown_switch(ui_control control,
                                           void*      callback_subscriber_data,
                                           void*      callback_data)
 {
-    ogl_rendering_handler rendering_handler = NULL;
+    ral_rendering_handler rendering_handler = nullptr;
 
     demo_window_get_property(_window,
                              DEMO_WINDOW_PROPERTY_RENDERING_HANDLER,
                             &rendering_handler);
 
-    ogl_rendering_handler_lock_bound_context(rendering_handler);
+    //ogl_rendering_handler_lock_bound_context(rendering_handler); ?
     {
         _update_controls_location();
     }
-    ogl_rendering_handler_unlock_bound_context(rendering_handler);
+    //ogl_rendering_handler_unlock_bound_context(rendering_handler);
 }
 
 /** "Active camera" dropdown call-back handler */
@@ -99,27 +96,7 @@ PRIVATE void _update_controls_location()
 /** Please see header for spec */
 PUBLIC void ui_deinit()
 {
-    if (_ui != NULL)
-    {
-        ui_release(_ui);
-
-        _ui = NULL;
-    }
-
-    if (_text_renderer != NULL)
-    {
-        varia_text_renderer_release(_text_renderer);
-
-        _text_renderer = NULL;
-    }
-}
-
-/** Please see header for spec */
-PUBLIC void ui_draw()
-{
-    ui_draw                 (_ui);
-    varia_text_renderer_draw(_context,
-                             _text_renderer);
+    /* Stub */
 }
 
 /** Please see header for spec */
@@ -137,27 +114,17 @@ PUBLIC ui_control ui_get_texture_preview_control()
 /** Please see header for spec */
 PUBLIC void ui_init()
 {
-    const float  active_camera_dropdown_x1y1[2] = {0.7f, 0.1f};
-    const float  text_default_size              = 0.5f;
-    int          window_size[2]                 = {0};
+    const float active_camera_dropdown_x1y1[2] = {0.7f, 0.1f};
+    int         window_size[2]                 = {0};
 
+#if 0
     /* Initialize components required to power UI */
-    demo_window_get_property(_window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             window_size);
-
-    ogl_context_get_property  (ral_context_get_gl_context(_context),
-                               OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
-                              &_text_renderer);
-    varia_text_renderer_retain(_text_renderer);
-
-    varia_text_renderer_set_text_string_property(_text_renderer,
-                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
-                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
-                                                &text_default_size);
-
-    _ui = ui_create(_text_renderer,
-                    system_hashed_ansi_string_create("UI") );
+    demo_window_get_property          (_window,
+                                       DEMO_WINDOW_PROPERTY_RESOLUTION,
+                                       window_size);
+    ral_rendering_handler_get_property(_rendering_handler,
+                                       RAL_RENDERING_HANDLER_PROPERTY_UI,
+                                       &_ui);
 
     /* Create camera selector */
     _ui_active_camera_control = ui_add_dropdown(_ui,
@@ -168,7 +135,7 @@ PUBLIC void ui_init()
                                                 system_hashed_ansi_string_create("Active camera:"),
                                                 active_camera_dropdown_x1y1,
                                                 _on_active_camera_changed,
-                                                NULL);
+                                                nullptr);
 
     /* Create camera path selector */
     float next_ui_control_x1y1    [2];
@@ -191,7 +158,7 @@ PUBLIC void ui_init()
                                               system_hashed_ansi_string_create("Show camera path for:"),
                                               next_ui_control_x1y1,
                                               _on_shown_camera_path_changed,
-                                              NULL);
+                                              nullptr);
 
     /* Create shadow map preview */
 #ifdef SHOW_SM_PREVIEW
@@ -199,7 +166,7 @@ PUBLIC void ui_init()
                                                  system_hashed_ansi_string_create("Texture preview"),
                                                  texture_preview_x1y1,
                                                  texture_preview_max_size,
-                                                 NULL, /* texture */
+                                                 nullptr, /* texture */
                                                  UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA);
 #endif
 
@@ -208,8 +175,7 @@ PUBLIC void ui_init()
                                  _ui_active_camera_control,
                                  UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
                                  _callback_on_dropdown_switch,
-                                 NULL); /* callback_proc_user_arg */
+                                 nullptr); /* callback_proc_user_arg */
+#endif
 }
-
-/** TODO */
 

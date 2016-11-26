@@ -3172,6 +3172,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
     raGL_backend backend_raGL                   = nullptr;
     raGL_buffer  index_buffer_raGL              = nullptr;
     uint32_t     index_buffer_raGL_start_offset = -1;
+    uint32_t     index_buffer_ral_start_offset  = -1;
     uint32_t     n_bytes_per_index              = 0;
 
     switch (command_ral_ptr->index_type)
@@ -3199,6 +3200,9 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
     raGL_buffer_get_property(index_buffer_raGL,
                              RAGL_BUFFER_PROPERTY_START_OFFSET,
                             &index_buffer_raGL_start_offset);
+    ral_buffer_get_property (command_ral_ptr->index_buffer,
+                             RAL_BUFFER_PROPERTY_START_OFFSET,
+                            &index_buffer_ral_start_offset);
 
     if (index_buffer_raGL != bake_state.vao_index_buffer)
     {
@@ -3275,14 +3279,14 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             if (command_ral_ptr->n_instances == 1)
             {
                 draw_command_ptr->draw_elements_command_info.count   = command_ral_ptr->n_indices;
-                draw_command_ptr->draw_elements_command_info.indices = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_command_info.indices = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
                 draw_command_ptr->draw_elements_command_info.type    = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
                 draw_command_ptr->type                               = RAGL_COMMAND_TYPE_DRAW_ELEMENTS;
             }
             else
             {
                 draw_command_ptr->draw_elements_instanced_command_info.count     = command_ral_ptr->n_indices;
-                draw_command_ptr->draw_elements_instanced_command_info.indices   = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_instanced_command_info.indices   = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
                 draw_command_ptr->draw_elements_instanced_command_info.primcount = command_ral_ptr->n_instances;
                 draw_command_ptr->draw_elements_instanced_command_info.type      = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
                 draw_command_ptr->type                                           = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED;
@@ -3294,7 +3298,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             {
                 draw_command_ptr->draw_elements_base_vertex_command_info.base_vertex = command_ral_ptr->base_vertex;
                 draw_command_ptr->draw_elements_base_vertex_command_info.count       = command_ral_ptr->n_indices;
-                draw_command_ptr->draw_elements_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
                 draw_command_ptr->draw_elements_base_vertex_command_info.type        = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
                 draw_command_ptr->type                                               = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_BASE_VERTEX;
             }
@@ -3302,7 +3306,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             {
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.base_vertex = command_ral_ptr->base_vertex;
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.count       = command_ral_ptr->n_indices;
-                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.primcount   = command_ral_ptr->n_instances;
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.type        = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
                 draw_command_ptr->type                                                         = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX;
@@ -3315,7 +3319,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
         {
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.base_instance = command_ral_ptr->base_instance;
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.count         = command_ral_ptr->n_indices;
-            draw_command_ptr->draw_elements_instanced_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+            draw_command_ptr->draw_elements_instanced_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.primcount     = command_ral_ptr->n_instances;
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.type          = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
             draw_command_ptr->type                                                             = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_INSTANCE;
@@ -3325,7 +3329,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.base_instance = command_ral_ptr->base_instance;
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.base_vertex   = command_ral_ptr->base_vertex;
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.count         = command_ral_ptr->n_indices;
-            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.primcount     = command_ral_ptr->n_instances;
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.type          = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
             draw_command_ptr->type                                                                         = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX_BASE_INSTANCE;
@@ -4136,12 +4140,12 @@ void _raGL_command_buffer::process_set_vertex_buffer_command(const ral_command_b
                              RAL_BUFFER_PROPERTY_START_OFFSET,
                             &buffer_ral_start_offset);
 
-    if (bake_state.vbs[attribute_ral_ptr->location].buffer_raGL  != buffer_raGL                                               ||
-        bake_state.vbs[attribute_ral_ptr->location].start_offset != command_ral_ptr->start_offset + buffer_raGL_start_offset)
+    if (bake_state.vbs[attribute_ral_ptr->location].buffer_raGL  != buffer_raGL               ||
+        bake_state.vbs[attribute_ral_ptr->location].start_offset != buffer_raGL_start_offset)
     {
         /* Need to update the VA configuration */
         bake_state.vbs[attribute_ral_ptr->location].buffer_raGL  = buffer_raGL;
-        bake_state.vbs[attribute_ral_ptr->location].start_offset = command_ral_ptr->start_offset + buffer_raGL_start_offset;
+        bake_state.vbs[attribute_ral_ptr->location].start_offset = buffer_raGL_start_offset;
         bake_state.vao_dirty                                     = true;
     }
 }
@@ -4766,11 +4770,10 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
                                            RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
                                           &primitive_type_ral);
 
-                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElements(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
-                                                                         &command_args.count,
-                                                                          command_args.type,
-                                                                         &command_args.indices,
-                                                                          1); /* primcount */
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElements(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                                                                     command_args.count,
+                                                                     command_args.type,
+                                                                     command_args.indices);
 
                 break;
             }

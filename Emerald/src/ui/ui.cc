@@ -1466,11 +1466,11 @@ PUBLIC void ui_receive_control_callback(ui         ui_instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ui_register_control_callback(ui                        ui,
-                                         ui_control                control,
-                                         int                       callback_id,
-                                         PFNUIEVENTCALLBACKPROCPTR callback_proc_ptr,
-                                         void*                     callback_proc_user_arg)
+PUBLIC EMERALD_API void ui_register_control_callback(ui                        ui,
+                                                     ui_control                control,
+                                                     int                       callback_id,
+                                                     PFNUIEVENTCALLBACKPROCPTR callback_proc_ptr,
+                                                     void*                     callback_proc_user_arg)
 {
     system_resizable_vector callback_vector      = nullptr;
     void*                   internal_control_ptr = _ui_get_internal_control_ptr(control);

@@ -21,6 +21,9 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_compare_op(ral_compare_op compare_
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_format(ral_format in_texture_format);
 
 /** TODO */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_format_type(ral_format_type in_texture_format_type);
+
+/** TODO */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_index_type(ral_index_type in_index_type);
 
 /** TODO */

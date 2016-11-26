@@ -5,9 +5,6 @@
  */
 #include "shared.h"
 #include "demo/demo_flyby.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_pipeline.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -27,22 +24,20 @@ uint32_t                   _active_camera_index          = 0;
 uint32_t                   _active_camera_path_index     = 0; /* none */
 float                      _animation_duration_float     = 0.0f;
 system_time                _animation_duration_time      = 0;
-system_critical_section    _camera_cs                    = NULL;
-void**                     _camera_indices               = NULL;
-void**                     _camera_path_indices          = NULL;
-system_hashed_ansi_string* _camera_path_names            = NULL;
-system_hashed_ansi_string* _camera_names                 = NULL;
-system_resizable_vector    _cameras                      = NULL;
-varia_curve_renderer       _curve_renderer               = NULL;
-varia_curve_item_id        _curve_renderer_item_id       = -1;
-demo_flyby                 _flyby                        = NULL;
+system_critical_section    _camera_cs                    = nullptr;
+void**                     _camera_indices               = nullptr;
+void**                     _camera_path_indices          = nullptr;
+system_hashed_ansi_string* _camera_path_names            = nullptr;
+system_hashed_ansi_string* _camera_names                 = nullptr;
+system_resizable_vector    _cameras                      = nullptr;
+//varia_curve_renderer       _curve_renderer               = nullptr;
+//varia_curve_item_id        _curve_renderer_item_id       = -1;
+demo_flyby                 _flyby                        = nullptr;
 system_time                _last_frame_time              = 0;
-ogl_pipeline               _pipeline                     = NULL;
-uint32_t                   _pipeline_stage_id            = -1;
 bool                       _playback_status              = true;
-scene                      _scene                        = NULL;
+scene                      _scene                        = nullptr;
 system_time                _scene_duration               = 0;
-scene_renderer             _scene_renderer               = NULL;
+scene_renderer             _scene_renderer               = nullptr;
 
 
 typedef struct _camera
@@ -82,13 +77,13 @@ PRIVATE void _init_cameras()
         scene_camera current_camera = scene_get_camera_by_index(_scene,
                                                                 n_camera);
 
-        ASSERT_ALWAYS_ASYNC(current_camera != NULL,
+        ASSERT_ALWAYS_ASYNC(current_camera != nullptr,
                             "Could not retrieve camera at index [%d]",
                             n_camera);
 
-        if (current_camera != NULL)
+        if (current_camera != nullptr)
         {
-            system_hashed_ansi_string current_camera_name = NULL;
+            system_hashed_ansi_string current_camera_name = nullptr;
 
             scene_camera_get_property(current_camera,
                                       SCENE_CAMERA_PROPERTY_NAME,
@@ -100,8 +95,8 @@ PRIVATE void _init_cameras()
                                                              current_camera_name,
                                                              current_camera);
 
-            ASSERT_ALWAYS_SYNC(new_camera != NULL, "Out of memory");
-            if (new_camera != NULL)
+            ASSERT_ALWAYS_SYNC(new_camera != nullptr, "Out of memory");
+            if (new_camera != nullptr)
             {
                 system_resizable_vector_push(_cameras,
                                              new_camera);
@@ -112,10 +107,10 @@ PRIVATE void _init_cameras()
     /* Add the 'flyby' camera */
     _camera* flyby_camera = new (std::nothrow) _camera(true,
                                                        system_hashed_ansi_string_create("Flyby camera"),
-                                                       NULL);
+                                                       nullptr);
 
-    ASSERT_ALWAYS_SYNC(flyby_camera != NULL, "Out of memory");
-    if (flyby_camera != NULL)
+    ASSERT_ALWAYS_SYNC(flyby_camera != nullptr, "Out of memory");
+    if (flyby_camera != nullptr)
     {
         system_resizable_vector_push(_cameras, flyby_camera);
     }
@@ -134,7 +129,7 @@ PRIVATE void _init_cameras()
                   n_camera < n_total_cameras;
                 ++n_camera)
     {
-        _camera* current_camera = NULL;
+        _camera* current_camera = nullptr;
 
         system_resizable_vector_get_element_at(_cameras,
                                                n_camera,
@@ -159,7 +154,7 @@ PRIVATE void _init_cameras()
         }
         else
         {
-            _camera* current_camera = NULL;
+            _camera* current_camera = nullptr;
 
             system_resizable_vector_get_element_at(_cameras,
                                                    n_camera - 1,
@@ -175,39 +170,32 @@ PRIVATE void _init_cameras()
 /** Please see header for spec */
 PUBLIC void state_deinit()
 {
-    if (_scene != NULL)
+    if (_scene != nullptr)
     {
         scene_release(_scene);
 
-        _scene = NULL;
+        _scene = nullptr;
     }
 
-    if (_scene_renderer != NULL)
+    if (_scene_renderer != nullptr)
     {
         scene_renderer_release(_scene_renderer);
 
-        _scene_renderer = NULL;
+        _scene_renderer = nullptr;
     }
 
-    if (_curve_renderer != NULL)
-    {
-        varia_curve_renderer_release(_curve_renderer);
+    //if (_curve_renderer != nullptr)
+    //{
+    //    varia_curve_renderer_release(_curve_renderer);
+    //
+    //    _curve_renderer = nullptr;
+    //}
 
-        _curve_renderer = NULL;
-    }
-
-    if (_pipeline != NULL)
-    {
-        ogl_pipeline_release(_pipeline);
-
-        _pipeline = NULL;
-    }
-
-    if (_cameras != NULL)
+    if (_cameras != nullptr)
     {
         while (true)
         {
-            _camera* current_camera = NULL;
+            _camera* current_camera = nullptr;
 
             if (!system_resizable_vector_pop(_cameras, &current_camera) )
             {
@@ -219,39 +207,39 @@ PUBLIC void state_deinit()
         system_resizable_vector_release(_cameras);
     }
 
-    if (_camera_cs != NULL)
+    if (_camera_cs != nullptr)
     {
         system_critical_section_release(_camera_cs);
 
-        _camera_cs = NULL;
+        _camera_cs = nullptr;
     }
 
-    if (_camera_indices != NULL)
+    if (_camera_indices != nullptr)
     {
         delete [] _camera_indices;
 
-        _camera_indices = NULL;
+        _camera_indices = nullptr;
     }
 
-    if (_camera_names != NULL)
+    if (_camera_names != nullptr)
     {
         delete [] _camera_names;
 
-        _camera_names = NULL;
+        _camera_names = nullptr;
     }
 
-    if (_camera_path_indices != NULL)
+    if (_camera_path_indices != nullptr)
     {
         delete [] _camera_path_indices;
 
-        _camera_path_indices = NULL;
+        _camera_path_indices = nullptr;
     }
 
-    if (_camera_path_names != NULL)
+    if (_camera_path_names != nullptr)
     {
         delete [] _camera_path_names;
 
-        _camera_names = NULL;
+        _camera_names = nullptr;
     }
 }
 
@@ -303,17 +291,17 @@ PUBLIC system_resizable_vector state_get_cameras()
     return _cameras;
 }
 
-/** Please see header for spec */
-PUBLIC varia_curve_renderer state_get_curve_renderer()
-{
-    return _curve_renderer;
-}
-
-/** Please see header for spec */
-PUBLIC varia_curve_item_id state_get_curve_renderer_item_id()
-{
-    return _curve_renderer_item_id;
-}
+///** Please see header for spec */
+//PUBLIC varia_curve_renderer state_get_curve_renderer()
+//{
+//    return _curve_renderer;
+//}
+//
+///** Please see header for spec */
+//PUBLIC varia_curve_item_id state_get_curve_renderer_item_id()
+//{
+//    return _curve_renderer_item_id;
+//}
 
 /** Please see header for spec */
 PUBLIC system_time state_get_last_frame_time()
@@ -331,18 +319,6 @@ PUBLIC uint32_t state_get_number_of_cameras()
                                         &result);
 
     return result;
-}
-
-/** Please see header for spec */
-PUBLIC ogl_pipeline state_get_pipeline()
-{
-    return _pipeline;
-}
-
-/** Please see header for spec */
-PUBLIC uint32_t state_get_pipeline_stage_id()
-{
-    return _pipeline_stage_id;
 }
 
 /** Please see header for spec */
@@ -371,7 +347,7 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
     const float          camera_start_position[3] = {0, 0, 0};
     const float          movement_delta           = MOVEMENT_DELTA;
     bool                 result                   = true;
-    system_file_unpacker unpacker                 = NULL;
+    system_file_unpacker unpacker                 = nullptr;
 
     /* Load the scene.
      *
@@ -384,13 +360,13 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
         const float            movement_delta   = MOVEMENT_DELTA;
         unsigned int           n_packed_files   = 0;
         unsigned int           scene_file_index = -1;
-        system_file_serializer scene_serializer = NULL;
+        system_file_serializer scene_serializer = nullptr;
 
         unpacker = system_file_unpacker_create(scene_filename);
 
-        if (unpacker == NULL)
+        if (unpacker == nullptr)
         {
-            ASSERT_ALWAYS_SYNC(unpacker != NULL,
+            ASSERT_ALWAYS_SYNC(unpacker != nullptr,
                                "Could not unpack the file called [%s]",
                                system_hashed_ansi_string_get_buffer(scene_filename) );
 
@@ -407,7 +383,7 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
                           n_packed_file < n_packed_files;
                         ++n_packed_file)
         {
-            system_hashed_ansi_string file_name = NULL;
+            system_hashed_ansi_string file_name = nullptr;
 
             system_file_unpacker_get_file_property(unpacker,
                                                    n_packed_file,
@@ -484,34 +460,21 @@ PUBLIC bool state_init(system_hashed_ansi_string scene_filename)
                             DEMO_FLYBY_PROPERTY_MOVEMENT_DELTA,
                            &movement_delta);
 
-    /* Construct the pipeline object */
-    ogl_pipeline_stage_step_declaration scene_rendering_stage_step;
-
-    _pipeline = ogl_pipeline_create(_context,
-                                    true, /* should_overlay_performance_info */
-                                    system_hashed_ansi_string_create("Pipeline") );
-
-    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
-
-    scene_rendering_stage_step.name              = system_hashed_ansi_string_create("Scene rendering");
-    scene_rendering_stage_step.pfn_callback_proc =_render_scene;
-    scene_rendering_stage_step.user_arg          = NULL;
-
-    ogl_pipeline_add_stage_step(_pipeline,
-                                _pipeline_stage_id,
-                               &scene_rendering_stage_step);
+#if 0
+    TODO
 
     /* Spawn curve renderer */
     _curve_renderer = varia_curve_renderer_create(_context,
                                                   system_hashed_ansi_string_create("Curve renderer") );
+#endif
 
 end:
     /* Release the unpacker */
-    if (unpacker != NULL)
+    if (unpacker != nullptr)
     {
         system_file_unpacker_release(unpacker);
 
-        unpacker = NULL;
+        unpacker = nullptr;
     }
 
     return result;
@@ -523,15 +486,15 @@ PUBLIC void state_lock_current_camera(scene_camera* out_current_camera,
 {
     system_critical_section_enter(_camera_cs);
     {
-        _camera* camera_ptr = NULL;
+        _camera* camera_ptr = nullptr;
 
         /* Retrieve camera descriptor */
         system_resizable_vector_get_element_at(state_get_cameras(),
                                                state_get_active_camera_index(),
                                               &camera_ptr);
 
-        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve active camera descriptor");
-        if (camera_ptr != NULL)
+        ASSERT_DEBUG_SYNC(camera_ptr != nullptr, "Could not retrieve active camera descriptor");
+        if (camera_ptr != nullptr)
         {
             *out_current_camera = camera_ptr->camera;
             *out_is_flyby       = camera_ptr->is_flyby;
@@ -554,30 +517,34 @@ PUBLIC void state_set_active_camera_path_index(unsigned int index)
 {
     _active_camera_path_index = index;
 
-    if (_curve_renderer_item_id != -1)
-    {
-        varia_curve_renderer_delete_curve(_curve_renderer,
-                                          _curve_renderer_item_id);
-
-        _curve_renderer_item_id = -1;
-    }
+    //if (_curve_renderer_item_id != -1)
+    //{
+    //    varia_curve_renderer_delete_curve(_curve_renderer,
+    //                                      _curve_renderer_item_id);
+    //
+    //    _curve_renderer_item_id = -1;
+    //}
 
     if (_active_camera_path_index != -1) /* None */
     {
         /* Retrieve the camera descriptor */
-        _camera* camera_ptr = NULL;
+        _camera* camera_ptr = nullptr;
 
         system_resizable_vector_get_element_at(_cameras,
                                                _active_camera_path_index,
                                               &camera_ptr);
 
-        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve camera descriptor");
-        if (camera_ptr != NULL)
+        ASSERT_DEBUG_SYNC(camera_ptr != nullptr, "Could not retrieve camera descriptor");
+        if (camera_ptr != nullptr)
         {
+#if 0
+
+            TODO
+
             /* Configure the curve renderer to show the camera path */
-            scene_graph_node     camera_node              = NULL;
+            scene_graph_node     camera_node              = nullptr;
             const float          curve_color[4]           = {1.0f, 1.0f, 1.0f, 1.0f};
-            scene_graph          graph                    = NULL;
+            scene_graph          graph                    = nullptr;
 
             scene_get_property(_scene,
                                SCENE_PROPERTY_GRAPH,
@@ -586,7 +553,7 @@ PUBLIC void state_set_active_camera_path_index(unsigned int index)
             camera_node = scene_graph_get_node_for_object(graph,
                                                           SCENE_OBJECT_TYPE_CAMERA,
                                                           camera_ptr->camera);
-            ASSERT_DEBUG_SYNC(camera_node != NULL,
+            ASSERT_DEBUG_SYNC(camera_node != nullptr,
                               "Could not retrieve owner node for selected camera.");
 
             _curve_renderer_item_id = varia_curve_renderer_add_scene_graph_node_curve(_curve_renderer,
@@ -596,6 +563,7 @@ PUBLIC void state_set_active_camera_path_index(unsigned int index)
                                                                                       _scene_duration,
                                                                                       15,      /* n_samples_per_second */
                                                                                       10.0f); /* view_vector_length */
+#endif
        }
     }
 }

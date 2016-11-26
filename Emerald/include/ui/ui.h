@@ -123,11 +123,11 @@ PUBLIC void ui_receive_control_callback(ui         ui_instance,
                                         void*      callback_user_arg);
 
 /** TODO */
-PUBLIC void ui_register_control_callback(ui                        ui_instance,
-                                         ui_control                control,
-                                         int                       callback_id,
-                                         PFNUIEVENTCALLBACKPROCPTR callback_proc_ptr,
-                                         void*                     callback_proc_user_arg);
+PUBLIC EMERALD_API void ui_register_control_callback(ui                        ui_instance,
+                                                     ui_control                control,
+                                                     int                       callback_id,
+                                                     PFNUIEVENTCALLBACKPROCPTR callback_proc_ptr,
+                                                     void*                     callback_proc_user_arg);
 
 /** INTERNAL USAGE ONLY.
  *

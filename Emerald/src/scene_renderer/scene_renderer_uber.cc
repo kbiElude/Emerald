@@ -642,6 +642,7 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
 
             if (item.attribute_name                        != nullptr                                              &&
                 item.attribute_name                        != system_hashed_ansi_string_get_default_empty_string() &&
+                mesh_texcoords_attribute_ral_ptr           != nullptr                                              &&
                 mesh_data_ptr->texcoords_stream_buffer_ral != nullptr)
             {
                 ral_gfx_state_vertex_attribute uv_data_va;
@@ -668,23 +669,31 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
             mesh_material            layer_pass_material = nullptr;
 
             /* Retrieve layer pass properties */
-            mesh_get_layer_pass_property(mesh,
-                                         n_layer,
-                                         n_layer_pass,
-                                         MESH_LAYER_PROPERTY_DRAW_CALL_ARGUMENTS,
-                                        &layer_pass_draw_call_args);
+            if (mesh_instance_type == MESH_TYPE_GPU_STREAM)
+            {
+                mesh_get_layer_pass_property(mesh,
+                                             n_layer,
+                                             n_layer_pass,
+                                             MESH_LAYER_PROPERTY_DRAW_CALL_ARGUMENTS,
+                                            &layer_pass_draw_call_args);
+
+                ASSERT_DEBUG_SYNC(mesh_primitive_type == RAL_PRIMITIVE_TYPE_UNKNOWN                ||
+                                  mesh_primitive_type == layer_pass_draw_call_args.primitive_type,
+                                  "All layer passes need to use the same primitive type for RAL to work correctly.");
+
+                mesh_primitive_type = (layer_pass_draw_call_args.primitive_type == RAL_PRIMITIVE_TYPE_UNKNOWN) ? RAL_PRIMITIVE_TYPE_TRIANGLES
+                                                                                                               : layer_pass_draw_call_args.primitive_type;
+            }
+            else
+            {
+                mesh_primitive_type = RAL_PRIMITIVE_TYPE_TRIANGLES;
+            }
+
             mesh_get_layer_pass_property(mesh,
                                          n_layer,
                                          n_layer_pass,
                                          MESH_LAYER_PROPERTY_MATERIAL,
                                         &layer_pass_material);
-
-            /* Make sure all layer passes use the same primitive type */
-            ASSERT_DEBUG_SYNC(mesh_primitive_type == RAL_PRIMITIVE_TYPE_UNKNOWN                ||
-                              mesh_primitive_type == layer_pass_draw_call_args.primitive_type,
-                              "All layer passes need to use the same primitive type for RAL to work correctly.");
-
-            mesh_primitive_type = layer_pass_draw_call_args.primitive_type;
 
             /* Bind shading data for each supported shading property */
             struct _attachment
@@ -2282,37 +2291,56 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
 
             /* Set up vertex buffers */
             {
-                uint32_t                                          n_vertex_buffers = 0;
+                bool                                              is_normals_input_attribute_present;
+                bool                                              is_uv_input_attribute_present;
+                bool                                              is_vertex_input_attribute_present;
+                uint32_t                                          n_vertex_buffers              = 0;
+                const system_hashed_ansi_string                   normals_attribute_name_has    = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_normal);
+                const system_hashed_ansi_string                   uv_attribute_name_has         = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_uv);
+                const system_hashed_ansi_string                   vertex_attribute_name_has     = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_vertex);
                 ral_command_buffer_set_vertex_buffer_command_info vertex_buffers[3];
 
-                if (mesh_data_ptr->normals_stream_buffer_ral != nullptr)
+                is_normals_input_attribute_present = ral_program_get_vertex_attribute_by_name(mesh_data_material_ptr->uber_ptr->program,
+                                                                                              normals_attribute_name_has,
+                                                                                              nullptr);
+                is_uv_input_attribute_present      = ral_program_get_vertex_attribute_by_name(mesh_data_material_ptr->uber_ptr->program,
+                                                                                              uv_attribute_name_has,
+                                                                                              nullptr);
+                is_vertex_input_attribute_present  = ral_program_get_vertex_attribute_by_name(mesh_data_material_ptr->uber_ptr->program,
+                                                                                              vertex_attribute_name_has,
+                                                                                              nullptr);
+
+                if (mesh_data_ptr->normals_stream_buffer_ral != nullptr &&
+                    is_normals_input_attribute_present)
                 {
                     ral_command_buffer_set_vertex_buffer_command_info* vb_ptr = vertex_buffers + n_vertex_buffers;
 
                     vb_ptr->buffer       = mesh_data_ptr->normals_stream_buffer_ral;
-                    vb_ptr->name         = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_normal);
+                    vb_ptr->name         = normals_attribute_name_has;
                     vb_ptr->start_offset = mesh_data_ptr->normals_stream_offset;
 
                     ++n_vertex_buffers;
                 }
 
-                if (mesh_data_ptr->texcoords_stream_buffer_ral != nullptr)
+                if (mesh_data_ptr->texcoords_stream_buffer_ral != nullptr &&
+                    is_uv_input_attribute_present)
                 {
                     ral_command_buffer_set_vertex_buffer_command_info* vb_ptr = vertex_buffers + n_vertex_buffers;
 
                     vb_ptr->buffer       = mesh_data_ptr->texcoords_stream_buffer_ral;
-                    vb_ptr->name         = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_uv);
+                    vb_ptr->name         = uv_attribute_name_has;
                     vb_ptr->start_offset = mesh_data_ptr->texcoords_stream_offset;
 
                     ++n_vertex_buffers;
                 }
 
-                if (mesh_data_ptr->vertex_stream_buffer_ral != nullptr)
+                if (mesh_data_ptr->vertex_stream_buffer_ral != nullptr &&
+                    is_vertex_input_attribute_present)
                 {
                     ral_command_buffer_set_vertex_buffer_command_info* vb_ptr = vertex_buffers + n_vertex_buffers;
 
                     vb_ptr->buffer       = mesh_data_ptr->vertex_stream_buffer_ral;
-                    vb_ptr->name         = system_hashed_ansi_string_create(_scene_renderer_uber_attribute_name_object_vertex);
+                    vb_ptr->name         = vertex_attribute_name_has;
                     vb_ptr->start_offset = mesh_data_ptr->vertex_stream_offset;
 
                     ++n_vertex_buffers;
@@ -2558,7 +2586,8 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
 
                             default:
                             {
-                                ASSERT_DEBUG_SYNC(false, "Unrecognized material property attachment");
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Unrecognized material property attachment");
                             }
                         }
                     }

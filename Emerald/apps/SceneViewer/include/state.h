@@ -38,10 +38,10 @@ PUBLIC void** state_get_camera_path_indices();
 PUBLIC system_hashed_ansi_string* state_get_camera_path_names();
 
 /** TODO */
-PUBLIC varia_curve_renderer state_get_curve_renderer();
+// PUBLIC varia_curve_renderer state_get_curve_renderer();
 
 /** TODO */
-PUBLIC varia_curve_item_id state_get_curve_renderer_item_id();
+// PUBLIC varia_curve_item_id state_get_curve_renderer_item_id();
 
 /** TODO */
 PUBLIC system_time state_get_last_frame_time();
@@ -55,9 +55,6 @@ PUBLIC void state_lock_current_camera(scene_camera* out_current_camera,
 
 /** TODO */
 PUBLIC uint32_t state_get_number_of_cameras();
-
-/** TODO */
-PUBLIC ogl_pipeline state_get_pipeline();
 
 /** TODO */
 PUBLIC uint32_t state_get_pipeline_stage_id();

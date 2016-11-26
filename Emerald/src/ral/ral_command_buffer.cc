@@ -1253,7 +1253,7 @@ PUBLIC EMERALD_API void ral_command_buffer_record_draw_call_indexed(ral_command_
                   n_draw_call < n_draw_calls;
                 ++n_draw_call)
     {
-        const ral_command_buffer_draw_call_indexed_command_info& src_command = draw_call_ptrs[n_draw_calls];
+        const ral_command_buffer_draw_call_indexed_command_info& src_command = draw_call_ptrs[n_draw_call];
 
         new_command_ptr                            = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool));
         new_command_ptr->draw_call_indexed_command = src_command;

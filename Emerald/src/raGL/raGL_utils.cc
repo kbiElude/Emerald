@@ -215,6 +215,29 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_compare_op(ral_compare_op compare_
 }
 
 /** Please see header for specification */
+PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_format_type(ral_format_type in_texture_format_type)
+{
+    GLenum result = GL_NONE;
+
+    switch (in_texture_format_type)
+    {
+        case RAL_FORMAT_TYPE_SFLOAT: result = GL_FLOAT;         break;
+        case RAL_FORMAT_TYPE_SINT:   result = GL_INT;           break;
+        case RAL_FORMAT_TYPE_SNORM:  result = GL_BYTE;          break;
+        case RAL_FORMAT_TYPE_UINT:   result = GL_UNSIGNED_INT;  break;
+        case RAL_FORMAT_TYPE_UNORM:  result = GL_UNSIGNED_BYTE; break;
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "ral_format_type value does not have a GL equivalent");
+        }
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_index_type(ral_index_type in_index_type)
 {
     static const GLenum results[] =

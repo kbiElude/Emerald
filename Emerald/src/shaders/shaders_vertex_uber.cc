@@ -530,13 +530,14 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(ral_context   
     /* Set the body */
     glsl_shader_constructor_set_function_body(shader_constructor,
                                               0, /* main() */
-                                              system_hashed_ansi_string_create("vec4 world_vertex_temp = model * object_vertex;\n"
-                                                                               "\n"
-                                                                               "gl_Position   = vp * world_vertex_temp;\n"
-                                                                               "world_vertex  = world_vertex_temp.xyz;\n"
-                                                                               "out_vs_normal = normalize((normal_matrix * vec4(object_normal, 0.0) ).xyz);\n"
-                                                                               "view_vector   = world_camera.xyz - world_vertex.xyz;\n"
-                                                                               "\n"));
+                                              system_hashed_ansi_string_create(
+                                                  "vec4 world_vertex_temp = model * object_vertex;\n"
+                                                  "\n"
+                                                  "gl_Position   = vp * world_vertex_temp;\n"
+                                                  "world_vertex  = world_vertex_temp.xyz;\n"
+                                                  "out_vs_normal = normalize((normal_matrix * vec4(object_normal, 0.0) ).xyz);\n"
+                                                  "view_vector   = world_camera.xyz - world_vertex.xyz;\n"
+                                                  "\n"));
 
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_vertex_uber;

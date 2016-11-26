@@ -56,7 +56,7 @@ typedef struct _raGL_vaos_vao_vertex_attribute
         result.input_rate     = attribute.input_rate;
         result.relativeoffset = attribute.offset;
         result.size           = format_n_components;
-        result.type           = raGL_utils_get_ogl_data_format_for_ral_format(attribute.format);
+        result.type           = raGL_utils_get_ogl_enum_for_ral_format_type(format_type);
 
         return result;
     }
