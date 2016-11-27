@@ -1987,7 +1987,7 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture_view(mesh_
     material_ptr->shading_properties[property].texture_data.texture_view = texture_view;
 
     /* Cache the sampler object we will need to use for the sampling process.
-     * Pass nullptr to all irrelevant arguments - we will use default GL state values
+     * Pass nullptr to all irrelevant arguments - we will use default state values
      * for these attributes.
      **/
     ral_texture_filter      mag_filter_ral;

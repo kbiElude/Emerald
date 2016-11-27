@@ -33,6 +33,8 @@ typedef struct _ral_present_task
     uint32_t                             n_group_task_input_mappings;
     uint32_t                             n_group_task_output_mappings;
     uint32_t                             n_group_task_subtasks;
+    uint32_t                             n_group_task_unique_input_mappings;
+    uint32_t                             n_group_task_unique_output_mappings;
 
     volatile uint32_t ref_counter;
 
@@ -45,25 +47,27 @@ typedef struct _ral_present_task
     explicit _ral_present_task(system_hashed_ansi_string               in_name,
                                const ral_present_task_cpu_create_info* in_create_info_ptr)
     {
-        command_buffer               = nullptr;
-        context                      = nullptr;
-        group_task_connections       = nullptr;
-        group_task_input_mappings    = nullptr;
-        group_task_output_mappings   = nullptr;
-        group_task_subtasks          = nullptr;
-        inputs                       = nullptr;
-        n_group_task_connections     = 0;
-        n_group_task_input_mappings  = 0;
-        n_group_task_output_mappings = 0;
-        n_group_task_subtasks        = 0;
-        n_inputs                     = 0;
-        n_outputs                    = 0;
-        name                         = in_name;
-        outputs                      = nullptr;
-        pfn_cpu_callback_proc        = in_create_info_ptr->pfn_cpu_task_callback_proc;
-        cpu_callback_proc_user_arg   = in_create_info_ptr->cpu_task_callback_user_arg;
-        ref_counter                  = 1;
-        type                         = RAL_PRESENT_TASK_TYPE_CPU_TASK;
+        command_buffer                      = nullptr;
+        context                             = nullptr;
+        group_task_connections              = nullptr;
+        group_task_input_mappings           = nullptr;
+        group_task_output_mappings          = nullptr;
+        group_task_subtasks                 = nullptr;
+        inputs                              = nullptr;
+        n_group_task_connections            = 0;
+        n_group_task_input_mappings         = 0;
+        n_group_task_output_mappings        = 0;
+        n_group_task_subtasks               = 0;
+        n_group_task_unique_input_mappings  = 0;
+        n_group_task_unique_output_mappings = 0;
+        n_inputs                            = 0;
+        n_outputs                           = 0;
+        name                                = in_name;
+        outputs                             = nullptr;
+        pfn_cpu_callback_proc               = in_create_info_ptr->pfn_cpu_task_callback_proc;
+        cpu_callback_proc_user_arg          = in_create_info_ptr->cpu_task_callback_user_arg;
+        ref_counter                         = 1;
+        type                                = RAL_PRESENT_TASK_TYPE_CPU_TASK;
 
         init_ios(in_create_info_ptr->n_unique_inputs,
                  in_create_info_ptr->unique_inputs,
@@ -86,24 +90,26 @@ typedef struct _ral_present_task
             context = nullptr;
         }
 
-        command_buffer               = in_create_info_ptr->command_buffer;
-        cpu_callback_proc_user_arg   = nullptr;
-        group_task_connections       = nullptr;
-        group_task_input_mappings    = nullptr;
-        group_task_output_mappings   = nullptr;
-        group_task_subtasks          = nullptr;
-        inputs                       = nullptr;
-        n_group_task_connections     = 0;
-        n_group_task_input_mappings  = 0;
-        n_group_task_output_mappings = 0;
-        n_group_task_subtasks        = 0;
-        n_inputs                     = 0;
-        n_outputs                    = 0;
-        name                         = in_name;
-        outputs                      = nullptr;
-        pfn_cpu_callback_proc        = nullptr;
-        ref_counter                  = 1;
-        type                         = RAL_PRESENT_TASK_TYPE_GPU_TASK;
+        command_buffer                      = in_create_info_ptr->command_buffer;
+        cpu_callback_proc_user_arg          = nullptr;
+        group_task_connections              = nullptr;
+        group_task_input_mappings           = nullptr;
+        group_task_output_mappings          = nullptr;
+        group_task_subtasks                 = nullptr;
+        inputs                              = nullptr;
+        n_group_task_connections            = 0;
+        n_group_task_input_mappings         = 0;
+        n_group_task_output_mappings        = 0;
+        n_group_task_subtasks               = 0;
+        n_group_task_unique_input_mappings  = 0;
+        n_group_task_unique_output_mappings = 0;
+        n_inputs                            = 0;
+        n_outputs                           = 0;
+        name                                = in_name;
+        outputs                             = nullptr;
+        pfn_cpu_callback_proc               = nullptr;
+        ref_counter                         = 1;
+        type                                = RAL_PRESENT_TASK_TYPE_GPU_TASK;
 
         init_ios(in_create_info_ptr->n_unique_inputs,
                  in_create_info_ptr->unique_inputs,
@@ -122,24 +128,26 @@ typedef struct _ral_present_task
     explicit _ral_present_task(system_hashed_ansi_string                 in_name,
                                const ral_present_task_group_create_info* in_create_info_ptr)
     {
-        command_buffer               = nullptr;
-        cpu_callback_proc_user_arg   = nullptr;
-        group_task_connections       = nullptr;
-        group_task_input_mappings    = nullptr;
-        group_task_output_mappings   = nullptr;
-        group_task_subtasks          = nullptr;
-        inputs                       = nullptr;
-        n_group_task_connections     = 0;
-        n_group_task_input_mappings  = 0;
-        n_group_task_output_mappings = 0;
-        n_group_task_subtasks        = 0;
-        n_inputs                     = 0;
-        n_outputs                    = 0;
-        name                         = in_name;
-        outputs                      = nullptr;
-        pfn_cpu_callback_proc        = nullptr;
-        ref_counter                  = 1;
-        type                         = RAL_PRESENT_TASK_TYPE_GROUP;
+        command_buffer                      = nullptr;
+        cpu_callback_proc_user_arg          = nullptr;
+        group_task_connections              = nullptr;
+        group_task_input_mappings           = nullptr;
+        group_task_output_mappings          = nullptr;
+        group_task_subtasks                 = nullptr;
+        inputs                              = nullptr;
+        n_group_task_connections            = 0;
+        n_group_task_input_mappings         = 0;
+        n_group_task_output_mappings        = 0;
+        n_group_task_subtasks               = 0;
+        n_group_task_unique_input_mappings  = 0;
+        n_group_task_unique_output_mappings = 0;
+        n_inputs                            = 0;
+        n_outputs                           = 0;
+        name                                = in_name;
+        outputs                             = nullptr;
+        pfn_cpu_callback_proc               = nullptr;
+        ref_counter                         = 1;
+        type                                = RAL_PRESENT_TASK_TYPE_GROUP;
 
         init_group_task(in_create_info_ptr);
     }
@@ -262,9 +270,11 @@ private:
             n_group_task_output_mappings = in_create_info_ptr->n_unique_output_to_ingroup_task_mappings;
         }
 
-        n_group_task_connections     = in_create_info_ptr->n_ingroup_connections;
-        n_group_task_output_mappings = in_create_info_ptr->n_unique_output_to_ingroup_task_mappings;
-        n_group_task_subtasks        = in_create_info_ptr->n_present_tasks;
+        n_group_task_connections            = in_create_info_ptr->n_ingroup_connections;
+        n_group_task_output_mappings        = in_create_info_ptr->n_unique_output_to_ingroup_task_mappings;
+        n_group_task_subtasks               = in_create_info_ptr->n_present_tasks;
+        n_group_task_unique_input_mappings  = in_create_info_ptr->n_total_unique_inputs;
+        n_group_task_unique_output_mappings = in_create_info_ptr->n_total_unique_outputs;
 
         memcpy(group_task_connections,
                in_create_info_ptr->ingroup_connections,
@@ -394,7 +404,7 @@ private:
                          * to ensure that all such IOs use the same underlying ral_buffer or ral_texture instance, and are
                          * assigned the same type of object. */
                         current_io_user = in_create_info_ptr->present_tasks[mapping.n_present_task];
-                        last_io_user    = in_create_info_ptr->present_tasks[io_last_mapping_id_ptr[mapping.group_task_io_index] ];
+                        last_io_user    = in_create_info_ptr->present_tasks[mappings[io_last_mapping_id_ptr[mapping.group_task_io_index]].n_present_task];
 
                         ASSERT_DEBUG_SYNC(current_io_user != nullptr,
                                           "Null present task specified");
@@ -421,13 +431,13 @@ private:
                                                               RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                                               (void**) &current_io_object_type)     ||
                             !ral_present_task_get_io_property(last_io_user,
-                                                              io_type,
-                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                              io_last_mapping_id_ptr[mapping.group_task_io_index],
                                                               RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
                                                               (void**) &last_io_object)             ||
                             !ral_present_task_get_io_property(last_io_user,
-                                                              io_type,
-                                                              mapping.present_task_io_index,
+                                                              RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                              io_last_mapping_id_ptr[mapping.group_task_io_index],
                                                               RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                                               (void**) &last_io_object_type) )
                         {
@@ -1566,6 +1576,26 @@ PUBLIC EMERALD_API void ral_present_task_get_property(ral_present_task          
                               "RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS query cannot be used against group present tasks.");
 
             *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_outputs;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_INPUT_MAPPINGS:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_INPUT_MAPPINGS query can only be used against group present tasks.");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_group_task_unique_input_mappings;
+
+            break;
+        }
+
+        case RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_OUTPUT_MAPPINGS:
+        {
+            ASSERT_DEBUG_SYNC(task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP,
+                              "RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_OUTPUT_MAPPINGS query can only be used against group present tasks.");
+
+            *reinterpret_cast<uint32_t*>(out_result_ptr) = task_ptr->n_group_task_unique_output_mappings;
 
             break;
         }

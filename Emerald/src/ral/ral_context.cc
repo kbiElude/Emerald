@@ -2017,7 +2017,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                                                    void* const*            in_objects)
 {
     _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
-    void*         object_ptrs[16];
+    void**        object_ptrs;
     bool          result      = false;
 
     /* Sanity checks */
@@ -2046,7 +2046,9 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
      * for those objects, whose refcounter drops to zero */
     uint32_t n_objects = 0;
 
-    ASSERT_DEBUG_SYNC(in_n_objects < sizeof(object_ptrs) / sizeof(object_ptrs[0]),
+    object_ptrs = static_cast<void**>(_malloca(sizeof(void*) * in_n_objects) );
+
+    ASSERT_DEBUG_SYNC(object_ptrs != nullptr,
                       "TODO");
 
     system_critical_section_enter(context_ptr->object_to_refcount_cs);
@@ -2181,6 +2183,11 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                                          object_ptrs);
 
 end:
+    if (object_ptrs != nullptr)
+    {
+        _freea(object_ptrs);
+    }
+
     return result;
 }
 

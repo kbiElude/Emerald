@@ -1654,11 +1654,11 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                          &subtask_type);
 
             ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
-                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_INPUT_MAPPINGS
                                                                                         : RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
                                          &n_subtask_inputs);
             ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
-                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_OUTPUT_MAPPINGS
                                                                                         : RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
                                          &n_subtask_outputs);
 
@@ -1684,11 +1684,11 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                          &subtask_type);
 
             ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
-                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_INPUT_MAPPINGS
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_INPUT_MAPPINGS
                                                                                         : RAL_PRESENT_TASK_PROPERTY_N_INPUTS,
                                          &n_task_inputs);
             ral_present_task_get_property(present_subtasks_raw[n_present_subtask],
-                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_OUTPUT_MAPPINGS
+                                          (subtask_type == RAL_PRESENT_TASK_TYPE_GROUP) ? RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_OUTPUT_MAPPINGS
                                                                                         : RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
                                          &n_task_outputs);
 
@@ -2315,10 +2315,15 @@ PRIVATE void _scene_renderer_update_uber_light_properties(scene_renderer_uber ma
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
                                     &current_light_view_matrix);
 
-            current_light_plane_diff = current_light_far_plane - current_light_near_plane;
+            if (current_light_far_plane < current_light_near_plane)
+            {
+                float temp = current_light_near_plane;
 
-            ASSERT_DEBUG_SYNC(current_light_plane_diff >= 0.0f,
-                              "Something's wrong with far/near plane distance settings for one of the lights");
+                current_light_near_plane = current_light_far_plane;
+                current_light_far_plane  = temp;
+            }
+
+            current_light_plane_diff = current_light_far_plane - current_light_near_plane;
 
             current_light_projection_matrix_data = system_matrix4x4_get_row_major_data(current_light_projection_matrix);
             current_light_view_matrix_data       = system_matrix4x4_get_row_major_data(current_light_view_matrix);

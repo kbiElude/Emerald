@@ -145,7 +145,7 @@ void _init_textures()
     color_texture_create_info.base_mipmap_height     = window_size[1];
     color_texture_create_info.base_mipmap_width      = window_size[0];
     color_texture_create_info.fixed_sample_locations = true;
-    color_texture_create_info.format                 = RAL_FORMAT_RGBA8_UNORM;
+    color_texture_create_info.format                 = RAL_FORMAT_SRGBA8_UNORM;
     color_texture_create_info.name                   = system_hashed_ansi_string_create("Color texture");
     color_texture_create_info.n_layers               = 1;
     color_texture_create_info.n_samples              = 1;

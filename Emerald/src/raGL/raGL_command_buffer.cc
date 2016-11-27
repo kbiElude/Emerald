@@ -1419,7 +1419,7 @@ void _raGL_command_buffer::bake_gfx_state()
         {GL_CULL_FACE,                 culling_enabled},
         {GL_DEPTH_CLAMP,               depth_clamp_enabled},
         {GL_DEPTH_TEST,                depth_test_enabled},
-        {GL_FRAMEBUFFER_SRGB,          false}, /* TODO: This should be enabled if there's at least one sRGB color attachment !! */
+        {GL_FRAMEBUFFER_SRGB,          true},
         {GL_COLOR_LOGIC_OP,            logic_op_enabled},
         {GL_PRIMITIVE_RESTART,         primitive_restart_enabled},
         {GL_PROGRAM_POINT_SIZE,        true},

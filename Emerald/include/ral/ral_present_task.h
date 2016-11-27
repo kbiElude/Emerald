@@ -162,6 +162,9 @@ typedef enum
 
     /* not settable; uint32_t
      *
+     * A total number of input->node mappings. Note that multiple mappings may be assigned for
+     * a single input->node relation!
+     *
      * Query is only valid for group tasks. Will result in an assertion failure if invoked for
      * other types of present tasks.
      */
@@ -187,6 +190,28 @@ typedef enum
      * for group present tasks.
      */
     RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
+
+    /* not settable; uint32_t
+     *
+     * A total number of UNIQUE input->node mappings. In other words, (result value - 1) is the
+     * largest index of an input which is assigned a mapping. Group tasks are not permitted to
+     * expose "gap" input mappings.
+     *
+     * Query is only valid for group tasks. Will result in an assertion failure if invoked for
+     * other types of present tasks.
+     */
+    RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_INPUT_MAPPINGS,
+
+    /* not settable; uint32_t
+     *
+     * A total number of UNIQUE node->output mappings. In other words, (result value - 1) is the
+     * largest index of an output which is assigned a mapping. Group tasks are not permitted to
+     * expose "gap" output mappings.
+     *
+     * Query is only valid for group tasks. Will result in an assertion failure if invoked for
+     * other types of present tasks.
+     */
+    RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_OUTPUT_MAPPINGS,
 
     /* not settable; system_hashed_ansi_string */
     RAL_PRESENT_TASK_PROPERTY_NAME,

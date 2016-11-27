@@ -752,7 +752,8 @@ PRIVATE void _scene_renderer_uber_bake_mesh_data(_scene_renderer_uber*          
                     case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                     {
                         /* Set up UV attribute data */
-                        if (attachment.shader_uv_attribute_name != nullptr)
+                        if (attachment.shader_uv_attribute_name != nullptr &&
+                            mesh_texcoords_attribute_ral_ptr    != nullptr)
                         {
                             ral_gfx_state_vertex_attribute uv_data_va;
 
@@ -2549,7 +2550,24 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
 
                             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                             {
-                                /* Nothing to do here - will be handled by the GPU task's command buffer instead */
+                                ral_sampler                                 attachment_sampler      = nullptr;
+                                ral_command_buffer_set_binding_command_info attachment_texture_binding;
+                                ral_texture_view                            attachment_texture_view = nullptr;
+
+                                mesh_material_get_shading_property_value_texture_view(layer_pass_material,
+                                                                                      attachment.property,
+                                                                                     &attachment_texture_view,
+                                                                                     &attachment_sampler);
+
+                                attachment_texture_binding.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
+                                attachment_texture_binding.name                               = system_hashed_ansi_string_create(attachment.shader_sampler_name);
+                                attachment_texture_binding.sampled_image_binding.sampler      = attachment_sampler;
+                                attachment_texture_binding.sampled_image_binding.texture_view = attachment_texture_view;
+
+                                ral_command_buffer_record_set_bindings(mesh_data_material_ptr->command_buffer,
+                                                                       1, /* n_bindings */
+                                                                      &attachment_texture_binding);
+
                                 break;
                             }
 
@@ -3606,7 +3624,7 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     result_task_create_info.n_unique_input_to_ingroup_task_mappings  = result_task_create_info.n_total_unique_inputs * n_render_command_buffers;
     result_task_create_info.n_unique_output_to_ingroup_task_mappings = n_render_unique_outputs * n_render_command_buffers;
 
-    result_task_ingroup_connections = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(n_render_command_buffers * sizeof(ral_present_task_ingroup_connection)) );
+    result_task_ingroup_connections = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(result_task_create_info.n_ingroup_connections * sizeof(ral_present_task_ingroup_connection)) );
 
     for (uint32_t n_ingroup_connection = 0;
                   n_ingroup_connection < result_task_create_info.n_ingroup_connections;
@@ -3626,7 +3644,7 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
 
     memcpy(result_present_tasks + 1,
            render_gpu_tasks,
-           sizeof(ral_present_task) * result_task_create_info.n_present_tasks);
+           sizeof(ral_present_task) * (result_task_create_info.n_present_tasks - 1));
 
 
     result_task_unique_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_input_to_ingroup_task_mappings  * sizeof(ral_present_task_group_mapping) ));
@@ -3636,9 +3654,9 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                   n_mapping < result_task_create_info.n_unique_input_to_ingroup_task_mappings;
                 ++n_mapping)
     {
-        result_task_unique_input_mappings[n_mapping].group_task_io_index   =     n_mapping % n_render_unique_inputs;
-        result_task_unique_input_mappings[n_mapping].present_task_io_index = 1 + n_mapping % n_render_unique_inputs;
-        result_task_unique_input_mappings[n_mapping].n_present_task        = 1 + n_mapping / n_render_unique_inputs;
+        result_task_unique_input_mappings[n_mapping].group_task_io_index   =     n_mapping % (n_render_unique_inputs - 1);
+        result_task_unique_input_mappings[n_mapping].present_task_io_index = 1 + n_mapping % (n_render_unique_inputs - 1);
+        result_task_unique_input_mappings[n_mapping].n_present_task        = 1 + n_mapping / (n_render_unique_inputs - 1);
     }
 
     for (uint32_t n_mapping = 0;
