@@ -117,7 +117,6 @@ PUBLIC void ui_init()
     const float active_camera_dropdown_x1y1[2] = {0.7f, 0.1f};
     int         window_size[2]                 = {0};
 
-#if 0
     /* Initialize components required to power UI */
     demo_window_get_property          (_window,
                                        DEMO_WINDOW_PROPERTY_RESOLUTION,
@@ -176,6 +175,5 @@ PUBLIC void ui_init()
                                  UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
                                  _callback_on_dropdown_switch,
                                  nullptr); /* callback_proc_user_arg */
-#endif
 }
 

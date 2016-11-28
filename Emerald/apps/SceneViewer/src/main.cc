@@ -256,11 +256,9 @@ ral_present_job _render_frame(ral_context                                       
 
             if (active_path_control != nullptr)
             {
-#if 0
                 ui_set_control_property(active_path_control,
                                         UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
                                        &new_visibility);
-#endif
             }
         }
         else

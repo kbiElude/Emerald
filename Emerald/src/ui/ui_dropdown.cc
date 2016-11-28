@@ -1422,6 +1422,7 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
 
         gfx_state_create_info.primitive_type = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
 
+        gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
         gfx_state_create_info.static_scissor_boxes_enabled         = true;
@@ -1754,10 +1755,13 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     gpu_present_task_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
     gpu_present_task_unique_output.texture_view = target_texture_view;
 
-    group_present_task_input_mapping.group_task_io_index   = 7; /* texture_view */
+    group_present_task_input_mapping.group_task_io_index   = 0;
     group_present_task_input_mapping.n_present_task        = 1;
-    group_present_task_input_mapping.present_task_io_index = 0;
-    group_present_task_output_mapping                      = group_present_task_input_mapping;
+    group_present_task_input_mapping.present_task_io_index = 7; /* texture_view */
+
+    group_present_task_output_mapping.group_task_io_index   = 0;
+    group_present_task_output_mapping.n_present_task        = 1;
+    group_present_task_output_mapping.present_task_io_index = 0; /* texture_view */
 
     gpu_present_task_create_info.command_buffer   = draw_command_buffer;
     gpu_present_task_create_info.n_unique_inputs  = sizeof(gpu_present_task_unique_inputs) / sizeof(gpu_present_task_unique_inputs[0]);
@@ -1776,9 +1780,9 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
                   n_connection < 7;
                 ++n_connection)
     {
-        group_present_task_ingroup_connections[n_connection].input_present_task_index     = 0;
+        group_present_task_ingroup_connections[n_connection].input_present_task_index     = 1;
         group_present_task_ingroup_connections[n_connection].input_present_task_io_index  = n_connection;
-        group_present_task_ingroup_connections[n_connection].output_present_task_index    = 1;
+        group_present_task_ingroup_connections[n_connection].output_present_task_index    = 0;
         group_present_task_ingroup_connections[n_connection].output_present_task_io_index = n_connection;
     }
 
@@ -1796,7 +1800,7 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     group_present_task                     = ral_present_task_create_group(system_hashed_ansi_string_create("UI dropdown control: rasterization"),
                                                                            &group_present_task_create_info);
     dropdown_ptr->last_cached_present_task = group_present_task;
-
+    result                                 = group_present_task;
 
     dummy_gpu_present_task_unique_io.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
     dummy_gpu_present_task_unique_io.texture_view = target_texture_view;
