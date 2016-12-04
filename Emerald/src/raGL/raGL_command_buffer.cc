@@ -463,34 +463,34 @@ typedef struct
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLsizei count;
     GLint   first;
+    GLenum  mode;
 
 } _raGL_command_draw_arrays_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLvoid* indirect;
+    GLenum  mode;
 
 } _raGL_command_draw_arrays_indirect_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLsizei count;
     GLint   first;
+    GLenum  mode;
     GLsizei primcount;
 
 } _raGL_command_draw_arrays_instanced_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLuint  base_instance;
     GLsizei count;
     GLint   first;
+    GLenum  mode;
     GLsizei primcount;
 
 } _raGL_command_draw_arrays_instanced_base_instance_command_info;
@@ -507,59 +507,60 @@ typedef struct
     GLint    base_vertex;
     GLsizei  count;
     GLvoid*  indices;
+    GLenum   mode;
     GLenum   type;
 } _raGL_command_draw_elements_base_vertex_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLsizei count;
     GLvoid* indices;
+    GLenum  mode;
     GLenum  type;
 } _raGL_command_draw_elements_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
+    GLenum  mode;
     GLenum  type;
 } _raGL_command_draw_elements_indirect_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLsizei count;
     GLvoid* indices;
+    GLenum  mode;
     GLsizei primcount;
     GLenum  type;
 } _raGL_command_draw_elements_instanced_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLuint  base_instance;
     GLsizei count;
     GLvoid* indices;
+    GLenum  mode;
     GLsizei primcount;
     GLenum  type;
 } _raGL_command_draw_elements_instanced_base_instance_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLuint  base_instance;
     GLint   base_vertex;
     GLsizei count;
     GLvoid* indices;
+    GLenum  mode;
     GLsizei primcount;
     GLenum  type;
 } _raGL_command_draw_elements_instanced_base_vertex_base_instance_command_info;
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLint   base_vertex;
     GLsizei count;
     GLvoid* indices;
+    GLenum  mode;
     GLsizei primcount;
     GLenum  type;
 } _raGL_command_draw_elements_instanced_base_vertex_command_info;
@@ -621,9 +622,9 @@ typedef struct
 
 typedef struct
 {
-    // mode - defined by bound gfx state
     GLsizei drawcount;
     GLvoid* indirect;
+    GLenum  mode;
     GLsizei stride;
 
 } _raGL_command_multi_draw_arrays_indirect_command_info;
@@ -632,6 +633,7 @@ typedef struct
 {
     GLsizei drawcount;
     GLvoid* indirect;
+    GLenum  mode;
     GLsizei stride;
     GLenum  type;
 
@@ -3169,11 +3171,13 @@ void _raGL_command_buffer::process_dispatch_command(const ral_command_buffer_dis
 void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_buffer_draw_call_indexed_command_info* command_ral_ptr)
 {
     /* TODO: Coalesce multiple indexed draw calls into a single multi-draw call. */
-    raGL_backend backend_raGL                   = nullptr;
-    raGL_buffer  index_buffer_raGL              = nullptr;
-    uint32_t     index_buffer_raGL_start_offset = -1;
-    uint32_t     index_buffer_ral_start_offset  = -1;
-    uint32_t     n_bytes_per_index              = 0;
+    raGL_backend       backend_raGL                   = nullptr;
+    raGL_buffer        index_buffer_raGL              = nullptr;
+    uint32_t           index_buffer_raGL_start_offset = -1;
+    uint32_t           index_buffer_ral_start_offset  = -1;
+    GLenum             primitive_type_gl;
+    ral_primitive_type primitive_type_ral;
+    uint32_t           n_bytes_per_index              = 0;
 
     switch (command_ral_ptr->index_type)
     {
@@ -3268,9 +3272,14 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
     /* Issue the draw call */
     _raGL_command* draw_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
-    raGL_buffer_get_property(index_buffer_raGL,
-                             RAGL_BUFFER_PROPERTY_START_OFFSET,
-                            &index_buffer_raGL_start_offset);
+    raGL_buffer_get_property  (index_buffer_raGL,
+                               RAGL_BUFFER_PROPERTY_START_OFFSET,
+                              &index_buffer_raGL_start_offset);
+    ral_gfx_state_get_property(bake_state.active_gfx_state,
+                               RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                              &primitive_type_ral);
+
+    primitive_type_gl = raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral);
 
     if (command_ral_ptr->base_instance == 0)
     {
@@ -3280,13 +3289,15 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             {
                 draw_command_ptr->draw_elements_command_info.count   = command_ral_ptr->n_indices;
                 draw_command_ptr->draw_elements_command_info.indices = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
-                draw_command_ptr->draw_elements_command_info.type    = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
+                draw_command_ptr->draw_elements_command_info.mode    = primitive_type_gl;
+                draw_command_ptr->draw_elements_command_info.type    = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);                
                 draw_command_ptr->type                               = RAGL_COMMAND_TYPE_DRAW_ELEMENTS;
             }
             else
             {
                 draw_command_ptr->draw_elements_instanced_command_info.count     = command_ral_ptr->n_indices;
                 draw_command_ptr->draw_elements_instanced_command_info.indices   = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_instanced_command_info.mode      = primitive_type_gl;
                 draw_command_ptr->draw_elements_instanced_command_info.primcount = command_ral_ptr->n_instances;
                 draw_command_ptr->draw_elements_instanced_command_info.type      = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
                 draw_command_ptr->type                                           = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED;
@@ -3298,6 +3309,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             {
                 draw_command_ptr->draw_elements_base_vertex_command_info.base_vertex = command_ral_ptr->base_vertex;
                 draw_command_ptr->draw_elements_base_vertex_command_info.count       = command_ral_ptr->n_indices;
+                draw_command_ptr->draw_elements_base_vertex_command_info.mode        = primitive_type_gl;
                 draw_command_ptr->draw_elements_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
                 draw_command_ptr->draw_elements_base_vertex_command_info.type        = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
                 draw_command_ptr->type                                               = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_BASE_VERTEX;
@@ -3307,6 +3319,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.base_vertex = command_ral_ptr->base_vertex;
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.count       = command_ral_ptr->n_indices;
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.indices     = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+                draw_command_ptr->draw_elements_instanced_base_vertex_command_info.mode        = primitive_type_gl;
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.primcount   = command_ral_ptr->n_instances;
                 draw_command_ptr->draw_elements_instanced_base_vertex_command_info.type        = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
                 draw_command_ptr->type                                                         = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX;
@@ -3320,6 +3333,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.base_instance = command_ral_ptr->base_instance;
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.count         = command_ral_ptr->n_indices;
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+            draw_command_ptr->draw_elements_instanced_base_instance_command_info.mode          = primitive_type_gl;
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.primcount     = command_ral_ptr->n_instances;
             draw_command_ptr->draw_elements_instanced_base_instance_command_info.type          = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
             draw_command_ptr->type                                                             = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_INSTANCE;
@@ -3330,6 +3344,7 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.base_vertex   = command_ral_ptr->base_vertex;
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.count         = command_ral_ptr->n_indices;
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.indices       = reinterpret_cast<GLvoid*>(index_buffer_raGL_start_offset + index_buffer_ral_start_offset + command_ral_ptr->first_index * n_bytes_per_index);
+            draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.mode          = primitive_type_gl;
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.primcount     = command_ral_ptr->n_instances;
             draw_command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info.type          = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
             draw_command_ptr->type                                                                         = RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX_BASE_INSTANCE;
@@ -3344,9 +3359,11 @@ void _raGL_command_buffer::process_draw_call_indexed_command(const ral_command_b
 void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_buffer_draw_call_indirect_command_info* command_ral_ptr)
 {
     /* TODO: Coalesce multiple indirect draw calls into a single multi-draw call. */
-    raGL_backend   backend_raGL      = nullptr;
-    _raGL_command* draw_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-    raGL_buffer    index_buffer_raGL = nullptr;
+    raGL_backend       backend_raGL      = nullptr;
+    _raGL_command*     draw_command_ptr  = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    raGL_buffer        index_buffer_raGL = nullptr;
+    GLenum             primitive_type_gl;
+    ral_primitive_type primitive_type_ral;
 
     ASSERT_DEBUG_SYNC(command_ral_ptr->indirect_buffer != nullptr,
                       "Indirect buffer is nullptr");
@@ -3422,6 +3439,12 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
                           "Could not update draw buffer configuration");
     }
 
+    ral_gfx_state_get_property(bake_state.active_gfx_state,
+                               RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                              &primitive_type_ral);
+
+    primitive_type_gl = raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral);
+
     if (command_ral_ptr->index_buffer == nullptr)
     {
         /* Cache draw call arguments */
@@ -3429,6 +3452,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
         command_args.drawcount = 1;
         command_args.indirect  = reinterpret_cast<GLvoid*>(command_ral_ptr->offset);
+        command_args.mode      = primitive_type_gl;
         command_args.stride    = command_ral_ptr->stride;
 
         draw_command_ptr->type = RAGL_COMMAND_TYPE_MULTI_DRAW_ARRAYS_INDIRECT;
@@ -3451,6 +3475,7 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
 
         command_args.drawcount = 1;
         command_args.indirect  = reinterpret_cast<GLvoid*>(command_ral_ptr->offset);
+        command_args.mode      = primitive_type_gl;
         command_args.stride    = command_ral_ptr->stride;
         command_args.type      = raGL_utils_get_ogl_enum_for_ral_index_type(command_ral_ptr->index_type);
 
@@ -3489,10 +3514,13 @@ void _raGL_command_buffer::process_draw_call_indirect_command(const ral_command_
                                  draw_command_ptr);
 }
 
+/** TODO */
 void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_buffer_draw_call_regular_command_info* command_ral_ptr)
 {
     /* TODO: Coalesce multiple draw calls into a single multi-draw call. */
-    _raGL_command* draw_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    _raGL_command*     draw_command_ptr   = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+    GLenum             primitive_type_gl;
+    ral_primitive_type primitive_type_ral;
 
     /* Update context state if a new GFX state has been bound */
     if (bake_state.active_gfx_state_dirty)
@@ -3502,6 +3530,12 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
         ASSERT_DEBUG_SYNC(!bake_state.active_gfx_state_dirty,
             "GFX state still marked as dirty.");
     }
+
+    ral_gfx_state_get_property(bake_state.active_gfx_state,
+                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
+                          &primitive_type_ral);
+
+    primitive_type_gl = raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral);
 
     /* Update rendertarget-related states as well. */
     if (bake_state.active_rt_attachments_dirty)
@@ -3544,6 +3578,7 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
 
         command_args.count = command_ral_ptr->n_vertices;
         command_args.first = command_ral_ptr->base_vertex;
+        command_args.mode  = primitive_type_gl;
 
         draw_command_ptr->type = RAGL_COMMAND_TYPE_DRAW_ARRAYS;
     }
@@ -3555,6 +3590,7 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
 
             command_args.count     = command_ral_ptr->n_vertices;
             command_args.first     = command_ral_ptr->base_vertex;
+            command_args.mode      = primitive_type_gl;
             command_args.primcount = command_ral_ptr->n_instances;
 
             draw_command_ptr->type = RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED;
@@ -3566,6 +3602,7 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
             command_args.base_instance = command_ral_ptr->base_instance;
             command_args.count         = command_ral_ptr->n_vertices;
             command_args.first         = command_ral_ptr->base_vertex;
+            command_args.mode          = primitive_type_gl;
             command_args.primcount     = command_ral_ptr->n_instances;
 
             draw_command_ptr->type = RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED_BASE_INSTANCE;
@@ -3841,6 +3878,8 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
         case RAL_BINDING_TYPE_STORAGE_BUFFER:
         case RAL_BINDING_TYPE_UNIFORM_BUFFER:
         {
+            ral_program                                     active_program_ral;
+            ral_program_block_type                          block_type;
             GLuint                                          bp                       = -1;
             const ral_command_buffer_buffer_binding_info&   buffer_binding_info      = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? command_ral_ptr->storage_buffer_binding : command_ral_ptr->uniform_buffer_binding;
             const GLenum                                    buffer_binding_target    = (command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BUFFER                : GL_UNIFORM_BUFFER;
@@ -3865,17 +3904,29 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             ASSERT_DEBUG_SYNC(buffer_raGL != nullptr,
                               "No raGL_buffer instance associated with the specified RAL buffer");
 
-            raGL_buffer_get_property               (buffer_raGL,
-                                                    RAGL_BUFFER_PROPERTY_ID,
-                                                   &buffer_raGL_id);
-            raGL_buffer_get_property               (buffer_raGL,
-                                                    RAGL_BUFFER_PROPERTY_START_OFFSET,
-                                                   &buffer_raGL_start_offset);
+            raGL_buffer_get_property(buffer_raGL,
+                                     RAGL_BUFFER_PROPERTY_ID,
+                                    &buffer_raGL_id);
+            raGL_buffer_get_property(buffer_raGL,
+                                     RAGL_BUFFER_PROPERTY_START_OFFSET,
+                                    &buffer_raGL_start_offset);
 
             raGL_program_get_block_property_by_name(bake_state.active_program,
                                                     command_ral_ptr->name,
                                                     RAGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
                                                    &bp);
+            raGL_program_get_property              (bake_state.active_program,
+                                                    RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
+                                                   &active_program_ral);
+
+            ral_program_get_block_property(active_program_ral,
+                                           command_ral_ptr->name,
+                                           RAL_PROGRAM_BLOCK_PROPERTY_TYPE,
+                                          &block_type);
+
+            ASSERT_DEBUG_SYNC(command_ral_ptr->binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER && block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER ||
+                              command_ral_ptr->binding_type == RAL_BINDING_TYPE_UNIFORM_BUFFER && block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                              "RAL binding type does not match the type of the specified block.");
 
             ASSERT_DEBUG_SYNC(bp != -1,
                               "Buffer name [%s] was not recognized by raGL_program.",
@@ -4688,13 +4739,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ARRAYS:
             {
                 const _raGL_command_draw_arrays_command_info& command_args = command_ptr->draw_arrays_command_info;
-                ral_primitive_type                            primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawArrays(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArrays(command_args.mode,
                                                                    command_args.first,
                                                                    command_args.count);
 
@@ -4704,13 +4750,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INDIRECT:
             {
                 const _raGL_command_draw_arrays_indirect_command_info& command_args = command_ptr->draw_arrays_indirect_command_info;
-                ral_primitive_type                                     primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysIndirect(command_args.mode,
                                                                            command_args.indirect);
 
                 break;
@@ -4719,13 +4760,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED:
             {
                 const _raGL_command_draw_arrays_instanced_command_info& command_args = command_ptr->draw_arrays_instanced_command_info;
-                ral_primitive_type                                      primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysInstanced(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysInstanced(command_args.mode,
                                                                             command_args.first,
                                                                             command_args.count,
                                                                             command_args.primcount);
@@ -4736,13 +4772,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ARRAYS_INSTANCED_BASE_INSTANCE:
             {
                 const _raGL_command_draw_arrays_instanced_base_instance_command_info& command_args = command_ptr->draw_arrays_instanced_base_instance_command_info;
-                ral_primitive_type                                                    primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysInstancedBaseInstance(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawArraysInstancedBaseInstance(command_args.mode,
                                                                                         command_args.first,
                                                                                         command_args.count,
                                                                                         command_args.primcount,
@@ -4764,13 +4795,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ELEMENTS:
             {
                 const _raGL_command_draw_elements_command_info& command_args = command_ptr->draw_elements_command_info;
-                ral_primitive_type                              primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawElements(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElements(command_args.mode,
                                                                      command_args.count,
                                                                      command_args.type,
                                                                      command_args.indices);
@@ -4781,13 +4807,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_BASE_VERTEX:
             {
                 const _raGL_command_draw_elements_base_vertex_command_info& command_args = command_ptr->draw_elements_base_vertex_command_info;
-                ral_primitive_type                                          primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsBaseVertex(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsBaseVertex(command_args.mode,
                                                                                    &command_args.count,
                                                                                     command_args.type,
                                                                                    &command_args.indices,
@@ -4800,13 +4821,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INDIRECT:
             {
                 const _raGL_command_draw_elements_indirect_command_info& command_args = command_ptr->draw_elements_indirect_command_info;
-                ral_primitive_type                                       primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsIndirect(command_args.mode,
                                                                                   command_args.type,
                                                                                   nullptr, /* indirect  */
                                                                                   1,       /* drawcount */
@@ -4818,13 +4834,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED:
             {
                 const _raGL_command_draw_elements_instanced_command_info command_args = command_ptr->draw_elements_instanced_command_info;
-                ral_primitive_type                                       primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstanced(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstanced(command_args.mode,
                                                                               command_args.count,
                                                                               command_args.type,
                                                                               command_args.indices,
@@ -4836,13 +4847,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_INSTANCE:
             {
                 const _raGL_command_draw_elements_instanced_base_instance_command_info& command_args = command_ptr->draw_elements_instanced_base_instance_command_info;
-                ral_primitive_type                                                      primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseInstance(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseInstance(command_args.mode,
                                                                                           command_args.count,
                                                                                           command_args.type,
                                                                                           command_args.indices,
@@ -4855,13 +4861,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX:
             {
                 const _raGL_command_draw_elements_instanced_base_vertex_command_info& command_args = command_ptr->draw_elements_instanced_base_vertex_command_info;
-                ral_primitive_type                                                    primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseVertex(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseVertex(command_args.mode,
                                                                                         command_args.count,
                                                                                         command_args.type,
                                                                                         command_args.indices,
@@ -4874,13 +4875,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_DRAW_ELEMENTS_INSTANCED_BASE_VERTEX_BASE_INSTANCE:
             {
                 const _raGL_command_draw_elements_instanced_base_vertex_base_instance_command_info& command_args = command_ptr->draw_elements_instanced_base_vertex_base_instance_command_info;
-                ral_primitive_type                                                                  primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseVertexBaseInstance(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLDrawElementsInstancedBaseVertexBaseInstance(command_args.mode,
                                                                                                     command_args.count,
                                                                                                     command_args.type,
                                                                                                     command_args.indices,
@@ -4975,13 +4971,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_MULTI_DRAW_ARRAYS_INDIRECT:
             {
                 const _raGL_command_multi_draw_arrays_indirect_command_info& command_args = command_ptr->multi_draw_arrays_indirect_command_info;
-                ral_primitive_type                                           primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawArraysIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawArraysIndirect(command_args.mode,
                                                                                 command_args.indirect,
                                                                                 command_args.drawcount,
                                                                                 command_args.stride);
@@ -4992,13 +4983,8 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
             case RAGL_COMMAND_TYPE_MULTI_DRAW_ELEMENTS_INDIRECT:
             {
                 const _raGL_command_multi_draw_elements_indirect_command_info& command_args = command_ptr->multi_draw_elements_indirect_command_info;
-                ral_primitive_type                                             primitive_type_ral;
 
-                ral_gfx_state_get_property(command_buffer_ptr->bake_state.active_gfx_state,
-                                           RAL_GFX_STATE_PROPERTY_PRIMITIVE_TYPE,
-                                          &primitive_type_ral);
-
-                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsIndirect(raGL_utils_get_ogl_enum_for_ral_primitive_type(primitive_type_ral),
+                command_buffer_ptr->entrypoints_ptr->pGLMultiDrawElementsIndirect(command_args.mode,
                                                                                   command_args.type,
                                                                                   command_args.indirect,
                                                                                   command_args.drawcount,

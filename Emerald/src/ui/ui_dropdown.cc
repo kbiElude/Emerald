@@ -31,6 +31,7 @@
 #define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(200) )
 #define LABEL_X_SEPARATOR_PX                  (4)
 #define MAX_N_ENTRIES_VISIBLE                 (5)
+#define MAX_N_ENTRIES_TOTAL                   (64)
 #define NONFOCUSED_BRIGHTNESS                 (1.0f)
 #define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_time_for_msec(250) )
 #define SLIDER_Y_SEPARATOR_PX                 (4)
@@ -87,7 +88,7 @@ typedef struct
     float            accumulated_wheel_delta;
 
     float            button_x1y1x2y2  [4];
-    float            drop_x1y2x2y1    [4];
+    float            drop_x1y1x2y2    [4];
     float            label_x1y1       [2];
     float            label_bg_x1y1x2y2[4];
     float            hover_ss[2];
@@ -118,7 +119,8 @@ typedef struct
 
     ral_command_buffer last_cached_command_buffer;
     ral_command_buffer last_cached_command_buffer_dummy;
-    ral_gfx_state      last_cached_gfx_state;
+    ral_gfx_state      last_cached_gfx_state_dropdown;
+    ral_gfx_state      last_cached_gfx_state_separators;
     ral_present_task   last_cached_present_task;
     ral_present_task   last_cached_present_task_dummy;
     bool               last_cached_present_task_is_droparea_visible;
@@ -152,9 +154,8 @@ typedef struct
     uint32_t                  program_label_bg_ub_vs_bo_size;
 
     ral_program               program_separator;
-    ral_program_block_buffer  program_separator_ub_vs;
-    uint32_t                  program_separator_ub_vs_bo_size;
-    uint32_t                  program_separator_x1_x2_y_ub_offset;
+    ral_program_block_buffer  program_separator_sb_vs;
+    uint32_t                  program_separator_sb_vs_bo_size;
 
     ral_program               program_slider;
     uint32_t                  program_slider_color_ub_offset;
@@ -168,7 +169,7 @@ typedef struct
     system_resizable_vector            entries;
     system_hashed_ansi_string          label_text;
     varia_text_renderer_text_string_id label_string_id;
-    varia_text_renderer                text_renderer;
+    varia_text_renderer                text_renderer; /* not owned */
     ui                                 ui_instance; /* NOT reference-counted */
 
     ui_control owner_control; /* this object, as visible for applications */
@@ -180,10 +181,10 @@ typedef struct
 static const char* ui_dropdown_bg_fragment_shader_body =
     "#version 430 core\n"
     "\n"
-    "in  vec2 uv;\n"
-    "out vec3 result;\n"
+    "layout(location = 0) in  vec2 uv;\n"
+    "                     out vec3 result;\n"
     "\n"
-    "uniform dataFS\n"
+    "layout(binding = 0) uniform dataFS\n"
     "{\n"
     "    vec2 border_width;\n"
     "    vec2 button_start_uv;\n"
@@ -199,7 +200,7 @@ static const char* ui_dropdown_bg_fragment_shader_body =
     "    {\n"
     "        result *= 0.8;\n"
     "    }\n"
-    "    if (uv.x <= button_start_uv.x)\n"
+    "    else\n"
     "    {\n"
     /* Highlighted entry? */
     "        if (uv.y >= highlighted_v1v2.x &&\n"
@@ -235,7 +236,7 @@ static const char* ui_dropdown_fragment_shader_body =
     "in  vec2 uv;\n"
     "out vec3 result;\n"
     "\n"
-    "uniform dataFS\n"
+    "layout(binding = 1) uniform dataFS\n"
     "{\n"
     "    float brightness;\n"
     "    vec2  border_width;\n"
@@ -288,9 +289,9 @@ static const char* ui_dropdown_separator_fragment_shader_body =
 static const char* ui_dropdown_separator_vertex_shader_body =
     "#version 430 core\n"
     "\n"
-    "uniform dataVS\n"
+    "layout(binding = 0) readonly buffer dataVS\n"
     "{\n"
-    "    vec3 x1_x2_y;\n"
+    "    vec3 x1_x2_y[];\n"
     "};\n"
     "\n"
     "void main()\n"
@@ -298,10 +299,10 @@ static const char* ui_dropdown_separator_vertex_shader_body =
     "    int   end = gl_VertexID % 2;\n"
     "    float x;\n"
     "\n"
-    "    if (end == 0) x = x1_x2_y.x;\n"
-    "    else          x = x1_x2_y.y;\n"
+    "    if (end == 0) x = x1_x2_y[gl_InstanceID].x;\n"
+    "    else          x = x1_x2_y[gl_InstanceID].y;\n"
     "\n"
-    "    gl_Position = vec4(x, x1_x2_y.z, 0.0, 1.0);\n"
+    "    gl_Position = vec4(x, x1_x2_y[gl_InstanceID].z, 0.0, 1.0);\n"
     "}";
 
 static const char* ui_dropdown_slider_fragment_shader_body =
@@ -322,6 +323,170 @@ static const char* ui_dropdown_slider_fragment_shader_body =
     "    result = color * vec4(1.0 - length(pow(abs(uv_ss), vec2(4.0))));\n"
     "}\n";
 
+/* Forward declarations */
+PRIVATE  void _ui_dropdown_cpu_task_callback                      (void*                                dropdown_raw_ptr);
+volatile void _ui_dropdown_fire_callback                          (system_thread_pool_callback_argument arg);
+PRIVATE  void _ui_dropdown_get_highlighted_v1v2                   (_ui_dropdown*                        dropdown_ptr,
+                                                                   bool                                 offset_by_slider_dy,
+                                                                   float*                               out_highlighted_v1v2);
+PRIVATE  void _ui_dropdown_get_selected_v1v2                      (_ui_dropdown*                        dropdown_ptr,
+                                                                   float*                               out_selected_v1v2);
+PRIVATE  void _ui_dropdown_get_slider_x1y1x2y2                    (_ui_dropdown*                        dropdown_ptr,
+                                                                   float*                               out_result);
+PRIVATE  void _ui_dropdown_init_program                           (ui                                   ui_instance,
+                                                                   _ui_dropdown*                        dropdown_ptr);
+PRIVATE  void _ui_dropdown_update_entry_positions                 (_ui_dropdown*                        dropdown_ptr);
+PRIVATE  void _ui_dropdown_update_entry_strings                   (_ui_dropdown*                        dropdown_ptr,
+                                                                   bool                                 only_update_selected_entry);
+PRIVATE  void _ui_dropdown_update_entry_visibility                (_ui_dropdown*                        dropdown_ptr);
+PRIVATE  void _ui_dropdown_update_position                        (_ui_dropdown*                        dropdown_ptr,
+                                                                   const float*                         x1y1);
+PRIVATE  void _ui_dropdown_update_separator_data_cpu_task_callback(void*                                dropdown_raw_ptr);
+
+
+/** TODO */
+PRIVATE void _ui_dropdown_cpu_task_callback(void* dropdown_raw_ptr)
+{
+    _ui_dropdown*     dropdown_ptr        = reinterpret_cast<_ui_dropdown*>(dropdown_raw_ptr);
+    float             highlighted_v1v2[2];
+    float             selected_v1v2   [2];
+    float             slider_x1y1x2y2  [4];
+    const system_time time_now            = system_time_now();
+
+    /* Update brightness if necessary */
+    float brightness = dropdown_ptr->current_gpu_brightness_level;
+
+    if (dropdown_ptr->is_hovering)
+    {
+        /* Are we transitioning? */
+        system_time transition_start = dropdown_ptr->start_hovering_time;
+        system_time transition_end   = dropdown_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
+
+        if (time_now >= transition_start &&
+            time_now <= transition_end)
+        {
+            float dt = float(time_now - transition_start) / float(NONFOCUSED_TO_FOCUSED_TRANSITION_TIME);
+
+            brightness = dropdown_ptr->start_hovering_brightness + dt * (FOCUSED_BRIGHTNESS - NONFOCUSED_BRIGHTNESS);
+
+            /* Clamp from above */
+            if (brightness > FOCUSED_BRIGHTNESS)
+            {
+                brightness = FOCUSED_BRIGHTNESS;
+            }
+        }
+        else
+        {
+            /* Past the transition time, make sure brightness is valid */
+            brightness = FOCUSED_BRIGHTNESS;
+        }
+    }
+    else
+    {
+        /* Are we transitioning? */
+        system_time transition_start = dropdown_ptr->start_hovering_time;
+        system_time transition_end   = dropdown_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
+
+        if (time_now >= transition_start &&
+            time_now <= transition_end)
+        {
+            float dt = float(time_now - transition_start) / float(FOCUSED_TO_NONFOCUSED_TRANSITION_TIME);
+
+            brightness = dropdown_ptr->start_hovering_brightness + dt * (NONFOCUSED_BRIGHTNESS - FOCUSED_BRIGHTNESS);
+
+            /* Clamp from below */
+            if (brightness < NONFOCUSED_BRIGHTNESS)
+            {
+                brightness = NONFOCUSED_BRIGHTNESS;
+            }
+        }
+        else
+        {
+            /* Past the transition time, make sure brightness is valid */
+            brightness = NONFOCUSED_BRIGHTNESS;
+        }
+    }
+
+    _ui_dropdown_get_highlighted_v1v2(dropdown_ptr, false, highlighted_v1v2);
+    _ui_dropdown_get_selected_v1v2   (dropdown_ptr,        selected_v1v2);
+
+    if (fabs(highlighted_v1v2[0]  - selected_v1v2[0]) <  1e-5f                             && /* exclude the area outside the drop area, */
+        fabs(highlighted_v1v2[1]  - selected_v1v2[1]) <  1e-5f                             ||
+        dropdown_ptr->hover_ss[0]                     <= dropdown_ptr->drop_x1y1x2y2[0]    || /* exclude the slider area */
+        dropdown_ptr->hover_ss[0]                     >= dropdown_ptr->button_x1y1x2y2[0])
+    {
+        if ( dropdown_ptr->is_lbm_on && !dropdown_ptr->is_droparea_lbm ||
+            !dropdown_ptr->is_lbm_on)
+        {
+            highlighted_v1v2[0] = 0.0f;
+            highlighted_v1v2[1] = 0.0f;
+        }
+    }
+
+    if (dropdown_ptr->current_gpu_brightness_level != brightness ||
+        dropdown_ptr->force_gpu_brightness_update)
+    {
+        dropdown_ptr->current_gpu_brightness_level = brightness;
+        dropdown_ptr->force_gpu_brightness_update  = false;
+    }
+
+    _ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
+                                     slider_x1y1x2y2);
+
+
+    bool        is_cursor_over_slider        = (dropdown_ptr->hover_ss[0] >= slider_x1y1x2y2[0] && dropdown_ptr->hover_ss[0] <= slider_x1y1x2y2[2] &&
+                                                dropdown_ptr->hover_ss[1] >= slider_x1y1x2y2[3] && dropdown_ptr->hover_ss[1] <= slider_x1y1x2y2[1] ||
+                                                dropdown_ptr->is_slider_lbm);
+    const float new_brightness_uniform_value = brightness * ((dropdown_ptr->is_lbm_on && dropdown_ptr->is_button_lbm) ? CLICK_BRIGHTNESS_MODIFIER : 1);
+    const float slider_color[4]              =
+    {
+        is_cursor_over_slider ? 1.0f : 0.5f,
+        is_cursor_over_slider ? 1.0f : 0.5f,
+        is_cursor_over_slider ? 1.0f : 0.5f,
+        1.0f
+    };
+
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
+                                                           dropdown_ptr->program_brightness_ub_offset,
+                                                          &new_brightness_uniform_value,
+                                                           sizeof(float) );
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_ub_vs,
+                                                           dropdown_ptr->program_x1y1x2y2_ub_offset,
+                                                           dropdown_ptr->x1y1x2y2,
+                                                           sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
+                                                           dropdown_ptr->program_bg_highlighted_v1v2_ub_offset,
+                                                           highlighted_v1v2,
+                                                           sizeof(float) * 2);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
+                                                           dropdown_ptr->program_bg_selected_v1v2_ub_offset,
+                                                           selected_v1v2,
+                                                           sizeof(float) * 2);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_vs,
+                                                           dropdown_ptr->program_bg_x1y1x2y2_ub_offset,
+                                                           dropdown_ptr->drop_x1y1x2y2,
+                                                           sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_label_bg_ub_vs,
+                                                           dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset,
+                                                           dropdown_ptr->label_bg_x1y1x2y2,
+                                                           sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_fs,
+                                                           dropdown_ptr->program_slider_color_ub_offset,
+                                                           slider_color,
+                                                           sizeof(float) * 4);
+    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_vs,
+                                                           dropdown_ptr->program_slider_x1y1x2y2_ub_offset,
+                                                           slider_x1y1x2y2,
+                                                           sizeof(float) * 4);
+
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_bg_ub_fs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_bg_ub_vs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_label_bg_ub_vs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_slider_ub_fs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_slider_ub_vs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_ub_fs);
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_ub_vs);
+}
 
 /** TODO */
 volatile void _ui_dropdown_fire_callback(system_thread_pool_callback_argument arg)
@@ -355,7 +520,7 @@ PRIVATE void _ui_dropdown_get_highlighted_v1v2(_ui_dropdown* dropdown_ptr,
 
     if (dropdown_ptr->slider_height < 1.0f)
     {
-        slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
+        slider_height_ss = (dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1]) * (1.0f - dropdown_ptr->slider_height);
     }
     else
     {
@@ -363,14 +528,14 @@ PRIVATE void _ui_dropdown_get_highlighted_v1v2(_ui_dropdown* dropdown_ptr,
     }
 
     const float slider_dy = -(dropdown_ptr->slider_delta_y + dropdown_ptr->slider_delta_y_base) / slider_height_ss;
-    float       v         =  1.0f - (dropdown_ptr->hover_ss[1] - dropdown_ptr->drop_x1y2x2y1[3]) /
-                                    (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]);
+    float       v         =  1.0f - (dropdown_ptr->hover_ss[1]      - dropdown_ptr->drop_x1y1x2y2[1]) /
+                                    (dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1]);
 
     float entries_skipped_ss  = slider_dy * float(n_entries - MAX_N_ENTRIES_VISIBLE - 1);
-    int   n_entry_highlighted = 1 + int(entries_skipped_ss + v * float(MAX_N_ENTRIES_VISIBLE));
+    int   n_entry_highlighted = int(entries_skipped_ss + v * float(MAX_N_ENTRIES_VISIBLE));
 
     /* Store the result */
-    out_highlighted_v1v2[0] = 1.0f - float(n_entry_highlighted) / float(MAX_N_ENTRIES_VISIBLE);
+    out_highlighted_v1v2[0] = float(n_entry_highlighted) / float(MAX_N_ENTRIES_VISIBLE);
     out_highlighted_v1v2[1] = out_highlighted_v1v2[0] + 1.0f / float(MAX_N_ENTRIES_VISIBLE);
 
     if (!offset_by_slider_dy)
@@ -390,12 +555,12 @@ PRIVATE void _ui_dropdown_get_selected_v1v2(_ui_dropdown* dropdown_ptr,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_entries);
 
-    const float        slider_height_ss   =  (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
-    const float        slider_dy          = -(dropdown_ptr->slider_delta_y + dropdown_ptr->slider_delta_y_base) / slider_height_ss;
+    const float        slider_height_ss   =  (dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1])    * (dropdown_ptr->slider_height);
+    const float        slider_dy          = -(dropdown_ptr->slider_delta_y   + dropdown_ptr->slider_delta_y_base) / slider_height_ss;
     float              entries_skipped_ss = slider_dy * float(n_entries - MAX_N_ENTRIES_VISIBLE - 1);
 
     /* Store the result */
-    out_selected_v1v2[0] = 1.0f - float(dropdown_ptr->n_selected_entry + 1) / float(MAX_N_ENTRIES_VISIBLE);
+    out_selected_v1v2[0] = float(dropdown_ptr->n_selected_entry) / float(MAX_N_ENTRIES_VISIBLE);
     out_selected_v1v2[1] = out_selected_v1v2[0] + 1.0f / float(MAX_N_ENTRIES_VISIBLE);
 
     out_selected_v1v2[0] += entries_skipped_ss / float(MAX_N_ENTRIES_VISIBLE);
@@ -407,15 +572,15 @@ PRIVATE void _ui_dropdown_get_slider_x1y1x2y2(_ui_dropdown* dropdown_ptr,
                                               float*        out_result)
 {
     out_result[0] = dropdown_ptr->slider_x1x2[0];
-    out_result[1] = dropdown_ptr->drop_x1y2x2y1[1]   -
+    out_result[1] = dropdown_ptr->drop_x1y1x2y2[3]   -
                     dropdown_ptr->slider_separator_y +
                     dropdown_ptr->slider_delta_y     +
                     dropdown_ptr->slider_delta_y_base;
     out_result[2] = dropdown_ptr->slider_x1x2[1];
-    out_result[3] = dropdown_ptr->drop_x1y2x2y1[3]       +
+    out_result[3] = dropdown_ptr->drop_x1y1x2y2[1]       +
                     dropdown_ptr->slider_separator_y     +
-                    (dropdown_ptr->drop_x1y2x2y1[1]      -
-                     dropdown_ptr->drop_x1y2x2y1[3])     *
+                    (dropdown_ptr->drop_x1y1x2y2[3]      -
+                     dropdown_ptr->drop_x1y1x2y2[1])     *
                     (1.0f - dropdown_ptr->slider_height) +
                     dropdown_ptr->slider_delta_y         +
                     dropdown_ptr->slider_delta_y_base;
@@ -695,7 +860,7 @@ PRIVATE void _ui_dropdown_update_entry_positions(_ui_dropdown* dropdown_ptr)
                                                    n_entry,
                                                   &entry_ptr) )
         {
-            const float slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] + float(SLIDER_Y_SEPARATOR_PX) / window_size[1]);
+            const float slider_height_ss = (dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1] + float(SLIDER_Y_SEPARATOR_PX) / window_size[1]);
 
             int new_xy[] =
             {
@@ -743,10 +908,10 @@ PRIVATE void _ui_dropdown_update_entry_strings(_ui_dropdown* dropdown_ptr,
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                window_size);
 
-    const GLint scissor_box[] = {(GLint) ( dropdown_ptr->drop_x1y2x2y1[0]  * window_size[0]),
-                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[3]) * window_size[1]),
-                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[2] - dropdown_ptr->drop_x1y2x2y1[0]) * window_size[0]),
-                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * window_size[1])};
+    const GLint scissor_box[] = {(GLint) ( dropdown_ptr->drop_x1y1x2y2[0]  * window_size[0]),
+                                 (GLint) ((dropdown_ptr->drop_x1y1x2y2[1]) * window_size[1]),
+                                 (GLint) ((dropdown_ptr->drop_x1y1x2y2[2] - dropdown_ptr->drop_x1y1x2y2[0]) * window_size[0]),
+                                 (GLint) ((dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1]) * window_size[1])};
 
     for (uint32_t n_entry = 0;
                   n_entry < n_strings;
@@ -890,6 +1055,7 @@ PRIVATE void _ui_dropdown_update_entry_visibility(_ui_dropdown* dropdown_ptr)
     }
 }
 
+/** TODO */
 PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
                                           const float*  x1y1)
 {
@@ -969,10 +1135,10 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
     dropdown_ptr->button_x1y1x2y2[1]  = dropdown_ptr->x1y1x2y2[1];
     dropdown_ptr->button_x1y1x2y2[2]  = dropdown_ptr->x1y1x2y2[2];
     dropdown_ptr->button_x1y1x2y2[3]  = dropdown_ptr->x1y1x2y2[3];
-    dropdown_ptr->drop_x1y2x2y1[0]    = dropdown_ptr->x1y1x2y2[0];
-    dropdown_ptr->drop_x1y2x2y1[1]    = dropdown_ptr->x1y1x2y2[1] + 1.0f / window_size[1];
-    dropdown_ptr->drop_x1y2x2y1[2]    = dropdown_ptr->x1y1x2y2[2];
-    dropdown_ptr->drop_x1y2x2y1[3]    = dropdown_ptr->drop_x1y2x2y1[1] - float((MAX_N_ENTRIES_VISIBLE) * dropdown_ptr->separator_delta_y);
+    dropdown_ptr->drop_x1y1x2y2[0]    = dropdown_ptr->x1y1x2y2[0];
+    dropdown_ptr->drop_x1y1x2y2[2]    = dropdown_ptr->x1y1x2y2[2];
+    dropdown_ptr->drop_x1y1x2y2[3]    = dropdown_ptr->x1y1x2y2[1]      + 1.0f / window_size[1];
+    dropdown_ptr->drop_x1y1x2y2[1]    = dropdown_ptr->drop_x1y1x2y2[3] - float((MAX_N_ENTRIES_VISIBLE) * dropdown_ptr->separator_delta_y);
 
     if (dropdown_ptr->slider_height > 1.0f)
     {
@@ -980,7 +1146,7 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
     }
 
     /* Update slider position */
-    const float droparea_button_start_u = dropdown_ptr->drop_x1y2x2y1[2] - float(BUTTON_WIDTH_PX) / float(window_size[0]);
+    const float droparea_button_start_u = dropdown_ptr->drop_x1y1x2y2[2] - float(BUTTON_WIDTH_PX) / float(window_size[0]);
 
     dropdown_ptr->slider_x1x2[0] = droparea_button_start_u      + (BUTTON_WIDTH_PX - float(SLIDER_WIDTH_PX)) / float(window_size[0]) * 0.5f;
     dropdown_ptr->slider_x1x2[1] = dropdown_ptr->slider_x1x2[0] + float(SLIDER_WIDTH_PX)                     / float(window_size[0]);
@@ -1050,6 +1216,62 @@ PRIVATE void _ui_dropdown_update_position(_ui_dropdown* dropdown_ptr,
     dropdown_ptr->label_bg_x1y1x2y2[3] = 1.0f - x1y1[1];
 }
 
+/** TODO */
+PRIVATE void _ui_dropdown_update_separator_data_cpu_task_callback(void* dropdown_raw_ptr)
+{
+    _ui_dropdown* dropdown_ptr     = reinterpret_cast<_ui_dropdown*>(dropdown_raw_ptr);
+    uint32_t      n_entries        = 0;
+    unsigned int  n_separators     = 0;
+    const float   slider_height_ss = (dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1]) * (1.0f - dropdown_ptr->slider_height);
+    system_window window                         = nullptr;
+    int           window_size[2];
+
+    ral_context_get_property            (dropdown_ptr->context,
+                                         RAL_CONTEXT_PROPERTY_WINDOW_SYSTEM,
+                                        &window);
+    system_window_get_property          (window,
+                                         SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                         window_size);
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
+
+    for (unsigned int n_entry = 0;
+                      n_entry < n_entries;
+                    ++n_entry)
+    {
+        _ui_dropdown_entry* entry_ptr = nullptr;
+
+        if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
+                                                   n_entry,
+                                                  &entry_ptr) )
+        {
+            float x1_x2_y[] =
+            {
+                -1.0f + 2.0f * dropdown_ptr->drop_x1y1x2y2[0],
+                -1.0f + 2.0f * dropdown_ptr->button_x1y1x2y2[0],
+                (1.0f - entry_ptr->text_y / float(window_size[1]))
+            };
+
+            if (x1_x2_y[2] >= dropdown_ptr->drop_x1y1x2y2[1] &&
+                x1_x2_y[2] <= dropdown_ptr->drop_x1y1x2y2[3])
+            {
+                x1_x2_y[2] = -1.0f + 2.0f * x1_x2_y[2];
+
+                ral_program_block_buffer_set_arrayed_variable_value(dropdown_ptr->program_separator_sb_vs,
+                                                                    0, /* block_variable_offset */
+                                                                    x1_x2_y,
+                                                                    sizeof(float) * 3,
+                                                                    n_entry, /* dst_array_start_index */
+                                                                    1);      /* dst_array_item_count  */
+            }
+        }
+    }
+
+    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_separator_sb_vs);
+}
+
+
 /** Please see header for specification */
 PUBLIC void ui_dropdown_deinit(void* internal_instance)
 {
@@ -1063,7 +1285,7 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
         &ui_dropdown_ptr->program_bg_ub_fs,
         &ui_dropdown_ptr->program_bg_ub_vs,
         &ui_dropdown_ptr->program_label_bg_ub_vs,
-        &ui_dropdown_ptr->program_separator_ub_vs,
+        &ui_dropdown_ptr->program_separator_sb_vs,
         &ui_dropdown_ptr->program_slider_ub_fs,
         &ui_dropdown_ptr->program_slider_ub_vs,
     };
@@ -1072,9 +1294,10 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
         &ui_dropdown_ptr->last_cached_command_buffer,
         &ui_dropdown_ptr->last_cached_command_buffer_dummy
     };
-    ral_gfx_state* gfx_states_to_release[] =
+    ral_gfx_state gfx_states_to_release[] =
     {
-        &ui_dropdown_ptr->last_cached_gfx_state,
+        ui_dropdown_ptr->last_cached_gfx_state_dropdown,
+        ui_dropdown_ptr->last_cached_gfx_state_separators,
     };
     ral_present_task* present_tasks_to_release[] =
     {
@@ -1143,7 +1366,10 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
     {
         if (*command_buffers_to_release[n_command_buffer] != nullptr)
         {
-            ral_command_buffer_release(*command_buffers_to_release[n_command_buffer]);
+            ral_context_delete_objects(ui_dropdown_ptr->context,
+                                       RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(command_buffers_to_release[n_command_buffer]) );
 
             *command_buffers_to_release[n_command_buffer] = nullptr;
         }
@@ -1169,149 +1395,6 @@ PUBLIC void ui_dropdown_deinit(void* internal_instance)
     delete ui_dropdown_ptr;
 }
 
-PRIVATE void _ui_dropdown_cpu_task_callback(void* dropdown_raw_ptr)
-{
-    _ui_dropdown*     dropdown_ptr        = reinterpret_cast<_ui_dropdown*>(dropdown_raw_ptr);
-    float             highlighted_v1v2[2];
-    float             selected_v1v2   [2];
-    float             slider_x1y1x2y2  [4];
-    const system_time time_now            = system_time_now();
-
-    /* Update brightness if necessary */
-    float brightness = dropdown_ptr->current_gpu_brightness_level;
-
-    if (dropdown_ptr->is_hovering)
-    {
-        /* Are we transiting? */
-        system_time transition_start = dropdown_ptr->start_hovering_time;
-        system_time transition_end   = dropdown_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
-
-        if (time_now >= transition_start &&
-            time_now <= transition_end)
-        {
-            float dt = float(time_now - transition_start) / float(NONFOCUSED_TO_FOCUSED_TRANSITION_TIME);
-
-            brightness = dropdown_ptr->start_hovering_brightness + dt * (FOCUSED_BRIGHTNESS - NONFOCUSED_BRIGHTNESS);
-
-            /* Clamp from above */
-            if (brightness > FOCUSED_BRIGHTNESS)
-            {
-                brightness = FOCUSED_BRIGHTNESS;
-            }
-        }
-        else
-        {
-            /* Past the transition time, make sure brightness is valid */
-            brightness = FOCUSED_BRIGHTNESS;
-        }
-    }
-    else
-    {
-        /* Are we transiting? */
-        system_time transition_start = dropdown_ptr->start_hovering_time;
-        system_time transition_end   = dropdown_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
-
-        if (time_now >= transition_start &&
-            time_now <= transition_end)
-        {
-            float dt = float(time_now - transition_start) / float(FOCUSED_TO_NONFOCUSED_TRANSITION_TIME);
-
-            brightness = dropdown_ptr->start_hovering_brightness + dt * (NONFOCUSED_BRIGHTNESS - FOCUSED_BRIGHTNESS);
-
-            /* Clamp from below */
-            if (brightness < NONFOCUSED_BRIGHTNESS)
-            {
-                brightness = NONFOCUSED_BRIGHTNESS;
-            }
-        }
-        else
-        {
-            /* Past the transition time, make sure brightness is valid */
-            brightness = NONFOCUSED_BRIGHTNESS;
-        }
-    }
-
-    _ui_dropdown_get_highlighted_v1v2(dropdown_ptr, false, highlighted_v1v2);
-    _ui_dropdown_get_selected_v1v2   (dropdown_ptr,        selected_v1v2);
-
-    if (fabs(highlighted_v1v2[0]  - selected_v1v2[0]) <  1e-5f                             && /* exclude the area outside the drop area, */
-        fabs(highlighted_v1v2[1]  - selected_v1v2[1]) <  1e-5f                             ||
-        dropdown_ptr->hover_ss[0]                     <= dropdown_ptr->drop_x1y2x2y1[0]    || /* exclude the slider area */
-        dropdown_ptr->hover_ss[0]                     >= dropdown_ptr->button_x1y1x2y2[0])
-    {
-        if ( dropdown_ptr->is_lbm_on && !dropdown_ptr->is_droparea_lbm ||
-            !dropdown_ptr->is_lbm_on)
-        {
-            highlighted_v1v2[0] = 0.0f;
-            highlighted_v1v2[1] = 0.0f;
-        }
-    }
-
-    if (dropdown_ptr->current_gpu_brightness_level != brightness ||
-        dropdown_ptr->force_gpu_brightness_update)
-    {
-        dropdown_ptr->current_gpu_brightness_level = brightness;
-        dropdown_ptr->force_gpu_brightness_update  = false;
-    }
-
-    _ui_dropdown_get_slider_x1y1x2y2(dropdown_ptr,
-                                 slider_x1y1x2y2);
-
-
-    bool        is_cursor_over_slider        = (dropdown_ptr->hover_ss[0] >= slider_x1y1x2y2[0] && dropdown_ptr->hover_ss[0] <= slider_x1y1x2y2[2] &&
-                                                dropdown_ptr->hover_ss[1] >= slider_x1y1x2y2[3] && dropdown_ptr->hover_ss[1] <= slider_x1y1x2y2[1] ||
-                                                dropdown_ptr->is_slider_lbm);
-    const float new_brightness_uniform_value = brightness * ((dropdown_ptr->is_lbm_on && dropdown_ptr->is_button_lbm) ? CLICK_BRIGHTNESS_MODIFIER : 1);
-    const float slider_color[4]              =
-    {
-        is_cursor_over_slider ? 1.0f : 0.5f,
-        is_cursor_over_slider ? 1.0f : 0.5f,
-        is_cursor_over_slider ? 1.0f : 0.5f,
-        1.0f
-    };
-
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_ub_fs,
-                                                           dropdown_ptr->program_brightness_ub_offset,
-                                                          &new_brightness_uniform_value,
-                                                           sizeof(float) );
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_ub_vs,
-                                                           dropdown_ptr->program_x1y1x2y2_ub_offset,
-                                                           dropdown_ptr->x1y1x2y2,
-                                                           sizeof(float) * 4);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                           dropdown_ptr->program_bg_highlighted_v1v2_ub_offset,
-                                                           highlighted_v1v2,
-                                                           sizeof(float) * 2);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_fs,
-                                                           dropdown_ptr->program_bg_selected_v1v2_ub_offset,
-                                                           selected_v1v2,
-                                                           sizeof(float) * 2);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_bg_ub_vs,
-                                                           dropdown_ptr->program_bg_x1y1x2y2_ub_offset,
-                                                           dropdown_ptr->drop_x1y2x2y1,
-                                                           sizeof(float) * 4);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_label_bg_ub_vs,
-                                                           dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset,
-                                                           dropdown_ptr->label_bg_x1y1x2y2,
-                                                           sizeof(float) * 4);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_fs,
-                                                           dropdown_ptr->program_slider_color_ub_offset,
-                                                           slider_color,
-                                                           sizeof(float) * 4);
-    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_slider_ub_vs,
-                                                           dropdown_ptr->program_slider_x1y1x2y2_ub_offset,
-                                                           slider_x1y1x2y2,
-                                                           sizeof(float) * 4);
-
-    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_bg_ub_fs);
-    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_bg_ub_vs);
-    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_label_bg_ub_vs);
-    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_slider_ub_fs);
-    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_slider_ub_vs);
-    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_ub_fs);
-    ral_program_block_buffer_sync_immediately(dropdown_ptr->program_ub_vs);
-}
-
 /** Please see header for specification */
 PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_instance,
                                                      ral_texture_view target_texture_view)
@@ -1320,11 +1403,13 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     ral_buffer       program_bg_ub_fs_bo_ral        = nullptr;
     ral_buffer       program_bg_ub_vs_bo_ral        = nullptr;
     ral_buffer       program_label_bg_ub_vs_bo_ral  = nullptr;
+    ral_buffer       program_separator_sb_vs_bo     = nullptr;
     ral_buffer       program_slider_ub_fs_bo_ral    = nullptr;
     ral_buffer       program_slider_ub_vs_bo_ral    = nullptr;
     ral_buffer       program_ub_fs_bo_ral           = nullptr;
     ral_buffer       program_ub_vs_bo_ral           = nullptr;
     ral_present_task result                         = nullptr;
+    ral_present_task separator_data_update_cpu_task = nullptr;
     uint32_t         target_texture_view_size[2];
     system_window    window                         = nullptr;
     int              window_size[2];
@@ -1379,30 +1464,41 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     }
 
     /* Can we re-use recently used gfx state? */
-    if (dropdown_ptr->last_cached_gfx_state != nullptr)
+    if (dropdown_ptr->last_cached_gfx_state_dropdown   != nullptr &&
+        dropdown_ptr->last_cached_gfx_state_separators != nullptr)
     {
         ral_command_buffer_set_viewport_command_info gfx_state_viewport;
 
-        ral_gfx_state_get_property(dropdown_ptr->last_cached_gfx_state,
+        ral_gfx_state_get_property(dropdown_ptr->last_cached_gfx_state_dropdown,
                                    RAL_GFX_STATE_PROPERTY_STATIC_VIEWPORTS,
                                   &gfx_state_viewport);
 
         if (gfx_state_viewport.size[0] != target_texture_view_size[0] ||
             gfx_state_viewport.size[1] != target_texture_view_size[1])
         {
+            ral_gfx_state gfx_states_to_release[] =
+            {
+                dropdown_ptr->last_cached_gfx_state_dropdown,
+                dropdown_ptr->last_cached_gfx_state_separators,
+            };
+            const uint32_t n_gfx_states_to_release = sizeof(gfx_states_to_release) / sizeof(gfx_states_to_release[0]);
+
             ral_context_delete_objects(dropdown_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
-                                       1, /* n_objects */
-                                       reinterpret_cast<void* const*>(&dropdown_ptr->last_cached_gfx_state) );
+                                       n_gfx_states_to_release,
+                                       reinterpret_cast<void* const*>(gfx_states_to_release) );
 
-            dropdown_ptr->last_cached_gfx_state = nullptr;
+            dropdown_ptr->last_cached_gfx_state_dropdown   = nullptr;
+            dropdown_ptr->last_cached_gfx_state_separators = nullptr;
         }
     }
 
     /* Bake gfx_state instance if needed .. */
-    if (dropdown_ptr->last_cached_gfx_state == nullptr)
+    if (dropdown_ptr->last_cached_gfx_state_dropdown   == nullptr ||
+        dropdown_ptr->last_cached_gfx_state_separators == nullptr)
     {
-        ral_gfx_state_create_info                       gfx_state_create_info;
+        ral_gfx_state_create_info                       gfx_state_create_info_items[2];
+        ral_gfx_state                                   result_gfx_states          [2];
         ral_command_buffer_set_scissor_box_command_info scissor_box;
         ral_command_buffer_set_viewport_command_info    viewport;
 
@@ -1420,19 +1516,24 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
         viewport.xy  [0]        = 0;
         viewport.xy  [1]        = 0;
 
-        gfx_state_create_info.primitive_type = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+        gfx_state_create_info_items[0].primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+        gfx_state_create_info_items[0].scissor_test                         = true;
+        gfx_state_create_info_items[0].static_n_scissor_boxes_and_viewports = 1;
+        gfx_state_create_info_items[0].static_scissor_boxes                 = &scissor_box;
+        gfx_state_create_info_items[0].static_scissor_boxes_enabled         = true;
+        gfx_state_create_info_items[0].static_viewports                     = &viewport;
+        gfx_state_create_info_items[0].static_viewports_enabled             = true;
 
-        gfx_state_create_info.scissor_test                         = true;
-        gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
-        gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
-        gfx_state_create_info.static_scissor_boxes_enabled         = true;
-        gfx_state_create_info.static_viewports                     = &viewport;
-        gfx_state_create_info.static_viewports_enabled             = true;
+        gfx_state_create_info_items[1]                = gfx_state_create_info_items[0];
+        gfx_state_create_info_items[1].primitive_type = RAL_PRIMITIVE_TYPE_LINES;
 
         ral_context_create_gfx_states(dropdown_ptr->context,
-                                      1, /* n_create_info_items */
-                                     &gfx_state_create_info,
-                                     &dropdown_ptr->last_cached_gfx_state);
+                                      sizeof(gfx_state_create_info_items) / sizeof(gfx_state_create_info_items[0]),
+                                      gfx_state_create_info_items,
+                                      result_gfx_states);
+
+        dropdown_ptr->last_cached_gfx_state_dropdown   = result_gfx_states[0];
+        dropdown_ptr->last_cached_gfx_state_separators = result_gfx_states[1];
     }
 
     /* Start recording the draw command buffer */
@@ -1500,129 +1601,7 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
                                                       1, /* n_rendertargets */
                                                      &rt_blend_off_info);
     ral_command_buffer_record_set_gfx_state          (draw_command_buffer,
-                                                      dropdown_ptr->last_cached_gfx_state);
-
-    if (dropdown_ptr->is_droparea_visible)
-    {
-        /* Background first */
-        ral_command_buffer_set_binding_command_info bg_program_bindings[2];
-
-        bg_program_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
-        bg_program_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
-        bg_program_bindings[0].uniform_buffer_binding.buffer = program_bg_ub_fs_bo_ral;
-        bg_program_bindings[0].uniform_buffer_binding.offset = 0;
-        bg_program_bindings[0].uniform_buffer_binding.size   = dropdown_ptr->program_bg_ub_fs_bo_size;
-
-        bg_program_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
-        bg_program_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
-        bg_program_bindings[1].uniform_buffer_binding.buffer = program_bg_ub_vs_bo_ral;
-        bg_program_bindings[1].uniform_buffer_binding.offset = 0;
-        bg_program_bindings[1].uniform_buffer_binding.size   = dropdown_ptr->program_bg_ub_vs_bo_size;
-
-        ral_command_buffer_record_set_program      (draw_command_buffer,
-                                                    dropdown_ptr->program_bg);
-        ral_command_buffer_record_set_bindings     (draw_command_buffer,
-                                                    sizeof(bg_program_bindings) / sizeof(bg_program_bindings[0]),
-                                                    bg_program_bindings);
-        ral_command_buffer_record_draw_call_regular(draw_command_buffer,
-                                                    1, /* n_draw_calls */
-                                                   &draw_call);
-
-#if 0
-        TODO: modify the approach so that separator line data is transferred once from the cpu task
-
-        uint32_t n_entries = 0;
-
-        system_resizable_vector_get_property(dropdown_ptr->entries,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_entries);
-
-        ral_buffer program_separator_ub_vs_bo_ral = nullptr;
-
-        ral_program_block_buffer_get_property(dropdown_ptr->program_separator_ub_vs,
-                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
-                                             &program_separator_ub_vs_bo_ral);
-
-        /* Follow with separators */
-        dropdown_ptr->pGLUseProgram     (program_separator_raGL_id);
-        dropdown_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         UB_VSDATA_BP,
-                                         program_separator_ub_vs_bo_id,
-                                         program_separator_ub_vs_bo_start_offset,
-                                         dropdown_ptr->program_separator_ub_vs_bo_size);
-
-        unsigned int n_separators     = 0;
-        const float  slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
-
-        system_resizable_vector_get_property(dropdown_ptr->entries,
-                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                            &n_separators);
-
-        for (unsigned int n_entry = 0;
-                          n_entry < n_entries;
-                        ++n_entry)
-        {
-            _ui_dropdown_entry* entry_ptr = nullptr;
-
-            if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
-                                                       n_entry,
-                                                      &entry_ptr) )
-            {
-                float x1_x2_y[] =
-                {
-                    -1.0f + 2.0f * dropdown_ptr->drop_x1y2x2y1[0],
-                    -1.0f + 2.0f * dropdown_ptr->button_x1y1x2y2[0],
-                    (1.0f - entry_ptr->text_y / float(window_size[1]))
-                };
-
-                if (x1_x2_y[2] >= dropdown_ptr->drop_x1y2x2y1[3] &&
-                    x1_x2_y[2] <= dropdown_ptr->drop_x1y2x2y1[1])
-                {
-                    x1_x2_y[2] = -1.0f + 2.0f * x1_x2_y[2];
-
-                    ral_program_block_buffer_set_nonarrayed_variable_value(dropdown_ptr->program_separator_ub_vs,
-                                                                           dropdown_ptr->program_separator_x1_x2_y_ub_offset,
-                                                                           x1_x2_y,
-                                                                           sizeof(float) * 3);
-
-                    /* TODO: Improve! */
-                    ral_program_block_buffer_sync(dropdown_ptr->program_separator_ub_vs);
-
-                    dropdown_ptr->pGLDrawArrays(GL_LINES,
-                                                0, /* first */
-                                                2);
-                }
-            }
-        }
-#else
-        ASSERT_DEBUG_SYNC(false,
-                          "TODO");
-#endif
-
-        /* Draw the slider */
-        ral_command_buffer_set_binding_command_info slider_program_bindings[2];
-
-        slider_program_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
-        slider_program_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
-        slider_program_bindings[0].uniform_buffer_binding.buffer = program_slider_ub_fs_bo_ral;
-        slider_program_bindings[0].uniform_buffer_binding.offset = 0;
-        slider_program_bindings[0].uniform_buffer_binding.size   = dropdown_ptr->program_slider_ub_fs_bo_size;
-
-        slider_program_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
-        slider_program_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
-        slider_program_bindings[1].uniform_buffer_binding.buffer = program_slider_ub_vs_bo_ral;
-        slider_program_bindings[1].uniform_buffer_binding.offset = 0;
-        slider_program_bindings[1].uniform_buffer_binding.size   = dropdown_ptr->program_slider_ub_vs_bo_size;
-
-        ral_command_buffer_record_set_program      (draw_command_buffer,
-                                                    dropdown_ptr->program_slider);
-        ral_command_buffer_record_set_bindings     (draw_command_buffer,
-                                                    sizeof(slider_program_bindings) / sizeof(slider_program_bindings[0]),
-                                                    slider_program_bindings);
-        ral_command_buffer_record_draw_call_regular(draw_command_buffer,
-                                                    1, /* n_draw_calls */
-                                                   &draw_call);
-    }
+                                                      dropdown_ptr->last_cached_gfx_state_dropdown);
 
     /* Draw the bar */
     ral_command_buffer_set_binding_command_info program_bindings[2];
@@ -1669,10 +1648,112 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
                                                       1, /* n_draw_calls */
                                                      &draw_call);
 
-    ral_command_buffer_stop_recording(draw_command_buffer);
+    if (dropdown_ptr->is_droparea_visible)
+    {
+        /* Background first */
+        ral_command_buffer_set_binding_command_info bg_program_bindings[2];
+        ral_present_task_cpu_create_info            separator_data_update_task_cpu_create_info;
+        ral_present_task_io                         separator_data_update_task_cpu_io;
+
+        ral_program_block_buffer_get_property(dropdown_ptr->program_separator_sb_vs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &program_separator_sb_vs_bo);
+
+        bg_program_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        bg_program_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
+        bg_program_bindings[0].uniform_buffer_binding.buffer = program_bg_ub_fs_bo_ral;
+        bg_program_bindings[0].uniform_buffer_binding.offset = 0;
+        bg_program_bindings[0].uniform_buffer_binding.size   = dropdown_ptr->program_bg_ub_fs_bo_size;
+
+        bg_program_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        bg_program_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
+        bg_program_bindings[1].storage_buffer_binding.buffer = program_bg_ub_vs_bo_ral;
+        bg_program_bindings[1].storage_buffer_binding.offset = 0;
+        bg_program_bindings[1].storage_buffer_binding.size   = dropdown_ptr->program_bg_ub_vs_bo_size;
+
+        ral_command_buffer_record_set_program      (draw_command_buffer,
+                                                    dropdown_ptr->program_bg);
+        ral_command_buffer_record_set_bindings     (draw_command_buffer,
+                                                    sizeof(bg_program_bindings) / sizeof(bg_program_bindings[0]),
+                                                    bg_program_bindings);
+        ral_command_buffer_record_draw_call_regular(draw_command_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call);
+
+        /* Set up a special present task which is going to fill the storage buffer with separator offsets */
+        separator_data_update_task_cpu_io.buffer      = program_separator_sb_vs_bo;
+        separator_data_update_task_cpu_io.object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
+        separator_data_update_task_cpu_create_info.cpu_task_callback_user_arg = dropdown_ptr;
+        separator_data_update_task_cpu_create_info.n_unique_inputs            = 0;
+        separator_data_update_task_cpu_create_info.n_unique_outputs           = 1;
+        separator_data_update_task_cpu_create_info.pfn_cpu_task_callback_proc = _ui_dropdown_update_separator_data_cpu_task_callback;
+        separator_data_update_task_cpu_create_info.unique_inputs              = nullptr;
+        separator_data_update_task_cpu_create_info.unique_outputs             = &separator_data_update_task_cpu_io;
+
+        separator_data_update_cpu_task = ral_present_task_create_cpu(system_hashed_ansi_string_create("Dropdown: Separator data update"),
+                                                                    &separator_data_update_task_cpu_create_info);
+
+        /* Draw the slider */
+        ral_command_buffer_set_binding_command_info slider_program_bindings[2];
+
+        slider_program_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        slider_program_bindings[0].name                          = system_hashed_ansi_string_create("dataFS");
+        slider_program_bindings[0].uniform_buffer_binding.buffer = program_slider_ub_fs_bo_ral;
+        slider_program_bindings[0].uniform_buffer_binding.offset = 0;
+        slider_program_bindings[0].uniform_buffer_binding.size   = dropdown_ptr->program_slider_ub_fs_bo_size;
+
+        slider_program_bindings[1].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
+        slider_program_bindings[1].name                          = system_hashed_ansi_string_create("dataVS");
+        slider_program_bindings[1].uniform_buffer_binding.buffer = program_slider_ub_vs_bo_ral;
+        slider_program_bindings[1].uniform_buffer_binding.offset = 0;
+        slider_program_bindings[1].uniform_buffer_binding.size   = dropdown_ptr->program_slider_ub_vs_bo_size;
+
+        ral_command_buffer_record_set_program      (draw_command_buffer,
+                                                    dropdown_ptr->program_slider);
+        ral_command_buffer_record_set_bindings     (draw_command_buffer,
+                                                    sizeof(slider_program_bindings) / sizeof(slider_program_bindings[0]),
+                                                    slider_program_bindings);
+        ral_command_buffer_record_draw_call_regular(draw_command_buffer,
+                                                    1, /* n_draw_calls */
+                                                   &draw_call);
+
+        /* Draw the separators */
+        uint32_t                                          n_separators = 0;
+        ral_command_buffer_draw_call_regular_command_info separators_draw_call;
+        ral_command_buffer_set_binding_command_info       separators_program_binding;
+
+        separators_program_binding.binding_type                  = RAL_BINDING_TYPE_STORAGE_BUFFER;
+        separators_program_binding.name                          = system_hashed_ansi_string_create("dataVS");
+        separators_program_binding.uniform_buffer_binding.buffer = program_separator_sb_vs_bo;
+        separators_program_binding.uniform_buffer_binding.offset = 0;
+        separators_program_binding.uniform_buffer_binding.size   = dropdown_ptr->program_separator_sb_vs_bo_size;
+
+        system_resizable_vector_get_property(dropdown_ptr->entries,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_separators);
+
+        separators_draw_call.base_instance = 0;
+        separators_draw_call.base_vertex   = 0;
+        separators_draw_call.n_instances   = n_separators;
+        separators_draw_call.n_vertices    = 2;
+
+        ral_command_buffer_record_set_gfx_state    (draw_command_buffer,
+                                                    dropdown_ptr->last_cached_gfx_state_separators);
+        ral_command_buffer_record_set_program      (draw_command_buffer,
+                                                    dropdown_ptr->program_separator);
+        ral_command_buffer_record_set_bindings     (draw_command_buffer,
+                                                    1,
+                                                   &separators_program_binding);
+        ral_command_buffer_record_draw_call_regular(draw_command_buffer,
+                                                   1, /* n_draw_calls */
+                                                   &separators_draw_call);
+    }
 
     /* That's it. We're also going to need a dummy present task which is going to be executed
      * if the dropdown is invisible */
+    ral_command_buffer_stop_recording(draw_command_buffer);
+
     if (dropdown_ptr->last_cached_command_buffer_dummy == nullptr)
     {
         ral_command_buffer_create_info dummy_cmd_buffer_create_info;
@@ -1700,14 +1781,14 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     ral_present_task_io                 cpu_present_task_unique_outputs[7];
     ral_present_task                    gpu_present_task;
     ral_present_task_gpu_create_info    gpu_present_task_create_info;
-    ral_present_task_io                 gpu_present_task_unique_inputs[8];
+    ral_present_task_io                 gpu_present_task_unique_inputs[8 + 1 /* optional separator data SB */];
     ral_present_task_io                 gpu_present_task_unique_output;
     ral_present_task                    group_present_task;
     ral_present_task_group_create_info  group_present_task_create_info;
-    ral_present_task_ingroup_connection group_present_task_ingroup_connections[7];
+    ral_present_task_ingroup_connection group_present_task_ingroup_connections[7 + 1 /* optional separator update task->gpu task  connection */];
     ral_present_task_group_mapping      group_present_task_input_mapping;
     ral_present_task_group_mapping      group_present_task_output_mapping;
-    ral_present_task                    group_present_task_present_tasks[2];
+    ral_present_task                    group_present_task_present_tasks[3];
 
     cpu_present_task_unique_outputs[0].buffer      = program_bg_ub_fs_bo_ral;
     cpu_present_task_unique_outputs[0].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
@@ -1752,6 +1833,9 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     gpu_present_task_unique_inputs[7].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
     gpu_present_task_unique_inputs[7].texture_view = target_texture_view;
 
+    gpu_present_task_unique_inputs[8].buffer      = program_separator_sb_vs_bo;
+    gpu_present_task_unique_inputs[8].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
+
     gpu_present_task_unique_output.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
     gpu_present_task_unique_output.texture_view = target_texture_view;
 
@@ -1764,7 +1848,7 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     group_present_task_output_mapping.present_task_io_index = 0; /* texture_view */
 
     gpu_present_task_create_info.command_buffer   = draw_command_buffer;
-    gpu_present_task_create_info.n_unique_inputs  = sizeof(gpu_present_task_unique_inputs) / sizeof(gpu_present_task_unique_inputs[0]);
+    gpu_present_task_create_info.n_unique_inputs  = 8 + ((separator_data_update_cpu_task != nullptr) ? 1 : 0);
     gpu_present_task_create_info.n_unique_outputs = 1;
     gpu_present_task_create_info.unique_inputs    =  gpu_present_task_unique_inputs;
     gpu_present_task_create_info.unique_outputs   = &gpu_present_task_unique_output;
@@ -1775,6 +1859,7 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
 
     group_present_task_present_tasks[0] = cpu_present_task;
     group_present_task_present_tasks[1] = gpu_present_task;
+    group_present_task_present_tasks[2] = separator_data_update_cpu_task;
 
     for (uint32_t n_connection = 0;
                   n_connection < 7;
@@ -1786,9 +1871,17 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
         group_present_task_ingroup_connections[n_connection].output_present_task_io_index = n_connection;
     }
 
+    if (separator_data_update_cpu_task != nullptr)
+    {
+        group_present_task_ingroup_connections[7].input_present_task_index     = 1;
+        group_present_task_ingroup_connections[7].input_present_task_io_index  = 8; /* separator data SB */
+        group_present_task_ingroup_connections[7].output_present_task_index    = 2;
+        group_present_task_ingroup_connections[7].output_present_task_io_index = 0;
+    }
+
     group_present_task_create_info.ingroup_connections                      = group_present_task_ingroup_connections;
-    group_present_task_create_info.n_ingroup_connections                    = sizeof(group_present_task_ingroup_connections) / sizeof(group_present_task_ingroup_connections[0]);
-    group_present_task_create_info.n_present_tasks                          = sizeof(group_present_task_present_tasks)       / sizeof(group_present_task_present_tasks      [0]);
+    group_present_task_create_info.n_ingroup_connections                    = 7                                  + ((separator_data_update_cpu_task != nullptr) ? 1 : 0);
+    group_present_task_create_info.n_present_tasks                          = 2 /* cpu update task + gpu task */ + ((separator_data_update_cpu_task != nullptr) ? 1 : 0);
     group_present_task_create_info.n_total_unique_inputs                    = 1;
     group_present_task_create_info.n_total_unique_outputs                   = 1;
     group_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
@@ -1817,6 +1910,11 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
 
     ral_present_task_release(cpu_present_task);
     ral_present_task_release(gpu_present_task);
+
+    if (separator_data_update_cpu_task != nullptr)
+    {
+        ral_present_task_release(separator_data_update_cpu_task);
+    }
 
     dropdown_ptr->last_cached_present_task_is_droparea_visible = dropdown_ptr->is_droparea_visible;
     dropdown_ptr->last_cached_present_task_target_texture_view = target_texture_view;
@@ -1871,7 +1969,7 @@ PUBLIC void ui_dropdown_get_property(const void*         dropdown,
                 }
                 else
                 {
-                    *(float*) out_result = dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] +
+                    *(float*) out_result = dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1] +
                                            dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1];
                 }
             }
@@ -1921,8 +2019,8 @@ PUBLIC void ui_dropdown_get_property(const void*         dropdown,
             }
             else
             {
-                result[0] = dropdown_ptr->drop_x1y2x2y1[0];
-                result[1] = dropdown_ptr->drop_x1y2x2y1[3];
+                result[0] = dropdown_ptr->drop_x1y1x2y2[0];
+                result[1] = dropdown_ptr->drop_x1y1x2y2[1];
                 result[2] = dropdown_ptr->x1y1x2y2[2];
                 result[3] = dropdown_ptr->x1y1x2y2[1];
             }
@@ -2084,16 +2182,34 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
                                                  0.51f, 10.0f  / 255.0f * 0.35f, 14.0f  / 255.0f * 0.35f, 10.0f  / 255.0f * 0.35f,
                                                  1.0f,  10.0f  / 255.0f * 0.35f, 8.0f   / 255.0f * 0.35f, 9.0f   / 255.0f * 0.35f};
 
-        border_width_bg[0] =  1.0f / (float)((new_dropdown_ptr->drop_x1y2x2y1[2] - new_dropdown_ptr->drop_x1y2x2y1[0]) * window_size[0]);
-        border_width_bg[1] = -1.0f / (float)((new_dropdown_ptr->drop_x1y2x2y1[3] - new_dropdown_ptr->drop_x1y2x2y1[1]) * window_size[1]);
+        border_width_bg[0] =  1.0f / (float)((new_dropdown_ptr->drop_x1y1x2y2[2] - new_dropdown_ptr->drop_x1y1x2y2[0]) * window_size[0]);
+        border_width_bg[1] = -1.0f / (float)((new_dropdown_ptr->drop_x1y1x2y2[1] - new_dropdown_ptr->drop_x1y1x2y2[3]) * window_size[1]);
         border_width   [0] =  1.0f / (float)((new_dropdown_ptr->x1y1x2y2     [2] - new_dropdown_ptr->x1y1x2y2     [0]) * window_size[0]);
         border_width   [1] =  1.0f / (float)((new_dropdown_ptr->x1y1x2y2     [3] - new_dropdown_ptr->x1y1x2y2     [1]) * window_size[1]);
+
+        /* Separator program uses an unsized storage buffer. Alloc a buffer with sufficient amount of space now.
+         * We're going to bind it to the buffer in a second.
+         */
+        ral_buffer             program_separator_sb_vs_bo_ral = nullptr;
+        ral_buffer_create_info separator_sb_create_info;
+
+        separator_sb_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_WRITE_OP_BIT;
+        separator_sb_create_info.parent_buffer    = nullptr;
+        separator_sb_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+        separator_sb_create_info.size             = MAX_N_ENTRIES_TOTAL * sizeof(float) * 4;
+        separator_sb_create_info.start_offset     = 0;
+        separator_sb_create_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
+        separator_sb_create_info.user_queue_bits  = RAL_QUEUE_GRAPHICS_BIT;
+
+        ral_context_create_buffers(new_dropdown_ptr->context,
+                                   1, /* n_buffers */
+                                  &separator_sb_create_info,
+                                  &program_separator_sb_vs_bo_ral);
 
         /* Retrieve UBOs */
         ral_buffer program_bg_ub_fs_bo_ral        = nullptr;
         ral_buffer program_bg_ub_vs_bo_ral        = nullptr;
         ral_buffer program_label_bg_ub_vs_bo_ral  = nullptr;
-        ral_buffer program_separator_ub_vs_bo_ral = nullptr;
         ral_buffer program_slider_ub_fs_bo_ral    = nullptr;
         ral_buffer program_slider_ub_vs_bo_ral    = nullptr;
         ral_buffer program_ub_fs_bo_ral           = nullptr;
@@ -2117,7 +2233,7 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
                                                                                    new_dropdown_ptr->program_label_bg,
                                                                                    system_hashed_ansi_string_create("dataVS") );
 
-        new_dropdown_ptr->program_separator_ub_vs = ral_program_block_buffer_create(new_dropdown_ptr->context,
+        new_dropdown_ptr->program_separator_sb_vs = ral_program_block_buffer_create(new_dropdown_ptr->context,
                                                                                     new_dropdown_ptr->program_separator,
                                                                                     system_hashed_ansi_string_create("dataVS") );
 
@@ -2131,11 +2247,19 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
         ral_program_block_buffer_get_property(new_dropdown_ptr->program_bg_ub_fs,        RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_bg_ub_fs_bo_ral);
         ral_program_block_buffer_get_property(new_dropdown_ptr->program_bg_ub_vs,        RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_bg_ub_vs_bo_ral);
         ral_program_block_buffer_get_property(new_dropdown_ptr->program_label_bg_ub_vs,  RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_label_bg_ub_vs_bo_ral);
-        ral_program_block_buffer_get_property(new_dropdown_ptr->program_separator_ub_vs, RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_separator_ub_vs_bo_ral);
         ral_program_block_buffer_get_property(new_dropdown_ptr->program_slider_ub_fs,    RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_slider_ub_fs_bo_ral);
         ral_program_block_buffer_get_property(new_dropdown_ptr->program_slider_ub_vs,    RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_slider_ub_vs_bo_ral);
         ral_program_block_buffer_get_property(new_dropdown_ptr->program_ub_fs,           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_ub_fs_bo_ral);
         ral_program_block_buffer_get_property(new_dropdown_ptr->program_ub_vs,           RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL, &program_ub_vs_bo_ral);
+
+        ral_program_block_buffer_set_property(new_dropdown_ptr->program_separator_sb_vs,
+                                              RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
+                                             &program_separator_sb_vs_bo_ral);
+
+        ral_context_delete_objects(new_dropdown_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&program_separator_sb_vs_bo_ral) );
 
         ral_buffer_get_property(program_ub_fs_bo_ral,
                                 RAL_BUFFER_PROPERTY_SIZE,
@@ -2155,9 +2279,9 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
                                 RAL_BUFFER_PROPERTY_SIZE,
                                &new_dropdown_ptr->program_label_bg_ub_vs_bo_size);
 
-        ral_buffer_get_property(program_separator_ub_vs_bo_ral,
+        ral_buffer_get_property(program_separator_sb_vs_bo_ral,
                                 RAL_BUFFER_PROPERTY_SIZE,
-                               &new_dropdown_ptr->program_separator_ub_vs_bo_size);
+                               &new_dropdown_ptr->program_separator_sb_vs_bo_size);
 
         ral_buffer_get_property(program_slider_ub_fs_bo_ral,
                                 RAL_BUFFER_PROPERTY_SIZE,
@@ -2251,7 +2375,6 @@ PUBLIC void* ui_dropdown_init(ui                         instance,
         new_dropdown_ptr->program_brightness_ub_offset          = brightness_uniform_ral_ptr->block_offset;
         new_dropdown_ptr->program_button_start_u_ub_offset      = button_start_u_uniform_ral_ptr->block_offset;
         new_dropdown_ptr->program_label_bg_x1y1x2y2_ub_offset   = x1y1x2y2_program_label_bg_uniform_ral_ptr->block_offset;
-        new_dropdown_ptr->program_separator_x1_x2_y_ub_offset   = x1_x2_y_uniform_ral_ptr->block_offset;
         new_dropdown_ptr->program_slider_color_ub_offset        = color_uniform_ral_ptr->block_offset;
         new_dropdown_ptr->program_slider_x1y1x2y2_ub_offset     = x1y1x2y2_program_slider_uniform_ral_ptr->block_offset;
         new_dropdown_ptr->program_stop_data_ub_offset           = stop_data_uniform_ral_ptr->block_offset;
@@ -2352,8 +2475,8 @@ PUBLIC bool ui_dropdown_is_over(void*        internal_instance,
         }
         else
         /* Drop area? */
-        if (xy[0]      >= dropdown_ptr->drop_x1y2x2y1[0] && xy[0]      <= dropdown_ptr->drop_x1y2x2y1[2] &&
-            inversed_y >= dropdown_ptr->drop_x1y2x2y1[3] && inversed_y <= dropdown_ptr->drop_x1y2x2y1[1] &&
+        if (xy[0]      >= dropdown_ptr->drop_x1y1x2y2[0] && xy[0]      <= dropdown_ptr->drop_x1y1x2y2[2] &&
+            inversed_y >= dropdown_ptr->drop_x1y1x2y2[1] && inversed_y <= dropdown_ptr->drop_x1y1x2y2[3] &&
             dropdown_ptr->is_droparea_visible)
         {
             return true;
@@ -2400,8 +2523,8 @@ PUBLIC void ui_dropdown_on_lbm_down(void*        internal_instance,
         }
     }
     else
-    if (xy[0]      >= dropdown_ptr->drop_x1y2x2y1[0] && xy[0]      <= dropdown_ptr->drop_x1y2x2y1[2] &&
-        inversed_y >= dropdown_ptr->drop_x1y2x2y1[3] && inversed_y <= dropdown_ptr->drop_x1y2x2y1[1])
+    if (xy[0]      >= dropdown_ptr->drop_x1y1x2y2[0] && xy[0]      <= dropdown_ptr->drop_x1y1x2y2[2] &&
+        inversed_y >= dropdown_ptr->drop_x1y1x2y2[1] && inversed_y <= dropdown_ptr->drop_x1y1x2y2[3])
     {
         dropdown_ptr->is_droparea_lbm = true;
     }
@@ -2449,8 +2572,8 @@ PUBLIC void ui_dropdown_on_lbm_up(void*        internal_instance,
     else
     {
         /* If the click is within drop area, the user has requested to change the current selection */
-        if (xy[0]      >= dropdown_ptr->drop_x1y2x2y1[0] && xy[0]      <= dropdown_ptr->drop_x1y2x2y1[2] &&
-            inversed_y >= dropdown_ptr->drop_x1y2x2y1[3] && inversed_y <= dropdown_ptr->drop_x1y2x2y1[1] &&
+        if (xy[0]      >= dropdown_ptr->drop_x1y1x2y2[0] && xy[0]      <= dropdown_ptr->drop_x1y1x2y2[2] &&
+            inversed_y >= dropdown_ptr->drop_x1y1x2y2[1] && inversed_y <= dropdown_ptr->drop_x1y1x2y2[3] &&
             dropdown_ptr->is_droparea_lbm)
         {
             unsigned int n_entries        = 0;
@@ -2465,12 +2588,11 @@ PUBLIC void ui_dropdown_on_lbm_up(void*        internal_instance,
                                               true,
                                               highlighted_v1v2);
 
-            /* NOTE: This value starts from 1, as 0 corresponds to the header bar string */
-            n_selected_entry = (unsigned int)((1.0f - highlighted_v1v2[0]) * MAX_N_ENTRIES_VISIBLE + 0.5f);
+            n_selected_entry = (unsigned int)((highlighted_v1v2[0]) * MAX_N_ENTRIES_VISIBLE + 0.5f);
 
             if (n_selected_entry <= n_entries)
             {
-                dropdown_ptr->n_selected_entry = (n_selected_entry - 1);
+                dropdown_ptr->n_selected_entry = n_selected_entry;
 
                 /* Fire the associated callback, if assigned */
                 _ui_dropdown_entry* entry_ptr = nullptr;
@@ -2530,7 +2652,7 @@ PUBLIC void ui_dropdown_on_mouse_move(void*        internal_instance,
 
     if (dropdown_ptr->is_slider_lbm)
     {
-        const float slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
+        const float slider_height_ss = (dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1]) * (1.0f - dropdown_ptr->slider_height);
 
         dropdown_ptr->slider_delta_y = dropdown_ptr->slider_lbm_start_y - xy[1];
 
@@ -2567,7 +2689,7 @@ PUBLIC void ui_dropdown_on_mouse_wheel(void* internal_instance,
         dropdown_ptr->slider_delta_y_base += wheel_delta * 0.25f * dropdown_ptr->separator_delta_y;
 
         /* Clamp it */
-        const float slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
+        const float slider_height_ss = (dropdown_ptr->drop_x1y1x2y2[3] - dropdown_ptr->drop_x1y1x2y2[1]) * (1.0f - dropdown_ptr->slider_height);
 
         if (dropdown_ptr->slider_delta_y_base > 0.0f)
         {

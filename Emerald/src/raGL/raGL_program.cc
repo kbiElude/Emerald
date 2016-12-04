@@ -721,65 +721,63 @@ PRIVATE void _raGL_program_init_blocks_for_context(ral_program_block_type block_
                                                n_active_block,
                                               &block_name_has);
 
-        /* For UBs, also enumerate members */
-        if (block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
+        /* Now enumerate the members */
+                     GLint* active_variable_indices             = nullptr;
+        static const GLenum block_property_active_variables     = GL_ACTIVE_VARIABLES;
+        static const GLenum block_property_num_active_variables = GL_NUM_ACTIVE_VARIABLES;
+                     GLint  n_active_variables                  = 0;
+                     GLint  n_active_uniform_blocks             = 0;
+                     GLint  n_active_uniform_block_max_length   = 0;
+
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             block_interface_gl,
+                                             n_active_block,
+                                             1, /* propCount */
+                                            &block_property_num_active_variables,
+                                             1,       /* bufSize */
+                                             nullptr, /* length  */
+                                            &n_active_variables);
+
+        if (n_active_variables > 0)
         {
-                         GLint* active_variable_indices             = nullptr;
-            static const GLenum block_property_active_variables     = GL_ACTIVE_VARIABLES;
-            static const GLenum block_property_num_active_variables = GL_NUM_ACTIVE_VARIABLES;
-                         GLint  n_active_variables                  = 0;
-                         GLint  n_active_uniform_blocks             = 0;
-                         GLint  n_active_uniform_block_max_length   = 0;
+            active_variable_indices = new (std::nothrow) GLint[n_active_variables];
+
+            ASSERT_ALWAYS_SYNC(active_variable_indices != nullptr,
+                               "Out of memory");
 
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                                 GL_UNIFORM_BLOCK,
+                                                 block_interface_gl,
                                                  n_active_block,
                                                  1, /* propCount */
-                                                &block_property_num_active_variables,
-                                                 1,       /* bufSize */
-                                                 nullptr, /* length  */
-                                                &n_active_variables);
+                                                &block_property_active_variables,
+                                                 n_active_variables,
+                                                 nullptr, /* length */
+                                                 active_variable_indices);
 
-            if (n_active_variables > 0)
+            for (int n_active_variable = 0;
+                     n_active_variable < n_active_variables;
+                   ++n_active_variable)
             {
-                active_variable_indices = new (std::nothrow) GLint[n_active_variables];
+                ral_program_variable* variable_ral_ptr = nullptr;
 
-                ASSERT_ALWAYS_SYNC(active_variable_indices != nullptr,
-                                   "Out of memory");
+                variable_ral_ptr = new (std::nothrow) ral_program_variable();
 
-                program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                                     GL_UNIFORM_BLOCK,
-                                                     n_active_block,
-                                                     1, /* propCount */
-                                                    &block_property_active_variables,
-                                                     n_active_variables,
-                                                     nullptr, /* length */
-                                                     active_variable_indices);
+                raGL_program_get_program_variable_details( (raGL_program) program_ptr,
+                                                          0,       /* temp_variable_name_storage */
+                                                          nullptr, /* temp_variable_name         */
+                                                          variable_ral_ptr,
+                                                          nullptr,
+                                                          (block_type == RAL_PROGRAM_BLOCK_TYPE_STORAGE_BUFFER) ? GL_BUFFER_VARIABLE
+                                                                                                                : GL_UNIFORM,
+                                                          active_variable_indices[n_active_variable]);
 
-                for (int n_active_variable = 0;
-                         n_active_variable < n_active_variables;
-                       ++n_active_variable)
-                {
-                    ral_program_variable* variable_ral_ptr = nullptr;
-
-                    variable_ral_ptr = new (std::nothrow) ral_program_variable();
-
-                    raGL_program_get_program_variable_details( (raGL_program) program_ptr,
-                                                              0,       /* temp_variable_name_storage */
-                                                              nullptr, /* temp_variable_name         */
-                                                              variable_ral_ptr,
-                                                              nullptr,
-                                                              GL_UNIFORM,
-                                                              active_variable_indices[n_active_variable]);
-
-                    ral_program_attach_variable_to_block(program_ptr->program_ral,
-                                                         block_name_has,
-                                                         variable_ral_ptr);
-                }
-
-                delete [] active_variable_indices;
-                active_variable_indices = nullptr;
+                ral_program_attach_variable_to_block(program_ptr->program_ral,
+                                                     block_name_has,
+                                                     variable_ral_ptr);
             }
+
+            delete [] active_variable_indices;
+            active_variable_indices = nullptr;
         }
 
         /* Set up the block binding */

@@ -21,6 +21,7 @@ typedef struct _ral_program_block_buffer
     ral_program program_ral;
 
     unsigned char*            data;
+    bool                      has_unsized_array;
     system_hashed_ansi_string name;
     unsigned int              size;
     ral_program_block_type    type;
@@ -30,10 +31,10 @@ typedef struct _ral_program_block_buffer
      *
      * TODO: We could actually approach this task in a more intelligent manner:
      *
-     * 1) (easier)   Issuing multiple GL update calls for disjoint memory regions.
+     * 1) (easier)   Issuing multiple API update calls for disjoint memory regions.
      * 2) (trickier) Caching disjoint region data into a single temporary BO,
-     *               uploading its contents just once, and then using gl*Sub*() calls
-     *               to update relevant target buffer regions for ultra-fast performance.
+     *               uploading its contents just once, and then using buffer sub-region update
+     *               calls to update relevant target buffer regions for ultra-fast performance.
      *
      * Sticking to brute-force implementation for the time being.
      */
@@ -251,6 +252,71 @@ PRIVATE unsigned int _ral_program_block_buffer_get_n_matrix_rows(const ral_progr
 }
 
 /** TODO */
+PRIVATE bool _ral_program_block_buffer_init_buffer_storage(_ral_program_block_buffer* block_buffer_ptr,
+                                                           uint32_t                   block_size        = 0)
+{
+    ral_buffer_create_info new_block_create_info;
+    bool                   result                 = true;
+
+    ASSERT_DEBUG_SYNC(block_buffer_ptr->data == nullptr,
+                      "Shadow data buffer already assigned to a ral_program_block_buffer instance");
+
+    if (block_buffer_ptr->buffer_ral == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(block_size != 0,
+                          "Invalid block size specified");
+
+        new_block_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+        new_block_create_info.parent_buffer    = nullptr;
+        new_block_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+        new_block_create_info.size             = block_size;
+        new_block_create_info.start_offset     = 0;
+        new_block_create_info.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        new_block_create_info.user_queue_bits  = 0xFFFFFFFF;
+
+        ral_context_create_buffers(block_buffer_ptr->context_ral,
+                                   1,
+                                  &new_block_create_info,
+                                  &block_buffer_ptr->buffer_ral);
+
+        block_buffer_ptr->size = block_size;
+    }
+    else
+    if (block_size == 0)
+    {
+        ral_buffer_get_property(block_buffer_ptr->buffer_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &block_buffer_ptr->size);
+
+        ASSERT_DEBUG_SYNC(block_buffer_ptr->size != 0,
+                          "Invalid RAL buffer size");
+    }
+
+    block_buffer_ptr->data = new (std::nothrow) unsigned char[block_buffer_ptr->size];
+
+    if (block_buffer_ptr->data == nullptr)
+    {
+        ASSERT_ALWAYS_SYNC(block_buffer_ptr->data != nullptr,
+                           "Out of memory");
+
+        result = false;
+        goto end;
+    }
+
+    /* Set all uniforms to zeroes. */
+    memset(block_buffer_ptr->data,
+           0,
+           block_buffer_ptr->size);
+
+    /* Force a data sync next time the buffer is accessed */
+    block_buffer_ptr->dirty_offset_end   = block_size;
+    block_buffer_ptr->dirty_offset_start = 0;
+
+end:
+    return result;
+}
+
+/** TODO */
 PRIVATE bool _ral_program_block_buffer_is_matrix_variable(const ral_program_variable* variable_ptr)
 {
     bool result = false;
@@ -312,16 +378,39 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
     }
 
     /* Some further sanity checks.. */
-    ASSERT_DEBUG_SYNC((dst_array_start_index == 0 || dst_array_item_count == 1) && variable_ral_ptr->size == 1                                                      ||
-                       dst_array_start_index >= 0 && dst_array_item_count >= 1  && (int32_t(dst_array_start_index + dst_array_item_count) <= variable_ral_ptr->size),
-                      "Invalid dst array start index or dst array item count.");
-
-    ASSERT_DEBUG_SYNC(variable_ral_ptr->block_offset != -1,
-                      "Uniform offset is -1");
-
     ASSERT_DEBUG_SYNC(variable_ral_ptr->size == 1                                         ||
                       variable_ral_ptr->size != 1 && variable_ral_ptr->array_stride != -1,
-                      "Uniform's array stride is -1 but the uniform is an array.");
+                      "Variable's array stride is -1 despite the variable being an array?!");
+
+    if (block_buffer_ptr->has_unsized_array)
+    {
+        uint32_t buffer_size = 0;
+
+        ASSERT_DEBUG_SYNC(block_buffer_ptr->buffer_ral != nullptr,
+                          "A RAL buffer needs to be assigned to an unsized storage block before variable values can be stored.");
+
+        ral_buffer_get_property(block_buffer_ptr->buffer_ral,
+                                RAL_BUFFER_PROPERTY_SIZE,
+                               &buffer_size);
+
+        ASSERT_DEBUG_SYNC(buffer_size != 0,
+                          "RAL buffer's size is 0");
+
+        ASSERT_DEBUG_SYNC(block_variable_offset == 0,
+                          "TODO: Add support for unsized storage buffers with more than 1 member variable.");
+
+        ASSERT_DEBUG_SYNC( (dst_array_start_index + dst_array_item_count) * variable_ral_ptr->array_stride <= buffer_size,
+                          "Invalid dst array start index or dst array item count");
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC((dst_array_start_index == 0 && dst_array_item_count == 1) && variable_ral_ptr->size == 1                                                      ||
+                           dst_array_start_index >= 0 && dst_array_item_count >= 1  && (int32_t(dst_array_start_index + dst_array_item_count) <= variable_ral_ptr->size),
+                          "Invalid dst array start index or dst array item count.");
+    }
+
+    ASSERT_DEBUG_SYNC(variable_ral_ptr->block_offset != -1,
+                      "Variable offset is -1");
 
     /* Check if src_data_size is correct */
     #ifdef _DEBUG
@@ -576,8 +665,7 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
 
     if (new_block_buffer_ptr != nullptr)
     {
-        ral_buffer_create_info new_block_create_info;
-        uint32_t               new_block_size = 0;
+        uint32_t new_block_size = 0;
 
         ral_program_get_block_property(program,
                                        block_name,
@@ -589,45 +677,56 @@ PUBLIC EMERALD_API ral_program_block_buffer ral_program_block_buffer_create(ral_
 
         if (block_type == RAL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
         {
-            new_block_buffer_ptr->data = new (std::nothrow) unsigned char[new_block_size];
+            _ral_program_block_buffer_init_buffer_storage(new_block_buffer_ptr,
+                                                          new_block_size);
 
-            if (new_block_buffer_ptr->data == nullptr)
-            {
-                ASSERT_ALWAYS_SYNC(new_block_buffer_ptr->data != nullptr,
-                                   "Out of memory");
-
-                is_successful = false;
-                goto end;
-            }
-
-            /* Set all uniforms to zeroes. */
-            memset(new_block_buffer_ptr->data,
-                   0,
-                   new_block_size);
-
-            new_block_create_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-            new_block_create_info.parent_buffer    = nullptr;
-            new_block_create_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
-            new_block_create_info.size             = new_block_size;
-            new_block_create_info.start_offset     = 0;
-            new_block_create_info.usage_bits       = RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-            new_block_create_info.user_queue_bits  = 0xFFFFFFFF;
-
-            ral_context_create_buffers(context,
-                                       1,
-                                      &new_block_create_info,
-                                      &new_block_buffer_ptr->buffer_ral);
-
-            /* Force a data sync next time the buffer is accessed */
-            new_block_buffer_ptr->dirty_offset_end   = new_block_size;
-            new_block_buffer_ptr->dirty_offset_start = 0;
+            /* UBs don't really support unsized arrays */
+            new_block_buffer_ptr->has_unsized_array = false;
         }
         else
         {
-            new_block_buffer_ptr->buffer_ral         = nullptr;
-            new_block_buffer_ptr->data               = nullptr;
-            new_block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
-            new_block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
+            /* There's two cases we need to recognize. One where the SB has an unsized array
+             * and we can't tell what size the buffer we can cache data in needs to be,
+             * and the other one where there's no unsized array and we can cache stuff. */
+            bool     has_unsized_array = false;
+            uint32_t n_block_variables = 0;
+
+            ral_program_get_block_property(program,
+                                           block_name,
+                                           RAL_PROGRAM_BLOCK_PROPERTY_N_VARIABLES,
+                                          &n_block_variables);
+
+            for (uint32_t n_block_variable = 0;
+                          n_block_variable < n_block_variables && !has_unsized_array;
+                        ++n_block_variable)
+            {
+                const ral_program_variable* variable_ptr = nullptr;
+
+                ral_program_get_block_variable_by_index(program,
+                                                        block_name,
+                                                        n_block_variable,
+                                                       &variable_ptr);
+
+                if (variable_ptr->top_level_array_size == 0)
+                {
+                    has_unsized_array = true;
+                }
+            }
+
+            if (has_unsized_array)
+            {
+                new_block_buffer_ptr->buffer_ral         = nullptr;
+                new_block_buffer_ptr->data               = nullptr;
+                new_block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
+                new_block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
+            }
+            else
+            {
+                _ral_program_block_buffer_init_buffer_storage(new_block_buffer_ptr,
+                                                              new_block_size);
+            }
+
+            new_block_buffer_ptr->has_unsized_array = has_unsized_array;
         }
     }
 
@@ -710,6 +809,67 @@ PUBLIC EMERALD_API void ral_program_block_buffer_set_nonarrayed_variable_value(r
                                                  src_data_size,
                                                  0,  /* dst_array_start */
                                                  1); /* dst_array_item_count */
+}
+
+/* Please see header for spec */
+PUBLIC EMERALD_API void ral_program_block_buffer_set_property(ral_program_block_buffer          block_buffer,
+                                                              ral_program_block_buffer_property property,
+                                                              const void*                       data)
+{
+    _ral_program_block_buffer* block_buffer_ptr = reinterpret_cast<_ral_program_block_buffer*>(block_buffer);
+
+    switch (property)
+    {
+        case RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL:
+        {
+            ral_buffer                  in_buffer         = *reinterpret_cast<const ral_buffer*>(data);
+            uint32_t                    in_buffer_size    = 0;
+            uint32_t                    n_block_variables = 0;
+            const ral_program_variable* variable_ptr      = nullptr;
+
+            /* Sanity checks */
+            ASSERT_DEBUG_SYNC(block_buffer_ptr->has_unsized_array,
+                              "RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL property is only settable for storage buffers with an unsized array");
+
+            ral_buffer_get_property(in_buffer,
+                                    RAL_BUFFER_PROPERTY_SIZE,
+                                   &in_buffer_size);
+
+            ral_program_get_block_property(block_buffer_ptr->program_ral,
+                                           block_buffer_ptr->name,
+                                           RAL_PROGRAM_BLOCK_PROPERTY_N_VARIABLES,
+                                          &n_block_variables);
+
+            ASSERT_DEBUG_SYNC(n_block_variables == 1,
+                              "TODO");
+
+            ral_program_get_block_variable_by_index(block_buffer_ptr->program_ral,
+                                                    block_buffer_ptr->name,
+                                                    0, /* n_variable */
+                                                   &variable_ptr);
+
+            ASSERT_DEBUG_SYNC((in_buffer_size % variable_ptr->array_stride) == 0,
+                              "Input buffer size is not a multiple of the unsized array's variable size.");
+            ASSERT_DEBUG_SYNC(block_buffer_ptr->buffer_ral == nullptr,
+                              "RAL buffer is already assigned to the specified ral_program_block_buffer instance");
+
+            ral_context_retain_object(block_buffer_ptr->context_ral,
+                                      RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                      in_buffer);
+
+            block_buffer_ptr->buffer_ral = in_buffer;
+
+            _ral_program_block_buffer_init_buffer_storage(block_buffer_ptr);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_program_block_buffer_property value specified.");
+        }
+    }
 }
 
 /* Please see header for spec */

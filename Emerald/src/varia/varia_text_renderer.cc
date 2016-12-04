@@ -70,7 +70,6 @@ typedef struct
     system_critical_section   draw_cs;
     uint32_t                  draw_text_fragment_shader_color_ub_offset;
     ral_program               draw_text_program;
-    ral_program_block_buffer  draw_text_program_data_ssb;
     uint32_t                  draw_text_vertex_shader_n_origin_character_ub_offset;
     uint32_t                  draw_text_vertex_shader_scale_ub_offset;
 
@@ -419,10 +418,6 @@ PRIVATE void _varia_text_renderer_init_programs(_varia_text_renderer* text_ptr)
                           "Could not retrieve scale uniform descriptor.");
     }
 
-    text_ptr->draw_text_program_data_ssb = ral_program_block_buffer_create(text_ptr->context,
-                                                                           text_ptr->draw_text_program,
-                                                                           system_hashed_ansi_string_create("dataSSB") );
-
     text_ptr->draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_ral_ptr->block_offset;
     text_ptr->draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_ral_ptr->block_offset;
     text_ptr->draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_ral_ptr->block_offset;
@@ -571,13 +566,6 @@ PRIVATE void _varia_text_renderer_release(void* text)
                                    reinterpret_cast<void* const*>(&text_ptr->draw_text_program));
 
         text_ptr->draw_text_program = nullptr;
-    }
-
-    if (text_ptr->draw_text_program_data_ssb != nullptr)
-    {
-        ral_program_block_buffer_release(text_ptr->draw_text_program_data_ssb);
-
-        text_ptr->draw_text_program_data_ssb = nullptr;
     }
 
     text_ptr->draw_text_fragment_shader_color_ub_offset            = -1;

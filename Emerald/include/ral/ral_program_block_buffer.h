@@ -6,7 +6,10 @@
 
 typedef enum
 {
-    /* not settable; ral_buffer */
+    /* not settable for uniform buffers; settable for storage buffers which hold an unsized array;
+     *
+     * ral_buffer
+     */
     RAL_PROGRAM_BLOCK_BUFFER_PROPERTY_BUFFER_RAL,
 } ral_program_block_buffer_property;
 
@@ -36,6 +39,11 @@ PUBLIC EMERALD_API void ral_program_block_buffer_set_nonarrayed_variable_value(r
                                                                                unsigned int             block_variable_offset,
                                                                                const void*              src_data,
                                                                                unsigned int             src_data_size);
+
+/** TODO */
+PUBLIC EMERALD_API void ral_program_block_buffer_set_property(ral_program_block_buffer          block_buffer,
+                                                              ral_program_block_buffer_property property,
+                                                              const void*                       data);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_program_block_buffer_sync_immediately(ral_program_block_buffer block_buffer);
