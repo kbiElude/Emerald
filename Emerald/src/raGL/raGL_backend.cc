@@ -916,8 +916,8 @@ PRIVATE void _raGL_backend_link_program_handler(void* job_arg_raw_ptr)
                               RAGL_PROGRAM_PROPERTY_PARENT_RAL_PROGRAM,
                              &program_ral);
 
-    raGL_program_lock(program_raGL);
     ral_program_lock (program_ral);
+    raGL_program_lock(program_raGL);
 
     ral_program_get_property(program_ral,
                              RAL_PROGRAM_PROPERTY_N_ATTACHED_SHADERS,

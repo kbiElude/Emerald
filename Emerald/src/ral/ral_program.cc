@@ -152,79 +152,7 @@ typedef struct _ral_program_metadata
         owner_program                    = in_owner_program;
     }
 
-    ~_ral_program_metadata()
-    {
-        ral_program_clear_metadata(owner_program);
-
-        if (attributes != nullptr)
-        {
-            ral_program_attribute* current_attribute_ptr = nullptr;
-
-            while (system_resizable_vector_pop(attributes,
-                                              &current_attribute_ptr) )
-            {
-                delete current_attribute_ptr;
-            }
-
-            system_resizable_vector_release(attributes);
-            attributes = nullptr;
-        }
-
-        if (attributes_by_name_hashmap != nullptr)
-        {
-            system_hash64map_release(attributes_by_name_hashmap);
-
-            attributes_by_name_hashmap = nullptr;
-        }
-
-        if (blocks != nullptr)
-        {
-            system_resizable_vector_release(blocks);
-            blocks = nullptr;
-        }
-
-        if (blocks_by_name_hashmap != nullptr)
-        {
-            system_hash64map_release(blocks_by_name_hashmap);
-
-            blocks_by_name_hashmap = nullptr;
-        }
-
-        if (blocks_ssb_by_name_hashmap != nullptr)
-        {
-            system_hash64map_release(blocks_ssb_by_name_hashmap);
-
-            blocks_ssb_by_name_hashmap = nullptr;
-        }
-
-        if (blocks_ub_by_name_hashmap != nullptr)
-        {
-            system_hash64map_release(blocks_ub_by_name_hashmap);
-
-            blocks_ub_by_name_hashmap = nullptr;
-        }
-
-        if (metadata_ready_event != nullptr)
-        {
-            system_event_release(metadata_ready_event);
-
-            metadata_ready_event = nullptr;
-        }
-
-        if (output_variables != nullptr)
-        {
-            system_resizable_vector_release(output_variables);
-
-            output_variables = nullptr;
-        }
-
-        if (output_variables_by_name_hashmap != nullptr)
-        {
-            system_hash64map_release(output_variables_by_name_hashmap);
-
-            output_variables_by_name_hashmap = nullptr;
-        }
-    }
+    ~_ral_program_metadata();
 } _ral_program_metadata;
 
 typedef struct _ral_program
@@ -293,6 +221,149 @@ typedef struct _ral_program
 } _ral_program;
 
 
+PRIVATE void _ral_program_clear_metadata(ral_program program)
+{
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
+
+    /* Block any get() calls until metadata is filled by the rendering backend. */
+    system_event_reset(program_ptr->metadata.metadata_ready_event);
+
+    if (program_ptr->metadata.attributes != nullptr)
+    {
+        ral_program_attribute* current_attribute_ptr = nullptr;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.attributes,
+                                          &current_attribute_ptr) )
+        {
+            delete current_attribute_ptr;
+
+            current_attribute_ptr = nullptr;
+        }
+    }
+
+    if (program_ptr->metadata.blocks != nullptr)
+    {
+        _ral_program_metadata_block* current_block_ptr = nullptr;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.blocks,
+                                          &current_block_ptr) )
+        {
+            delete current_block_ptr;
+
+            current_block_ptr = nullptr;
+        }
+    }
+
+    if (program_ptr->metadata.attributes_by_name_hashmap != nullptr)
+    {
+        system_hash64map_clear(program_ptr->metadata.attributes_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.blocks_by_name_hashmap != nullptr)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.blocks_ssb_by_name_hashmap != nullptr)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_ssb_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.blocks_ub_by_name_hashmap != nullptr)
+    {
+        system_hash64map_clear(program_ptr->metadata.blocks_ub_by_name_hashmap);
+    }
+
+    if (program_ptr->metadata.output_variables != nullptr)
+    {
+        ral_program_variable* variable_ptr = nullptr;
+
+        while (system_resizable_vector_pop(program_ptr->metadata.output_variables,
+                                          &variable_ptr) )
+        {
+            delete variable_ptr;
+        }
+    }
+
+    if (program_ptr->metadata.output_variables_by_name_hashmap != nullptr)
+    {
+        system_hash64map_clear(program_ptr->metadata.output_variables_by_name_hashmap);
+    }
+}
+
+_ral_program_metadata::~_ral_program_metadata()
+{
+    _ral_program_clear_metadata(owner_program);
+
+    if (attributes != nullptr)
+    {
+        ral_program_attribute* current_attribute_ptr = nullptr;
+
+        while (system_resizable_vector_pop(attributes,
+                                          &current_attribute_ptr) )
+        {
+            delete current_attribute_ptr;
+        }
+
+        system_resizable_vector_release(attributes);
+        attributes = nullptr;
+    }
+
+    if (attributes_by_name_hashmap != nullptr)
+    {
+        system_hash64map_release(attributes_by_name_hashmap);
+
+        attributes_by_name_hashmap = nullptr;
+    }
+
+    if (blocks != nullptr)
+    {
+        system_resizable_vector_release(blocks);
+        blocks = nullptr;
+    }
+
+    if (blocks_by_name_hashmap != nullptr)
+    {
+        system_hash64map_release(blocks_by_name_hashmap);
+
+        blocks_by_name_hashmap = nullptr;
+    }
+
+    if (blocks_ssb_by_name_hashmap != nullptr)
+    {
+        system_hash64map_release(blocks_ssb_by_name_hashmap);
+
+        blocks_ssb_by_name_hashmap = nullptr;
+    }
+
+    if (blocks_ub_by_name_hashmap != nullptr)
+    {
+        system_hash64map_release(blocks_ub_by_name_hashmap);
+
+        blocks_ub_by_name_hashmap = nullptr;
+    }
+
+    if (metadata_ready_event != nullptr)
+    {
+        system_event_release(metadata_ready_event);
+
+        metadata_ready_event = nullptr;
+    }
+
+    if (output_variables != nullptr)
+    {
+        system_resizable_vector_release(output_variables);
+
+        output_variables = nullptr;
+    }
+
+    if (output_variables_by_name_hashmap != nullptr)
+    {
+        system_hash64map_release(output_variables_by_name_hashmap);
+
+        output_variables_by_name_hashmap = nullptr;
+    }
+}
 
 /** Please see header for specification */
 PUBLIC void ral_program_add_block(ral_program               program,
@@ -696,77 +767,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_program_clear_metadata(ral_program program)
-{
-    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
-
-    /* Block any get() calls until metadata is filled by the rendering backend. */
-    system_event_reset(program_ptr->metadata.metadata_ready_event);
-
-    if (program_ptr->metadata.attributes != nullptr)
-    {
-        ral_program_attribute* current_attribute_ptr = nullptr;
-
-        while (system_resizable_vector_pop(program_ptr->metadata.attributes,
-                                          &current_attribute_ptr) )
-        {
-            delete current_attribute_ptr;
-
-            current_attribute_ptr = nullptr;
-        }
-    }
-
-    if (program_ptr->metadata.blocks != nullptr)
-    {
-        _ral_program_metadata_block* current_block_ptr = nullptr;
-
-        while (system_resizable_vector_pop(program_ptr->metadata.blocks,
-                                          &current_block_ptr) )
-        {
-            delete current_block_ptr;
-
-            current_block_ptr = nullptr;
-        }
-    }
-
-    if (program_ptr->metadata.attributes_by_name_hashmap != nullptr)
-    {
-        system_hash64map_clear(program_ptr->metadata.attributes_by_name_hashmap);
-    }
-
-    if (program_ptr->metadata.blocks_by_name_hashmap != nullptr)
-    {
-        system_hash64map_clear(program_ptr->metadata.blocks_by_name_hashmap);
-    }
-
-    if (program_ptr->metadata.blocks_ssb_by_name_hashmap != nullptr)
-    {
-        system_hash64map_clear(program_ptr->metadata.blocks_ssb_by_name_hashmap);
-    }
-
-    if (program_ptr->metadata.blocks_ub_by_name_hashmap != nullptr)
-    {
-        system_hash64map_clear(program_ptr->metadata.blocks_ub_by_name_hashmap);
-    }
-
-    if (program_ptr->metadata.output_variables != nullptr)
-    {
-        ral_program_variable* variable_ptr = nullptr;
-
-        while (system_resizable_vector_pop(program_ptr->metadata.output_variables,
-                                          &variable_ptr) )
-        {
-            delete variable_ptr;
-        }
-    }
-
-    if (program_ptr->metadata.output_variables_by_name_hashmap != nullptr)
-    {
-        system_hash64map_clear(program_ptr->metadata.output_variables_by_name_hashmap);
-    }
-}
-
-/** Please see header for specification */
 PUBLIC ral_program ral_program_create(ral_context                    context,
                                       const ral_program_create_info* program_create_info_ptr)
 {
@@ -828,14 +828,6 @@ PUBLIC ral_program ral_program_create(ral_context                    context,
 
 end:
     return (ral_program) program_ptr;
-}
-
-/** Please see header for specification */
-PUBLIC void ral_program_expose_metadata(ral_program program)
-{
-    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
-
-    system_event_set(program_ptr->metadata.metadata_ready_event);
 }
 
 /** Please see header for specification */
@@ -1596,6 +1588,8 @@ PUBLIC void ral_program_lock(ral_program program)
 {
     system_read_write_mutex_lock( reinterpret_cast<_ral_program*>(program)->lock,
                                  ACCESS_WRITE);
+
+    _ral_program_clear_metadata(program);
 }
 
 /** Please see header for specification */
@@ -1609,6 +1603,10 @@ PUBLIC void ral_program_release(ral_program& program)
 /** Please see header for specification */
 PUBLIC void ral_program_unlock(ral_program program)
 {
-    system_read_write_mutex_unlock( reinterpret_cast<_ral_program*>(program)->lock,
+    _ral_program* program_ptr = reinterpret_cast<_ral_program*>(program);
+
+    system_event_set(program_ptr->metadata.metadata_ready_event);
+
+    system_read_write_mutex_unlock(program_ptr->lock,
                                    ACCESS_WRITE);
 }

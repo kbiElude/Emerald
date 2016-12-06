@@ -50,7 +50,12 @@ PUBLIC EMERALD_API system_variant system_variant_create(system_variant_type vari
                       "Variant type (%d) unrecognized",
                       variant_type);
 
-    result       = (_system_variant_descriptor_ptr) system_resource_pool_get_from_pool(variants_pool);
+    result = (_system_variant_descriptor_ptr) system_resource_pool_get_from_pool(variants_pool);
+
+    memset(result,
+           0,
+           sizeof(*result) );
+
     result->type = variant_type;
 
     return (system_variant) result;

@@ -2487,7 +2487,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                             case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
                             case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                             {
-                                float        data_vec3[3];
+                                float        data_vec3[3] = {0};
                                 unsigned int n_components = 1;
 
                                 if (attachment.shader_scalar_ub_offset == -1)
@@ -2529,21 +2529,10 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                                     }
                                 }
 
-                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
-                                    attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
-                                {
-                                    ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                           attachment.shader_scalar_ub_offset,
-                                                                                           data_vec3,
-                                                                                           sizeof(float) );
-                                }
-                                else
-                                {
-                                    ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                           attachment.shader_scalar_ub_offset,
-                                                                                           data_vec3,
-                                                                                           sizeof(float) * 3);
-                                }
+                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                       attachment.shader_scalar_ub_offset,
+                                                                                       data_vec3,
+                                                                                       sizeof(float) * n_components);
 
                                 break;
                             }
@@ -2573,7 +2562,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
 
                             case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
                             {
-                                float data_vec4[4];
+                                float data_vec4[4] = {0};
 
                                 if (attachment.shader_scalar_ub_offset == -1)
                                 {

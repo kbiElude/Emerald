@@ -862,7 +862,6 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
     /* Clear metadata before proceeding .. */
     program_ptr->link_thread_id = system_threads_get_thread_id();
 
-    ral_program_clear_metadata           (program_ptr->program_ral);
     _raGL_program_clear_bindings_metadata(program_ptr,
                                           false /* should_release */);
 
@@ -1186,8 +1185,6 @@ PRIVATE ral_present_job _raGL_program_link_callback(ral_context                 
     /* All done */
     program_ptr->link_thread_id = 0;
 
-    ral_program_expose_metadata(program_ptr->program_ral);
-
     end_time = system_time_now();
 
     system_time_get_msec_for_time(end_time - start_time,
@@ -1406,7 +1403,13 @@ PRIVATE void _raGL_program_on_shader_compile_callback(const void* callback_data,
              system_hashed_ansi_string_get_buffer(shader_name),
              system_hashed_ansi_string_get_buffer(program_name) );
 
-    raGL_program_link( (raGL_program) program_ptr);
+    ral_program_lock (program_ptr->program_ral);
+    raGL_program_lock(reinterpret_cast<raGL_program>(program_ptr) );
+    {
+        raGL_program_link( (raGL_program) program_ptr);
+    }
+    raGL_program_unlock(reinterpret_cast<raGL_program>(program_ptr) );
+    ral_program_unlock (program_ptr->program_ral);
 }
 
 /** TODO */

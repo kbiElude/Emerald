@@ -441,7 +441,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(scene_lig
             case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3:
             {
                 line << " * vec4(diffuse_material, 1.0)";
-                 
+
                 break;
             }
 

@@ -141,21 +141,6 @@ PUBLIC void ral_program_attach_variable_to_block(ral_program               progr
 PUBLIC void ral_program_attach_vertex_attribute(ral_program            program,
                                                 ral_program_attribute* attribute_ptr);
 
-/** Called by rendering back-ends when linking process starts. RAL program instance can
- *  anticipate subsequent calls, filling it with new metadata. Once all blocks & variables
- *  are attached, ral_program_expose_metadata() invocation indicates the metadata can be
- *  shared to other callers.
- *
- *  In order to support async linking, this call will reset a metadata_ready event, which in
- *  turn will block any ral_program_get*() invocations, until ral_program_expose_metadata()
- *  call is made, which is when the event will be set back on again.
- *
- *  NOTE: Internal use only.
- *
- *  @param program Program, whose metadata should be cleared.
- **/
-PUBLIC void ral_program_clear_metadata(ral_program program);
-
 /** TODO
  *
  *  NOTE: This function should only be used by ral_context. Use ral_context_create_programs() to create
@@ -163,14 +148,6 @@ PUBLIC void ral_program_clear_metadata(ral_program program);
  **/
 PUBLIC ral_program ral_program_create(ral_context                    context,
                                       const ral_program_create_info* program_create_info_ptr);
-
-/** See ral_program_clear_metadata() documentation for more details.
- *
- *  NOTE: Internal use only.
- *
- *  @param program Program, whose metadata should be exposed to non-backend threads.
- **/
-PUBLIC void ral_program_expose_metadata(ral_program program);
 
 /** TODO */
 PUBLIC EMERALD_API bool ral_program_get_attached_shader_at_index(ral_program program,

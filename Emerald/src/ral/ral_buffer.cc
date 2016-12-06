@@ -9,7 +9,6 @@
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
 
-
 typedef struct _ral_buffer
 {
     system_callback_manager     callback_manager;

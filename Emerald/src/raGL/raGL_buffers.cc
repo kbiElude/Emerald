@@ -20,6 +20,7 @@
 #include "system/system_memory_manager.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
+#include "system/system_threads.h"
 
 #define NONSPARSE_IBO_BUFFER_SIZE  (16  * 1024768)
 #define NONSPARSE_MISC_BUFFER_SIZE (16  * 1024768)

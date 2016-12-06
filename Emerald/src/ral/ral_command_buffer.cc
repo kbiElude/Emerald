@@ -1593,6 +1593,7 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_bindings(ral_command_buffe
                     const uint32_t   buffer_region_size = (src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER) ? src_command.storage_buffer_binding.size
                                                                                                                         : src_command.uniform_buffer_binding.size;
                     uint32_t         buffer_size        = 0;
+                    ral_buffer_usage buffer_usage;
 
                     ASSERT_DEBUG_SYNC(buffer != nullptr,
                                       "Null buffer defined for a storage/uniform buffer binding.");
@@ -1600,6 +1601,9 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_bindings(ral_command_buffe
                     ral_buffer_get_property(buffer,
                                             RAL_BUFFER_PROPERTY_SIZE,
                                            &buffer_size);
+                    ral_buffer_get_property(buffer,
+                                            RAL_BUFFER_PROPERTY_USAGE_BITS,
+                                           &buffer_usage);
 
                     ASSERT_DEBUG_SYNC(buffer_offset < buffer_size,
                                       "Start offset for the storage/uniform buffer binding exceeds available buffer storage");
@@ -1609,6 +1613,10 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_bindings(ral_command_buffe
                         ASSERT_DEBUG_SYNC(buffer_offset + buffer_region_size <= buffer_size,
                                           "Region for the storage/uniform buffer binding exceeds available buffer storage");
                     }
+
+                    ASSERT_DEBUG_SYNC(src_command.binding_type == RAL_BINDING_TYPE_STORAGE_BUFFER && (buffer_usage & RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT) != 0 ||
+                                      src_command.binding_type == RAL_BINDING_TYPE_UNIFORM_BUFFER && (buffer_usage & RAL_BUFFER_USAGE_UNIFORM_BUFFER_BIT)        != 0,
+                                      "Usage pattern specified at RAL buffer creation time does not permit it to be used as the specified binding");
 
                     break;
                 }

@@ -9,6 +9,7 @@
 #include "ral/ral_context.h"
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
+#include "system/system_critical_section.h"
 #include "system/system_log.h"
 
 #define DIRTY_OFFSET_UNUSED (-1)
@@ -20,6 +21,7 @@ typedef struct _ral_program_block_buffer
     ral_context context_ral;
     ral_program program_ral;
 
+    system_critical_section   cs;
     unsigned char*            data;
     bool                      has_unsized_array;
     system_hashed_ansi_string name;
@@ -45,6 +47,7 @@ typedef struct _ral_program_block_buffer
     {
         buffer_ral         = nullptr;
         context_ral        = nullptr;
+        cs                 = system_critical_section_create();
         data               = nullptr;
         dirty_offset_end   = DIRTY_OFFSET_UNUSED;
         dirty_offset_start = DIRTY_OFFSET_UNUSED;
@@ -64,6 +67,9 @@ typedef struct _ral_program_block_buffer
 
             buffer_ral = nullptr;
         }
+
+        system_critical_section_release(cs);
+        cs = nullptr;
 
         if (data != nullptr)
         {
@@ -438,175 +444,179 @@ PRIVATE void _ral_program_block_buffer_set_variable_value(_ral_program_block_buf
                         ((variable_ral_ptr->array_stride != -1) ? variable_ral_ptr->array_stride : 0) * dst_array_start_index;
     src_traveller_ptr = (const unsigned char*) src_data;
 
-    if (is_matrix_variable)
+    system_critical_section_enter(block_buffer_ptr->cs);
     {
-        /* Matrix variables, yay */
-        if (_ral_program_block_buffer_get_memcpy_friendly_matrix_stride(variable_ral_ptr) != variable_ral_ptr->matrix_stride)
+        if (is_matrix_variable)
         {
-            /* NOTE: The following code may seem redundant but will be useful for code maintainability
-             *       if we introduce transposed data support. */
-            if (variable_ral_ptr->is_row_major_matrix)
+            /* Matrix variables, yay */
+            if (_ral_program_block_buffer_get_memcpy_friendly_matrix_stride(variable_ral_ptr) != variable_ral_ptr->matrix_stride)
             {
-                /* Need to copy the data row-by-row */
-                const unsigned int n_matrix_rows = _ral_program_block_buffer_get_n_matrix_rows(variable_ral_ptr);
-                const unsigned int row_data_size = n_matrix_rows * sizeof(float);
-
-                for (unsigned int n_row = 0;
-                                  n_row < n_matrix_rows;
-                                ++n_row)
+                /* NOTE: The following code may seem redundant but will be useful for code maintainability
+                 *       if we introduce transposed data support. */
+                if (variable_ral_ptr->is_row_major_matrix)
                 {
-                    /* TODO: Consider doing epsilon-based comparisons here */
-                    if (memcmp(dst_traveller_ptr,
-                               src_traveller_ptr,
-                               row_data_size) != 0)
-                    {
-                        memcpy(dst_traveller_ptr,
-                               src_traveller_ptr,
-                               row_data_size);
+                    /* Need to copy the data row-by-row */
+                    const unsigned int n_matrix_rows = _ral_program_block_buffer_get_n_matrix_rows(variable_ral_ptr);
+                    const unsigned int row_data_size = n_matrix_rows * sizeof(float);
 
-                        if (modified_region_start == DIRTY_OFFSET_UNUSED)
+                    for (unsigned int n_row = 0;
+                                      n_row < n_matrix_rows;
+                                    ++n_row)
+                    {
+                        /* TODO: Consider doing epsilon-based comparisons here */
+                        if (memcmp(dst_traveller_ptr,
+                                   src_traveller_ptr,
+                                   row_data_size) != 0)
                         {
-                            modified_region_start = dst_traveller_ptr - block_buffer_ptr->data;
+                            memcpy(dst_traveller_ptr,
+                                   src_traveller_ptr,
+                                   row_data_size);
+
+                            if (modified_region_start == DIRTY_OFFSET_UNUSED)
+                            {
+                                modified_region_start = dst_traveller_ptr - block_buffer_ptr->data;
+                            }
+
+                            modified_region_end = dst_traveller_ptr - block_buffer_ptr->data + row_data_size;
                         }
 
-                        modified_region_end = dst_traveller_ptr - block_buffer_ptr->data + row_data_size;
+                        dst_traveller_ptr += variable_ral_ptr->matrix_stride;
+                        src_traveller_ptr += row_data_size;
                     }
+                }
+                else
+                {
+                    /* Need to copy the data column-by-column */
+                    const unsigned int n_matrix_columns = _ral_program_block_buffer_get_n_matrix_columns(variable_ral_ptr);
+                    const unsigned int column_data_size = sizeof(float) * n_matrix_columns;
 
-                    dst_traveller_ptr += variable_ral_ptr->matrix_stride;
-                    src_traveller_ptr += row_data_size;
+                    for (unsigned int n_column = 0;
+                                      n_column < n_matrix_columns;
+                                    ++n_column)
+                    {
+                        /* TODO: Consider doing epsilon-based comparisons here */
+                        if (memcmp(dst_traveller_ptr,
+                                   src_traveller_ptr,
+                                   column_data_size) != 0)
+                        {
+                            memcpy(dst_traveller_ptr,
+                                   src_traveller_ptr,
+                                   column_data_size);
+
+                            if (modified_region_start == DIRTY_OFFSET_UNUSED)
+                            {
+                                modified_region_start = dst_traveller_ptr - block_buffer_ptr->data;
+                            }
+
+                            modified_region_end = dst_traveller_ptr - block_buffer_ptr->data + column_data_size;
+                        }
+
+                        dst_traveller_ptr += variable_ral_ptr->matrix_stride;
+                        src_traveller_ptr += column_data_size;
+                    }
                 }
             }
             else
             {
-                /* Need to copy the data column-by-column */
-                const unsigned int n_matrix_columns = _ral_program_block_buffer_get_n_matrix_columns(variable_ral_ptr);
-                const unsigned int column_data_size = sizeof(float) * n_matrix_columns;
-
-                for (unsigned int n_column = 0;
-                                  n_column < n_matrix_columns;
-                                ++n_column)
+                /* Good to use the good old memcpy(), since the data is laid out linearly
+                 * without any padding in-between.
+                 *
+                 * TODO: Consider doing epsilon-based comparisons here */
+                if (memcmp(dst_traveller_ptr,
+                           src_traveller_ptr,
+                           src_data_size) != 0)
                 {
-                    /* TODO: Consider doing epsilon-based comparisons here */
+                    memcpy(dst_traveller_ptr,
+                           src_traveller_ptr,
+                           src_data_size);
+
+                    modified_region_start = dst_traveller_ptr     - block_buffer_ptr->data;
+                    modified_region_end   = modified_region_start + src_data_size;
+                }
+            }
+        }
+        else
+        {
+            /* Non-matrix variables */
+            if (variable_ral_ptr->array_stride != 0  && /* no padding             */
+                variable_ral_ptr->array_stride != -1)   /* not an arrayed uniform */
+            {
+                const unsigned int src_single_item_size = _ral_program_block_buffer_get_expected_src_data_size(variable_ral_ptr,
+                                                                                                               1);         /* n_array_items */
+
+                /* Not good, need to take the padding into account..
+                 *
+                 * TODO: Optimize the case where variable_ptr->array_stride == src_single_item_size */
+                for (unsigned int n_item = 0;
+                                  n_item < dst_array_item_count;
+                                ++n_item)
+                {
                     if (memcmp(dst_traveller_ptr,
                                src_traveller_ptr,
-                               column_data_size) != 0)
+                               src_single_item_size) != 0)
                     {
                         memcpy(dst_traveller_ptr,
                                src_traveller_ptr,
-                               column_data_size);
+                               src_single_item_size);
 
                         if (modified_region_start == DIRTY_OFFSET_UNUSED)
                         {
                             modified_region_start = dst_traveller_ptr - block_buffer_ptr->data;
                         }
 
-                        modified_region_end = dst_traveller_ptr - block_buffer_ptr->data + column_data_size;
+                        modified_region_end = dst_traveller_ptr - block_buffer_ptr->data + src_single_item_size;
                     }
 
-                    dst_traveller_ptr += variable_ral_ptr->matrix_stride;
-                    src_traveller_ptr += column_data_size;
+                    dst_traveller_ptr += variable_ral_ptr->array_stride;
+                    src_traveller_ptr += src_single_item_size;
                 }
             }
-        }
-        else
-        {
-            /* Good to use the good old memcpy(), since the data is laid out linearly
-             * without any padding in-between.
-             *
-             * TODO: Consider doing epsilon-based comparisons here */
-            if (memcmp(dst_traveller_ptr,
-                       src_traveller_ptr,
-                       src_data_size) != 0)
+            else
             {
-                memcpy(dst_traveller_ptr,
-                       src_traveller_ptr,
-                       src_data_size);
+                /* Not an array! We can again get away with a single memcpy */
+                ASSERT_DEBUG_SYNC(variable_ral_ptr->size == 1,
+                                  "Sanity check failed");
 
-                modified_region_start = dst_traveller_ptr     - block_buffer_ptr->data;
-                modified_region_end   = modified_region_start + src_data_size;
-            }
-        }
-    }
-    else
-    {
-        /* Non-matrix variables */
-        if (variable_ral_ptr->array_stride != 0  && /* no padding             */
-            variable_ral_ptr->array_stride != -1)   /* not an arrayed uniform */
-        {
-            const unsigned int src_single_item_size = _ral_program_block_buffer_get_expected_src_data_size(variable_ral_ptr,
-                                                                                                           1);         /* n_array_items */
-
-            /* Not good, need to take the padding into account..
-             *
-             * TODO: Optimize the case where variable_ptr->array_stride == src_single_item_size */
-            for (unsigned int n_item = 0;
-                              n_item < dst_array_item_count;
-                            ++n_item)
-            {
                 if (memcmp(dst_traveller_ptr,
                            src_traveller_ptr,
-                           src_single_item_size) != 0)
+                           src_data_size) != 0)
                 {
                     memcpy(dst_traveller_ptr,
                            src_traveller_ptr,
-                           src_single_item_size);
+                           src_data_size);
 
-                    if (modified_region_start == DIRTY_OFFSET_UNUSED)
-                    {
-                        modified_region_start = dst_traveller_ptr - block_buffer_ptr->data;
-                    }
-
-                    modified_region_end = dst_traveller_ptr - block_buffer_ptr->data + src_single_item_size;
+                    modified_region_start = dst_traveller_ptr     - block_buffer_ptr->data;
+                    modified_region_end   = modified_region_start + src_data_size;
                 }
-
-                dst_traveller_ptr += variable_ral_ptr->array_stride;
-                src_traveller_ptr += src_single_item_size;
             }
         }
-        else
+
+        /* Update the dirty region delimiters if needed */
+        ASSERT_DEBUG_SYNC(modified_region_start == DIRTY_OFFSET_UNUSED && modified_region_end == DIRTY_OFFSET_UNUSED ||
+                          modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED,
+                          "Sanity check failed.");
+
+        if (modified_region_start != DIRTY_OFFSET_UNUSED &&
+            modified_region_end   != DIRTY_OFFSET_UNUSED)
         {
-            /* Not an array! We can again get away with a single memcpy */
-            ASSERT_DEBUG_SYNC(variable_ral_ptr->size == 1,
+            ASSERT_DEBUG_SYNC(modified_region_start     < uint32_t(block_buffer_ptr->size) &&
+                              (modified_region_end - 1) < uint32_t(block_buffer_ptr->size),
                               "Sanity check failed");
 
-            if (memcmp(dst_traveller_ptr,
-                       src_traveller_ptr,
-                       src_data_size) != 0)
+            if (block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED                  ||
+                modified_region_start                <  block_buffer_ptr->dirty_offset_start)
             {
-                memcpy(dst_traveller_ptr,
-                       src_traveller_ptr,
-                       src_data_size);
+                block_buffer_ptr->dirty_offset_start = modified_region_start;
+            }
 
-                modified_region_start = dst_traveller_ptr     - block_buffer_ptr->data;
-                modified_region_end   = modified_region_start + src_data_size;
+            if (block_buffer_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED                ||
+                modified_region_end                >  block_buffer_ptr->dirty_offset_end)
+            {
+                block_buffer_ptr->dirty_offset_end = modified_region_end;
             }
         }
     }
-
-    /* Update the dirty region delimiters if needed */
-    ASSERT_DEBUG_SYNC(modified_region_start == DIRTY_OFFSET_UNUSED && modified_region_end == DIRTY_OFFSET_UNUSED ||
-                      modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED,
-                      "Sanity check failed.");
-
-    if (modified_region_start != DIRTY_OFFSET_UNUSED &&
-        modified_region_end   != DIRTY_OFFSET_UNUSED)
-    {
-        ASSERT_DEBUG_SYNC(modified_region_start     < uint32_t(block_buffer_ptr->size) &&
-                          (modified_region_end - 1) < uint32_t(block_buffer_ptr->size),
-                          "Sanity check failed");
-
-        if (block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED                  ||
-            modified_region_start                <  block_buffer_ptr->dirty_offset_start)
-        {
-            block_buffer_ptr->dirty_offset_start = modified_region_start;
-        }
-
-        if (block_buffer_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED                ||
-            modified_region_end                >  block_buffer_ptr->dirty_offset_end)
-        {
-            block_buffer_ptr->dirty_offset_end = modified_region_end;
-        }
-    }
+    system_critical_section_leave(block_buffer_ptr->cs);
 
     /* All done */
 end:
@@ -879,46 +889,49 @@ PUBLIC EMERALD_API void ral_program_block_buffer_sync_immediately(ral_program_bl
     ral_buffer_client_sourced_update_info                                bo_update_info;
     std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > bo_update_ptrs;
 
-    /* Sanity checks */
-    ASSERT_DEBUG_SYNC(block_buffer_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
-                      block_buffer_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED,
-                      "Sanity check failed");
-
-    /* Anything to refresh? */
-    if (block_buffer_ptr->dirty_offset_end   == DIRTY_OFFSET_UNUSED &&
-        block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED)
+    system_critical_section_enter(block_buffer_ptr->cs);
     {
-        /* Nothing to synchronize */
-        goto end;
+        /* Sanity checks */
+        ASSERT_DEBUG_SYNC(block_buffer_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
+                          block_buffer_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED,
+                          "Sanity check failed");
+
+        /* Anything to refresh? */
+        if (block_buffer_ptr->dirty_offset_end   == DIRTY_OFFSET_UNUSED &&
+            block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED)
+        {
+            /* Nothing to synchronize */
+            goto end;
+        }
+
+        bo_update_info.data         = block_buffer_ptr->data             + block_buffer_ptr->dirty_offset_start;
+        bo_update_info.data_size    = block_buffer_ptr->dirty_offset_end - block_buffer_ptr->dirty_offset_start;
+        bo_update_info.start_offset = block_buffer_ptr->dirty_offset_start;
+
+        bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&bo_update_info,
+                                                                                        NullDeleter<ral_buffer_client_sourced_update_info>() ));
+
+        ral_buffer_set_data_from_client_memory(block_buffer_ptr->buffer_ral,
+                                               bo_update_ptrs,
+                                               false, /* async               */
+                                               false  /* sync_other_contexts */); /* NOTE: in the future, we may need to make this arg value customizable */
+
+    #if 0
+        if (block_ptr->is_intel_driver)
+        {
+            /* Sigh. */
+            block_ptr->pGLFinish();
+        }
+    #endif
+
+        /* Reset the offsets */
+        block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
+        block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
     }
 
-    bo_update_info.data         = block_buffer_ptr->data             + block_buffer_ptr->dirty_offset_start;
-    bo_update_info.data_size    = block_buffer_ptr->dirty_offset_end - block_buffer_ptr->dirty_offset_start;
-    bo_update_info.start_offset = block_buffer_ptr->dirty_offset_start;
-
-    bo_update_ptrs.push_back(std::shared_ptr<ral_buffer_client_sourced_update_info>(&bo_update_info,
-                                                                                    NullDeleter<ral_buffer_client_sourced_update_info>() ));
-
-    ral_buffer_set_data_from_client_memory(block_buffer_ptr->buffer_ral,
-                                           bo_update_ptrs,
-                                           false, /* async               */
-                                           false  /* sync_other_contexts */); /* NOTE: in the future, we may need to make this arg value customizable */
-
-#if 0
-    if (block_ptr->is_intel_driver)
-    {
-        /* Sigh. */
-        block_ptr->pGLFinish();
-    }
-#endif
-
-    /* Reset the offsets */
-    block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
-    block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
-
-    /* All done */
 end:
-    ;
+    /* All done */
+    system_critical_section_leave(block_buffer_ptr->cs);
 }
 
 /* Please see header for spec */
@@ -928,33 +941,36 @@ PUBLIC EMERALD_API void ral_program_block_buffer_sync_via_command_buffer(ral_pro
     _ral_program_block_buffer* block_buffer_ptr = reinterpret_cast<_ral_program_block_buffer*>(block_buffer);
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(block_buffer_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
-                      block_buffer_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED,
-                      "Sanity check failed");
-
-    ASSERT_DEBUG_SYNC(command_buffer != nullptr,
-                      "Specified command buffer is null");
-
-    /* Anything to refresh? */
-    if (block_buffer_ptr->dirty_offset_end   == DIRTY_OFFSET_UNUSED &&
-        block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED)
+    system_critical_section_enter(block_buffer_ptr->cs);
     {
-        /* Nothing to synchronize */
-        goto end;
+        ASSERT_DEBUG_SYNC(block_buffer_ptr->dirty_offset_end != DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start != DIRTY_OFFSET_UNUSED ||
+                          block_buffer_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED && block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED,
+                          "Sanity check failed");
+
+        ASSERT_DEBUG_SYNC(command_buffer != nullptr,
+                          "Specified command buffer is null");
+
+        /* Anything to refresh? */
+        if (block_buffer_ptr->dirty_offset_end   == DIRTY_OFFSET_UNUSED &&
+            block_buffer_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED)
+        {
+            /* Nothing to synchronize */
+            goto end;
+        }
+
+        /* Record a "update command buffer" command into the user-specified command buffer */
+        ral_command_buffer_record_update_buffer(command_buffer,
+                                                block_buffer_ptr->buffer_ral,
+                                                block_buffer_ptr->dirty_offset_start,                                       /* start_offset */
+                                                block_buffer_ptr->dirty_offset_end - block_buffer_ptr->dirty_offset_start,  /* n_data_bytes */
+                                                block_buffer_ptr->data             + block_buffer_ptr->dirty_offset_start); /* data         */
+
+        /* Reset the offsets */
+        block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
+        block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
     }
 
-    /* Record a "update command buffer" command into the user-specified command buffer */
-    ral_command_buffer_record_update_buffer(command_buffer,
-                                            block_buffer_ptr->buffer_ral,
-                                            block_buffer_ptr->dirty_offset_start,                                       /* start_offset */
-                                            block_buffer_ptr->dirty_offset_end - block_buffer_ptr->dirty_offset_start,  /* n_data_bytes */
-                                            block_buffer_ptr->data             + block_buffer_ptr->dirty_offset_start); /* data         */
-
-    /* Reset the offsets */
-    block_buffer_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
-    block_buffer_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
-
-    /* All done */
 end:
-    ;
+    /* All done */
+    system_critical_section_leave(block_buffer_ptr->cs);
 }
