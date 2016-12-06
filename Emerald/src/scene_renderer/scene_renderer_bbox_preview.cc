@@ -312,23 +312,7 @@ end:
 PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_preview* preview_ptr)
 {
     ral_backend_type backend_type                    = RAL_BACKEND_TYPE_UNKNOWN;
-    float*           traveller_ptr                   = nullptr;
-    float*           ub_data                         = nullptr;
     uint32_t         uniform_buffer_offset_alignment = -1;
-
-    /* Allocate space for AABB data. */
-    const uint32_t min_bbox_ub_offset = 4 /* vec4 */ *                    preview_ptr->data_n_meshes * sizeof(float);
-    const uint32_t matrix_data_size   = 4 /* vec4 */ * 2 /* max, min */ * preview_ptr->data_n_meshes * sizeof(float);
-
-    ub_data = new (std::nothrow) float[matrix_data_size / sizeof(float)];
-
-    ASSERT_ALWAYS_SYNC(ub_data != nullptr,
-                       "Out of memory");
-
-    if (ub_data == nullptr)
-    {
-        goto end;
-    }
 
     /* Fill the buffer with data */
     for (unsigned int n_iteration = 0;
@@ -389,52 +373,26 @@ PRIVATE void _scene_renderer_bbox_preview_init_ub_data(_scene_renderer_bbox_prev
 
             if (n_iteration == 0)
             {
-                traveller_ptr = ub_data + 4 /* vec4 */ * mesh_id;
-
-                memcpy(traveller_ptr,
-                       aabb_max_ptr,
-                       sizeof(float) * 4);
+                ral_program_block_buffer_set_arrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                                    0, /* max AABB data offset */
+                                                                    aabb_max_ptr,
+                                                                    sizeof(float) * 4, /* src_data_size         */
+                                                                    n_mesh,            /* dst_array_start_index */
+                                                                    1);
             }
             else
             {
-                traveller_ptr = ub_data + 4 /* vec4 */ * (preview_ptr->data_n_meshes + mesh_id);
-
-                memcpy(traveller_ptr,
-                       aabb_min_ptr,
-                       sizeof(float) * 4);
+                ral_program_block_buffer_set_arrayed_variable_value(preview_ptr->preview_program_data_ub,
+                                                                    preview_ptr->data_n_meshes * sizeof(float) * 4, /* min AABB data offset */
+                                                                    aabb_min_ptr,
+                                                                    sizeof(float) * 4, /* src_data_size         */
+                                                                    n_mesh,            /* dst_array_start_index */
+                                                                    1);
             }
         }
     }
 
-    /* Retrieve UB offset alignment */
-    ral_context_get_property(preview_ptr->context,
-                             RAL_CONTEXT_PROPERTY_UNIFORM_BUFFER_ALIGNMENT,
-                            &uniform_buffer_offset_alignment);
-
-    /* Initialize UBO storage. */
-    uint32_t data_bo_size = 0;
-
-    ral_program_block_buffer_set_arrayed_variable_value(preview_ptr->preview_program_data_ub,
-                                                        0, /* max AABB data offset */
-                                                        ub_data,
-                                                        matrix_data_size / 2, /* src_data_size         */
-                                                        0,                    /* dst_array_start_index */
-                                                        preview_ptr->data_n_meshes);
-    ral_program_block_buffer_set_arrayed_variable_value(preview_ptr->preview_program_data_ub,
-                                                        min_bbox_ub_offset,
-                                                        ub_data + sizeof(float) * 4,
-                                                        matrix_data_size / 2, /* src_data_size         */
-                                                        0,                    /* dst_array_start_index */
-                                                        preview_ptr->data_n_meshes);
-
     ral_program_block_buffer_sync_immediately(preview_ptr->preview_program_data_ub);
-end:
-    if (ub_data != nullptr)
-    {
-        delete [] ub_data;
-
-        ub_data = nullptr;
-    }
 }
 
 /** Please see header for spec */
