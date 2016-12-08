@@ -45,7 +45,8 @@ PUBLIC scene_renderer_lights_preview scene_renderer_lights_preview_create(ral_co
 
 /** TODO */
 PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview preview,
-                                                ral_texture_view              color_rt);
+                                                ral_texture_view              color_rt,
+                                                ral_texture_view              depth_rt);
 
 /** TODO
  *

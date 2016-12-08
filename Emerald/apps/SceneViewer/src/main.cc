@@ -356,7 +356,7 @@ ral_present_job _render_frame(ral_context                                       
 #ifdef ENABLE_BB_VISUALIZATION
         HELPER_VISUALIZATION_BOUNDING_BOXES,
 #else
-        HELPER_VISUALIZATION_FRUSTUMS,
+        HELPER_VISUALIZATION_LIGHTS,
 #endif
         frame_time,
         _color_texture_view,

@@ -893,7 +893,8 @@ PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_ren
         }
 
         scene_renderer_lights_preview_start(renderer_ptr->lights_preview,
-                                            renderer_ptr->current_color_rt);
+                                            renderer_ptr->current_color_rt,
+                                            renderer_ptr->current_depth_rt);
         {
             for (unsigned int n_light = 0;
                               n_light < n_scene_lights;
@@ -913,7 +914,8 @@ PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_ren
                  *       so we may need to come up with some kind of a *cough* design
                  *       for this.
                  */
-                if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+                if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
+                    current_light_type == SCENE_LIGHT_TYPE_SPOT)
                 {
                     float current_light_position[3];
                     float current_light_color   [4] =

@@ -63,6 +63,7 @@ typedef struct _scene_renderer_lights_preview
     ral_texture_view         cached_color_rt;
     uint32_t                 cached_color_rt_size[2];
     ral_command_buffer       cached_command_buffer;
+    ral_texture_view         cached_depth_rt;
     ral_gfx_state            cached_gfx_state_lines;
     ral_gfx_state            cached_gfx_state_points;
     scene                    owned_scene;
@@ -79,6 +80,7 @@ typedef struct _scene_renderer_lights_preview
 
         cached_color_rt                    = nullptr;
         cached_command_buffer              = nullptr;
+        cached_depth_rt                    = nullptr;
         cached_gfx_state_lines             = nullptr;
         cached_gfx_state_points            = nullptr;
         context                            = nullptr;
@@ -395,7 +397,8 @@ PUBLIC void scene_renderer_lights_preview_release(scene_renderer_lights_preview 
 
 /** Please see header for spec */
 PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview preview,
-                                                ral_texture_view              color_rt)
+                                                ral_texture_view              color_rt,
+                                                ral_texture_view              depth_rt)
 {
     uint32_t                          color_rt_size[2];
     const ogl_context_gl_entrypoints* entrypoints_ptr = nullptr;
@@ -453,7 +456,7 @@ PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview pr
         scissor_box.size[0] = color_rt_size[0];
         scissor_box.size[1] = color_rt_size[1];
         scissor_box.xy  [0] = 0;
-        scissor_box.xy  [0] = 1;
+        scissor_box.xy  [1] = 0;
 
         viewport.depth_range[0] = 0.0f;
         viewport.depth_range[1] = 1.0f;
@@ -463,8 +466,12 @@ PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview pr
         viewport.xy  [0]        = 0;
         viewport.xy  [1]        = 0;
 
-        gfx_state_create_info_items[0].line_width                           = 4.0f;
+        gfx_state_create_info_items[0].depth_test                           = true;
+        gfx_state_create_info_items[0].depth_test_compare_op                = RAL_COMPARE_OP_LESS;
+        gfx_state_create_info_items[0].depth_writes                         = true;
+        gfx_state_create_info_items[0].line_width                           = 0.5f;
         gfx_state_create_info_items[0].primitive_type                       = RAL_PRIMITIVE_TYPE_LINES;
+        gfx_state_create_info_items[0].scissor_test                         = true;
         gfx_state_create_info_items[0].static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info_items[0].static_scissor_boxes                 = &scissor_box;
         gfx_state_create_info_items[0].static_scissor_boxes_enabled         = true;
@@ -526,9 +533,12 @@ PUBLIC void scene_renderer_lights_preview_start(scene_renderer_lights_preview pr
         ral_command_buffer_record_set_color_rendertargets(preview_ptr->cached_command_buffer,
                                                           1, /* n_rendertargets */
                                                          &color_rt_info);
+        ral_command_buffer_record_set_depth_rendertarget (preview_ptr->cached_command_buffer,
+                                                          depth_rt);
     }
 
     preview_ptr->cached_color_rt = color_rt;
+    preview_ptr->cached_depth_rt = depth_rt;
 }
 
 /** Please see header for spec */
@@ -537,20 +547,22 @@ PUBLIC ral_present_task scene_renderer_lights_preview_stop(scene_renderer_lights
     _scene_renderer_lights_preview*  preview_ptr             = reinterpret_cast<_scene_renderer_lights_preview*>(preview);
     ral_present_task                 result_task             = nullptr;
     ral_present_task_gpu_create_info result_task_create_info;
-    ral_present_task_io              result_task_io;
+    ral_present_task_io              result_task_ios[2];
 
     /* First, stop recording the command buffer we're going to use for the result present task */
     ral_command_buffer_stop_recording(preview_ptr->cached_command_buffer);
 
     /* Instantiate the requested present task */
-    result_task_io.object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
-    result_task_io.texture_view = preview_ptr->cached_color_rt;
+    result_task_ios[0].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    result_task_ios[0].texture_view = preview_ptr->cached_color_rt;
+    result_task_ios[1].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+    result_task_ios[1].texture_view = preview_ptr->cached_depth_rt;
 
     result_task_create_info.command_buffer   = preview_ptr->cached_command_buffer;
-    result_task_create_info.n_unique_inputs  = 1;
-    result_task_create_info.n_unique_outputs = 1;
-    result_task_create_info.unique_inputs    = &result_task_io;
-    result_task_create_info.unique_outputs   = &result_task_io;
+    result_task_create_info.n_unique_inputs  = 2;
+    result_task_create_info.n_unique_outputs = 2;
+    result_task_create_info.unique_inputs    = result_task_ios;
+    result_task_create_info.unique_outputs   = result_task_ios;
 
     result_task = ral_present_task_create_gpu(system_hashed_ansi_string_create("Scene renderer: Lights preview"),
                                              &result_task_create_info);

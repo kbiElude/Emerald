@@ -1622,10 +1622,6 @@ void _raGL_command_buffer::bake_gfx_state()
     {
         _raGL_command* new_line_width_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
 
-        ASSERT_DEBUG_SYNC(line_width >= limits_ptr->aliased_line_width_range[0] &&
-                          line_width <= limits_ptr->aliased_line_width_range[1],
-                          "Unsupported line width requested.");
-
         ASSERT_DEBUG_SYNC(line_width <= 1.0f,
                           "GL backend does not provide support for lines whose width is larger than 1.");
 
