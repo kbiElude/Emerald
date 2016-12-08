@@ -339,6 +339,13 @@ _scene_renderer::~_scene_renderer()
         current_custom_meshes_to_render = nullptr;
     }
 
+    if (frustum_preview != nullptr)
+    {
+        scene_renderer_frustum_preview_release(frustum_preview);
+
+        frustum_preview = nullptr;
+    }
+
     if (lights_preview != nullptr)
     {
         scene_renderer_lights_preview_release(lights_preview);
@@ -1008,7 +1015,7 @@ PRIVATE ral_present_task _scene_renderer_render_helper_visualizations(_scene_ren
             result_task_input_mappings[n_input_mappings].n_present_task        = depth_consumer_task_indices[n_depth_consumer_task];
             result_task_input_mappings[n_input_mappings].present_task_io_index = 1;
 
-            result_task_output_mappings[n_output_mappings] = result_task_output_mappings[n_output_mappings];
+            result_task_output_mappings[n_output_mappings] = result_task_input_mappings[n_input_mappings];
 
             ++n_input_mappings;
             ++n_output_mappings;
@@ -2954,7 +2961,26 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
         renderer_ptr->current_view                      = view;
         renderer_ptr->current_vp                        = vp;
     }
+    else
+    {
+        uint32_t viewport_size[2];
 
+        ral_texture_view_get_mipmap_property(color_rt,
+                                             0, /* n_layer */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                             viewport_size + 0);
+        ral_texture_view_get_mipmap_property(color_rt,
+                                             0, /* n_layer */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                             viewport_size + 1);
+
+        scene_camera_set_property(renderer_ptr->current_camera,
+                                  SCENE_CAMERA_PROPERTY_VIEWPORT,
+                                  viewport_size);
+
+    }
     /* 1. Traverse the scene graph and:
      *
      *    - update light direction vectors.

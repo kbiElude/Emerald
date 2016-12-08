@@ -312,78 +312,95 @@ PRIVATE void _varia_text_renderer_init_programs(_varia_text_renderer* text_ptr)
         system_hashed_ansi_string_create("varia_text_renderer program")
     };
 
+    text_ptr->draw_text_program = ral_context_get_program_by_name(text_ptr->context,
+                                                                  draw_text_program_create_info.name);
 
-    if (!ral_context_create_shaders(text_ptr->context,
-                                    n_shader_create_info_items,
-                                    shader_create_info_items,
-                                    result_shaders) )
+    if (text_ptr->draw_text_program == nullptr)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "RAL shader creation failed.");
-    }
+        if (!ral_context_create_shaders(text_ptr->context,
+                                        n_shader_create_info_items,
+                                        shader_create_info_items,
+                                        result_shaders) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL shader creation failed.");
+        }
 
-    if (!ral_context_create_programs(text_ptr->context,
-                                     1, /* n_create_info_items */
-                                    &draw_text_program_create_info,
-                                    &text_ptr->draw_text_program) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "RAL program creation failed.");
-    }
+        if (!ral_context_create_programs(text_ptr->context,
+                                         1, /* n_create_info_items */
+                                        &draw_text_program_create_info,
+                                        &text_ptr->draw_text_program) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "RAL program creation failed.");
+        }
 
-    /* Prepare the bodies */
-    ral_backend_type  backend_type = RAL_BACKEND_TYPE_UNKNOWN;
-    std::stringstream fs_sstream;
-    std::stringstream vs_sstream;
+        /* Prepare the bodies */
+        ral_backend_type  backend_type = RAL_BACKEND_TYPE_UNKNOWN;
+        std::stringstream fs_sstream;
+        std::stringstream vs_sstream;
 
-    ral_context_get_property(text_ptr->context,
-                             RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
-                            &backend_type);
+        ral_context_get_property(text_ptr->context,
+                                 RAL_CONTEXT_PROPERTY_BACKEND_TYPE,
+                                &backend_type);
 
-    if (backend_type == RAL_BACKEND_TYPE_ES)
-    {
-        fs_sstream << "#version 310 es\n"
-                      "\n"
-                   << fragment_shader_template;
+        if (backend_type == RAL_BACKEND_TYPE_ES)
+        {
+            fs_sstream << "#version 310 es\n"
+                          "\n"
+                       << fragment_shader_template;
 
-        vs_sstream << "#version 310 es\n"
-                      "\n"
-                   << vertex_shader_template;
+            vs_sstream << "#version 310 es\n"
+                          "\n"
+                       << vertex_shader_template;
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
+                              "Unrecognized context type");
+
+            fs_sstream << "#version 430 core\n"
+                          "\n"
+                       << fragment_shader_template;
+
+            vs_sstream << "#version 430 core\n"
+                          "\n"
+                       << vertex_shader_template;
+        }
+
+        /* Assign bodies to the shaders */
+        const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create(fs_sstream.str().c_str() );
+        const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(vs_sstream.str().c_str() );
+
+        ral_shader_set_property(result_shaders[0],
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &fs_body_has);
+        ral_shader_set_property(result_shaders[1],
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &vs_body_has);
+
+        if (!ral_program_attach_shader(text_ptr->draw_text_program,
+                                       result_shaders[0],
+                                       false /* async */) ||
+            !ral_program_attach_shader(text_ptr->draw_text_program,
+                                       result_shaders[1],
+                                       false /* async */) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not link text drawing program.");
+        }
+
+        /* Delete the shader objects */
+        ral_context_delete_objects(text_ptr->context,
+                                   RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                   n_shader_create_info_items,
+                                   reinterpret_cast<void* const*>(result_shaders) );
     }
     else
     {
-        ASSERT_DEBUG_SYNC(backend_type == RAL_BACKEND_TYPE_GL,
-                          "Unrecognized context type");
-
-        fs_sstream << "#version 430 core\n"
-                      "\n"
-                   << fragment_shader_template;
-
-        vs_sstream << "#version 430 core\n"
-                      "\n"
-                   << vertex_shader_template;
-    }
-
-    /* Assign bodies to the shaders */
-    const system_hashed_ansi_string fs_body_has = system_hashed_ansi_string_create(fs_sstream.str().c_str() );
-    const system_hashed_ansi_string vs_body_has = system_hashed_ansi_string_create(vs_sstream.str().c_str() );
-
-    ral_shader_set_property(result_shaders[0],
-                            RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &fs_body_has);
-    ral_shader_set_property(result_shaders[1],
-                            RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &vs_body_has);
-
-    if (!ral_program_attach_shader(text_ptr->draw_text_program,
-                                   result_shaders[0],
-                                   false /* async */) ||
-        !ral_program_attach_shader(text_ptr->draw_text_program,
-                                   result_shaders[1],
-                                   false /* async */) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not link text drawing program.");
+        ral_context_retain_object(text_ptr->context,
+                                  RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                  text_ptr->draw_text_program);
     }
 
     /* Retrieve uniform locations */
@@ -428,12 +445,6 @@ PRIVATE void _varia_text_renderer_init_programs(_varia_text_renderer* text_ptr)
                       "VSData n_origin_character UB offset is -1");
     ASSERT_DEBUG_SYNC(text_ptr->draw_text_vertex_shader_scale_ub_offset != -1,
                       "VSData scale UB offset is -1");
-
-    /* Delete the shader objects */
-    ral_context_delete_objects(text_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_SHADER,
-                               n_shader_create_info_items,
-                               reinterpret_cast<void* const*>(result_shaders) );
 
     /* Retrieve uniform block instances. */
     text_ptr->fsdata_ub = ral_program_block_buffer_create(text_ptr->context,

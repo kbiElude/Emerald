@@ -63,7 +63,7 @@ PRIVATE const unsigned char index_data_array[] =
     5, 6, 7, 8, 5,    PRIMITIVE_RESTART_TERMINATOR_INDEX, /* far  plane */
 
     4, 1, 5, 8, 4,    PRIMITIVE_RESTART_TERMINATOR_INDEX, /* bottom plane */
-    2, 6, 7, 3, 2,    PRIMITIVE_RESTART_TERMINATOR_INDEX, /* top    plane */
+    2, 6, 7, 3, 2,                                        /* top    plane */
 };
 
 #define BO_DATA_INDEX_FTL    (6)
@@ -103,8 +103,12 @@ typedef struct _scene_renderer_frustum_preview_camera
     {
         if (camera != nullptr)
         {
-            varia_text_renderer_delete_string(text_renderer,
-                                              camera_text_id);
+            static bool visibility_none = false;
+
+            varia_text_renderer_set_text_string_property(text_renderer,
+                                                         camera_text_id,
+                                                         VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                        &visibility_none);
 
             scene_camera_release(camera);
 
@@ -189,6 +193,16 @@ typedef struct _scene_renderer_frustum_preview
 
             system_resizable_vector_release(assigned_cameras);
             assigned_cameras = nullptr;
+        }
+
+        if (command_buffer != nullptr)
+        {
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&command_buffer) );
+
+            command_buffer = nullptr;
         }
 
         if (data_bo_buffer != nullptr)
@@ -420,10 +434,11 @@ PRIVATE void _scene_renderer_frustum_preview_bake_gfx_state(_scene_renderer_frus
 
     gfx_state_create_info.depth_test                           = (opt_depth_rt != nullptr);
     gfx_state_create_info.depth_test_compare_op                = RAL_COMPARE_OP_LESS;
-    gfx_state_create_info.line_width                           = 2.0f;
+    gfx_state_create_info.line_width                           = 1.0f;
     gfx_state_create_info.n_vertex_attributes                  = 1;
     gfx_state_create_info.primitive_restart                    = true;
     gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_LINE_STRIP;
+    gfx_state_create_info.scissor_test                         = true;
     gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
     gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
     gfx_state_create_info.static_scissor_boxes_enabled         = true;
@@ -451,7 +466,6 @@ PRIVATE void _scene_renderer_frustum_preview_init(_scene_renderer_frustum_previe
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
-    
     const char* final_renderer_name_parts[] =
     {
         system_hashed_ansi_string_get_buffer(scene_name),
@@ -1020,6 +1034,9 @@ PUBLIC ral_present_task scene_renderer_frustum_preview_get_present_task(scene_re
 
     if (should_bake_cmdbuffer)
     {
+        preview_ptr->render_color_rt = color_rt;
+        preview_ptr->render_depth_rt = opt_depth_rt;
+
         _scene_renderer_frustum_preview_bake_command_buffer(preview_ptr);
     }
 
@@ -1090,7 +1107,7 @@ PUBLIC ral_present_task scene_renderer_frustum_preview_get_present_task(scene_re
     result_task_input_mappings[0].n_present_task        = 1;
     result_task_input_mappings[0].present_task_io_index = 1; /* color_rt */
 
-    result_task_input_mappings[1].group_task_io_index   = 0;
+    result_task_input_mappings[1].group_task_io_index   = 1;
     result_task_input_mappings[1].n_present_task        = 1;
     result_task_input_mappings[1].present_task_io_index = 2; /* opt_depth_rt */
 
@@ -1098,7 +1115,7 @@ PUBLIC ral_present_task scene_renderer_frustum_preview_get_present_task(scene_re
     result_task_output_mappings[0].n_present_task        = 2;
     result_task_output_mappings[0].present_task_io_index = 0; /* color_rt */
 
-    result_task_output_mappings[1].group_task_io_index   = 0;
+    result_task_output_mappings[1].group_task_io_index   = 1;
     result_task_output_mappings[1].n_present_task        = 1;
     result_task_output_mappings[1].present_task_io_index = 1; /* opt_depth_rt */
 
@@ -1126,10 +1143,8 @@ PUBLIC ral_present_task scene_renderer_frustum_preview_get_present_task(scene_re
     result_task = ral_present_task_create_group(system_hashed_ansi_string_create("Frustum preview: rasterization"),
                                                 &result_task_create_info);
 
-    /* Cache important data for subsequent calls & CPU present task's handler */
-    preview_ptr->render_color_rt = color_rt;
-    preview_ptr->render_depth_rt = opt_depth_rt;
-    preview_ptr->render_time     = time;
+    /* Cache input data */
+    preview_ptr->render_time = time;
 
     system_matrix4x4_set_from_matrix4x4(preview_ptr->render_vp,
                                         vp);
