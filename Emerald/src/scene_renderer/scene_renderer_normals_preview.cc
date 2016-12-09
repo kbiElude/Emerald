@@ -414,6 +414,7 @@ PUBLIC void scene_renderer_normals_preview_append_mesh(scene_renderer_normals_pr
     ral_command_buffer_set_binding_command_info ssb_binding;
 
     ssb_binding.binding_type                  = RAL_BINDING_TYPE_STORAGE_BUFFER;
+    ssb_binding.name                          = system_hashed_ansi_string_create("ssb");
     ssb_binding.storage_buffer_binding.buffer = mesh_bo;
     ssb_binding.storage_buffer_binding.offset = 0;
     ssb_binding.storage_buffer_binding.size   = mesh_bo_size;
@@ -577,15 +578,19 @@ PUBLIC void scene_renderer_normals_preview_start(scene_renderer_normals_preview 
 
         gfx_state_create_info.depth_test                           = true;
         gfx_state_create_info.depth_test_compare_op                = RAL_COMPARE_OP_LESS;
+        gfx_state_create_info.depth_writes                         = true;
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_POINTS;
+        gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
         gfx_state_create_info.static_scissor_boxes_enabled         = true;
         gfx_state_create_info.static_viewports                     = &viewport;
         gfx_state_create_info.static_viewports_enabled             = true;
 
-        preview_ptr->cached_gfx_state = ral_gfx_state_create(preview_ptr->context,
-                                                            &gfx_state_create_info);
+        ral_context_create_gfx_states(preview_ptr->context,
+                                      1, /* n_create_info_items */
+                                     &gfx_state_create_info,
+                                     &preview_ptr->cached_gfx_state);
     }
 
     /* Start recording commands */
@@ -633,7 +638,11 @@ PUBLIC void scene_renderer_normals_preview_start(scene_renderer_normals_preview 
                                                                sizeof(float) * 16);
 
         /* Start recording actual commands .. */
-        ral_command_buffer_set_binding_command_info ub_bindings[2];
+        ral_command_buffer_set_color_rendertarget_command_info color_rt_command = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+        ral_command_buffer_set_binding_command_info            ub_bindings[2];
+
+        color_rt_command.rendertarget_index = 0;
+        color_rt_command.texture_view       = color_rt;
 
         ub_bindings[0].binding_type                  = RAL_BINDING_TYPE_UNIFORM_BUFFER;
         ub_bindings[0].name                          = system_hashed_ansi_string_create("dataGS");
@@ -647,11 +656,19 @@ PUBLIC void scene_renderer_normals_preview_start(scene_renderer_normals_preview 
         ub_bindings[1].uniform_buffer_binding.offset = 0;
         ub_bindings[1].uniform_buffer_binding.size   = preview_program_ub_vs_bo_size;
 
-        ral_command_buffer_record_set_bindings(preview_ptr->cached_command_buffer,
-                                               sizeof(ub_bindings) / sizeof(ub_bindings[0]),
-                                               ub_bindings);
-        ral_command_buffer_record_set_program (preview_ptr->cached_command_buffer,
-                                               preview_ptr->preview_program);
+        ral_command_buffer_record_set_gfx_state(preview_ptr->cached_command_buffer,
+                                                preview_ptr->cached_gfx_state);
+        ral_command_buffer_record_set_program  (preview_ptr->cached_command_buffer,
+                                                preview_ptr->preview_program);
+        ral_command_buffer_record_set_bindings (preview_ptr->cached_command_buffer,
+                                                sizeof(ub_bindings) / sizeof(ub_bindings[0]),
+                                                ub_bindings);
+
+        ral_command_buffer_record_set_color_rendertargets(preview_ptr->cached_command_buffer,
+                                                          1, /* n_rendertargets */
+                                                         &color_rt_command);
+        ral_command_buffer_record_set_depth_rendertarget (preview_ptr->cached_command_buffer,
+                                                          depth_rt);
     }
 
     preview_ptr->cached_color_rt = color_rt;

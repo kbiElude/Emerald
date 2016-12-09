@@ -1226,7 +1226,7 @@ PRIVATE ral_present_task _scene_renderer_render_mesh_helper_visualizations(_scen
             result_task_input_mappings[n_input_mappings].n_present_task        = depth_consumer_task_indices[n_depth_consumer_task];
             result_task_input_mappings[n_input_mappings].present_task_io_index = 1;
 
-            result_task_output_mappings[n_output_mappings] = result_task_output_mappings[n_output_mappings];
+            result_task_output_mappings[n_output_mappings] = result_task_input_mappings[n_input_mappings];
 
             ++n_input_mappings;
             ++n_output_mappings;
