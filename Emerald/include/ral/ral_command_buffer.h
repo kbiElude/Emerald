@@ -509,21 +509,6 @@ typedef enum
 } ral_command_type;
 
 
-/** Adds a sequence of commands from @param src_command_buffer (ranged <n_start_command, n_start_command + n_commands) to
- *  @param recording_command_buffer.
- *
- *  Note that:
- *
- * 1) @param recording_command_buffer must be in a recording state for this command to succeed.
- * 2) @param recording_command_buffer must require a set of the same, or a a superset of queue types defined for @param src_command_buffer.
- *
- *  TODO
- **/
-PUBLIC EMERALD_API void ral_command_buffer_append_commands_from_command_buffer(ral_command_buffer recording_command_buffer,
-                                                                               ral_command_buffer src_command_buffer,
-                                                                               uint32_t           n_start_command,
-                                                                               uint32_t           n_commands);
-
 /** TODO */
 PUBLIC ral_command_buffer ral_command_buffer_create(ral_context                           context,
                                                     const ral_command_buffer_create_info* create_info_ptr);
@@ -544,6 +529,13 @@ PUBLIC bool ral_command_buffer_get_recorded_command(ral_command_buffer command_b
 
 /** TODO */
 PUBLIC void ral_command_buffer_init();
+
+/** TODO */
+PUBLIC EMERALD_API void ral_command_buffer_insert_commands_from_command_buffer(ral_command_buffer       dst_command_buffer,
+                                                                               uint32_t                 n_command_to_insert_before,
+                                                                               const ral_command_buffer src_command_buffer,
+                                                                               uint32_t                 n_start_command,
+                                                                               uint32_t                 n_commands_to_insert);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buffer                                      recording_command_buffer,

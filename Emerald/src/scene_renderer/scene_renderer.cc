@@ -2967,12 +2967,12 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
     {
         uint32_t viewport_size[2];
 
-        ral_texture_view_get_mipmap_property(color_rt,
+        ral_texture_view_get_mipmap_property(depth_rt,
                                              0, /* n_layer */
                                              0, /* n_mipmap */
                                              RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                              viewport_size + 0);
-        ral_texture_view_get_mipmap_property(color_rt,
+        ral_texture_view_get_mipmap_property(depth_rt,
                                              0, /* n_layer */
                                              0, /* n_mipmap */
                                              RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,

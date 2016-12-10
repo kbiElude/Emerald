@@ -2150,8 +2150,6 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
 
     ASSERT_DEBUG_SYNC(mesh_gpu != nullptr,
                       "Null mesh instance was specified");
-    ASSERT_DEBUG_SYNC(material != nullptr,
-                      "Material must not be null");
 
     /* If the mesh is instantiated, retrieve the mesh instance we should be using
      * for the rendering */
@@ -2243,7 +2241,14 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
 
             if (n_preamble_commands > 0)
             {
-                ral_command_buffer_append_commands_from_command_buffer(mesh_data_material_ptr->command_buffer,
+                uint32_t n_mesh_material_cmd_buffer_commands = 0;
+
+                ral_command_buffer_get_property(mesh_data_material_ptr->command_buffer,
+                                                RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
+                                               &n_mesh_material_cmd_buffer_commands);
+
+                ral_command_buffer_insert_commands_from_command_buffer(mesh_data_material_ptr->command_buffer,
+                                                                       n_mesh_material_cmd_buffer_commands,
                                                                        uber_ptr->preamble_command_buffer,
                                                                        0, /* n_start_command */
                                                                        n_preamble_commands);
@@ -2416,185 +2421,188 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                     }
 
                     /* Bind shading data for each supported shading property */
-                    struct _attachment
+                    if (mesh_data_material_ptr->material != nullptr)
                     {
-                        mesh_material_shading_property property;
-                        const char*                    shader_sampler_name;
-                        uint32_t                       shader_scalar_ub_offset;
-                        const char*                    shader_uv_attribute_name;
-                        bool                           convert_to_linear;
-                    } attachments[] =
-                    {
+                        struct _attachment
                         {
-                            MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
-                            _scene_renderer_uber_uniform_name_ambient_material_sampler,
-                            mesh_data_material_ptr->uber_ptr->ambient_material_ub_offset,
-                            _scene_renderer_uber_attribute_name_object_uv,
-                            true,
-                        },
-
+                            mesh_material_shading_property property;
+                            const char*                    shader_sampler_name;
+                            uint32_t                       shader_scalar_ub_offset;
+                            const char*                    shader_uv_attribute_name;
+                            bool                           convert_to_linear;
+                        } attachments[] =
                         {
-                            MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-                            _scene_renderer_uber_uniform_name_diffuse_material_sampler,
-                            mesh_data_material_ptr->uber_ptr->diffuse_material_ub_offset,
-                            _scene_renderer_uber_attribute_name_object_uv,
-                            true,
-                        },
-
-                        {
-                            MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
-                            _scene_renderer_uber_uniform_name_luminosity_material_sampler,
-                            mesh_data_material_ptr->uber_ptr->luminosity_material_ub_offset,
-                            _scene_renderer_uber_attribute_name_object_uv,
-                            false
-                        },
-
-                        {
-                            MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-                            _scene_renderer_uber_uniform_name_shininess_material_sampler,
-                            mesh_data_material_ptr->uber_ptr->shininess_material_ub_offset,
-                            _scene_renderer_uber_attribute_name_object_uv,
-                            false
-                        },
-
-                        {
-                            MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
-                            _scene_renderer_uber_uniform_name_specular_material_sampler,
-                            mesh_data_material_ptr->uber_ptr->specular_material_ub_offset,
-                            _scene_renderer_uber_attribute_name_object_uv,
-                            false
-                        },
-                    };
-                    const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
-
-                    for (uint32_t n_attachment = 0;
-                                  n_attachment < n_attachments;
-                                ++n_attachment)
-                    {
-                        const _attachment&                      attachment      = attachments[n_attachment];
-                        const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
-                                                                                                                                     attachment.property);
-
-                        switch (attachment_type)
-                        {
-                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
                             {
-                                /* Nothing to be done here */
-                                break;
-                            }
+                                MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                                _scene_renderer_uber_uniform_name_ambient_material_sampler,
+                                mesh_data_material_ptr->uber_ptr->ambient_material_ub_offset,
+                                _scene_renderer_uber_attribute_name_object_uv,
+                                true,
+                            },
 
-                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
-                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                             {
-                                float        data_vec3[3] = {0};
-                                unsigned int n_components = 1;
+                                MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                                _scene_renderer_uber_uniform_name_diffuse_material_sampler,
+                                mesh_data_material_ptr->uber_ptr->diffuse_material_ub_offset,
+                                _scene_renderer_uber_attribute_name_object_uv,
+                                true,
+                            },
 
-                                if (attachment.shader_scalar_ub_offset == -1)
+                            {
+                                MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+                                _scene_renderer_uber_uniform_name_luminosity_material_sampler,
+                                mesh_data_material_ptr->uber_ptr->luminosity_material_ub_offset,
+                                _scene_renderer_uber_attribute_name_object_uv,
+                                false
+                            },
+
+                            {
+                                MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+                                _scene_renderer_uber_uniform_name_shininess_material_sampler,
+                                mesh_data_material_ptr->uber_ptr->shininess_material_ub_offset,
+                                _scene_renderer_uber_attribute_name_object_uv,
+                                false
+                            },
+
+                            {
+                                MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+                                _scene_renderer_uber_uniform_name_specular_material_sampler,
+                                mesh_data_material_ptr->uber_ptr->specular_material_ub_offset,
+                                _scene_renderer_uber_attribute_name_object_uv,
+                                false
+                            },
+                        };
+                        const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
+
+                        for (uint32_t n_attachment = 0;
+                                      n_attachment < n_attachments;
+                                    ++n_attachment)
+                        {
+                            const _attachment&                      attachment      = attachments[n_attachment];
+                            const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
+                                                                                                                                         attachment.property);
+
+                            switch (attachment_type)
+                            {
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
                                 {
-                                    continue;
+                                    /* Nothing to be done here */
+                                    break;
                                 }
 
-                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                                 {
-                                    mesh_material_get_shading_property_value_float(layer_pass_material,
-                                                                                   attachment.property,
-                                                                                   data_vec3 + 0);
-                                }
-                                else
-                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
-                                {
-                                    mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
-                                                                                                   attachment.property,
-                                                                                                   time,
-                                                                                                   data_vec3 + 0);
-                                }
-                                else
-                                {
-                                    mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
-                                                                                                  attachment.property,
-                                                                                                  time,
-                                                                                                  data_vec3);
+                                    float        data_vec3[3] = {0};
+                                    unsigned int n_components = 1;
 
-                                    n_components = 3;
-                                }
-
-                                if (attachment.convert_to_linear)
-                                {
-                                    for (unsigned int n_component = 0;
-                                                      n_component < n_components;
-                                                    ++n_component)
+                                    if (attachment.shader_scalar_ub_offset == -1)
                                     {
-                                        data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
+                                        continue;
                                     }
-                                }
 
-                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                       attachment.shader_scalar_ub_offset,
-                                                                                       data_vec3,
-                                                                                       sizeof(float) * n_components);
-
-                                break;
-                            }
-
-                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-                            {
-                                ral_sampler                                 attachment_sampler      = nullptr;
-                                ral_command_buffer_set_binding_command_info attachment_texture_binding;
-                                ral_texture_view                            attachment_texture_view = nullptr;
-
-                                mesh_material_get_shading_property_value_texture_view(layer_pass_material,
-                                                                                      attachment.property,
-                                                                                     &attachment_texture_view,
-                                                                                     &attachment_sampler);
-
-                                attachment_texture_binding.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
-                                attachment_texture_binding.name                               = system_hashed_ansi_string_create(attachment.shader_sampler_name);
-                                attachment_texture_binding.sampled_image_binding.sampler      = attachment_sampler;
-                                attachment_texture_binding.sampled_image_binding.texture_view = attachment_texture_view;
-
-                                ral_command_buffer_record_set_bindings(mesh_data_material_ptr->command_buffer,
-                                                                       1, /* n_bindings */
-                                                                      &attachment_texture_binding);
-
-                                break;
-                            }
-
-                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
-                            {
-                                float data_vec4[4] = {0};
-
-                                if (attachment.shader_scalar_ub_offset == -1)
-                                {
-                                    continue;
-                                }
-
-                                mesh_material_get_shading_property_value_vec4(layer_pass_material,
-                                                                              attachment.property,
-                                                                              data_vec4);
-
-                                if (attachment.convert_to_linear)
-                                {
-                                    for (unsigned int n_component = 0;
-                                                      n_component < 4;
-                                                    ++n_component)
+                                    if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
                                     {
-                                        data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
+                                        mesh_material_get_shading_property_value_float(layer_pass_material,
+                                                                                       attachment.property,
+                                                                                       data_vec3 + 0);
                                     }
+                                    else
+                                    if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                                    {
+                                        mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
+                                                                                                       attachment.property,
+                                                                                                       time,
+                                                                                                       data_vec3 + 0);
+                                    }
+                                    else
+                                    {
+                                        mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
+                                                                                                      attachment.property,
+                                                                                                      time,
+                                                                                                      data_vec3);
+
+                                        n_components = 3;
+                                    }
+
+                                    if (attachment.convert_to_linear)
+                                    {
+                                        for (unsigned int n_component = 0;
+                                                          n_component < n_components;
+                                                        ++n_component)
+                                        {
+                                            data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
+                                        }
+                                    }
+
+                                    ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                           attachment.shader_scalar_ub_offset,
+                                                                                           data_vec3,
+                                                                                           sizeof(float) * n_components);
+
+                                    break;
                                 }
 
-                                ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                                       attachment.shader_scalar_ub_offset,
-                                                                                       data_vec4,
-                                                                                       sizeof(float) * 4);
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+                                {
+                                    ral_sampler                                 attachment_sampler      = nullptr;
+                                    ral_command_buffer_set_binding_command_info attachment_texture_binding;
+                                    ral_texture_view                            attachment_texture_view = nullptr;
 
-                                break;
-                            }
+                                    mesh_material_get_shading_property_value_texture_view(layer_pass_material,
+                                                                                          attachment.property,
+                                                                                         &attachment_texture_view,
+                                                                                         &attachment_sampler);
 
-                            default:
-                            {
-                                ASSERT_DEBUG_SYNC(false,
-                                                  "Unrecognized material property attachment");
+                                    attachment_texture_binding.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
+                                    attachment_texture_binding.name                               = system_hashed_ansi_string_create(attachment.shader_sampler_name);
+                                    attachment_texture_binding.sampled_image_binding.sampler      = attachment_sampler;
+                                    attachment_texture_binding.sampled_image_binding.texture_view = attachment_texture_view;
+
+                                    ral_command_buffer_record_set_bindings(mesh_data_material_ptr->command_buffer,
+                                                                           1, /* n_bindings */
+                                                                          &attachment_texture_binding);
+
+                                    break;
+                                }
+
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
+                                {
+                                    float data_vec4[4] = {0};
+
+                                    if (attachment.shader_scalar_ub_offset == -1)
+                                    {
+                                        continue;
+                                    }
+
+                                    mesh_material_get_shading_property_value_vec4(layer_pass_material,
+                                                                                  attachment.property,
+                                                                                  data_vec4);
+
+                                    if (attachment.convert_to_linear)
+                                    {
+                                        for (unsigned int n_component = 0;
+                                                          n_component < 4;
+                                                        ++n_component)
+                                        {
+                                            data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
+                                        }
+                                    }
+
+                                    ral_program_block_buffer_set_nonarrayed_variable_value(mesh_data_material_ptr->uber_ptr->ub_fs,
+                                                                                           attachment.shader_scalar_ub_offset,
+                                                                                           data_vec4,
+                                                                                           sizeof(float) * 4);
+
+                                    break;
+                                }
+
+                                default:
+                                {
+                                    ASSERT_DEBUG_SYNC(false,
+                                                      "Unrecognized material property attachment");
+                                }
                             }
                         }
                     }

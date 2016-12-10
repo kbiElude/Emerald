@@ -1554,26 +1554,20 @@ PRIVATE ral_command_buffer _scene_renderer_sm_start(_scene_renderer_sm*         
     }
 
     /* Set up render-targets */
-    ral_command_buffer_set_binding_command_info color_rt_binding_info;
-
-    color_rt_binding_info.binding_type                  = RAL_BINDING_TYPE_RENDERTARGET;
-    color_rt_binding_info.name                          = system_hashed_ansi_string_create("result_fragment");
-    color_rt_binding_info.rendertarget_binding.rt_index = (handler_ptr->current_sm_color0_texture_view != nullptr)  ? 0 : -1;
-
-    ral_command_buffer_record_set_bindings(handler_ptr->current_command_buffer,
-                                           1, /* n_bindings */
-                                          &color_rt_binding_info);
-
     if (light_shadow_map_texture_type != RAL_TEXTURE_TYPE_2D_ARRAY)
     {
-        ral_command_buffer_set_color_rendertarget_command_info color_rt_info = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
-        color_rt_info.rendertarget_index = 0;
+        if (handler_ptr->current_sm_color0_texture_view != nullptr)
+        {
+            ral_command_buffer_set_color_rendertarget_command_info color_rt_info = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+            color_rt_info.rendertarget_index = 0;
 
-        color_rt_info.texture_view       = handler_ptr->current_sm_color0_texture_view;
+            color_rt_info.texture_view       = handler_ptr->current_sm_color0_texture_view;
 
-        ral_command_buffer_record_set_color_rendertargets(handler_ptr->current_command_buffer,
-                                                          1, /* n_rendertargets */
-                                                         &color_rt_info);
+            ral_command_buffer_record_set_color_rendertargets(handler_ptr->current_command_buffer,
+                                                              1, /* n_rendertargets */
+                                                             &color_rt_info);
+        }
+
         ral_command_buffer_record_set_depth_rendertarget (handler_ptr->current_command_buffer,
                                                           handler_ptr->current_sm_depth_texture_view);
     }
@@ -3588,7 +3582,7 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
                                             item_ptr->model_matrix,
                                             nullptr,                    /* normal_matrix */
                                             sm_material_uber,
-                                            nullptr,                    /* material */
+                                            nullptr, /* material */
                                             frame_time,
                                             ref_gfx_state_create_info_ptr);
         }
@@ -3738,17 +3732,18 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                           "Scene light is nullptr");
 
         scene_light_get_property(current_light,
-                                 SCENE_LIGHT_PROPERTY_TYPE,
-                                &current_light_type);
-        scene_light_get_property(current_light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
-                                &current_light_sm_algorithm);
-        scene_light_get_property(current_light,
                                  SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
                                 &current_light_is_shadow_caster);
 
         if (current_light_is_shadow_caster)
         {
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                    &current_light_type);
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                    &current_light_sm_algorithm);
+
             /* For directional/spot lights, we only need a single iteration.
              * For point lights, the specific number is algorithm-specific.
              */
@@ -3899,22 +3894,54 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                          *       Since there's no way we could include additional info which would be rerouted to
                          *       that call-back, we store current target face in scene_renderer_sm instance.
                          */
+                        ral_present_task   draw_present_task                       = nullptr;
+                        ral_command_buffer draw_present_task_cmd_buffer            = nullptr;
+                        uint32_t           n_draw_present_task_cmd_buffer_commands = 0;
+
                         shadow_mapping_ptr->current_light       = current_light;
                         shadow_mapping_ptr->current_target_face = current_target_face;
 
-                        ASSERT_DEBUG_SYNC(false,
-                                          "TODO");
+                        draw_present_task = scene_renderer_get_present_task_for_scene_graph(renderer,
+                                                                                            sm_view_matrix,
+                                                                                            sm_projection_matrix,
+                                                                                            target_camera,
+                                                                                            RENDER_MODE_SHADOW_MAP,
+                                                                                            false, /* apply_shadow_mapping */
+                                                                                            HELPER_VISUALIZATION_NONE,
+                                                                                            frame_time,
+                                                                                            sm_color_texture_view,
+                                                                                            sm_depth_texture_view);
 
-                        scene_renderer_get_present_task_for_scene_graph(renderer,
-                                                                        sm_view_matrix,
-                                                                        sm_projection_matrix,
-                                                                        target_camera,
-                                                                        RENDER_MODE_SHADOW_MAP,
-                                                                        false, /* apply_shadow_mapping */
-                                                                        HELPER_VISUALIZATION_NONE,
-                                                                        frame_time,
-                                                                        sm_color_texture_view,
-                                                                        sm_depth_texture_view);
+                        /* The present task we retrieved should hold a single cmd buffer with all the commands
+                         * needed to draw all visible geometry. We're going to append all of these to our current
+                         * command buffer and drop the task */
+                        #ifdef _DEBUG
+                        {
+                            ral_present_task_type draw_present_task_type;
+
+                            ral_present_task_get_property(draw_present_task,
+                                                          RAL_PRESENT_TASK_PROPERTY_TYPE,
+                                                         &draw_present_task_type);
+                            ASSERT_DEBUG_SYNC(draw_present_task_type == RAL_PRESENT_TASK_TYPE_GPU_TASK,
+                                              "Invalid present task generated by scene_renderer_get_present_task_for_scene_graph()");
+                        }
+                        #endif
+
+                        ral_present_task_get_property  (draw_present_task,
+                                                        RAL_PRESENT_TASK_PROPERTY_COMMAND_BUFFER,
+                                                       &draw_present_task_cmd_buffer);
+                        ral_command_buffer_get_property(draw_present_task_cmd_buffer,
+                                                        RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
+                                                       &n_draw_present_task_cmd_buffer_commands);
+
+                        ral_command_buffer_insert_commands_from_command_buffer(shadow_mapping_ptr->current_command_buffer,
+                                                                               0, /* n_command_to_insert_before */
+                                                                               draw_present_task_cmd_buffer,
+                                                                               0, /* n_start_command */
+                                                                               n_draw_present_task_cmd_buffer_commands);
+
+                        /* All done */
+                        ral_present_task_release(draw_present_task);
                    }
 
                    /* Clean up */

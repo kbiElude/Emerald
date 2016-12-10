@@ -716,6 +716,121 @@ PUBLIC void ral_command_buffer_init()
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void ral_command_buffer_insert_commands_from_command_buffer(ral_command_buffer       dst_command_buffer,
+                                                                               uint32_t                 n_command_to_insert_before,
+                                                                               const ral_command_buffer src_command_buffer,
+                                                                               uint32_t                 n_start_command,
+                                                                               uint32_t                 n_commands_to_insert)
+{
+    _ral_command_buffer*       dst_command_buffer_ptr        = reinterpret_cast<_ral_command_buffer*>      (dst_command_buffer);
+    bool                       is_append_op                  = false;
+    uint32_t                   n_dst_command_buffer_commands = 0;
+    uint32_t                   n_src_command_buffer_commands = 0;
+    const _ral_command_buffer* src_command_buffer_ptr        = reinterpret_cast<const _ral_command_buffer*>(src_command_buffer);
+
+    /* Sanity checks */
+    if (dst_command_buffer == nullptr ||
+        src_command_buffer == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(dst_command_buffer == nullptr ||
+                            src_command_buffer == nullptr),
+                          "At least one of the input command buffers is null");
+
+        goto end;
+    }
+
+    if (dst_command_buffer == src_command_buffer)
+    {
+        ASSERT_DEBUG_SYNC(!(dst_command_buffer == src_command_buffer),
+                          "Source and target command buffers are exactly the same.");
+
+        goto end;
+    }
+
+    if (dst_command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        ASSERT_DEBUG_SYNC(!(dst_command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING),
+                          "Target command buffer is not in the recording state");
+
+        goto end;
+    }
+
+    if ((dst_command_buffer_ptr->compatible_queues & src_command_buffer_ptr->compatible_queues) != dst_command_buffer_ptr->compatible_queues)
+    {
+        ASSERT_DEBUG_SYNC(!((dst_command_buffer_ptr->compatible_queues & src_command_buffer_ptr->compatible_queues) != dst_command_buffer_ptr->compatible_queues),
+                          "Target command buffer's queue set is not a sub-set of the source command buffer's queue set");
+
+        goto end;
+    }
+
+    system_resizable_vector_get_property(dst_command_buffer_ptr->commands,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_dst_command_buffer_commands);
+    system_resizable_vector_get_property(src_command_buffer_ptr->commands,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_src_command_buffer_commands);
+
+    if (n_command_to_insert_before > n_dst_command_buffer_commands)
+    {
+        ASSERT_DEBUG_SYNC(!(n_command_to_insert_before > n_dst_command_buffer_commands),
+                          "Invalid n_command_to_insert_before arg value");
+
+        goto end;
+    }
+
+    if (n_commands_to_insert > n_start_command + n_src_command_buffer_commands)
+    {
+        ASSERT_DEBUG_SYNC(!(n_commands_to_insert > n_start_command + n_src_command_buffer_commands),
+                          "Source command buffer does not hold enough commands to satisfy the requested insert op.");
+
+        goto end;
+    }
+
+    is_append_op = (n_command_to_insert_before == n_dst_command_buffer_commands);
+
+    for (uint32_t n_src_command = n_start_command;
+                  n_src_command < n_start_command + n_src_command_buffer_commands;
+                ++n_src_command)
+    {
+        _ral_command* new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
+        _ral_command* src_command_ptr = nullptr;
+
+        system_resizable_vector_get_element_at(src_command_buffer_ptr->commands,
+                                               n_src_command,
+                                              &src_command_ptr);
+
+        /* TODO: The "update buffer" command may use heap-allocated memory if the data chunk's size exceeds the predefined
+         *       size. If we append such command to another cmd buffer and later release the source command buffer, that chunk
+         *       will have been freed when it's accessed while processing the command from the other command buffer. The
+         *       existing solution needs to be redesigned to take such cases into account (move to shared pointers? copy constructors?)
+         **/
+        ASSERT_DEBUG_SYNC(src_command_ptr->type != RAL_COMMAND_TYPE_UPDATE_BUFFER,
+                          "TODO");
+
+        memcpy(new_command_ptr,
+               src_command_ptr,
+               sizeof(*src_command_ptr) );
+
+        new_command_ptr->init();
+
+        if (is_append_op)
+        {
+            system_resizable_vector_push(dst_command_buffer_ptr->commands,
+                                         new_command_ptr);
+        }
+        else
+        {
+            system_resizable_vector_insert_element_at(dst_command_buffer_ptr->commands,
+                                                      n_command_to_insert_before + (n_src_command - n_start_command),
+                                                      new_command_ptr);
+        }
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buffer                                      recording_command_buffer,
                                                                              uint32_t                                                n_clear_ops,
                                                                              const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs)
