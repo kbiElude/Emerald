@@ -49,7 +49,6 @@ static system_hashed_ansi_string _object_type_programs_curve_editor_static_hashe
 static system_hashed_ansi_string _object_type_programs_curve_editor_tcb_hashed_ansi_string             = nullptr;
 static system_hashed_ansi_string _object_type_ragl_buffers_hashed_ansi_string                          = nullptr;
 static system_hashed_ansi_string _object_type_ragl_sync_hashed_ansi_string                             = nullptr;
-static system_hashed_ansi_string _object_type_ragl_textures_hashed_ansi_string                         = nullptr;
 static system_hashed_ansi_string _object_type_ral_context_hashed_ansi_string                           = nullptr;
 static system_hashed_ansi_string _object_type_ral_rendering_handler_hashed_ansi_string                 = nullptr;
 static system_hashed_ansi_string _object_type_scalar_field_metaballs_hashed_ansi_string                = nullptr;
@@ -130,7 +129,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_TCB:                       return _object_type_programs_curve_editor_tcb_hashed_ansi_string;
         case OBJECT_TYPE_RAGL_BUFFERS:                                    return _object_type_ragl_buffers_hashed_ansi_string;
         case OBJECT_TYPE_RAGL_SYNC:                                       return _object_type_ragl_sync_hashed_ansi_string;
-        case OBJECT_TYPE_RAGL_TEXTURES:                                   return _object_type_ragl_textures_hashed_ansi_string;
         case OBJECT_TYPE_RAL_CONTEXT:                                     return _object_type_ral_context_hashed_ansi_string;
         case OBJECT_TYPE_RAL_RENDERING_HANDLER:                           return _object_type_ral_rendering_handler_hashed_ansi_string;
         case OBJECT_TYPE_SCALAR_FIELD_METABALLS:                          return _object_type_scalar_field_metaballs_hashed_ansi_string;
@@ -383,7 +381,6 @@ PUBLIC void _object_manager_init()
     _object_type_programs_curve_editor_tcb_hashed_ansi_string             = system_hashed_ansi_string_create("Curve Editor Programs (TCB)");
     _object_type_ragl_buffers_hashed_ansi_string                          = system_hashed_ansi_string_create("raGL Buffers");
     _object_type_ragl_sync_hashed_ansi_string                             = system_hashed_ansi_string_create("raGL Syncs");
-    _object_type_ragl_textures_hashed_ansi_string                         = system_hashed_ansi_string_create("raGL Textures");
     _object_type_ral_context_hashed_ansi_string                           = system_hashed_ansi_string_create("RAL Contexts");
     _object_type_ral_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("RAL Rendering Handlers");
     _object_type_scalar_field_metaballs_hashed_ansi_string                = system_hashed_ansi_string_create("Scalar Field (Metaballs)");

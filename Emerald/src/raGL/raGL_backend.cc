@@ -28,7 +28,6 @@
 #include "raGL/raGL_shader.h"
 #include "raGL/raGL_sync.h"
 #include "raGL/raGL_texture.h"
-#include "raGL/raGL_textures.h"
 #include "raGL/raGL_vaos.h"
 #include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
@@ -80,7 +79,6 @@ typedef struct _raGL_backend
     raGL_buffers      buffers;
     raGL_dep_tracker  dep_tracker;
     raGL_framebuffers framebuffers;
-    raGL_textures     textures;
     raGL_vaos         vaos;
 
     ral_backend_type          backend_type;
@@ -347,18 +345,6 @@ void _raGL_backend_global::init(ral_backend_type backend_type)
 
         backend_ptr->framebuffers = raGL_framebuffers_create(backend_ptr->context_gl);
 
-        if (reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->textures != nullptr)
-        {
-            backend_ptr->textures = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->textures;
-
-            raGL_textures_retain(backend_ptr->textures);
-        }
-        else
-        {
-            backend_ptr->textures = raGL_textures_create(backend_ptr->context_ral,
-                                                         backend_ptr->context_gl);
-        }
-
         ral_context_get_property(context,
                                  RAL_CONTEXT_PROPERTY_BACKEND_CONTEXT,
                                 &context_gl);
@@ -430,7 +416,6 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         shaders_map                    = root_backend_ptr->shaders_map;
         shaders_map_owner              = false;
         shaders_map_rw_mutex           = root_backend_ptr->shaders_map_rw_mutex;
-        textures                       = nullptr;
         texture_id_to_raGL_texture_map = root_backend_ptr->texture_id_to_raGL_texture_map;
         textures_map                   = root_backend_ptr->textures_map;
         textures_map_rw_mutex          = root_backend_ptr->textures_map_rw_mutex;
@@ -454,7 +439,6 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         shaders_map                    = system_hash64map_create       (sizeof(raGL_shader) );
         shaders_map_rw_mutex           = system_read_write_mutex_create();
         shaders_map_owner              = true;
-        textures                       = nullptr;
         texture_id_to_raGL_texture_map = system_hash64map_create       (sizeof(raGL_texture) );
         textures_map                   = system_hash64map_create       (sizeof(raGL_texture) );
         textures_map_rw_mutex          = system_read_write_mutex_create();
@@ -487,13 +471,6 @@ _raGL_backend::~_raGL_backend()
         raGL_buffers_release(buffers);
 
         buffers = nullptr;
-    }
-
-    if (textures != nullptr)
-    {
-        raGL_textures_release(textures);
-
-        textures = nullptr;
     }
 
     if (vaos != nullptr)
@@ -1440,8 +1417,8 @@ PRIVATE ral_present_job _raGL_backend_on_objects_created_rendering_callback(ral_
             {
                 ral_texture texture_ral = (ral_texture) callback_arg_ptr->ral_callback_arg_ptr->created_objects[n_object_id];
 
-                new_object = raGL_textures_get_texture_from_pool(callback_arg_ptr->backend_ptr->textures,
-                                                                 texture_ral);
+                new_object = raGL_texture_create(callback_arg_ptr->backend_ptr->context_gl,
+                                                 texture_ral);
 
                 break;
             }
@@ -2613,11 +2590,9 @@ PUBLIC raGL_backend raGL_backend_create(ral_context               context_ral,
 
         if (_global.n_owners > 0)
         {
-            new_backend_ptr->buffers  = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->buffers;
-            new_backend_ptr->textures = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->textures;
+            new_backend_ptr->buffers = reinterpret_cast<_raGL_backend*>(_global.helper_contexts[0].helper_backend)->buffers;
 
-            raGL_buffers_retain (new_backend_ptr->buffers);
-            raGL_textures_retain(new_backend_ptr->textures);
+            raGL_buffers_retain(new_backend_ptr->buffers);
         }
 
         /* Sign up for notifications */
