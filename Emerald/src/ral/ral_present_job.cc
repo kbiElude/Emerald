@@ -178,6 +178,29 @@ PUBLIC EMERALD_API bool ral_present_job_add_task(ral_present_job      job,
         goto end;
     }
 
+    /* Make sure the task has not already been added */
+    #ifdef _DEBUG
+    {
+        for (uint32_t n_task = 0;
+                      n_task < job_ptr->n_total_tasks_added;
+                    ++n_task)
+        {
+            _ral_present_job_task* current_task_ptr     = nullptr;
+            void*                  current_task_raw_ptr = nullptr;
+
+            system_hash64map_get_element_at(job_ptr->tasks,
+                                            n_task,
+                                           &current_task_raw_ptr,
+                                            nullptr); /* result_hash_ptr */
+
+            current_task_ptr = reinterpret_cast<_ral_present_job_task*>(current_task_raw_ptr);
+
+            ASSERT_DEBUG_SYNC(current_task_ptr->task != task,
+                              "The specified ral_present_task instance has already been added to the ral_present_job instance.");
+        }
+    }
+    #endif
+
     /* Store the new task, simultaneously assigning it a new ID */
     new_task_id = job_ptr->n_total_tasks_added++;
 

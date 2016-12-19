@@ -9,7 +9,7 @@
 #include "ral/ral_present_task.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
-
+#include "system/system_log.h"
 
 typedef struct _ral_present_task
 {
@@ -888,6 +888,190 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
 #endif
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_present_task group_task,
+                                                                            ral_present_task task_to_add)
+{
+    _ral_present_task* group_task_ptr   = reinterpret_cast<_ral_present_task*>(group_task);
+    ral_present_task*  new_subtasks_ptr = nullptr;
+    bool               result           = false;
+    _ral_present_task* task_to_add_ptr  = reinterpret_cast<_ral_present_task*>(task_to_add);
+
+    /* Sanity checks */
+    if (group_task  == nullptr ||
+        task_to_add == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(group_task != nullptr && task_to_add != nullptr,
+                          "Null present task was specified.");
+
+        goto end;
+    }
+
+    if (group_task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP)
+    {
+        ASSERT_DEBUG_SYNC(!(group_task_ptr->type != RAL_PRESENT_TASK_TYPE_GROUP),
+                          "group_task is not a RAL group present task.");
+
+        goto end;
+    }
+
+    #ifdef _DEBUG
+    {
+        /* Make sure the task we're about to add is not already there. */
+        for (uint32_t n_existing_subtask = 0;
+                      n_existing_subtask < group_task_ptr->n_group_task_subtasks;
+                    ++n_existing_subtask)
+        {
+            ASSERT_DEBUG_SYNC(group_task_ptr->group_task_subtasks[n_existing_subtask] != task_to_add,
+                              "The task which is about to be added to a group task is already there");
+        }
+    }
+    #endif
+
+    /* Append the new task to the group task's list of subtasks.
+     *
+     * TODO: Get rid of the runtime malloc!
+     */
+    new_subtasks_ptr = new (std::nothrow) ral_present_task[group_task_ptr->n_group_task_subtasks + 1];
+
+    ASSERT_DEBUG_SYNC(new_subtasks_ptr != nullptr,
+                      "Out of memory");
+
+    memcpy(new_subtasks_ptr,
+           group_task_ptr->group_task_subtasks,
+           sizeof(ral_present_task) * group_task_ptr->n_group_task_subtasks);
+
+    new_subtasks_ptr[group_task_ptr->n_group_task_subtasks++] = task_to_add;
+    ral_present_task_retain(task_to_add);
+
+    delete [] group_task_ptr->group_task_subtasks;
+    group_task_ptr->group_task_subtasks = new_subtasks_ptr;
+
+    /* Iterate over task_to_add's outputs and check if it can be connected to input(s) of
+     * any of the already defined subtasks in group_task. If so, add a new connection and carry on
+     * until all group_task's subtasks are checked.
+     *
+     * We need two iterations here:
+     * 1) Count how many new connections are needed.
+     * 2) Reallocate connection array + append new connections
+     */
+    ral_present_task_ingroup_connection* new_connections_ptr = nullptr;
+    uint32_t                             n_new_connections   = 0;
+    const uint32_t&                      n_outputs           = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_output_mappings
+                                                                                                                      : task_to_add_ptr->n_outputs;
+
+    for (uint32_t n_iteration = 0;
+                  n_iteration < 2;
+                ++n_iteration)
+    {
+        uint32_t n_current_connection = 0;
+
+        /* Realloc connection array, if we already know how many connections need to be appended. */
+        if (n_iteration == 1)
+        {
+            if (n_new_connections == 0)
+            {
+                /* No new connections? */
+                LOG_ERROR("Perf warning: redundant ral_present_task_add_producer_subtask_to_group_task() call detected.");
+
+                break;
+            }
+
+            new_connections_ptr = new (std::nothrow) ral_present_task_ingroup_connection[group_task_ptr->n_group_task_connections + n_new_connections];
+
+            ASSERT_DEBUG_SYNC(new_connections_ptr != nullptr,
+                              "Out of memory");
+
+            if (group_task_ptr->n_group_task_connections > 0)
+            {
+                memcpy(new_connections_ptr,
+                       group_task_ptr->group_task_connections,
+                       sizeof(ral_present_task_ingroup_connection) * group_task_ptr->n_group_task_connections);
+            }
+
+            delete [] group_task_ptr->group_task_connections;
+
+            group_task_ptr->group_task_connections = new_connections_ptr;
+        }
+
+        /* Iterate over producer's outputs */
+        for (uint32_t n_output = 0;
+                      n_output < n_outputs;
+                    ++n_output)
+        {
+            void*                      current_output_object = nullptr;
+            const ral_present_task_io* current_output_ptr    = nullptr;
+
+            ral_present_task_get_io_property(task_to_add,
+                                             RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                             n_output,
+                                             RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                            &current_output_object);
+
+            ASSERT_DEBUG_SYNC(current_output_object != nullptr,
+                              "Could not retrieve object assigned to output [%d]",
+                              n_output);
+
+            /* Identify any inputs in the existing task, whose exposed objects match our current output's */
+            for (uint32_t n_subtask = 0;
+                          n_subtask < group_task_ptr->n_group_task_subtasks - 1;
+                        ++n_subtask)
+            {
+                _ral_present_task*  current_subtask_ptr      = reinterpret_cast<_ral_present_task*>(group_task_ptr->group_task_subtasks[n_subtask]);
+                uint32_t            current_subtask_n_input  = 0;
+                const uint32_t&     current_subtask_n_inputs = (current_subtask_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? current_subtask_ptr->n_group_task_input_mappings
+                                                                                                                          : current_subtask_ptr->n_inputs;
+
+                while (current_subtask_n_input < current_subtask_n_inputs)
+                {
+                    void* current_subtask_input_object = nullptr;
+
+                    ral_present_task_get_io_property(group_task_ptr->group_task_subtasks[n_subtask],
+                                                     RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                                     current_subtask_n_input,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                    &current_subtask_input_object);
+
+                    if (current_subtask_input_object == current_output_object)
+                    {
+                        if (n_iteration == 0)
+                        {
+                            ++n_current_connection;
+                            ++n_new_connections;
+                        }
+                        else
+                        {
+                            ral_present_task_ingroup_connection* new_connection_ptr = group_task_ptr->group_task_connections + group_task_ptr->n_group_task_connections + n_current_connection;
+
+                            new_connection_ptr->input_present_task_index     = n_subtask;
+                            new_connection_ptr->input_present_task_io_index  = current_subtask_n_input;
+                            new_connection_ptr->output_present_task_index    = group_task_ptr->n_group_task_subtasks - 1;
+                            new_connection_ptr->output_present_task_io_index = n_output;
+
+                            ++n_current_connection;
+                        }
+                    }
+
+                    ++current_subtask_n_input;
+                }
+            }
+
+            /* Move to the next output .. */
+        }
+
+        if (n_iteration == 1)
+        {
+            group_task_ptr->n_group_task_connections += n_new_connections;
+        }
+    }
+
+    /* All done */
+    result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
                                                                 const ral_present_task_cpu_create_info* create_info_ptr)
 
@@ -1051,6 +1235,27 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_group(system_hashed_
 
         goto end;
     }
+
+    #ifdef _DEBUG
+    {
+        /* Make sure all user-specified subtasks are unique */
+        for (uint32_t n_subtask = 0;
+                      n_subtask < create_info_ptr->n_present_tasks;
+                    ++n_subtask)
+        {
+            ral_present_task current_subtask = create_info_ptr->present_tasks[n_subtask];
+            bool             duplicate_found = false;
+
+            for (uint32_t n_subtask2 = n_subtask + 1;
+                          n_subtask2 < create_info_ptr->n_present_tasks;
+                        ++n_subtask2)
+            {
+                ASSERT_DEBUG_SYNC(create_info_ptr->present_tasks[n_subtask2] != create_info_ptr->present_tasks[n_subtask],
+                                  "The same subtask has been specified more than once.");
+            }
+        }
+    }
+    #endif
 
     /* Should be fine to create a present task for this group task */
     result_ptr = new _ral_present_task(name,

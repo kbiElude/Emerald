@@ -7,6 +7,8 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
+#include "ral/ral_context.h"
+#include "ral/ral_texture_view.h"
 #include "ral/ral_types.h"
 #include "scene/scene.h"
 #include "scene/scene_curve.h"
@@ -1781,20 +1783,64 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL:
         {
-            /* NOTE: ral_texture_view is considered a state by scene_light. It's not used
-             *       by scene_light in any way, so its reference counter is left intact.
-             */
+            ral_context context;
+
+            if (light_ptr->shadow_map_texture_view_color != nullptr)
+            {
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_color,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &context);
+
+                ral_context_delete_objects(context,
+                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                           1, /* n_objects */
+                                           reinterpret_cast<void* const*>(&light_ptr->shadow_map_texture_view_color) );
+            }
+
             light_ptr->shadow_map_texture_view_color = *reinterpret_cast<const ral_texture_view*>(data);
+
+            if (light_ptr->shadow_map_texture_view_color != nullptr)
+            {
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_color,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &context);
+
+                ral_context_retain_object(context,
+                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                          light_ptr->shadow_map_texture_view_color);
+            }
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL:
         {
-            /* NOTE: ral_texture is considered a state by scene_light. It's not used
-             *       by scene_light in any way, so its reference counter is left intact.
-             */
+            ral_context context;
+
+            if (light_ptr->shadow_map_texture_view_depth != nullptr)
+            {
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_depth,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &context);
+
+                ral_context_delete_objects(context,
+                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                           1, /* n_objects */
+                                           reinterpret_cast<void* const*>(&light_ptr->shadow_map_texture_view_depth) );
+            }
+
             light_ptr->shadow_map_texture_view_depth = *reinterpret_cast<const ral_texture_view*>(data);
+
+            if (light_ptr->shadow_map_texture_view_depth != nullptr)
+            {
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_depth,
+                                              RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                             &context);
+
+                ral_context_retain_object(context,
+                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                          light_ptr->shadow_map_texture_view_depth);
+            }
 
             break;
         }

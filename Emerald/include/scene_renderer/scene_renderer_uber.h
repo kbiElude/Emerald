@@ -160,13 +160,17 @@ typedef struct
 
 typedef struct scene_renderer_uber_start_info
 {
-    ral_texture_view color_rt;
-    ral_texture_view depth_rt;
+    ral_texture_view  color_rt;
+    ral_texture_view  depth_rt;
+    scene             scene_to_render;
+    scene_renderer_sm sm;
 
     scene_renderer_uber_start_info()
     {
-        color_rt = nullptr;
-        depth_rt = nullptr;
+        color_rt        = nullptr;
+        depth_rt        = nullptr;
+        scene_to_render = nullptr;
+        sm              = nullptr;
     }
 
 } scene_renderer_uber_start_info;

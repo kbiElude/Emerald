@@ -1257,7 +1257,7 @@ end:
 PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program                  program,
                                                                system_hashed_ansi_string    block_name,
                                                                system_hashed_ansi_string    variable_name,
-                                                               const ral_program_variable** out_variable_ptr_ptr)
+                                                               const ral_program_variable** out_opt_variable_ptr_ptr)
 {
     const system_hash64          block_name_hash    = system_hashed_ansi_string_get_hash(block_name);
     _ral_program_metadata_block* block_ptr          = nullptr;
@@ -1300,7 +1300,10 @@ PUBLIC EMERALD_API bool ral_program_get_block_variable_by_name(ral_program      
         goto end;
     }
 
-    *out_variable_ptr_ptr = variable_ptr;
+    if (out_opt_variable_ptr_ptr != nullptr)
+    {
+        *out_opt_variable_ptr_ptr = variable_ptr;
+    }
 
     /* All done */
     result = true;

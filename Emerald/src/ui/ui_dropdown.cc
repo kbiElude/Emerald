@@ -1904,7 +1904,7 @@ PUBLIC ral_present_task ui_dropdown_get_present_task(void*            internal_i
     dummy_gpu_present_task_create_info.unique_inputs    = &dummy_gpu_present_task_unique_io;
     dummy_gpu_present_task_create_info.unique_outputs   = &dummy_gpu_present_task_unique_io;
 
-    dropdown_ptr->last_cached_present_task_dummy = ral_present_task_create_gpu(system_hashed_ansi_string("UI dropdown control: Dummy"),
+    dropdown_ptr->last_cached_present_task_dummy = ral_present_task_create_gpu(system_hashed_ansi_string_create("UI dropdown control: Dummy"),
                                                                               &dummy_gpu_present_task_create_info);
 
 

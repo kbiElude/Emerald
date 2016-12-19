@@ -239,6 +239,17 @@ typedef enum
     RAL_PRESENT_TASK_TYPE_UNKNOWN
 } ral_present_task_type;
 
+/** Adds a new subtask to the specified group task and connects all outputs of @param group_task
+ *  to existing subtask inputs, whose objects match.
+ *
+ *  @param group_task  TODO
+ *  @param task_to_add TODO. Retained.
+ *
+ *  TODO
+ */
+PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_present_task group_task,
+                                                                            ral_present_task task_to_add);
+
 /** TODO */
 PUBLIC EMERALD_API ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
                                                                 const ral_present_task_cpu_create_info* create_info_ptr);

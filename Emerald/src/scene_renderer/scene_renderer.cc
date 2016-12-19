@@ -136,7 +136,7 @@ typedef struct _scene_renderer
     scene_renderer_frustum_preview frustum_preview;
     scene_renderer_lights_preview  lights_preview;
     scene_renderer_normals_preview normals_preview;
-    scene_renderer_sm              shadow_mapping;
+    scene_renderer_sm              shadow_mapping;  /* TODO: This can be safely moved out of _scene_renderer, perhaps to demo_sm? */
 
     ral_context    context;
     demo_materials material_manager;
@@ -1440,10 +1440,12 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
             ASSERT_DEBUG_SYNC(renderer_ptr->current_color_rt != nullptr,
                               "No color render-target specified.");
 
-            uber_start_info.color_rt = (are_color_writes_enabled)               ? renderer_ptr->current_color_rt
-                                                                                : nullptr;
-            uber_start_info.depth_rt = (ref_gfx_state_create_info.depth_writes) ? renderer_ptr->current_depth_rt
-                                                                                : nullptr;
+            uber_start_info.color_rt        = (are_color_writes_enabled)               ? renderer_ptr->current_color_rt
+                                                                                       : nullptr;
+            uber_start_info.depth_rt        = (ref_gfx_state_create_info.depth_writes) ? renderer_ptr->current_depth_rt
+                                                                                       : nullptr;
+            uber_start_info.scene_to_render = renderer_ptr->owned_scene;
+            uber_start_info.sm              = renderer_ptr->shadow_mapping;
 
             scene_renderer_uber_rendering_start(material_uber,
                                                &uber_start_info);
@@ -1854,10 +1856,10 @@ PRIVATE void _scene_renderer_return_shadow_maps_to_pool(scene_renderer renderer)
 
         scene_light_get_property(current_light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
-                                &current_light_sm_texture_views + 0);
+                                 current_light_sm_texture_views + 0);
         scene_light_get_property(current_light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
-                                &current_light_sm_texture_views + 1);
+                                 current_light_sm_texture_views + 1);
 
         ral_context_delete_objects(renderer_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
@@ -2907,9 +2909,10 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
                                                                                     ral_texture_view                    color_rt,
                                                                                     ral_texture_view                    depth_rt)
 {
-    scene_graph      graph               = nullptr;
-    _scene_renderer* renderer_ptr        = reinterpret_cast<_scene_renderer*>(renderer);
-    ral_present_task result_present_task = nullptr;
+    ral_present_task bake_sm_present_task = nullptr;
+    scene_graph      graph                = nullptr;
+    _scene_renderer* renderer_ptr         = reinterpret_cast<_scene_renderer*>(renderer);
+    ral_present_task result_present_task  = nullptr;
 
     scene_get_property(renderer_ptr->owned_scene,
                        SCENE_PROPERTY_GRAPH,
@@ -2941,11 +2944,11 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
                           &shadow_mapping_disabled);
 
         /* Prepare the shadow maps */
-        scene_renderer_sm_render_shadow_maps(renderer_ptr->shadow_mapping,
-                                             renderer,
-                                             renderer_ptr->owned_scene,
-                                             camera,
-                                             frame_time);
+        bake_sm_present_task = scene_renderer_sm_render_shadow_maps(renderer_ptr->shadow_mapping,
+                                                                    renderer,
+                                                                    renderer_ptr->owned_scene,
+                                                                    camera,
+                                                                    frame_time);
 
         scene_set_property(renderer_ptr->owned_scene,
                            SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
@@ -3025,6 +3028,17 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
                                                                            ref_gfx_state_create_info);
     }
 
+    if (bake_sm_present_task != nullptr)
+    {
+        bool result;
+
+        result = ral_present_task_add_producer_subtask_to_group_task(result_present_task,
+                                                                     bake_sm_present_task);
+
+        ASSERT_DEBUG_SYNC(result,
+                          "ral_present_task_add_producer_subtask_to_group_task() failed.");
+    }
+
     /* 3. Clean up in anticipation for the next call. We specifically do not cache any of the
      *    data because of the frustum culling which needs to be performed, every time model matrix
      *    or VP changes.
@@ -3044,6 +3058,13 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
     }
 
     /* Good to shut down the show */
+    if (bake_sm_present_task != nullptr)
+    {
+        ral_present_task_release(bake_sm_present_task);
+
+        bake_sm_present_task = nullptr;
+    }
+
     if (vp != nullptr)
     {
         system_matrix4x4_release(vp);

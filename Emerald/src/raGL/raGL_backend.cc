@@ -1598,9 +1598,10 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
     _raGL_backend*                                           backend_ptr             = reinterpret_cast<_raGL_backend*>                                          (backend);
     const ral_context_callback_objects_deleted_callback_arg* callback_arg_ptr        = reinterpret_cast<const ral_context_callback_objects_deleted_callback_arg*>(callback_arg);
     bool                                                     is_owner                = false;
+    uint32_t*                                                ids_to_delete           = nullptr;
+    uint32_t                                                 n_ids_to_delete         = 0;
     system_hash64map*                                        object_map_ptr          = nullptr;
     system_read_write_mutex*                                 object_map_rw_mutex_ptr = nullptr;
-    void*                                                    object_raGL             = nullptr;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(backend_ptr != nullptr,
@@ -1616,6 +1617,87 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
 
     ASSERT_DEBUG_SYNC(*object_map_rw_mutex_ptr != nullptr,
                       "No RW mutex instance found for the required object type");
+
+    /* Cache IDs we're going to need to remove mappings for after the objects are physically deleted
+     * in the rendering thread */
+    system_read_write_mutex_lock(*object_map_rw_mutex_ptr,
+                                 ACCESS_WRITE);
+
+    ids_to_delete = reinterpret_cast<uint32_t*>(_malloca(callback_arg_ptr->n_objects * sizeof(uint32_t) ));
+
+    if (callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_PROGRAM)
+    {
+        void* object_raGL = nullptr;
+
+        for (uint32_t n_object = 0;
+                      n_object < callback_arg_ptr->n_objects;
+                    ++n_object)
+        {
+            GLuint object_id = 0;
+
+            if (!system_hash64map_get(*object_map_ptr,
+                                      (system_hash64) callback_arg_ptr->deleted_objects[n_object],
+                                     &object_raGL) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "No raGL instance found for the specified RAL program.");
+
+                continue;
+            }
+
+            raGL_program_get_property((raGL_program) object_raGL,
+                                      RAGL_PROGRAM_PROPERTY_ID,
+                                     &object_id);
+
+            ASSERT_DEBUG_SYNC(object_id != 0,
+                              "raGL_program's GL id is 0");
+
+            ids_to_delete[n_ids_to_delete++] = object_id;
+        }
+    }
+    else
+    if (callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE      ||
+        callback_arg_ptr->object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW)
+    {
+        void* object_raGL = nullptr;
+
+        for (uint32_t n_object = 0;
+                      n_object < callback_arg_ptr->n_objects;
+                    ++n_object)
+        {
+            GLuint object_id    = 0;
+            bool   object_is_rb;
+
+            if (!system_hash64map_get(*object_map_ptr,
+                                      (system_hash64) callback_arg_ptr->deleted_objects[n_object],
+                                     &object_raGL) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "No raGL instance found for the specified RAL texture / texture view.");
+
+                continue;
+            }
+
+            raGL_texture_get_property((raGL_texture) object_raGL,
+                                      RAGL_TEXTURE_PROPERTY_ID,
+                                      reinterpret_cast<void**>(&object_id) );
+            raGL_texture_get_property((raGL_texture) object_raGL,
+                                      RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
+                                      reinterpret_cast<void**>(&object_is_rb) );
+
+            ASSERT_DEBUG_SYNC(object_id != 0,
+                              "raGL_texture's GL id is 0");
+
+            if (!object_is_rb)
+            {
+                ASSERT_DEBUG_SYNC(system_hash64map_contains(backend_ptr->texture_id_to_raGL_texture_map,
+                                                            (system_hash64) object_id),
+                                  "GL renderbuffer/texture/texture view not found in the source hashmap.");
+
+                ids_to_delete[n_ids_to_delete++] = object_id;
+            }
+        }
+    }
 
     /* Unsubscribe from any RAL object notifications */
     switch (callback_arg_ptr->object_type)
@@ -1721,81 +1803,44 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                                                      false); /* present_after_executed */
 
     /* Remove the object from all hashmaps relevant to the object */
-    system_read_write_mutex_lock(*object_map_rw_mutex_ptr,
-                                 ACCESS_WRITE);
+    for (uint32_t n_deleted_object = 0;
+                  n_deleted_object < callback_arg_ptr->n_objects;
+                ++n_deleted_object)
     {
-        /* Retrieve raGL object instances for the specified RAL objects */
-        for (uint32_t n_deleted_object = 0;
-                      n_deleted_object < callback_arg_ptr->n_objects;
-                    ++n_deleted_object)
-        {
-            if (!system_hash64map_get(*object_map_ptr,
-                                      (system_hash64) callback_arg_ptr->deleted_objects[n_deleted_object],
-                                     &object_raGL) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "No raGL instance found for the specified RAL object.");
+        system_hash64map_remove(*object_map_ptr,
+                                (system_hash64) callback_arg_ptr->deleted_objects[n_deleted_object]);
+    }
 
-                continue;
+    for (uint32_t n_id_to_delete = 0;
+                  n_id_to_delete < n_ids_to_delete;
+                ++n_id_to_delete)
+    {
+        switch (callback_arg_ptr->object_type)
+        {
+            case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
+            {
+                system_hash64map_remove(backend_ptr->program_id_to_raGL_program_map,
+                                        ids_to_delete[n_id_to_delete]);
+
+                break;
             }
 
-            /* Remove the object from any relevant hash-maps we maintain */
-            system_hash64map_remove(*object_map_ptr,
-                                    (system_hash64) callback_arg_ptr->deleted_objects[n_deleted_object]);
-
-            switch (callback_arg_ptr->object_type)
+            case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
+            case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
             {
-                case RAL_CONTEXT_OBJECT_TYPE_PROGRAM:
-                {
-                    GLuint object_id = 0;
+                system_hash64map_remove(backend_ptr->texture_id_to_raGL_texture_map,
+                                        ids_to_delete[n_id_to_delete]);
 
-                    raGL_program_get_property((raGL_program) object_raGL,
-                                              RAGL_PROGRAM_PROPERTY_ID,
-                                             &object_id);
-
-                    ASSERT_DEBUG_SYNC(object_id != 0,
-                                      "raGL_program's GL id is 0");
-
-                    system_hash64map_remove(backend_ptr->program_id_to_raGL_program_map,
-                                            (system_hash64) object_id);
-
-                    break;
-                }
-
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
-                case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
-                {
-                    GLuint object_id    = 0;
-                    bool   object_is_rb;
-
-                    raGL_texture_get_property((raGL_texture) object_raGL,
-                                              RAGL_TEXTURE_PROPERTY_ID,
-                                              reinterpret_cast<void**>(&object_id) );
-                    raGL_texture_get_property((raGL_texture) object_raGL,
-                                              RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
-                                              reinterpret_cast<void**>(&object_is_rb) );
-
-                    ASSERT_DEBUG_SYNC(object_id != 0,
-                                      "raGL_texture's GL id is 0");
-
-                    if (!object_is_rb)
-                    {
-
-                        ASSERT_DEBUG_SYNC(system_hash64map_contains(backend_ptr->texture_id_to_raGL_texture_map,
-                                                                    (system_hash64) object_id),
-                                          "GL renderbuffer/texture/texture view not found in the source hashmap.");
-
-                        system_hash64map_remove(backend_ptr->texture_id_to_raGL_texture_map,
-                                                (system_hash64) object_id);
-                    }
-
-                    break;
-                }
+                break;
             }
         }
     }
+
     system_read_write_mutex_unlock(*object_map_rw_mutex_ptr,
                                    ACCESS_WRITE);
+
+    /* Clean up */
+    _freea(ids_to_delete);
 }
 
 /** TODO */

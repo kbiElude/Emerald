@@ -129,6 +129,12 @@ PUBLIC EMERALD_API void scene_renderer_sm_get_property(const scene_renderer_sm  
                                                        scene_renderer_sm_property property,
                                                        void*                      out_result_ptr);
 
+/** TODO */
+PUBLIC bool scene_renderer_sm_get_sampler_for_light(const scene_renderer_sm shadow_mapping,
+                                                    const scene_light       light,
+                                                    bool                    need_color_tv_sampler,
+                                                    ral_sampler*            out_sampler_ptr);
+
 /** TODO.
  *
  *  NOTE: Internal usage only.

@@ -13,10 +13,10 @@
 
 #define ENABLE_ANIMATION
 //#define ENABLE_BB_VISUALIZATION
-//#define ENABLE_SM
+#define ENABLE_SM
 
 #ifdef ENABLE_SM
-    #define SHOW_SM_PREVIEW
+    //#define SHOW_SM_PREVIEW
 #endif
 
 #endif /* APP_CONFIG_H */

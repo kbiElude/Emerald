@@ -25,6 +25,7 @@
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "scene_renderer/scene_renderer_uber.h"
+#include "scene_renderer/scene_renderer_sm.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "shaders/shaders_vertex_uber.h"
 #include "system/system_assertions.h"
@@ -243,6 +244,9 @@ typedef struct _scene_renderer_uber
 
     ral_texture_view active_color_rt;
     ral_texture_view active_depth_rt;
+
+    ral_texture_view active_sm_rts[16];
+    uint32_t         n_active_sm_rts;
 
     /* These are stored in UBs so we need to store UB offsets instead of locations */
     uint32_t ambient_material_ub_offset;
@@ -3302,6 +3306,7 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
 
     uber_ptr->active_color_rt = start_info_ptr->color_rt;
     uber_ptr->active_depth_rt = start_info_ptr->depth_rt;
+    uber_ptr->n_active_sm_rts = 0;
 
     /* Update shaders if the configuration has been changed since the last call */
     if (uber_ptr->dirty)
@@ -3313,7 +3318,8 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
     }
 
     /* Set up UB contents & texture samplers */
-    unsigned int n_items = 0;
+    unsigned int n_items            = 0;
+    uint32_t     n_lights_processed = 0;
 
     system_resizable_vector_get_property(uber_ptr->added_items,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -3345,16 +3351,29 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
 
                     case SCENE_RENDERER_UBER_ITEM_LIGHT:
                     {
+                        scene_light current_light      = nullptr;
+                        ral_sampler shadow_map_sampler = nullptr;
+
+                        current_light = scene_get_light_by_index(start_info_ptr->scene_to_render,
+                                                                 n_lights_processed);
+
+                        ASSERT_DEBUG_SYNC(current_light != nullptr,
+                                          "Null scene_light instance returned by scene instance");
+
                         if (item_ptr->fragment_shader_item.current_light_shadow_map_color_uniform_name != nullptr)
                         {
-                            ral_sampler                                 shadow_map_sampler        = nullptr;
-                            ral_texture_type                            shadow_map_texture_type   = RAL_TEXTURE_TYPE_UNKNOWN;
+                            ral_texture_type                            shadow_map_texture_type = RAL_TEXTURE_TYPE_UNKNOWN;
                             ral_command_buffer_set_binding_command_info sm_binding_info;
 
-                            /* Bind the shadow map */
-                            ASSERT_DEBUG_SYNC(false,
-                                              "TODO: Sampler binding set-up");
+                            scene_renderer_sm_get_sampler_for_light(start_info_ptr->sm,
+                                                                    current_light,
+                                                                    true, /* need_color_tv_sampler */
+                                                                   &shadow_map_sampler);
 
+                            ASSERT_DEBUG_SYNC(shadow_map_sampler != nullptr,
+                                              "Null sampler returned for SM sampling");
+
+                            /* Bind the shadow map */
                             ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_color != nullptr,
                                               "No color shadow map assigned to a light which casts shadows");
 
@@ -3370,18 +3389,28 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                             ral_command_buffer_record_set_bindings(uber_ptr->preamble_command_buffer,
                                                                    1, /* n_bindings */
                                                                   &sm_binding_info);
+
+                            /* Cache the TV used by SM */
+                            ASSERT_DEBUG_SYNC(uber_ptr->n_active_sm_rts < sizeof(uber_ptr->active_sm_rts) / sizeof(uber_ptr->active_sm_rts[0]),
+                                              "Maximum number of shadow-mapping rendertargets exceeded");
+
+                            uber_ptr->active_sm_rts[uber_ptr->n_active_sm_rts++] = item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_color;
                         }
 
                         if (item_ptr->fragment_shader_item.current_light_shadow_map_depth_uniform_name != nullptr)
                         {
-                            ral_sampler                                 shadow_map_sampler      = nullptr;
                             ral_texture_type                            shadow_map_texture_type = RAL_TEXTURE_TYPE_UNKNOWN;
                             ral_command_buffer_set_binding_command_info sm_binding_info;
 
-                            /* Bind the shadow map */
-                            ASSERT_DEBUG_SYNC(false,
-                                              "TODO: Sampler binding set-up");
+                            scene_renderer_sm_get_sampler_for_light(start_info_ptr->sm,
+                                                                    current_light,
+                                                                    false, /* need_color_tv_sampler */
+                                                                   &shadow_map_sampler);
 
+                            ASSERT_DEBUG_SYNC(shadow_map_sampler != nullptr,
+                                              "Null sampler returned for SM sampling");
+
+                            /* Bind the shadow map */
                             ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_depth != nullptr,
                                               "No depth shadow map assigned to a light which casts shadows");
 
@@ -3397,8 +3426,15 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                             ral_command_buffer_record_set_bindings(uber_ptr->preamble_command_buffer,
                                                                    1, /* n_bindings */
                                                                   &sm_binding_info);
+
+                            /* Cache the TV used by SM */
+                            ASSERT_DEBUG_SYNC(uber_ptr->n_active_sm_rts < sizeof(uber_ptr->active_sm_rts) / sizeof(uber_ptr->active_sm_rts[0]),
+                                              "Maximum number of shadow-mapping rendertargets exceeded");
+
+                            uber_ptr->active_sm_rts[uber_ptr->n_active_sm_rts++] = item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_depth;
                         }
 
+                        ++n_lights_processed;
                         break;
                     }
 
@@ -3536,13 +3572,15 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                                         &global_cpu_update_task_info);
 
 
-    render_gpu_task_unique_inputs    = reinterpret_cast<ral_present_task_io*>(_malloca(sizeof(ral_present_task_io) * (3 /* UB buffers + color rt (potentially) + ds rt (potentially) */ + n_scheduled_mesh_buffers) ));
-    render_gpu_task_unique_inputs[0] = global_cpu_update_task_output;
-    n_render_unique_inputs           = 1;
+    n_render_unique_inputs        = 1;
+    n_render_unique_outputs       = 0;
+    render_gpu_task_unique_inputs = reinterpret_cast<ral_present_task_io*>(_malloca(sizeof(ral_present_task_io) * (3 /* UB buffers + color rt (potentially) + ds rt (potentially) */ + n_scheduled_mesh_buffers + uber_ptr->n_active_sm_rts) ));
 
-    /* Render tasks need to take color/depth RTs as inputs & outputs. If any of the tasks depends on any other input (eg. buffers),
-     * we also need to expose it as well. This is especially important for custom meshes which may rely on data generated prior to
-     * scene rasterization.
+    render_gpu_task_unique_inputs[0] = global_cpu_update_task_output;
+
+    /* Render tasks need to take color/depth RTs + shadow maps as inputs & outputs. If any of the tasks depends on any other input
+     * (eg. buffers), we also need to expose it as well. This is especially important for custom meshes which may rely on data
+     * generated prior to scene rasterization.
      *
      * TODO: Right now, all render tasks for a given uber will depend on all buffers used by meshes assigned to a given uber.
      *       This is not needed. While it won't matter for OpenGL, making these dependencies explicit could potentially reduce
@@ -3579,6 +3617,16 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
         render_gpu_task_unique_inputs[n_render_unique_inputs++].object_type = RAL_CONTEXT_OBJECT_TYPE_BUFFER;
     }
 
+    for (uint32_t n_sm_rt = 0;
+                  n_sm_rt < uber_ptr->n_active_sm_rts;
+                ++n_sm_rt)
+    {
+        render_gpu_task_unique_inputs[n_render_unique_inputs].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+        render_gpu_task_unique_inputs[n_render_unique_inputs].texture_view = uber_ptr->active_sm_rts[n_sm_rt];
+
+        ++n_render_unique_inputs;
+    }
+
     render_gpu_tasks = reinterpret_cast<ral_present_task*>(_malloca(n_render_command_buffers * sizeof(ral_present_task) ));
 
     for (uint32_t n_render_command_buffer = 0;
@@ -3601,7 +3649,6 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
         render_gpu_tasks[n_render_command_buffer] = ral_present_task_create_gpu(system_hashed_ansi_string_create("Uber render command buffer: rasterization"),
                                                                                &render_gpu_task_info);
     }
-
 
     /* Result task needs to:
      *
@@ -3641,8 +3688,7 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
 
     memcpy(result_present_tasks + 1,
            render_gpu_tasks,
-           sizeof(ral_present_task) * (result_task_create_info.n_present_tasks - 1));
-
+           sizeof(ral_present_task) * n_render_command_buffers);
 
     result_task_unique_input_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_input_to_ingroup_task_mappings  * sizeof(ral_present_task_group_mapping) ));
     result_task_unique_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(result_task_create_info.n_unique_output_to_ingroup_task_mappings * sizeof(ral_present_task_group_mapping) ));
