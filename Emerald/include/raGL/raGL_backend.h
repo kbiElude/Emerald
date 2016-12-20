@@ -24,6 +24,9 @@ typedef enum
      * which need to be wrapped inside this CS are glGen*() calls. */
     RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS,
 
+    /* not settable; ral_texture_pool */
+    RAGL_BACKEND_PRIVATE_PROPERTY_TEXTURE_POOL,
+
     /* not settable; raGL_vaos */
     RAGL_BACKEND_PRIVATE_PROPERTY_VAOS,
 

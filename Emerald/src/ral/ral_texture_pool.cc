@@ -12,33 +12,18 @@
 #include "system/system_resizable_vector.h"
 
 
-typedef struct _ral_texture_pool_item
-{
-    /* We may want to add some metadata in the future here.. */
-    ral_texture texture;
-
-
-    explicit _ral_texture_pool_item(ral_texture in_texture)
-    {
-        ASSERT_DEBUG_SYNC(in_texture != nullptr,
-                          "Input ral_texture instance is NULL");
-
-        texture = in_texture;
-    }
-} _ral_texture_pool_item;
-
 typedef struct _ral_texture_pool
 {
     system_callback_manager callback_manager;
 
     system_read_write_mutex access_mutex;
-    ral_context             context; /* do NOT release */
-    system_hash64map        texture_hash_to_items_vector_map;
+    system_resizable_vector contexts; /* do NOT release */
+    system_hash64map        hash_to_texture_vector_map; /* hash -> vector of ral_textures */
 
     system_resizable_vector active_textures;
     bool                    being_released;
 
-    explicit _ral_texture_pool(ral_context in_context);
+    explicit _ral_texture_pool();
 
     ~_ral_texture_pool();
 } _ral_texture_pool;
@@ -48,29 +33,28 @@ typedef struct _ral_texture_pool
 PRIVATE system_hash64 _ral_texture_pool_get_texture_hash           (const ral_texture_create_info* info_ptr);
 PRIVATE void          _ral_texture_pool_release_all_textures       (_ral_texture_pool*             texture_pool_ptr);
 PRIVATE void          _ral_texture_pool_release_texture            (_ral_texture_pool*             texture_pool_ptr,
-                                                                    _ral_texture_pool_item*        texture_item_ptr);
+                                                                    ral_texture                    texture);
 PRIVATE void          _ral_texture_pool_subscribe_for_notifications(_ral_texture_pool*             texture_pool_ptr,
+                                                                    ral_context                    context,
                                                                     bool                           should_subscribe);
 
 /** TODO */
-_ral_texture_pool::_ral_texture_pool(ral_context in_context)
+_ral_texture_pool::_ral_texture_pool()
 {
-    access_mutex                     = system_read_write_mutex_create();
-    active_textures                  = system_resizable_vector_create(16); /* capacity */
-    callback_manager                 = system_callback_manager_create((_callback_id) RAL_TEXTURE_POOL_CALLBACK_ID_COUNT);
-    being_released                   = false;
-    context                          = in_context;
-    texture_hash_to_items_vector_map = system_hash64map_create(sizeof(_ral_texture_pool_item*) );
-
-    _ral_texture_pool_subscribe_for_notifications(this,
-                                                  true); /* should_subscribe */
+    access_mutex               = system_read_write_mutex_create();
+    active_textures            = system_resizable_vector_create(16); /* capacity */
+    being_released             = false;
+    callback_manager           = system_callback_manager_create((_callback_id) RAL_TEXTURE_POOL_CALLBACK_ID_COUNT);
+    contexts                   = system_resizable_vector_create(4,     /* capacity              */
+                                                                true); /* should_be_thread_safe */
+    hash_to_texture_vector_map = system_hash64map_create       (sizeof(ral_texture) );
 }
 
 /** TODO */
 _ral_texture_pool::~_ral_texture_pool()
 {
-    _ral_texture_pool_subscribe_for_notifications(this,
-                                                  false); /* should_subscribe */
+    ASSERT_DEBUG_SYNC(being_released,
+                      "Texture pool instance about to get killed, despite not having been informed about the fact in advance");
 
     if (access_mutex != nullptr)
     {
@@ -94,19 +78,34 @@ _ral_texture_pool::~_ral_texture_pool()
         active_textures = nullptr;
     }
 
-    if (texture_hash_to_items_vector_map != nullptr)
+    if (contexts != nullptr)
+    {
+        uint32_t n_contexts = 0;
+
+        system_resizable_vector_get_property(contexts,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_contexts);
+
+        ASSERT_DEBUG_SYNC(n_contexts == 0,
+                          "At least one ral_context instance is attached to ral_texture_pool instance at the latter's destruction time");
+
+        system_resizable_vector_release(contexts);
+        contexts = nullptr;
+    }
+
+    if (hash_to_texture_vector_map != nullptr)
     {
         uint32_t n_map_items = 0;
 
-        system_hash64map_get_property(texture_hash_to_items_vector_map,
+        system_hash64map_get_property(hash_to_texture_vector_map,
                                       SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
                                      &n_map_items);
 
         ASSERT_DEBUG_SYNC(n_map_items == 0,
                           "texture_hash_to_items_vector_map has items at destruction time");
 
-        system_hash64map_release(texture_hash_to_items_vector_map);
-        texture_hash_to_items_vector_map = nullptr;
+        system_hash64map_release(hash_to_texture_vector_map);
+        hash_to_texture_vector_map = nullptr;
     }
 
     if (callback_manager != nullptr)
@@ -147,11 +146,13 @@ PRIVATE system_hash64 _ral_texture_pool_get_texture_hash(const ral_texture_creat
 PRIVATE void _ral_texture_pool_on_context_about_to_be_released(const void* callback_data,
                                                                void*       texture_pool_raw_ptr)
 {
+    const ral_context  context          = (ral_context) (callback_data);
     _ral_texture_pool* texture_pool_ptr = reinterpret_cast<_ral_texture_pool*>(texture_pool_raw_ptr);
 
-    texture_pool_ptr->being_released = true;
-
-    _ral_texture_pool_release_all_textures(texture_pool_ptr);
+    _ral_texture_pool_release_all_textures       (texture_pool_ptr);
+    _ral_texture_pool_subscribe_for_notifications(texture_pool_ptr,
+                                                  context,
+                                                  false); /* should_subscribe */
 }
 
 /** TODO */
@@ -165,6 +166,8 @@ PRIVATE void _ral_texture_pool_on_texture_created(const void* callback_data,
                   n_object < callback_data_ptr->n_objects;
                 ++n_object)
     {
+        ral_context texture_context = nullptr;
+
         system_resizable_vector_push(texture_pool_ptr->active_textures,
                                      callback_data_ptr->created_objects[n_object]);
 
@@ -173,9 +176,17 @@ PRIVATE void _ral_texture_pool_on_texture_created(const void* callback_data,
          *       implemented yet, meaning we'll just keep on allocating texture memory.
          *       This needs to be improved when the right time comes.
          */
-        ral_context_retain_object(texture_pool_ptr->context,
+        ral_texture_get_property(reinterpret_cast<ral_texture>(callback_data_ptr->created_objects[n_object]),
+                                 RAL_TEXTURE_PROPERTY_CONTEXT,
+                                &texture_context);
+
+        ral_context_retain_object(texture_context,
                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                   callback_data_ptr->created_objects[n_object]);
+
+        ASSERT_DEBUG_SYNC(system_resizable_vector_find(texture_pool_ptr->contexts,
+                                                       texture_context) != ITEM_NOT_FOUND,
+                          "Texture pool is unaware of the texture's parent context");
     }
 }
 
@@ -184,11 +195,11 @@ PRIVATE void _ral_texture_pool_on_texture_created(const void* callback_data,
 PRIVATE void _ral_texture_pool_release_all_textures(_ral_texture_pool* texture_pool_ptr)
 {
     ral_texture current_texture = nullptr;
-    uint32_t    n_map_items     = 0;
+    uint32_t    n_textures      = 0;
 
-    system_hash64map_get_property(texture_pool_ptr->texture_hash_to_items_vector_map,
+    system_hash64map_get_property(texture_pool_ptr->hash_to_texture_vector_map,
                                   SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
-                                 &n_map_items);
+                                 &n_textures);
 
     while (system_resizable_vector_pop(texture_pool_ptr->active_textures,
                                        &current_texture) )
@@ -204,15 +215,14 @@ PRIVATE void _ral_texture_pool_release_all_textures(_ral_texture_pool* texture_p
     }
 
     for (uint32_t n_map_item = 0;
-                  n_map_item < n_map_items;
+                  n_map_item < n_textures;
                 ++n_map_item)
     {
-        ral_texture             texture          = nullptr;
-        system_hash64           texture_hash     = 0;
-        _ral_texture_pool_item* texture_item_ptr = nullptr;
-        system_resizable_vector texture_vector   = nullptr;
+        ral_texture             texture        = nullptr;
+        system_hash64           texture_hash   = 0;
+        system_resizable_vector texture_vector = nullptr;
 
-        if (!system_hash64map_get_element_at(texture_pool_ptr->texture_hash_to_items_vector_map,
+        if (!system_hash64map_get_element_at(texture_pool_ptr->hash_to_texture_vector_map,
                                              n_map_item,
                                             &texture_vector,
                                             &texture_hash) )
@@ -229,26 +239,26 @@ PRIVATE void _ral_texture_pool_release_all_textures(_ral_texture_pool* texture_p
          * TODO: This could easily be optimized.
          */
         while (system_resizable_vector_pop(texture_vector,
-                                          &texture_item_ptr) )
+                                          &current_texture) )
         {
             _ral_texture_pool_release_texture(texture_pool_ptr,
-                                              texture_item_ptr);
+                                              current_texture);
         }
 
         system_resizable_vector_release(texture_vector);
     }
 
-    system_hash64map_clear(texture_pool_ptr->texture_hash_to_items_vector_map);
+    system_hash64map_clear(texture_pool_ptr->hash_to_texture_vector_map);
 }
 
 /** TODO */
-PRIVATE void _ral_texture_pool_release_texture(_ral_texture_pool*      texture_pool_ptr,
-                                               _ral_texture_pool_item* texture_item_ptr)
+PRIVATE void _ral_texture_pool_release_texture(_ral_texture_pool* texture_pool_ptr,
+                                               ral_texture        texture)
 {
     _ral_texture_pool_callback_texture_dropped_arg callback_arg;
 
     callback_arg.n_textures = 1;
-    callback_arg.textures   = &texture_item_ptr->texture;
+    callback_arg.textures   = &texture;
 
     system_callback_manager_call_back(texture_pool_ptr->callback_manager,
                                       RAL_TEXTURE_POOL_CALLBACK_ID_TEXTURE_DROPPED,
@@ -257,11 +267,12 @@ PRIVATE void _ral_texture_pool_release_texture(_ral_texture_pool*      texture_p
 
 /** Please see header for specification */
 PRIVATE void _ral_texture_pool_subscribe_for_notifications(_ral_texture_pool* texture_pool_ptr,
+                                                           ral_context        context,
                                                            bool               should_subscribe)
 {
     system_callback_manager context_callback_manager = nullptr;
 
-    ral_context_get_property(texture_pool_ptr->context,
+    ral_context_get_property(context,
                              RAL_CONTEXT_PROPERTY_CALLBACK_MANAGER,
                             &context_callback_manager);
 
@@ -335,11 +346,9 @@ PUBLIC bool ral_texture_pool_add(ral_texture_pool pool,
     system_read_write_mutex_lock(pool_ptr->access_mutex,
                                  ACCESS_WRITE);
     {
-        _ral_texture_pool_item* new_item_ptr = nullptr;
-
         mutex_locked = true;
 
-        if (!system_hash64map_get(pool_ptr->texture_hash_to_items_vector_map,
+        if (!system_hash64map_get(pool_ptr->hash_to_texture_vector_map,
                                   texture_hash,
                                  &texture_vector) )
         {
@@ -353,29 +362,24 @@ PUBLIC bool ral_texture_pool_add(ral_texture_pool pool,
                 goto end;
             }
 
-            system_hash64map_insert(pool_ptr->texture_hash_to_items_vector_map,
+            system_hash64map_insert(pool_ptr->hash_to_texture_vector_map,
                                     texture_hash,
                                     texture_vector,
                                     nullptr,  /* callback          */
                                     nullptr); /* callback_argument */
         }
 
-        /* Stash the new texture instance */
-        new_item_ptr = new (std::nothrow) _ral_texture_pool_item(texture);
-
-        ASSERT_ALWAYS_SYNC(new_item_ptr != nullptr,
-                           "Out of memory");
-
+        /* Stash the texture */
         system_resizable_vector_push(texture_vector,
-                                     new_item_ptr);
+                                     texture);
     }
     /* Unlock at end: */
 
     /* Remove the instance from active_textures */
-    if (active_texture_index = system_resizable_vector_find(texture_vector,
+    if (active_texture_index = system_resizable_vector_find(pool_ptr->active_textures,
                                                             texture) != ITEM_NOT_FOUND)
     {
-        system_resizable_vector_delete_element_at(texture_vector,
+        system_resizable_vector_delete_element_at(pool_ptr->active_textures,
                                                   active_texture_index);
     }
     else
@@ -397,9 +401,32 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC ral_texture_pool ral_texture_pool_create(ral_context in_context)
+PUBLIC void ral_texture_pool_attach_context(ral_texture_pool pool,
+                                            ral_context      context)
 {
-    _ral_texture_pool* new_texture_pool_ptr = new (std::nothrow) _ral_texture_pool(in_context);
+    _ral_texture_pool* pool_ptr = reinterpret_cast<_ral_texture_pool*>(pool);
+
+    ASSERT_DEBUG_SYNC(context != nullptr,
+                      "Null context was specified");
+    ASSERT_DEBUG_SYNC(pool != nullptr,
+                      "Null texture pool was specified");
+
+    ASSERT_DEBUG_SYNC(system_resizable_vector_find(pool_ptr->contexts,
+                                                   context) == ITEM_NOT_FOUND,
+                      "The specified context has already been attached to the texture pool");
+
+    system_resizable_vector_push(pool_ptr->contexts,
+                                 context);
+
+    _ral_texture_pool_subscribe_for_notifications(pool_ptr,
+                                                  context,
+                                                  true); /* should_subscribe */
+}
+
+/** Please see header for specification */
+PUBLIC ral_texture_pool ral_texture_pool_create()
+{
+    _ral_texture_pool* new_texture_pool_ptr = new (std::nothrow) _ral_texture_pool();
 
     ASSERT_ALWAYS_SYNC(new_texture_pool_ptr != nullptr,
                        "Out of memory");
@@ -410,6 +437,32 @@ PUBLIC ral_texture_pool ral_texture_pool_create(ral_context in_context)
     }
 
     return (ral_texture_pool) new_texture_pool_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_texture_pool_detach_context(ral_texture_pool pool,
+                                            ral_context      context)
+{
+    uint32_t           context_index;
+    _ral_texture_pool* pool_ptr = reinterpret_cast<_ral_texture_pool*>(pool);
+
+    ASSERT_DEBUG_SYNC(context != nullptr,
+                      "Null context was specified");
+    ASSERT_DEBUG_SYNC(pool != nullptr,
+                      "Null texture pool was specified");
+
+    context_index = system_resizable_vector_find(pool_ptr->contexts,
+                                                 context);
+
+    ASSERT_DEBUG_SYNC(context_index != ITEM_NOT_FOUND,
+                      "The specified context has not been found as attached to the texture pool");
+
+    system_resizable_vector_delete_element_at(pool_ptr->contexts,
+                                              context_index);
+
+    _ral_texture_pool_subscribe_for_notifications(pool_ptr,
+                                                  context,
+                                                  false); /* should_subscribe */
 }
 
 /** Please see header for specification */
@@ -452,7 +505,7 @@ PUBLIC bool ral_texture_pool_get(ral_texture_pool               texture_pool,
     system_read_write_mutex_lock(texture_pool_ptr->access_mutex,
                                  ACCESS_READ);
     {
-        if (system_hash64map_get(texture_pool_ptr->texture_hash_to_items_vector_map,
+        if (system_hash64map_get(texture_pool_ptr->hash_to_texture_vector_map,
                                  texture_hash,
                                 &texture_vector) )
         {

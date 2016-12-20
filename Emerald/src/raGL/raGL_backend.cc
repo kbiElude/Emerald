@@ -16,6 +16,7 @@
 #include "ral/ral_scheduler.h"
 #include "ral/ral_shader.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_pool.h"
 #include "raGL/raGL_backend.h"
 #include "raGL/raGL_buffer.h"
 #include "raGL/raGL_buffers.h"
@@ -69,6 +70,8 @@ typedef struct _raGL_backend
 
     /* NOTE: Textures and texture views are handled by raGL_texture */
     system_hash64map        texture_id_to_raGL_texture_map; /* maps GLid to raGL_texture instance (it's a GL texture); does NOT own the mapepd raGL_texture instances; lock textures_map_cs before usage. */
+    ral_texture_pool        texture_pool;
+    bool                    texture_pool_owner;
     system_hash64map        textures_map;                   /* maps ral_texture to raGL_texture instance; owns the mapped raGL_texture instances */
     bool                    textures_map_owner;
     system_read_write_mutex textures_map_rw_mutex;
@@ -417,6 +420,8 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         shaders_map_owner              = false;
         shaders_map_rw_mutex           = root_backend_ptr->shaders_map_rw_mutex;
         texture_id_to_raGL_texture_map = root_backend_ptr->texture_id_to_raGL_texture_map;
+        texture_pool                   = root_backend_ptr->texture_pool;
+        texture_pool_owner             = false;
         textures_map                   = root_backend_ptr->textures_map;
         textures_map_rw_mutex          = root_backend_ptr->textures_map_rw_mutex;
         textures_map_owner             = false;
@@ -440,10 +445,15 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
         shaders_map_rw_mutex           = system_read_write_mutex_create();
         shaders_map_owner              = true;
         texture_id_to_raGL_texture_map = system_hash64map_create       (sizeof(raGL_texture) );
+        texture_pool                   = ral_texture_pool_create       ();
+        texture_pool_owner             = true;
         textures_map                   = system_hash64map_create       (sizeof(raGL_texture) );
         textures_map_rw_mutex          = system_read_write_mutex_create();
         textures_map_owner             = true;
     }
+
+    ral_texture_pool_attach_context(texture_pool,
+                                    in_owner_context);
 
     backend_type                      = in_backend_type;
     bound_gfx_state                   = nullptr;
@@ -463,14 +473,30 @@ _raGL_backend::_raGL_backend(ral_context               in_owner_context,
 /** TODO */
 _raGL_backend::~_raGL_backend()
 {
+    static const bool texture_pool_release_status = true;
+
     /* Release object managers */
     ogl_context_release_managers(context_gl);
+
+    // ral_texture_pool_set_property(texture_pool,
+    //                               RAL_TEXTURE_POOL_PROPERTY_IS_BEING_RELEASED,
+    //                              &texture_pool_release_status);
+
+    ral_texture_pool_detach_context(texture_pool,
+                                    context_ral);
 
     if (buffers != nullptr)
     {
         raGL_buffers_release(buffers);
 
         buffers = nullptr;
+    }
+
+    if (texture_pool != nullptr)
+    {
+        ral_texture_pool_release(texture_pool);
+
+        texture_pool = nullptr;
     }
 
     if (vaos != nullptr)
@@ -2813,6 +2839,13 @@ PUBLIC void raGL_backend_get_private_property(raGL_backend                  back
         case RAGL_BACKEND_PRIVATE_PROPERTY_RENDERING_CS:
         {
             *reinterpret_cast<system_critical_section*>(out_result_ptr) = _global.rendering_cs;
+
+            break;
+        }
+
+        case RAGL_BACKEND_PRIVATE_PROPERTY_TEXTURE_POOL:
+        {
+            *reinterpret_cast<ral_texture_pool*>(out_result_ptr) = backend_ptr->texture_pool;
 
             break;
         }

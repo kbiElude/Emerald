@@ -71,7 +71,7 @@ typedef struct _ral_context
     system_critical_section shaders_cs;
     uint32_t                n_shaders_created;
 
-    ral_texture_pool        texture_pool;
+    ral_texture_pool        texture_pool;             /* NOT owned - this instance is provided & owned by the backend! */
     system_hash64map        textures_by_filename_map; /* does NOT own the ral_texture values */
     system_hash64map        textures_by_name_map;     /* does NOT own the ral_texture values */
     system_critical_section textures_cs;
@@ -124,7 +124,7 @@ typedef struct _ral_context
         shaders_cs                = system_critical_section_create();
         texture_views             = system_resizable_vector_create(sizeof(ral_texture_view) );
         texture_views_cs          = system_critical_section_create();
-        texture_pool              = ral_texture_pool_create       ( (ral_context) this);
+        texture_pool              = nullptr;
         textures_by_filename_map  = system_hash64map_create       (sizeof(ral_texture) );
         textures_by_name_map      = system_hash64map_create       (sizeof(ral_texture) );
         textures_cs               = system_critical_section_create();
@@ -143,9 +143,6 @@ typedef struct _ral_context
 
     ~_ral_context()
     {
-        ASSERT_DEBUG_SYNC(texture_pool == nullptr,
-                          "Texture pool should have been destroyed by this point.");
-
         system_critical_section* cses_to_release[] =
         {
             &buffers_cs,
@@ -1409,6 +1406,10 @@ PUBLIC ral_context ral_context_create(system_hashed_ansi_string name,
                                                                                                              backend_type) );
                 new_context_ptr->pfn_backend_get_property_proc = raGL_backend_get_property;
                 new_context_ptr->pfn_backend_release_proc      = raGL_backend_release;
+
+                raGL_backend_get_private_property(reinterpret_cast<raGL_backend>(new_context_ptr->backend),
+                                                  RAGL_BACKEND_PRIVATE_PROPERTY_TEXTURE_POOL,
+                                                 &new_context_ptr->texture_pool);
 
                 break;
             }

@@ -388,8 +388,16 @@ PRIVATE ral_present_job _raGL_texture_deinit_storage_rendering_callback(ral_cont
         }
         else
         {
-            LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%u])",
-                     texture_ptr->id);
+            if (texture_ptr->texture != nullptr)
+            {
+                LOG_INFO("[GL back-end]: Deleting texture storage (GL texture ID [%u])",
+                         texture_ptr->id);
+            }
+            else
+            {
+                LOG_INFO("[GL back-end]: Deleting texture view (GL texture ID [%u])",
+                         texture_ptr->id);
+            }
 
             entrypoints_ptr->pGLDeleteTextures(1,
                                               &texture_ptr->id);
