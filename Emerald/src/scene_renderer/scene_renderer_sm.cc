@@ -1346,13 +1346,14 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         sm_depth_texture_create_info.base_mipmap_depth      = 1;
         sm_depth_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
         sm_depth_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
+        sm_depth_texture_create_info.description            = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
+                                                                                                                      " [shadow map depth texture]");
         sm_depth_texture_create_info.fixed_sample_locations = false;
         sm_depth_texture_create_info.format                 = light_shadow_map_format_depth;
-        sm_depth_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
-                                                                                                                      " [shadow map depth texture]");
         sm_depth_texture_create_info.n_layers               = light_shadow_map_size[2];
         sm_depth_texture_create_info.n_samples              = 1;
         sm_depth_texture_create_info.type                   = light_shadow_map_type;
+        sm_depth_texture_create_info.unique_name            = nullptr;
         sm_depth_texture_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                                               RAL_TEXTURE_USAGE_SAMPLED_BIT;
         sm_depth_texture_create_info.use_full_mipmap_chain  = false;
@@ -1427,13 +1428,14 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
             sm_color_texture_create_info.base_mipmap_depth      = 1;
             sm_color_texture_create_info.base_mipmap_height     = light_shadow_map_size[1];
             sm_color_texture_create_info.base_mipmap_width      = light_shadow_map_size[0];
+            sm_color_texture_create_info.description            = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
+                                                                                                                          " [shadow map color texture]");
             sm_color_texture_create_info.fixed_sample_locations = false;
             sm_color_texture_create_info.format                 = light_shadow_map_format_color;
-            sm_color_texture_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_name),
-                                                                                                                          " [shadow map color texture]");
             sm_color_texture_create_info.n_layers               = light_shadow_map_size[2];
             sm_color_texture_create_info.n_samples              = 1;
             sm_color_texture_create_info.type                   = light_shadow_map_type;
+            sm_color_texture_create_info.unique_name            = nullptr;
             sm_color_texture_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
                                                                   RAL_TEXTURE_USAGE_SAMPLED_BIT;
             sm_color_texture_create_info.use_full_mipmap_chain  = true;
@@ -1792,16 +1794,14 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
                           "TODO: Implement");
     }
 
-    /* "Unbind" the SM texture from the scene_renderer_sm instance */
-    handler_ptr->current_sm_color0_texture_view = nullptr;
-    handler_ptr->current_sm_depth_texture_view  = nullptr;
-
     /* "Specialized" views are not shared with external objects, and therefore need to be
      * released explicitly */
     ral_texture_view tvs_to_release[] =
     {
+        handler_ptr->current_sm_color0_texture_view,
         handler_ptr->current_sm_color0_l0_texture_view,
         handler_ptr->current_sm_color0_l1_texture_view,
+        handler_ptr->current_sm_depth_texture_view,
         handler_ptr->current_sm_depth_l0_texture_view,
         handler_ptr->current_sm_depth_l1_texture_view,
     };
@@ -1812,6 +1812,9 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
                                n_tvs_to_release,
                                reinterpret_cast<void* const*>(tvs_to_release) );
 
+    /* "Unbind" the SM texture from the scene_renderer_sm instance */
+    handler_ptr->current_sm_color0_texture_view    = nullptr;
+    handler_ptr->current_sm_depth_texture_view     = nullptr;
     handler_ptr->current_sm_color0_l0_texture_view = nullptr;
     handler_ptr->current_sm_color0_l1_texture_view = nullptr;
     handler_ptr->current_sm_depth_l0_texture_view  = nullptr;

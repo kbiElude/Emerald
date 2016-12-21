@@ -217,11 +217,13 @@ PRIVATE void _varia_text_renderer_create_font_table_to(_varia_text_renderer* tex
     texture_create_info.base_mipmap_depth      = 1;
     texture_create_info.base_mipmap_height     = font_table_height;
     texture_create_info.base_mipmap_width      = font_table_width;
+    texture_create_info.description            = nullptr;
     texture_create_info.fixed_sample_locations = false;
     texture_create_info.format                 = RAL_FORMAT_RGB8_UNORM;
     texture_create_info.n_layers               = 1;
     texture_create_info.n_samples              = 1;
     texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    texture_create_info.unique_name            = texture_name;
     texture_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
     texture_create_info.use_full_mipmap_chain  = false;
 

@@ -13,29 +13,9 @@ typedef struct
 
 typedef enum
 {
-    /* Called back whenever texture pool decides one or more texture instances are no longer needed
-     * and can be safely deallocated.
-     *
-     * NOTE: Synchronous-only callback.
-     *
-     * arg: _ral_texture_pool_callback_texture_dropped_arg */
-    RAL_TEXTURE_POOL_CALLBACK_ID_TEXTURE_DROPPED,
-
-    RAL_TEXTURE_POOL_CALLBACK_ID_COUNT
-} ral_texture_pool_callback_id;
-
-typedef enum
-{
-    /* not settable; system_callback_manager */
-    RAL_TEXTURE_POOL_PROPERTY_CALLBACK_MANAGER,
-
     /* not settable; bool */
     RAL_TEXTURE_POOL_PROPERTY_IS_BEING_RELEASED,
 } ral_texture_pool_property;
-
-/** TODO */
-PUBLIC bool ral_texture_pool_add(ral_texture_pool pool,
-                                 ral_texture      texture);
 
 /** TODO */
 PUBLIC void ral_texture_pool_attach_context(ral_texture_pool pool,
@@ -63,5 +43,9 @@ PUBLIC void ral_texture_pool_get_property(ral_texture_pool          pool,
 
 /** TODO */
 PUBLIC void ral_texture_pool_release(ral_texture_pool pool);
+
+/** TODO */
+PUBLIC bool ral_texture_pool_return_texture(ral_texture_pool pool,
+                                            ral_texture      texture);
 
 #endif /* RAL_TEXTURE_POOL_H */

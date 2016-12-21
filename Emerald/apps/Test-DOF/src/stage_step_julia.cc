@@ -512,12 +512,13 @@ PUBLIC void stage_step_julia_init(ral_context context)
     color_to_create_info.base_mipmap_depth      = 1;
     color_to_create_info.base_mipmap_height     = main_get_window_height();
     color_to_create_info.base_mipmap_width      = main_get_window_width();
+    color_to_create_info.description            = nullptr;
     color_to_create_info.fixed_sample_locations = true;
     color_to_create_info.format                 = RAL_FORMAT_RGBA16_FLOAT;
-    color_to_create_info.name                   = system_hashed_ansi_string_create("Julia FBO color texture");
     color_to_create_info.n_layers               = 1;
     color_to_create_info.n_samples              = 1;
     color_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    color_to_create_info.unique_name            = system_hashed_ansi_string_create("Julia FBO color texture");
     color_to_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
                                                   RAL_TEXTURE_USAGE_SAMPLED_BIT;
     color_to_create_info.use_full_mipmap_chain  = false;
@@ -525,12 +526,13 @@ PUBLIC void stage_step_julia_init(ral_context context)
     depth_to_create_info.base_mipmap_depth      = 1;
     depth_to_create_info.base_mipmap_height     = main_get_window_height();
     depth_to_create_info.base_mipmap_width      = main_get_window_width ();
+    depth_to_create_info.description            = nullptr;
     depth_to_create_info.fixed_sample_locations = true;
     depth_to_create_info.format                 = RAL_FORMAT_DEPTH16_SNORM;
-    depth_to_create_info.name                   = system_hashed_ansi_string_create("Julia FBO depth texture");
     depth_to_create_info.n_layers               = 1;
     depth_to_create_info.n_samples              = 1;
     depth_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    depth_to_create_info.unique_name            = system_hashed_ansi_string_create("Julia FBO depth texture");
     depth_to_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                                   RAL_TEXTURE_USAGE_SAMPLED_BIT;
     depth_to_create_info.use_full_mipmap_chain  = false;

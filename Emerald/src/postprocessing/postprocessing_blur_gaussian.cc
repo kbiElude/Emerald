@@ -1146,13 +1146,14 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         ping_pong_rt_create_info.base_mipmap_depth      = 1;
         ping_pong_rt_create_info.base_mipmap_height     = target_height;
         ping_pong_rt_create_info.base_mipmap_width      = target_width;
+        ping_pong_rt_create_info.description            = nullptr;
         ping_pong_rt_create_info.fixed_sample_locations = false;
         ping_pong_rt_create_info.format                 = dst_src_texture_view_format;
-        ping_pong_rt_create_info.name                   = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(blur_ptr->name),
-                                                                                                                  " temp 2D array texture");
         ping_pong_rt_create_info.n_layers               = 3;
         ping_pong_rt_create_info.n_samples              = 1;
         ping_pong_rt_create_info.type                   = RAL_TEXTURE_TYPE_2D_ARRAY;
+        ping_pong_rt_create_info.unique_name            = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(blur_ptr->name),
+                                                                                                                  " temp 2D array texture");
         ping_pong_rt_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_DST_BIT         |
                                                           RAL_TEXTURE_USAGE_BLIT_SRC_BIT         |
                                                           RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |

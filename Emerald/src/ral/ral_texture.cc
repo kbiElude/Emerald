@@ -69,14 +69,15 @@ typedef struct _ral_texture
     uint32_t                  base_mipmap_size[3];
     system_callback_manager   callback_manager;
     ral_context               context;
+    system_hashed_ansi_string description;
     system_hashed_ansi_string file_name;
     bool                      fixed_sample_locations;
     ral_format                format;
     uint32_t                  n_layers;
     uint32_t                  n_mipmaps_per_layer;
     uint32_t                  n_samples;
-    system_hashed_ansi_string name;
     ral_texture_type          type;
+    system_hashed_ansi_string unique_name;
     ral_texture_usage_bits    usage;
 
     /* Holds _ral_texture_layer instances.
@@ -95,7 +96,8 @@ typedef struct _ral_texture
                  uint32_t                  in_n_layers,
                  uint32_t                  in_n_mipmaps,
                  uint32_t                  in_n_samples,
-                 system_hashed_ansi_string in_name,
+                 system_hashed_ansi_string in_unique_name,
+                 system_hashed_ansi_string in_description,
                  ral_texture_type          in_type,
                  ral_texture_usage_bits    in_usage)
     {
@@ -104,6 +106,7 @@ typedef struct _ral_texture
         base_mipmap_size[2]    = in_base_mipmap_depth;
         callback_manager       = system_callback_manager_create( (_callback_id) RAL_TEXTURE_CALLBACK_ID_COUNT);
         context                = in_context;
+        description            = in_description;
         file_name              = nullptr;
         fixed_sample_locations = in_fixed_sample_locations;
         format                 = in_format;
@@ -111,8 +114,8 @@ typedef struct _ral_texture
         n_layers               = in_n_layers;
         n_mipmaps_per_layer    = in_n_mipmaps;
         n_samples              = in_n_samples;
-        name                   = in_name;
         type                   = in_type;
+        unique_name            = in_unique_name;
         usage                  = in_usage;
     }
 
@@ -277,7 +280,6 @@ PRIVATE void _ral_texture_release(void* texture)
 
 /** Please see header for specification */
 PUBLIC ral_texture ral_texture_create(ral_context                    context,
-                                      system_hashed_ansi_string      name,
                                       const ral_texture_create_info* create_info_ptr)
 {
     uint32_t      n_mipmaps  = 0;
@@ -285,11 +287,10 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
     _ral_texture* result_ptr = nullptr;
 
     /* Sanity checks */
-    if (name            == nullptr ||
-        create_info_ptr == nullptr)
+    if (create_info_ptr == nullptr)
     {
         ASSERT_DEBUG_SYNC(false,
-                          "One or more of the input variables are NULL");
+                          "Input ral_texture_create_info is NULL");
 
         goto end;
     }
@@ -540,7 +541,8 @@ PUBLIC ral_texture ral_texture_create(ral_context                    context,
                                                  create_info_ptr->n_layers,
                                                  n_mipmaps,
                                                  create_info_ptr->n_samples,
-                                                 name,
+                                                 create_info_ptr->unique_name,
+                                                 create_info_ptr->description,
                                                  create_info_ptr->type,
                                                  create_info_ptr->usage);
 
@@ -702,17 +704,17 @@ PUBLIC ral_texture ral_texture_create_from_gfx_image(ral_context               c
     result_create_info.base_mipmap_depth      = 1;
     result_create_info.base_mipmap_height     = base_image_height;
     result_create_info.base_mipmap_width      = base_image_width;
+    result_create_info.description            = nullptr;
     result_create_info.fixed_sample_locations = false;
     result_create_info.format                 = image_format;
-    result_create_info.name                   = name;
     result_create_info.n_layers               = 1;
     result_create_info.n_samples              = 1;
     result_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    result_create_info.unique_name            = name;
     result_create_info.usage                  = usage;
     result_create_info.use_full_mipmap_chain  = (image_n_mipmaps > 1) ? true : false;
 
     result = ral_texture_create(context,
-                                name,
                                &result_create_info);
 
     if (result == nullptr)
@@ -1006,14 +1008,22 @@ PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
             create_info_ptr->base_mipmap_depth      = texture_ptr->base_mipmap_size[2];
             create_info_ptr->base_mipmap_height     = texture_ptr->base_mipmap_size[1];
             create_info_ptr->base_mipmap_width      = texture_ptr->base_mipmap_size[0];
+            create_info_ptr->description            = texture_ptr->description;
             create_info_ptr->fixed_sample_locations = texture_ptr->fixed_sample_locations;
             create_info_ptr->format                 = texture_ptr->format;
-            create_info_ptr->name                   = texture_ptr->name;
             create_info_ptr->n_layers               = texture_ptr->n_layers;
             create_info_ptr->n_samples              = texture_ptr->n_samples;
             create_info_ptr->type                   = texture_ptr->type;
+            create_info_ptr->unique_name            = texture_ptr->unique_name;
             create_info_ptr->usage                  = texture_ptr->usage;
             create_info_ptr->use_full_mipmap_chain  = (texture_ptr->n_mipmaps_per_layer > 1);
+
+            break;
+        }
+
+        case RAL_TEXTURE_PROPERTY_DESCRIPTION:
+        {
+            *(system_hashed_ansi_string*) out_result_ptr = texture_ptr->description;
 
             break;
         }
@@ -1035,13 +1045,6 @@ PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
         case RAL_TEXTURE_PROPERTY_FORMAT:
         {
             *(ral_format*) out_result_ptr = texture_ptr->format;
-
-            break;
-        }
-
-        case RAL_TEXTURE_PROPERTY_NAME:
-        {
-            *(system_hashed_ansi_string*) out_result_ptr = texture_ptr->name;
 
             break;
         }
@@ -1072,6 +1075,13 @@ PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
         case RAL_TEXTURE_PROPERTY_TYPE:
         {
             *(ral_texture_type*) out_result_ptr = texture_ptr->type;
+
+            break;
+        }
+
+        case RAL_TEXTURE_PROPERTY_UNIQUE_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result_ptr = texture_ptr->unique_name;
 
             break;
         }
@@ -1295,6 +1305,13 @@ PUBLIC void ral_texture_set_property(ral_texture          texture,
 
     switch (property)
     {
+        case RAL_TEXTURE_PROPERTY_DESCRIPTION:
+        {
+            texture_ptr->description = *(system_hashed_ansi_string*) data;
+
+            break;
+        }
+
         case RAL_TEXTURE_PROPERTY_FILENAME:
         {
             texture_ptr->file_name = *(system_hashed_ansi_string*) data;
@@ -1302,9 +1319,9 @@ PUBLIC void ral_texture_set_property(ral_texture          texture,
             break;
         }
 
-        case RAL_TEXTURE_PROPERTY_NAME:
+        case RAL_TEXTURE_PROPERTY_UNIQUE_NAME:
         {
-            texture_ptr->name = *(system_hashed_ansi_string*) data;
+            texture_ptr->unique_name = *(system_hashed_ansi_string*) data;
 
             break;
         }

@@ -478,10 +478,6 @@ _raGL_backend::~_raGL_backend()
     /* Release object managers */
     ogl_context_release_managers(context_gl);
 
-    // ral_texture_pool_set_property(texture_pool,
-    //                               RAL_TEXTURE_POOL_PROPERTY_IS_BEING_RELEASED,
-    //                              &texture_pool_release_status);
-
     ral_texture_pool_detach_context(texture_pool,
                                     context_ral);
 
@@ -492,7 +488,8 @@ _raGL_backend::~_raGL_backend()
         buffers = nullptr;
     }
 
-    if (texture_pool != nullptr)
+    if (texture_pool       != nullptr &&
+        texture_pool_owner)
     {
         ral_texture_pool_release(texture_pool);
 

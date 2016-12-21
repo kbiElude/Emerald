@@ -243,11 +243,12 @@ REFCOUNT_INSERT_IMPLEMENTATION(ral_context,
                               _ral_context);
 
 /* Forward declarations */
-PRIVATE void _ral_context_notify_backend_about_new_object(ral_context             context,
-                                                          void*                   result_object,
-                                                          ral_context_object_type object_type);
-PRIVATE void _ral_context_subscribe_for_notifications    (_ral_context*           context_ptr,
-                                                          bool                    should_subscribe);
+PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context*           context_ptr,
+                                                                uint32_t                n_textures,
+                                                                ral_texture*            textures);
+PRIVATE void _ral_context_notify_backend_about_new_object      (ral_context             context,
+                                                                void*                   result_object,
+                                                                ral_context_object_type object_type);
 
 
 /* TODO */
@@ -348,7 +349,7 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
                                      RAL_TEXTURE_PROPERTY_FILENAME,
                                     &image_filename);
             ral_texture_get_property(new_textures[n_texture],
-                                     RAL_TEXTURE_PROPERTY_NAME,
+                                     RAL_TEXTURE_PROPERTY_UNIQUE_NAME,
                                     &image_name);
 
             if (image_filename                                       != nullptr &&
@@ -368,22 +369,24 @@ PRIVATE void _ral_context_add_textures_to_texture_hashmaps(_ral_context* context
                                         nullptr); /* on_remove_callback_user_arg */
             }
 
-            ASSERT_DEBUG_SYNC(image_name                                       != nullptr &&
-                              system_hashed_ansi_string_get_length(image_name) > 0,
-                              "Invalid gfx_image name property value.");
+            if (image_name != nullptr)
+            {
+                ASSERT_DEBUG_SYNC(system_hashed_ansi_string_get_length(image_name) > 0,
+                                  "Invalid gfx_image name property value.");
 
-            image_name_hash = system_hashed_ansi_string_get_hash(image_name);
+                image_name_hash = system_hashed_ansi_string_get_hash(image_name);
 
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->textures_by_name_map,
-                                                         image_name_hash),
-                              "A ral_texture instance already exists for name [%s]",
-                              system_hashed_ansi_string_get_buffer(image_name) );
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->textures_by_name_map,
+                                                             image_name_hash),
+                                  "A ral_texture instance already exists for name [%s]",
+                                  system_hashed_ansi_string_get_buffer(image_name) );
 
-            system_hash64map_insert(context_ptr->textures_by_name_map,
-                                    image_name_hash,
-                                    new_textures[n_texture],
-                                    nullptr,  /* on_remove_callback          */
-                                    nullptr); /* on_remove_callback_user_arg */
+                system_hash64map_insert(context_ptr->textures_by_name_map,
+                                        image_name_hash,
+                                        new_textures[n_texture],
+                                        nullptr,  /* on_remove_callback          */
+                                        nullptr); /* on_remove_callback_user_arg */
+            }
         }
     }
     system_critical_section_leave(context_ptr->textures_cs);
@@ -396,13 +399,13 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                          void* const*            object_create_info_ptrs,
                                          void**                  out_result_object_ptrs)
 {
-    bool                    backend_texture_callback_used = false;
-    uint32_t*               object_counter_ptr            = nullptr;
-    system_critical_section object_storage_cs             = nullptr;
-    system_resizable_vector object_storage_vector         = nullptr;
-    const char*             object_type_name              = nullptr;
-    bool                    result                        = false;
-    void**                  result_objects_ptr            = nullptr;
+    bool                    cached_object_reused  = false;
+    uint32_t*               object_counter_ptr    = nullptr;
+    system_critical_section object_storage_cs     = nullptr;
+    system_resizable_vector object_storage_vector = nullptr;
+    const char*             object_type_name      = nullptr;
+    bool                    result                = false;
+    void**                  result_objects_ptr    = nullptr;
 
     switch (object_type)
     {
@@ -587,23 +590,26 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
                                           texture_create_info_ptr,
                                           reinterpret_cast<ral_texture*>(result_objects_ptr + n_object) ))
                 {
-                    backend_texture_callback_used = true;
-                    result_objects_ptr[n_object]  = ral_texture_create(reinterpret_cast<ral_context>(context_ptr),
-                                                                       system_hashed_ansi_string_create(temp),
-                                                                       texture_create_info_ptr);
+                    cached_object_reused         = false;
+                    result_objects_ptr[n_object] = ral_texture_create(reinterpret_cast<ral_context>(context_ptr),
+                                                                      texture_create_info_ptr);
                 }
                 else
                 {
-                    /* The new texture instance comes from the texture pool, so make sure the filename & name is synced
-                     * to what's been requested */
+                    cached_object_reused = true;
+
+                    /* Update texture filename & name */
                     const system_hashed_ansi_string empty_string = system_hashed_ansi_string_get_default_empty_string();
 
+                    ral_texture_set_property(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
+                                             RAL_TEXTURE_PROPERTY_DESCRIPTION,
+                                            &texture_create_info_ptr->description);
                     ral_texture_set_property(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
                                              RAL_TEXTURE_PROPERTY_FILENAME,
                                             &empty_string);
                     ral_texture_set_property(reinterpret_cast<ral_texture>(result_objects_ptr[n_object]),
-                                             RAL_TEXTURE_PROPERTY_NAME,
-                                            &texture_create_info_ptr->name);
+                                             RAL_TEXTURE_PROPERTY_UNIQUE_NAME,
+                                            &texture_create_info_ptr->unique_name);
                 }
 
                 break;
@@ -678,22 +684,47 @@ PRIVATE bool _ral_context_create_objects(_ral_context*           context_ptr,
         }
 
         /* Store the reference counter */
-        system_critical_section_enter(context_ptr->object_to_refcount_cs);
+        if (!cached_object_reused)
         {
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->object_to_refcount_map,
-                                                         reinterpret_cast<system_hash64>(result_objects_ptr[n_object])),
-                              "Reference counter already defined for the newly created object.");
+            system_critical_section_enter(context_ptr->object_to_refcount_cs);
+            {
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ptr->object_to_refcount_map,
+                                                             reinterpret_cast<system_hash64>(result_objects_ptr[n_object])),
+                                  "Reference counter already defined for the newly created object.");
 
+                system_hash64map_insert(context_ptr->object_to_refcount_map,
+                                        reinterpret_cast<system_hash64>(result_objects_ptr[n_object]),
+                                        reinterpret_cast<void*>(1),
+                                        nullptr,  /* callback          */
+                                        nullptr); /* callback_argument */
+            }
+            system_critical_section_leave(context_ptr->object_to_refcount_cs);
+        }
+        else
+        {
+            uint32_t counter = 0;
+
+            ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->object_to_refcount_map,
+                                                        reinterpret_cast<system_hash64>(result_objects_ptr[n_object])),
+                              "Reference counter not defined for a cached object.");
+
+            system_hash64map_get(context_ptr->object_to_refcount_map,
+                                 reinterpret_cast<system_hash64>(result_objects_ptr[n_object]),
+                                &counter);
+
+            counter++;
+
+            system_hash64map_remove(context_ptr->object_to_refcount_map,
+                                    reinterpret_cast<system_hash64>(result_objects_ptr[n_object]) );
             system_hash64map_insert(context_ptr->object_to_refcount_map,
                                     reinterpret_cast<system_hash64>(result_objects_ptr[n_object]),
-                                    reinterpret_cast<void*>(1),
-                                    nullptr,  /* callback          */
-                                    nullptr); /* callback_argument */
+                                    reinterpret_cast<void*>(counter),
+                                    nullptr,  /* on_removal_callback          */
+                                    nullptr); /* on_removal_callback_user_arg */
         }
-        system_critical_section_leave(context_ptr->object_to_refcount_cs);
 
         /* Notify the subscribers, if needed */
-        if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE && backend_texture_callback_used ||
+        if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE && !cached_object_reused ||
             object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
         {
             _ral_context_notify_backend_about_new_object(reinterpret_cast<ral_context>(context_ptr),
@@ -1107,7 +1138,7 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
                                      RAL_TEXTURE_PROPERTY_FILENAME,
                                     &texture_filename);
             ral_texture_get_property(textures[n_texture],
-                                     RAL_TEXTURE_PROPERTY_NAME,
+                                     RAL_TEXTURE_PROPERTY_UNIQUE_NAME,
                                     &texture_name);
 
             if (texture_filename                                       != nullptr &&
@@ -1124,15 +1155,18 @@ PRIVATE void _ral_context_delete_textures_from_texture_hashmaps(_ral_context* co
                                         texture_filename_hash);
             }
 
-            texture_name_hash = system_hashed_ansi_string_get_hash(texture_name);
+            if (texture_name != nullptr)
+            {
+                texture_name_hash = system_hashed_ansi_string_get_hash(texture_name);
 
-            ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->textures_by_name_map,
-                                                        texture_name_hash),
-                              "Texture [%s] is not stored in the name->texture hashmap.",
-                              system_hashed_ansi_string_get_buffer(texture_name) );
+                ASSERT_DEBUG_SYNC(system_hash64map_contains(context_ptr->textures_by_name_map,
+                                                            texture_name_hash),
+                                  "Texture [%s] is not stored in the name->texture hashmap.",
+                                  system_hashed_ansi_string_get_buffer(texture_name) );
 
-            system_hash64map_remove(context_ptr->textures_by_name_map,
-                                    texture_name_hash);
+                system_hash64map_remove(context_ptr->textures_by_name_map,
+                                        texture_name_hash);
+            }
         }
     }
     system_critical_section_leave(context_ptr->textures_cs);
@@ -1160,9 +1194,6 @@ PUBLIC void _ral_context_init(_ral_context* context_ptr)
                               "Unsupported backend type.");
         }
     }
-
-    _ral_context_subscribe_for_notifications(context_ptr,
-                                             true); /* should_subscribe */
 }
 
 /** TODO */
@@ -1258,19 +1289,6 @@ PRIVATE void _ral_context_notify_backend_about_new_object(ral_context           
 }
 
 /** TODO */
-PRIVATE void _ral_context_on_texture_dropped_from_texture_pool(const void* callback_arg,
-                                                                     void* context)
-{
-    const _ral_texture_pool_callback_texture_dropped_arg* callback_arg_ptr = reinterpret_cast<const _ral_texture_pool_callback_texture_dropped_arg*>(callback_arg);
-    _ral_context*                                         context_ptr      = reinterpret_cast<_ral_context*>                                        (context);
-
-    ral_context_delete_objects(reinterpret_cast<ral_context>(context_ptr),
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                               callback_arg_ptr->n_textures,
-                               reinterpret_cast<void* const*>(callback_arg_ptr->textures) );
-}
-
-/** TODO */
 PRIVATE void _ral_context_release(void* context)
 {
     _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
@@ -1278,17 +1296,6 @@ PRIVATE void _ral_context_release(void* context)
     system_callback_manager_call_back(context_ptr->callback_manager,
                                       RAL_CONTEXT_CALLBACK_ID_ABOUT_TO_RELEASE,
                                       context_ptr);
-
-    _ral_context_subscribe_for_notifications(context_ptr,
-                                             false); /* should_subscribe */
-
-    /* Release the texture pool */
-    if (context_ptr->texture_pool != nullptr)
-    {
-        ral_texture_pool_release(context_ptr->texture_pool);
-
-        context_ptr->texture_pool = nullptr;
-    }
 
     /* Release the back-end */
     if (context_ptr->backend                  != nullptr &&
@@ -1344,33 +1351,6 @@ PRIVATE void _ral_context_release(void* context)
                       "Shader object leak detected");
     ASSERT_DEBUG_SYNC(n_texture_views == 0,
                       "Texture view object leak detected");
-}
-
-/** TODO */
-PRIVATE void _ral_context_subscribe_for_notifications(_ral_context* context_ptr,
-                                                      bool          should_subscribe)
-{
-    system_callback_manager texture_pool_callback_manager = nullptr;
-
-    ral_texture_pool_get_property(context_ptr->texture_pool,
-                                  RAL_TEXTURE_POOL_PROPERTY_CALLBACK_MANAGER,
-                                 &texture_pool_callback_manager);
-
-    if (should_subscribe)
-    {
-        system_callback_manager_subscribe_for_callbacks(texture_pool_callback_manager,
-                                                        RAL_TEXTURE_POOL_CALLBACK_ID_TEXTURE_DROPPED,
-                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _ral_context_on_texture_dropped_from_texture_pool,
-                                                        context_ptr);
-    }
-    else
-    {
-        system_callback_manager_unsubscribe_from_callbacks(texture_pool_callback_manager,
-                                                           RAL_TEXTURE_POOL_CALLBACK_ID_TEXTURE_DROPPED,
-                                                           _ral_context_on_texture_dropped_from_texture_pool,
-                                                           context_ptr);
-    }
 }
 
 /** Please see header for specification */
@@ -2044,7 +2024,7 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
     }
 
     /* Decrement the reference counter for the object. We will only proceed with the release process
-     * for those objects, whose refcounter drops to zero */
+     * for those objects, whose refcounter drops to zero (for non-texture objects) or one (otherwise) */
     uint32_t n_objects = 0;
 
     object_ptrs = static_cast<void**>(_malloca(sizeof(void*) * in_n_objects) );
@@ -2076,7 +2056,10 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
                 continue;
             }
 
-            if (--object_ref_counter == 0)
+            --object_ref_counter;
+
+            if (object_ref_counter == 0 && object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE ||
+                object_ref_counter <= 1 && object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
             {
                 object_ptrs[n_objects++] = in_objects[n_object];
             }
@@ -2134,10 +2117,6 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         {
-            _ral_context_delete_textures_from_texture_hashmaps(context_ptr,
-                                                               n_objects,
-                                                               reinterpret_cast<ral_texture*>(object_ptrs) );
-
             if (context_ptr->texture_pool != nullptr)
             {
                 bool is_pool_being_released = false;
@@ -2148,12 +2127,16 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
 
                 if (!is_pool_being_released)
                 {
+                    _ral_context_delete_textures_from_texture_hashmaps(context_ptr,
+                                                                       n_objects,
+                                                                       reinterpret_cast<ral_texture*>(object_ptrs) );
+
                     for (uint32_t n_texture = 0;
                                   n_texture < n_objects;
                                 ++n_texture)
                     {
-                        ral_texture_pool_add(context_ptr->texture_pool,
-                                             reinterpret_cast<ral_texture>(object_ptrs[n_texture]) );
+                        ral_texture_pool_return_texture(context_ptr->texture_pool,
+                                                        reinterpret_cast<ral_texture>(object_ptrs[n_texture]) );
                     }
 
                     result = true;

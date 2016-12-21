@@ -1309,12 +1309,13 @@ typedef struct
     unsigned int              base_mipmap_depth;
     unsigned int              base_mipmap_height;
     unsigned int              base_mipmap_width;
+    system_hashed_ansi_string description;
     bool                      fixed_sample_locations;
     ral_format                format;
-    system_hashed_ansi_string name;
     unsigned int              n_layers;
     unsigned int              n_samples;
     ral_texture_type          type;
+    system_hashed_ansi_string unique_name;
     ral_texture_usage_bits    usage;
     bool                      use_full_mipmap_chain;
 } ral_texture_create_info;

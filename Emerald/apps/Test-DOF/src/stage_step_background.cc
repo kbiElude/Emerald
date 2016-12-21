@@ -148,12 +148,13 @@ PUBLIC void stage_step_background_init(ral_context context)
     result_texture_create_info.base_mipmap_depth      = 1;
     result_texture_create_info.base_mipmap_height     = main_get_output_resolution()[1];
     result_texture_create_info.base_mipmap_width      = main_get_output_resolution()[0];
+    result_texture_create_info.description            = nullptr;
     result_texture_create_info.fixed_sample_locations = true;
     result_texture_create_info.format                 = RAL_FORMAT_RGBA16_FLOAT;
-    result_texture_create_info.name                   = system_hashed_ansi_string_create("BG: result texture");
     result_texture_create_info.n_layers               = 1;
     result_texture_create_info.n_samples              = 1;
     result_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    result_texture_create_info.unique_name            = system_hashed_ansi_string_create("BG: result texture");
     result_texture_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
                                                         RAL_TEXTURE_USAGE_SAMPLED_BIT;
     result_texture_create_info.use_full_mipmap_chain  = false;

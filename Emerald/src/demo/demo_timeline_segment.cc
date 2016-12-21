@@ -858,11 +858,11 @@ PRIVATE void _demo_timeline_segment_on_texture_view_deleted(const void* callback
                 system_hashed_ansi_string texture_name = nullptr;
 
                 ral_texture_get_property(deleted_texture_view_parent_texture,
-                                         RAL_TEXTURE_PROPERTY_NAME,
+                                         RAL_TEXTURE_PROPERTY_UNIQUE_NAME,
                                         &texture_name);
 
-                LOG_INFO("Removed texture view [%s] from cached texture view memory allocations for segment [%s]",
-                         system_hashed_ansi_string_get_buffer(texture_name) ,
+                LOG_INFO("Removed texture [%s] from cached image memory allocations for segment [%s]",
+                         (texture_name != nullptr) ? system_hashed_ansi_string_get_buffer(texture_name) : "NULL",
                          system_hashed_ansi_string_get_buffer(segment_name) );
 
                 system_resizable_vector_delete_element_at(current_node_item_ptr->cached_texture_allocations,
@@ -1955,12 +1955,13 @@ PRIVATE void _demo_timeline_segment_update_node_texture_memory_allocations(_demo
         new_texture_create_info.base_mipmap_depth      = requested_texture_depth;
         new_texture_create_info.base_mipmap_height     = requested_texture_height;
         new_texture_create_info.base_mipmap_width      = requested_texture_width;
+        new_texture_create_info.description            = nullptr;
         new_texture_create_info.fixed_sample_locations = false;
         new_texture_create_info.format                 = current_alloc_details.format;
-        new_texture_create_info.name                   = current_alloc_details.name;
         new_texture_create_info.n_layers               = current_alloc_details.n_layers;
         new_texture_create_info.n_samples              = current_alloc_details.n_samples;
         new_texture_create_info.type                   = current_alloc_details.type;
+        new_texture_create_info.unique_name            = current_alloc_details.name;
         new_texture_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT; /* TODO? */
         new_texture_create_info.use_full_mipmap_chain  = current_alloc_details.needs_full_mipmap_chain;
 

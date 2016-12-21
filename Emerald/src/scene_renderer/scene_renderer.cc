@@ -1847,24 +1847,19 @@ PRIVATE void _scene_renderer_return_shadow_maps_to_pool(scene_renderer renderer)
                   n_light < n_lights;
                 ++n_light)
     {
-        scene_light      current_light                     = scene_get_light_by_index(renderer_ptr->owned_scene,
-                                                                                      n_light);
-        ral_texture_view current_light_sm_texture_views[2] = {nullptr, nullptr};
+        scene_light                   current_light     = scene_get_light_by_index(renderer_ptr->owned_scene,
+                                                                                   n_light);
+        static const ral_texture_view null_texture_view = nullptr;
 
         ASSERT_DEBUG_SYNC(current_light != nullptr,
                           "Scene light is nullptr");
 
-        scene_light_get_property(current_light,
+        scene_light_set_property(current_light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
-                                 current_light_sm_texture_views + 0);
-        scene_light_get_property(current_light,
+                                &null_texture_view);
+        scene_light_set_property(current_light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
-                                 current_light_sm_texture_views + 1);
-
-        ral_context_delete_objects(renderer_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                   sizeof(current_light_sm_texture_views) / sizeof(current_light_sm_texture_views[0]),
-                                   reinterpret_cast<void* const*>(current_light_sm_texture_views) );
+                                &null_texture_view);
     }
 }
 

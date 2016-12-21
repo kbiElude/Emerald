@@ -1303,12 +1303,13 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             color_to_create_info.base_mipmap_depth      = 1;
             color_to_create_info.base_mipmap_height     = window_dimensions[1];
             color_to_create_info.base_mipmap_width      = window_dimensions[0];
+            color_to_create_info.description            = nullptr;
             color_to_create_info.fixed_sample_locations = false;
             color_to_create_info.format                 = format_color;
-            color_to_create_info.name                   = system_hashed_ansi_string_create("System framebuffer color texture");
             color_to_create_info.n_layers               = 1;
             color_to_create_info.n_samples              = n_samples;
             color_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+            color_to_create_info.unique_name            = system_hashed_ansi_string_create("System framebuffer color texture");
             color_to_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
             color_to_create_info.use_full_mipmap_chain  = false;
 
@@ -1351,12 +1352,13 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             depth_stencil_to_create_info.base_mipmap_depth      = 1;
             depth_stencil_to_create_info.base_mipmap_height     = window_dimensions[1];
             depth_stencil_to_create_info.base_mipmap_width      = window_dimensions[0];
+            depth_stencil_to_create_info.description            = nullptr;
             depth_stencil_to_create_info.fixed_sample_locations = false;
             depth_stencil_to_create_info.format                 = format_depth_stencil;
-            depth_stencil_to_create_info.name                   = system_hashed_ansi_string_create("System framebuffer depth+stencil texture");
             depth_stencil_to_create_info.n_layers               = 1;
             depth_stencil_to_create_info.n_samples              = n_samples;
             depth_stencil_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+            depth_stencil_to_create_info.unique_name            = system_hashed_ansi_string_create("System framebuffer depth+stencil texture");
             depth_stencil_to_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
             depth_stencil_to_create_info.use_full_mipmap_chain  = false;
 
@@ -1551,23 +1553,17 @@ PRIVATE void _ogl_context_on_ral_context_about_to_release_callback(const void* c
 {
     _ogl_context* context_ptr = reinterpret_cast<_ogl_context*>(user_arg);
 
+    /* FBO's color + DS textures had been grabbed from the texture pool. It just so happens
+     * that by the time this location is reached, the very pool, as well as all owned textures,
+     * have already been released. Nothing to be done. */
+
     ral_texture_view fbo_texture_views[] =
     {
         context_ptr->fbo_color_texture_view,
         context_ptr->fbo_ds_texture_view
     };
-    ral_texture fbo_textures[] =
-    {
-        context_ptr->fbo_color_texture,
-        context_ptr->fbo_ds_texture
-    };
     const uint32_t n_fbo_texture_views = sizeof(fbo_texture_views) / sizeof(fbo_texture_views[0]);
-    const uint32_t n_fbo_textures      = sizeof(fbo_textures)      / sizeof(fbo_textures[0]);
 
-    ral_context_delete_objects(context_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                               n_fbo_textures,
-                               reinterpret_cast<void* const*>(fbo_textures) );
     ral_context_delete_objects(context_ptr->context,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                n_fbo_texture_views,

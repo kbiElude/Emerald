@@ -475,36 +475,39 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context context)
     combination_to_create_info.base_mipmap_depth      = 1;
     combination_to_create_info.base_mipmap_height     = output_resolution[1];
     combination_to_create_info.base_mipmap_width      = output_resolution[0];
+    combination_to_create_info.description            = nullptr;
     combination_to_create_info.fixed_sample_locations = true;
     combination_to_create_info.format                 = RAL_FORMAT_RGBA8_UNORM;
-    combination_to_create_info.name                   = system_hashed_ansi_string_create("DOF Scheuermann combination TO");
     combination_to_create_info.n_layers               = 1;
     combination_to_create_info.n_samples              = 1;
     combination_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    combination_to_create_info.unique_name            = system_hashed_ansi_string_create("DOF Scheuermann combination TO");
     combination_to_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
     combination_to_create_info.use_full_mipmap_chain  = false;
 
     downsampled_blurred_to_create_info.base_mipmap_depth      = 1;
     downsampled_blurred_to_create_info.base_mipmap_height     = downsampled_output_resolution[1];
     downsampled_blurred_to_create_info.base_mipmap_width      = downsampled_output_resolution[0];
+    downsampled_blurred_to_create_info.description            = nullptr;
     downsampled_blurred_to_create_info.fixed_sample_locations = true;
     downsampled_blurred_to_create_info.format                 = RAL_FORMAT_RGBA16_FLOAT;
-    downsampled_blurred_to_create_info.name                   = system_hashed_ansi_string_create("DOF Scheuermann downsampled TO");
     downsampled_blurred_to_create_info.n_layers               = 1;
     downsampled_blurred_to_create_info.n_samples              = 1;
     downsampled_blurred_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    downsampled_blurred_to_create_info.unique_name            = system_hashed_ansi_string_create("DOF Scheuermann downsampled TO");
     downsampled_blurred_to_create_info.usage                  = RAL_TEXTURE_USAGE_SAMPLED_BIT;
     downsampled_blurred_to_create_info.use_full_mipmap_chain  = false;
 
     downsampled_to_create_info.base_mipmap_depth      = 1;
     downsampled_to_create_info.base_mipmap_height     = downsampled_output_resolution[1];
     downsampled_to_create_info.base_mipmap_width      = downsampled_output_resolution[0];
+    downsampled_to_create_info.description            = nullptr;
     downsampled_to_create_info.fixed_sample_locations = true;
     downsampled_to_create_info.format                 = RAL_FORMAT_RGBA16_FLOAT;
-    downsampled_to_create_info.name                   = system_hashed_ansi_string_create("DOF Scheuermann downsampled blurred TO");
     downsampled_to_create_info.n_layers               = 1;
     downsampled_to_create_info.n_samples              = 1;
     downsampled_to_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    downsampled_to_create_info.unique_name            = system_hashed_ansi_string_create("DOF Scheuermann downsampled blurred TO");
     downsampled_to_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_DST_BIT |
                                                         RAL_TEXTURE_USAGE_SAMPLED_BIT;
     downsampled_to_create_info.use_full_mipmap_chain  = false;

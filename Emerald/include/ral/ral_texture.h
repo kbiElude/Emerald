@@ -55,6 +55,9 @@ typedef enum
     /* not settable, ral_texture_create_info. */
     RAL_TEXTURE_PROPERTY_CREATE_INFO,
 
+    /* not settable, system_hashed_ansi_string */
+    RAL_TEXTURE_PROPERTY_DESCRIPTION,
+
     /* not settable, bool */
     RAL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,
 
@@ -63,9 +66,6 @@ typedef enum
 
     /* not settable, ral_format */
     RAL_TEXTURE_PROPERTY_FORMAT,
-
-    /* settable, system_hashed_ansi_string */
-    RAL_TEXTURE_PROPERTY_NAME,
 
     /* not settable, uint32_t */
     RAL_TEXTURE_PROPERTY_N_LAYERS,
@@ -79,6 +79,9 @@ typedef enum
     /* not settable, unsigned int */
     RAL_TEXTURE_PROPERTY_TYPE,
 
+    /* settable, system_hashed_ansi_string */
+    RAL_TEXTURE_PROPERTY_UNIQUE_NAME,
+
     /* not settable, ral_texture_usage_bits */
     RAL_TEXTURE_PROPERTY_USAGE
 } ral_texture_property;
@@ -89,7 +92,6 @@ typedef enum
  *  NOTE: Internal use only. An equivalent of this function is exposed by ral_context.
  **/
 PUBLIC ral_texture ral_texture_create(ral_context                    context,
-                                      system_hashed_ansi_string      name,
                                       const ral_texture_create_info* create_info_ptr);
 
 /** TODO.

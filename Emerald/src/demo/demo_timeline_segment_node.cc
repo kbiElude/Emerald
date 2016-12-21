@@ -302,11 +302,11 @@ PRIVATE void _demo_timeline_segment_on_texture_views_deleted(const void* callbac
                                                   RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
                                                  &texture);
                     ral_texture_get_property     (texture,
-                                                  RAL_TEXTURE_PROPERTY_NAME,
+                                                  RAL_TEXTURE_PROPERTY_UNIQUE_NAME,
                                                  &texture_name);
                     /* Got a match! */
                     LOG_INFO("Auto-detached a released texture view [%s] from a segment node",
-                             system_hashed_ansi_string_get_buffer(texture_name) );
+                             (texture_name != nullptr) ? system_hashed_ansi_string_get_buffer(texture_name) : "NULL");
 
                     current_io_ptr->bound_texture_view = nullptr;
                 }
