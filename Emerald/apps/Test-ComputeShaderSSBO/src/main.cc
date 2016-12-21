@@ -182,12 +182,13 @@ void _init()
     texture_create_info.base_mipmap_depth      = 1;
     texture_create_info.base_mipmap_height     = _window_size[1];
     texture_create_info.base_mipmap_width      = _window_size[0];
+    texture_create_info.description            = nullptr;
     texture_create_info.fixed_sample_locations = true;
     texture_create_info.format                 = RAL_FORMAT_RGBA8_UNORM;
-    texture_create_info.name                   = system_hashed_ansi_string_create("Staging texture");
     texture_create_info.n_layers               = 1;
     texture_create_info.n_samples              = 1;
     texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    texture_create_info.unique_name            = system_hashed_ansi_string_create("Staging texture");
     texture_create_info.usage                  = RAL_TEXTURE_USAGE_BLIT_SRC_BIT |
                                                  RAL_TEXTURE_USAGE_IMAGE_STORE_OPS_BIT;
     texture_create_info.use_full_mipmap_chain  = false;
@@ -271,9 +272,10 @@ ral_present_job _rendering_handler(ral_context                                  
     /* Record the command buffer */
     ral_command_buffer_start_recording(command_buffer);
     {
-        ral_command_buffer_append_commands_from_command_buffer(command_buffer,
+        ral_command_buffer_insert_commands_from_command_buffer(command_buffer,
+                                                               0, /* n_command_to_insert_before */
                                                                _cmd_buffer_preamble,
-                                                               0, /* n_start_commands */
+                                                               0, /* n_start_command */
                                                                _cmd_buffer_preamble_n_commands);
 
         /* Update the test counter value */

@@ -554,7 +554,7 @@ typedef struct ral_buffer_create_info
     ral_buffer_create_info()
     {
         mappability_bits = 0;
-        parent_buffer    = NULL;
+        parent_buffer    = nullptr;
         property_bits    = 0;
         size             = 0;
         start_offset     = 0;

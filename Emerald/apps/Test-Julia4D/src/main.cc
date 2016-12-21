@@ -332,12 +332,13 @@ PRIVATE void _init()
     color_texture_create_info.base_mipmap_depth      = 1;
     color_texture_create_info.base_mipmap_height     = _window_height;
     color_texture_create_info.base_mipmap_width      = _window_width;
+    color_texture_create_info.description            = nullptr;
     color_texture_create_info.fixed_sample_locations = true;
     color_texture_create_info.format                 = RAL_FORMAT_RGBA8_UNORM;
-    color_texture_create_info.name                   = system_hashed_ansi_string_create("Staging color texture");
     color_texture_create_info.n_layers               = 1;
     color_texture_create_info.n_samples              = 1;
     color_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    color_texture_create_info.unique_name            = system_hashed_ansi_string_create("Staging color texture");
     color_texture_create_info.usage                  = RAL_TEXTURE_USAGE_COLOR_ATTACHMENT_BIT |
                                                        RAL_TEXTURE_USAGE_BLIT_SRC_BIT;
     color_texture_create_info.use_full_mipmap_chain  = false;
@@ -345,12 +346,13 @@ PRIVATE void _init()
     depth_texture_create_info.base_mipmap_depth      = 1;
     depth_texture_create_info.base_mipmap_height     = _window_height;
     depth_texture_create_info.base_mipmap_width      = _window_width;
+    depth_texture_create_info.description            = nullptr;
     depth_texture_create_info.fixed_sample_locations = true;
     depth_texture_create_info.format                 = RAL_FORMAT_DEPTH32_FLOAT;
-    depth_texture_create_info.name                   = system_hashed_ansi_string_create("Staging depth texture");
     depth_texture_create_info.n_layers               = 1;
     depth_texture_create_info.n_samples              = 1;
     depth_texture_create_info.type                   = RAL_TEXTURE_TYPE_2D;
+    depth_texture_create_info.unique_name            = system_hashed_ansi_string_create("Staging depth texture");
     depth_texture_create_info.usage                  = RAL_TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     depth_texture_create_info.use_full_mipmap_chain  = false;
 

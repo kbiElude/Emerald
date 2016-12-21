@@ -35,20 +35,43 @@ typedef struct _ral_buffer
     {
         callback_manager = system_callback_manager_create( (_callback_id) RAL_BUFFER_CALLBACK_ID_COUNT);
         context          = in_context;
-        mappability_bits = in_mappability_bits;
         name             = in_name;
         parent_buffer    = in_parent_buffer;
-        property_bits    = in_property_bits;
         size             = in_size;
         start_offset     = in_start_offset;
-        usage_bits       = in_usage_bits;
-        user_queue_bits  = in_user_queue_bits;
 
         if (parent_buffer != nullptr)
         {
+            _ral_buffer* parent_buffer_ptr = reinterpret_cast<_ral_buffer*>(parent_buffer);
+
             ral_context_retain_object(context,
                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
                                       parent_buffer);
+
+            ASSERT_DEBUG_SYNC(in_mappability_bits == 0                                  ||
+                              in_mappability_bits == parent_buffer_ptr->mappability_bits,
+                              "Parent<->child buffer mappability bits setting mismatch detected at creation time");
+            ASSERT_DEBUG_SYNC(in_property_bits == 0                                ||
+                              in_property_bits == parent_buffer_ptr->property_bits,
+                              "Parent<->child buffer property bits setting mismatch detected at creation time");
+            ASSERT_DEBUG_SYNC(in_usage_bits == 0                             ||
+                              in_usage_bits == parent_buffer_ptr->usage_bits,
+                              "Parent<->child buffer usage bits setting mismatch detected at creation time");
+            ASSERT_DEBUG_SYNC(in_user_queue_bits == 0                                  ||
+                              in_user_queue_bits == parent_buffer_ptr->user_queue_bits,
+                              "Parent<->child buffer usage bits setting mismatch detected at creation time");
+
+            mappability_bits = parent_buffer_ptr->mappability_bits;
+            property_bits    = parent_buffer_ptr->property_bits;
+            usage_bits       = parent_buffer_ptr->usage_bits;
+            user_queue_bits  = parent_buffer_ptr->user_queue_bits;
+        }
+        else
+        {
+            mappability_bits = in_mappability_bits;
+            property_bits    = in_property_bits;
+            usage_bits       = in_usage_bits;
+            user_queue_bits  = in_user_queue_bits;
         }
     }
 
