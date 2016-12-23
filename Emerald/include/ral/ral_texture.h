@@ -131,6 +131,9 @@ PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
                                                  ral_texture_property property,
                                                  void*                out_result_ptr);
 
+/** TODO */
+PUBLIC EMERALD_API ral_texture_view ral_texture_get_view(const ral_texture_view_create_info* create_info_ptr);
+
 /** TODO
  *
  *  Only ral_context is allowed to call this func.

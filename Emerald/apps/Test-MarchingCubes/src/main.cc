@@ -268,14 +268,8 @@ PRIVATE void _init_rt()
     color_texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_color);
     depth_texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_depth);
 
-    ral_context_create_texture_views(_context,
-                                     1, /* n_texture_views */
-                                    &color_texture_view_create_info,
-                                    &_rt_color_view);
-    ral_context_create_texture_views(_context,
-                                     1, /* n_texture_views */
-                                    &depth_texture_view_create_info,
-                                    &_rt_depth_view);
+    _rt_color_view = ral_texture_get_view(&color_texture_view_create_info);
+    _rt_depth_view = ral_texture_get_view(&depth_texture_view_create_info);
 }
 
 /** TODO */

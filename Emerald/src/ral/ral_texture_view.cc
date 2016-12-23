@@ -15,23 +15,19 @@ typedef struct _ral_texture_view
 
     explicit _ral_texture_view(const ral_texture_view_create_info* create_info_ptr)
     {
+        /* Note: We do NOT retain parent texture here. Texture views are owned by textures, so
+         *       everything should be fine, as long as the application does not attempt to
+         *       manipulate with texture view ref counters. */
         create_info = *create_info_ptr;
 
         ral_texture_get_property(create_info_ptr->texture,
                                  RAL_TEXTURE_PROPERTY_CONTEXT,
                                 &context);
-
-        ral_context_retain_object(context,
-                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                  create_info_ptr->texture);
     }
 
     ~_ral_texture_view()
     {
-        ral_context_delete_objects(context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                   1,
-                                   reinterpret_cast<void* const*>(&create_info.texture) );
+        /* Stub */
     }
 } _ral_texture_view;
 

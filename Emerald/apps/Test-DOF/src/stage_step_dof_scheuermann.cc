@@ -538,17 +538,11 @@ PUBLIC void stage_step_dof_scheuermann_init(ral_context context)
         ral_texture_view_create_info(_dof_scheuermann_downsampled_texture),
         ral_texture_view_create_info(_dof_scheuermann_downsampled_blurred_texture)
     };
-    const uint32_t   n_texture_view_create_info_items                       = sizeof(texture_view_create_info_items) / sizeof(texture_view_create_info_items[0]);
-    ral_texture_view result_texture_views[n_texture_view_create_info_items] = {};
+    const uint32_t n_texture_view_create_info_items = sizeof(texture_view_create_info_items) / sizeof(texture_view_create_info_items[0]);
 
-    ral_context_create_texture_views(context,
-                                     sizeof(texture_view_create_info_items) / sizeof(texture_view_create_info_items[0]),
-                                     texture_view_create_info_items,
-                                     result_texture_views);
-
-    _dof_scheuermann_combination_texture_view         = result_texture_views[0];
-    _dof_scheuermann_downsampled_texture_view         = result_texture_views[1];
-    _dof_scheuermann_downsampled_blurred_texture_view = result_texture_views[2];
+    _dof_scheuermann_combination_texture_view         = ral_texture_get_view(texture_view_create_info_items + 0);
+    _dof_scheuermann_downsampled_texture_view         = ral_texture_get_view(texture_view_create_info_items + 1);
+    _dof_scheuermann_downsampled_blurred_texture_view = ral_texture_get_view(texture_view_create_info_items + 2);
 
     /* Bake a sampler */
     ral_sampler_create_info sampler_create_info; 

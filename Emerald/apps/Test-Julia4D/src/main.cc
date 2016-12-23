@@ -368,14 +368,8 @@ PRIVATE void _init()
     color_texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_color_texture);
     depth_texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_rt_depth_texture);
 
-    ral_context_create_texture_views(_context,
-                                     1, /* n_texture_views */
-                                    &color_texture_view_create_info,
-                                    &_rt_color_texture_view);
-    ral_context_create_texture_views(_context,
-                                     1, /* n_texture_views */
-                                    &depth_texture_view_create_info,
-                                    &_rt_depth_texture_view);
+    _rt_color_texture_view = ral_texture_get_view(&color_texture_view_create_info);
+    _rt_depth_texture_view = ral_texture_get_view(&depth_texture_view_create_info);
 
     /* Initialize workers */
     stage_step_julia_init(_context,

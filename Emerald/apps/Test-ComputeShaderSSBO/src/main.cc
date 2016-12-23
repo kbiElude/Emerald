@@ -200,10 +200,7 @@ void _init()
 
     texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_texture);
 
-    ral_context_create_texture_views(_context,
-                                     1, /* n_texture_views */
-                                    &texture_view_create_info,
-                                    &_texture_view);
+    _texture_view = ral_texture_get_view(&texture_view_create_info);
 
     /* Set up preamble command buffer */
     ral_command_buffer_create_info cmd_buffer_create_info;

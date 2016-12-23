@@ -37,7 +37,12 @@ typedef enum
 
 } ral_texture_view_property;
 
-/** TODO */
+/** TODO
+ *
+ *  NOTE: Must only be used by ral_texture, or else the lifetime of the object is undefined!
+ *        To spawn a texture view instance, use ral_texture_create_view().
+ *
+ */
 PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_info* create_info_ptr);
 
 /** TODO */

@@ -18,6 +18,7 @@
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
+#include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "system/system_matrix4x4.h"
 
@@ -550,14 +551,8 @@ PUBLIC void stage_step_julia_init(ral_context context)
     ral_texture_view_create_info color_texture_view_create_info = ral_texture_view_create_info(_julia_color_rt);
     ral_texture_view_create_info depth_texture_view_create_info = ral_texture_view_create_info(_julia_depth_rt);
 
-    ral_context_create_texture_views(context,
-                                     1, /* n_texture_views */
-                                    &color_texture_view_create_info,
-                                    &_julia_color_rt_view);
-    ral_context_create_texture_views(context,
-                                     1, /* n_texture_views */
-                                    &depth_texture_view_create_info,
-                                    &_julia_depth_rt_view);
+    _julia_color_rt_view = ral_texture_get_view(&color_texture_view_create_info);
+    _julia_depth_rt_view = ral_texture_get_view(&depth_texture_view_create_info);
 
     /* Instantiate sphere we will use for raytracing */
     uint32_t normals_data_offset = 0;

@@ -816,6 +816,55 @@ end:
     return result;
 }
 
+/** Please see header for specification */
+PRIVATE bool _ral_context_create_texture_views(ral_context                         context,
+                                               uint32_t                            n_create_info_items,
+                                               const ral_texture_view_create_info* create_info_ptrs,
+                                               ral_texture_view*                   out_result_texture_view_ptrs)
+{
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
+    bool          result      = false;
+
+    /* Sanity checks */
+    if (context == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input context is NULL");
+
+        goto end;
+    }
+
+    if (n_create_info_items == 0)
+    {
+        goto end;
+    }
+
+    if (create_info_ptrs == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input texture view create info array is NULL");
+
+        goto end;
+    }
+
+    if (out_result_texture_view_ptrs == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Output variable is NULL");
+
+        goto end;
+    }
+
+    result = _ral_context_create_objects(context_ptr,
+                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                         n_create_info_items,
+                                         reinterpret_cast<void* const*>(create_info_ptrs),
+                                         reinterpret_cast<void**>      (out_result_texture_view_ptrs) );
+
+end:
+    return result;
+}
+
 /** TODO */
 PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
                                          ral_context_object_type object_type,
@@ -1700,55 +1749,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context                         context,
-                                                         uint32_t                            n_create_info_items,
-                                                         const ral_texture_view_create_info* create_info_ptrs,
-                                                         ral_texture_view*                   out_result_texture_view_ptrs)
-{
-    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
-    bool          result      = false;
-
-    /* Sanity checks */
-    if (context == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input context is NULL");
-
-        goto end;
-    }
-
-    if (n_create_info_items == 0)
-    {
-        goto end;
-    }
-
-    if (create_info_ptrs == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input texture view create info array is NULL");
-
-        goto end;
-    }
-
-    if (out_result_texture_view_ptrs == nullptr)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Output variable is NULL");
-
-        goto end;
-    }
-
-    result = _ral_context_create_objects(context_ptr,
-                                         RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                         n_create_info_items,
-                                         reinterpret_cast<void* const*>(create_info_ptrs),
-                                         reinterpret_cast<void**>      (out_result_texture_view_ptrs) );
-
-end:
-    return result;
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API bool ral_context_create_textures(ral_context                    context,
                                                     uint32_t                       n_textures,
                                                     const ral_texture_create_info* texture_create_info_ptr,
@@ -2186,6 +2186,30 @@ PUBLIC EMERALD_API ogl_context ral_context_get_gl_context(ral_context context)
                              &backend_context);
 
     return backend_context;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_context_get_private_property(ral_context                  context,
+                                             ral_context_private_property property,
+                                             void*                        out_result_ptr)
+{
+    _ral_context* context_ptr = reinterpret_cast<_ral_context*>(context);
+
+    switch (property)
+    {
+        case RAL_CONTEXT_PRIVATE_PROPERTY_CREATE_TEXTURE_VIEW_FUNC_PTR:
+        {
+            *reinterpret_cast<PFNRALCONTEXTCREATETEXTUREVIEWPROC*>(out_result_ptr) = _ral_context_create_texture_views;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ral_context_private_property value");
+        }
+    }
 }
 
 /** Please see header for specification */

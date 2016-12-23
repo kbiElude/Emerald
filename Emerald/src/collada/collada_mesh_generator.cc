@@ -17,6 +17,7 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ral/ral_context.h"
+#include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
@@ -266,10 +267,7 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(ral_con
                         ral_texture_view                   shading_factor_texture_view = nullptr;
                         const ral_texture_view_create_info tv_create_info              = ral_texture_view_create_info(shading_factor_texture);
 
-                        ral_context_create_texture_views(context,
-                                                         1, /* n_texture_views */
-                                                         &tv_create_info,
-                                                         &shading_factor_texture_view);
+                        shading_factor_texture_view = ral_texture_get_view(&tv_create_info);
 
                         mesh_material_set_shading_property_to_texture_view(material,
                                                                       item_property,

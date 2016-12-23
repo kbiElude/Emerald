@@ -10,6 +10,11 @@
 REFCOUNT_INSERT_DECLARATIONS(ral_context,
                              ral_context);
 
+typedef bool (*PFNRALCONTEXTCREATETEXTUREVIEWPROC)(ral_context                         context,
+                                                   uint32_t                            n_texture_views,
+                                                   const ral_texture_view_create_info* texture_view_create_info_ptr,
+                                                   ral_texture_view*                   out_result_texture_views_ptr);
+
 /** Optimus: forces High Performance profile */
 #ifdef _WIN32
     #define INCLUDE_OPTIMUS_SUPPORT                                          \
@@ -193,6 +198,13 @@ typedef enum
 
 } ral_context_object_type;
 
+typedef enum
+{
+    /* not settable; PFNRALCONTEXTCREATETEXTUREVIEWPROC */
+    RAL_CONTEXT_PRIVATE_PROPERTY_CREATE_TEXTURE_VIEW_FUNC_PTR,
+
+} ral_context_private_property;
+
 typedef struct
 {
     void**                  created_objects;
@@ -272,16 +284,6 @@ PUBLIC EMERALD_API bool ral_context_create_textures_from_gfx_images(ral_context 
                                                                     uint32_t         n_images,
                                                                     const gfx_image* images,
                                                                     ral_texture*     out_result_textures_ptr);
-/** TODO
- *
- *  NOTE NOTE NOTE: The texture views should be pre-cached after creation and released at parent texture
- *                  destruction time
- */
-PUBLIC EMERALD_API bool ral_context_create_texture_views(ral_context                         context,
-                                                         uint32_t                            n_texture_views,
-                                                         const ral_texture_view_create_info* texture_view_create_info_ptr,
-                                                         ral_texture_view*                   out_result_texture_views_ptr);
-
 /** TODO */
 PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             context,
                                                    ral_context_object_type object_type,
@@ -291,6 +293,11 @@ PUBLIC EMERALD_API bool ral_context_delete_objects(ral_context             conte
 /** TODO */
 PUBLIC EMERALD_API ral_program ral_context_get_program_by_name(ral_context               context,
                                                                system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC void ral_context_get_private_property(ral_context                  context,
+                                             ral_context_private_property property,
+                                             void*                        out_result_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_context_get_property(ral_context          context,

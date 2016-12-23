@@ -167,10 +167,7 @@ PUBLIC void stage_step_background_init(ral_context context)
     /* Initialize result texture view */
     ral_texture_view_create_info result_texture_view_create_info = ral_texture_view_create_info::ral_texture_view_create_info(_result_texture);
 
-    ral_context_create_texture_views(context,
-                                     1, /* n_texture_views */
-                                    &result_texture_view_create_info,
-                                    &_result_texture_view);
+    _result_texture_view = ral_texture_get_view(&result_texture_view_create_info);
 
     /* Initialize skybox data */
     _skybox_image = gfx_image_create_from_file(system_hashed_ansi_string_create("Skybox image"),

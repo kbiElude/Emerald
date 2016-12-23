@@ -410,10 +410,7 @@ PRIVATE void _varia_skybox_init(_varia_skybox*            skybox_ptr,
                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                               texture);
 
-    ral_context_create_texture_views(context,
-                                     1, /* n_texture_views */
-                                    &texture_view_create_info,
-                                    &skybox_ptr->texture_view);
+    skybox_ptr->texture_view = ral_texture_get_view(&texture_view_create_info);
 
     /* Perform type-specific initialization */
     switch (type)

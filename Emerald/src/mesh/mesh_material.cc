@@ -925,10 +925,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(scene_
                     ral_texture_view             texture_view             = nullptr;
                     ral_texture_view_create_info texture_view_create_info = ral_texture_view_create_info(texture);
 
-                    ral_context_create_texture_views(context_ral,
-                                                     1, /* n_texture_views */
-                                                    &texture_view_create_info,
-                                                    &texture_view);
+                    texture_view = ral_texture_get_view(&texture_view_create_info);
 
                     mesh_material_set_shading_property_to_texture_view(result_material,
                                                                        config.shading_property,

@@ -12,6 +12,8 @@
 #include "ral/ral_utils.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
+#include "system/system_critical_section.h"
+#include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
@@ -80,6 +82,9 @@ typedef struct _ral_texture
     system_hashed_ansi_string unique_name;
     ral_texture_usage_bits    usage;
 
+    system_hash64map        views; /* view hash -> owned ral_texture_view instance */
+    system_critical_section views_cs;
+
     /* Holds _ral_texture_layer instances.
      *
      * 1D/2D/3D textures = 1 layer; CM = 6 layer; CM array = 6n layers;
@@ -117,6 +122,8 @@ typedef struct _ral_texture
         type                   = in_type;
         unique_name            = in_unique_name;
         usage                  = in_usage;
+        views                  = system_hash64map_create       (sizeof(ral_texture_view) );
+        views_cs               = system_critical_section_create();
     }
 
     ~_ral_texture()
@@ -143,51 +150,84 @@ typedef struct _ral_texture
             system_resizable_vector_release(layers);
             layers = nullptr;
         }
+
+        if (views != nullptr)
+        {
+            uint32_t n_views = 0;
+
+            system_hash64map_get_property(views,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_views);
+
+            for (uint32_t n_view = 0;
+                          n_view < n_views;
+                        ++n_view)
+            {
+                ral_texture_view view;
+
+                system_hash64map_get_element_at(views,
+                                                n_view,
+                                               &view,
+                                                nullptr); /* result_hash_ptr */
+
+                ral_context_delete_objects(context,
+                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                           1, /* n_objects */
+                                           reinterpret_cast<void* const*>(&view) );
+            }
+
+            system_hash64map_release(views);
+            views = nullptr;
+        }
+
+        if (views_cs != nullptr)
+        {
+            system_critical_section_release(views_cs);
+
+            views_cs = nullptr;
+        }
     }
 } _ral_texture;
 
 
 /** TODO */
-PRIVATE ral_texture_view _ral_texture_create_default_texture_view(_ral_texture* texture_ptr)
+PRIVATE system_hash64 _ral_texture_get_view_hash(const ral_texture_view_create_info* view_create_info_ptr)
 {
-    ral_texture_view_create_info create_info;
-    bool                         format_has_c_data;
-    bool                         format_has_d_data;
-    bool                         format_has_s_data;
-    ral_texture_view             result;
+    system_hash64 result;
 
-    ral_utils_get_format_property(texture_ptr->format,
-                                  RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
-                                 &format_has_c_data);
-    ral_utils_get_format_property(texture_ptr->format,
-                                  RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
-                                 &format_has_d_data);
-    ral_utils_get_format_property(texture_ptr->format,
-                                  RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
-                                 &format_has_s_data);
+    view_create_info_ptr->aspect;
+    view_create_info_ptr->component_order;
+    view_create_info_ptr->format;
+    view_create_info_ptr->n_base_layer;
+    view_create_info_ptr->n_base_mip;
+    view_create_info_ptr->n_layers;
+    view_create_info_ptr->n_mips;
+    view_create_info_ptr->type;
 
-    create_info.aspect             = static_cast<ral_texture_aspect>(((format_has_c_data) ? RAL_TEXTURE_ASPECT_COLOR_BIT   : 0) |
-                                                                     ((format_has_d_data) ? RAL_TEXTURE_ASPECT_DEPTH_BIT   : 0) |
-                                                                     ((format_has_s_data) ? RAL_TEXTURE_ASPECT_STENCIL_BIT : 0));
-    create_info.component_order[0] = RAL_TEXTURE_COMPONENT_IDENTITY;
-    create_info.component_order[1] = RAL_TEXTURE_COMPONENT_IDENTITY;
-    create_info.component_order[2] = RAL_TEXTURE_COMPONENT_IDENTITY;
-    create_info.component_order[3] = RAL_TEXTURE_COMPONENT_IDENTITY;
-    create_info.format             = texture_ptr->format;
-    create_info.n_base_layer       = 0;
-    create_info.n_base_mip         = 0;
-    create_info.n_layers           = texture_ptr->n_layers;
-    create_info.n_mips             = texture_ptr->n_mipmaps_per_layer;
-    create_info.texture            = reinterpret_cast<ral_texture>(texture_ptr);
-    create_info.type               = texture_ptr->type;
+    ASSERT_DEBUG_SYNC(view_create_info_ptr->aspect                                    < (1 << 3) &&
+                      static_cast<uint64_t>(view_create_info_ptr->component_order[0]) < (1 << 3) &&
+                      static_cast<uint64_t>(view_create_info_ptr->component_order[1]) < (1 << 3) &&
+                      static_cast<uint64_t>(view_create_info_ptr->component_order[2]) < (1 << 3) &&
+                      static_cast<uint64_t>(view_create_info_ptr->component_order[3]) < (1 << 3) &&
+                      view_create_info_ptr->format                                    < (1 << 7) &&
+                      view_create_info_ptr->n_base_layer                              < (1 << 4) &&
+                      view_create_info_ptr->n_base_mip                                < (1 << 4) &&
+                      view_create_info_ptr->n_layers                                  < (1 << 4) &&
+                      view_create_info_ptr->n_mips                                    < (1 << 4) &&
+                      view_create_info_ptr->type                                      < (1 << 4),
+                      "Texture view parameter out of range");
 
-    ral_context_create_texture_views(texture_ptr->context,
-                                     1, /* n_texture_views */
-                                    &create_info,
-                                    &result);
-
-    ASSERT_DEBUG_SYNC(result != nullptr,
-                      "Failed to create a default texture view");
+    result = (((static_cast<int64_t>(view_create_info_ptr->aspect)             & ((1 << 3) - 1)) << 0)  |
+              ((static_cast<int64_t>(view_create_info_ptr->component_order[0]) & ((1 << 3) - 1)) << 3)  |
+              ((static_cast<int64_t>(view_create_info_ptr->component_order[1]) & ((1 << 3) - 1)) << 6)  |
+              ((static_cast<int64_t>(view_create_info_ptr->component_order[2]) & ((1 << 3) - 1)) << 9)  |
+              ((static_cast<int64_t>(view_create_info_ptr->component_order[3]) & ((1 << 3) - 1)) << 12) |
+              ((static_cast<int64_t>(view_create_info_ptr->format)             & ((1 << 7) - 1)) << 15) |
+              ((static_cast<int64_t>(view_create_info_ptr->n_base_layer)       & ((1 << 4) - 1)) << 22) |
+              ((static_cast<int64_t>(view_create_info_ptr->n_base_mip)         & ((1 << 4) - 1)) << 26) |
+              ((static_cast<int64_t>(view_create_info_ptr->n_layers)           & ((1 << 4) - 1)) << 30) |
+              ((static_cast<int64_t>(view_create_info_ptr->n_mips)             & ((1 << 4) - 1)) << 34) |
+              ((static_cast<int64_t>(view_create_info_ptr->type)               & ((1 << 4) - 1)) << 38));
 
     return result;
 }
@@ -730,106 +770,6 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ral_texture_upload_data_from_gfx_image(ral_texture texture,
-                                                   gfx_image   image,
-                                                   bool        async)
-{
-    /* Upload the mipmaps */
-    unsigned int                                                    image_n_mipmaps         = 0;
-    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = nullptr;
-    _ral_texture*                                                   texture_ptr             = reinterpret_cast<_ral_texture*>(texture);
-
-    gfx_image_get_property(image,
-                           GFX_IMAGE_PROPERTY_N_MIPMAPS,
-                          &image_n_mipmaps);
-
-    mipmap_update_info_ptrs = new (std::nothrow) std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>[image_n_mipmaps];
-
-    if (mipmap_update_info_ptrs == nullptr)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Out of memory");
-
-        goto end;
-    }
-
-    for (uint32_t n_mipmap = 0;
-                  n_mipmap < image_n_mipmaps;
-                ++n_mipmap)
-    {
-        uint32_t              mipmap_data_height        = 0;
-        void*                 mipmap_data_ptr           = nullptr;
-        uint32_t              mipmap_data_row_alignment = 0;
-        uint32_t              mipmap_data_size          = 0;
-        ral_texture_data_type mipmap_data_type          = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
-        uint32_t              mipmap_data_width         = 0;
-
-        gfx_image_get_mipmap_property(image,
-                                      n_mipmap,
-                                      GFX_IMAGE_MIPMAP_PROPERTY_DATA_POINTER,
-                                     &mipmap_data_ptr);
-        gfx_image_get_mipmap_property(image,
-                                      n_mipmap,
-                                      GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
-                                     &mipmap_data_height);
-        gfx_image_get_mipmap_property(image,
-                                      n_mipmap,
-                                      GFX_IMAGE_MIPMAP_PROPERTY_ROW_ALIGNMENT,
-                                     &mipmap_data_row_alignment);
-        gfx_image_get_mipmap_property(image,
-                                      n_mipmap,
-                                      GFX_IMAGE_MIPMAP_PROPERTY_DATA_SIZE,
-                                     &mipmap_data_size);
-        gfx_image_get_mipmap_property(image,
-                                      n_mipmap,
-                                      GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
-                                     &mipmap_data_type);
-        gfx_image_get_mipmap_property(image,
-                                      n_mipmap,
-                                      GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
-                                     &mipmap_data_width);
-
-        mipmap_update_info_ptrs[n_mipmap].reset(new ral_texture_mipmap_client_sourced_update_info() );
-
-        mipmap_update_info_ptrs[n_mipmap]->data                   = mipmap_data_ptr;
-        mipmap_update_info_ptrs[n_mipmap]->data_row_alignment     = mipmap_data_row_alignment;
-        mipmap_update_info_ptrs[n_mipmap]->data_size              = mipmap_data_size;
-        mipmap_update_info_ptrs[n_mipmap]->data_type              = mipmap_data_type;
-        mipmap_update_info_ptrs[n_mipmap]->n_layer                = 0;
-        mipmap_update_info_ptrs[n_mipmap]->n_mipmap               = n_mipmap;
-        mipmap_update_info_ptrs[n_mipmap]->region_size[0]         = mipmap_data_width;
-        mipmap_update_info_ptrs[n_mipmap]->region_size[1]         = mipmap_data_height;
-        mipmap_update_info_ptrs[n_mipmap]->region_size[2]         = 0;
-        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[0] = 0;
-        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[1] = 0;
-        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[2] = 0;
-
-        mipmap_update_info_ptrs[n_mipmap]->pfn_delete_handler_proc      = _ral_texture_mipmap_update_release_gfx_image_handler;
-        mipmap_update_info_ptrs[n_mipmap]->delete_handler_proc_user_arg = image;
-
-        gfx_image_retain(image);
-    }
-
-    if (!ral_texture_set_mipmap_data_from_client_memory(texture,
-                                                        image_n_mipmaps,
-                                                        mipmap_update_info_ptrs,
-                                                        async) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Failed to set mipmap data for a ral_texture instance deriving from a gfx_image instance.");
-    }
-
-end:
-    if (mipmap_update_info_ptrs != nullptr)
-    {
-        delete [] mipmap_update_info_ptrs;
-
-        mipmap_update_info_ptrs = nullptr;
-    }
-
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture,
                                                      bool        async)
 {
@@ -1107,6 +1047,73 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API ral_texture_view ral_texture_get_view(const ral_texture_view_create_info* create_info_ptr)
+{
+    PFNRALCONTEXTCREATETEXTUREVIEWPROC pfn_create_texture_view_ptr = nullptr;
+    ral_texture_view                   result                      = nullptr;
+    _ral_texture*                      texture_ptr                 = nullptr;
+    system_hash64                      view_hash;
+
+    /* Sanity checks */
+    if (create_info_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(!(create_info_ptr == nullptr),
+                          "Input ral_texture_view_create_info instance is null");
+
+        goto end;
+    }
+
+    texture_ptr = reinterpret_cast<_ral_texture*>(create_info_ptr->texture);
+
+    system_critical_section_enter(texture_ptr->views_cs);
+
+    /* If the specified view has already been created, return it immediately. */
+    view_hash = _ral_texture_get_view_hash(create_info_ptr);
+
+    if (system_hash64map_get(texture_ptr->views,
+                             view_hash,
+                            &result) )
+    {
+        ASSERT_DEBUG_SYNC(result != nullptr,
+                          "Null ral_texture_view instance cached for a ral_texture instance");
+
+        goto end;
+    }
+
+    /* If not, we need to create a new view. We also retain the object, since ultimately this texture
+     * should have the last word in terms of whether or not a given view can be safely released */
+    ral_context_get_private_property(texture_ptr->context,
+                                     RAL_CONTEXT_PRIVATE_PROPERTY_CREATE_TEXTURE_VIEW_FUNC_PTR,
+                                    &pfn_create_texture_view_ptr);
+
+    pfn_create_texture_view_ptr(texture_ptr->context,
+                                1, /* n_texture_views */
+                                create_info_ptr,
+                               &result);
+
+    ASSERT_DEBUG_SYNC(result != nullptr,
+                      "Texture view failed to create");
+
+    system_hash64map_insert(texture_ptr->views,
+                            view_hash,
+                            result,
+                            nullptr,  /* on_removal_callback          */
+                            nullptr); /* on_removal_callback_user_arg */
+
+    ral_context_retain_object(texture_ptr->context,
+                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                              result);
+
+end:
+    if (create_info_ptr != nullptr)
+    {
+        system_critical_section_leave(texture_ptr->views_cs);
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_texture_release(ral_texture& texture)
 {
     delete (_ral_texture*) texture;
@@ -1334,4 +1341,104 @@ PUBLIC void ral_texture_set_property(ral_texture          texture,
     }
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC void ral_texture_upload_data_from_gfx_image(ral_texture texture,
+                                                   gfx_image   image,
+                                                   bool        async)
+{
+    /* Upload the mipmaps */
+    unsigned int                                                    image_n_mipmaps         = 0;
+    std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>* mipmap_update_info_ptrs = nullptr;
+    _ral_texture*                                                   texture_ptr             = reinterpret_cast<_ral_texture*>(texture);
+
+    gfx_image_get_property(image,
+                           GFX_IMAGE_PROPERTY_N_MIPMAPS,
+                          &image_n_mipmaps);
+
+    mipmap_update_info_ptrs = new (std::nothrow) std::shared_ptr<ral_texture_mipmap_client_sourced_update_info>[image_n_mipmaps];
+
+    if (mipmap_update_info_ptrs == nullptr)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
+
+        goto end;
+    }
+
+    for (uint32_t n_mipmap = 0;
+                  n_mipmap < image_n_mipmaps;
+                ++n_mipmap)
+    {
+        uint32_t              mipmap_data_height        = 0;
+        void*                 mipmap_data_ptr           = nullptr;
+        uint32_t              mipmap_data_row_alignment = 0;
+        uint32_t              mipmap_data_size          = 0;
+        ral_texture_data_type mipmap_data_type          = RAL_TEXTURE_DATA_TYPE_UNKNOWN;
+        uint32_t              mipmap_data_width         = 0;
+
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_DATA_POINTER,
+                                     &mipmap_data_ptr);
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_HEIGHT,
+                                     &mipmap_data_height);
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_ROW_ALIGNMENT,
+                                     &mipmap_data_row_alignment);
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_DATA_SIZE,
+                                     &mipmap_data_size);
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_DATA_TYPE,
+                                     &mipmap_data_type);
+        gfx_image_get_mipmap_property(image,
+                                      n_mipmap,
+                                      GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
+                                     &mipmap_data_width);
+
+        mipmap_update_info_ptrs[n_mipmap].reset(new ral_texture_mipmap_client_sourced_update_info() );
+
+        mipmap_update_info_ptrs[n_mipmap]->data                   = mipmap_data_ptr;
+        mipmap_update_info_ptrs[n_mipmap]->data_row_alignment     = mipmap_data_row_alignment;
+        mipmap_update_info_ptrs[n_mipmap]->data_size              = mipmap_data_size;
+        mipmap_update_info_ptrs[n_mipmap]->data_type              = mipmap_data_type;
+        mipmap_update_info_ptrs[n_mipmap]->n_layer                = 0;
+        mipmap_update_info_ptrs[n_mipmap]->n_mipmap               = n_mipmap;
+        mipmap_update_info_ptrs[n_mipmap]->region_size[0]         = mipmap_data_width;
+        mipmap_update_info_ptrs[n_mipmap]->region_size[1]         = mipmap_data_height;
+        mipmap_update_info_ptrs[n_mipmap]->region_size[2]         = 0;
+        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[0] = 0;
+        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[1] = 0;
+        mipmap_update_info_ptrs[n_mipmap]->region_start_offset[2] = 0;
+
+        mipmap_update_info_ptrs[n_mipmap]->pfn_delete_handler_proc      = _ral_texture_mipmap_update_release_gfx_image_handler;
+        mipmap_update_info_ptrs[n_mipmap]->delete_handler_proc_user_arg = image;
+
+        gfx_image_retain(image);
+    }
+
+    if (!ral_texture_set_mipmap_data_from_client_memory(texture,
+                                                        image_n_mipmaps,
+                                                        mipmap_update_info_ptrs,
+                                                        async) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Failed to set mipmap data for a ral_texture instance deriving from a gfx_image instance.");
+    }
+
+end:
+    if (mipmap_update_info_ptrs != nullptr)
+    {
+        delete [] mipmap_update_info_ptrs;
+
+        mipmap_update_info_ptrs = nullptr;
+    }
+
 }

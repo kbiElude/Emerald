@@ -1167,10 +1167,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
 
         ping_pong_rt_view_create_info = ral_texture_view_create_info(blur_ptr->ping_pong_rt);
 
-        ral_context_create_texture_views(blur_ptr->context,
-                                         1, /* n_texture_views */
-                                        &ping_pong_rt_view_create_info,
-                                        &blur_ptr->ping_pong_rt_view_l012);
+        blur_ptr->ping_pong_rt_view_l012 = ral_texture_get_view(&ping_pong_rt_view_create_info);
 
         for (uint32_t n_layer = 0;
                       n_layer < sizeof(ping_pong_rt_views) / sizeof(ping_pong_rt_views[0]);
@@ -1181,10 +1178,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             ping_pong_rt_view_create_info.n_base_layer = n_layer;
             ping_pong_rt_view_create_info.n_layers      = 1;
 
-            ral_context_create_texture_views(blur_ptr->context,
-                                             1, /* n_texture_views */
-                                            &ping_pong_rt_view_create_info,
-                                             result_view_ptr);
+            *result_view_ptr = ral_texture_get_view(&ping_pong_rt_view_create_info);
         }
     }
 

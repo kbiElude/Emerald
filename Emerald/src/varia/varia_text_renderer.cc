@@ -267,10 +267,7 @@ PRIVATE void _varia_text_renderer_create_font_table_to(_varia_text_renderer* tex
     texture_view_create_info.texture            = text_ptr->font_table_texture;
     texture_view_create_info.type               = RAL_TEXTURE_TYPE_2D;
 
-    ral_context_create_texture_views(text_ptr->context,
-                                     1, /* n_texture_views */
-                                    &texture_view_create_info,
-                                    &text_ptr->font_table_texture_view);
+    text_ptr->font_table_texture_view = ral_texture_get_view(&texture_view_create_info);
 
     /* Create a sampler we will use for sampling the texture view */
     ral_sampler_create_info sampler_create_info;

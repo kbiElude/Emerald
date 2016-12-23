@@ -1336,10 +1336,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             /* Spawn a view for the texture */
             ral_texture_view_create_info texture_view_create_info = ral_texture_view_create_info(context_ptr->fbo_color_texture);
 
-            ral_context_create_texture_views(context_ptr->context,
-                                             1, /* n_texture_views */
-                                            &texture_view_create_info,
-                                            &context_ptr->fbo_color_texture_view);
+            context_ptr->fbo_color_texture_view = ral_texture_get_view(&texture_view_create_info);
         }
 
         if (format_depth_stencil != RAL_FORMAT_UNKNOWN)
@@ -1385,10 +1382,7 @@ PRIVATE void _ogl_context_initialize_fbo(_ogl_context* context_ptr)
             /* Spawn a view for the texture */
             ral_texture_view_create_info texture_view_create_info = ral_texture_view_create_info(context_ptr->fbo_ds_texture);
 
-            ral_context_create_texture_views(context_ptr->context,
-                                             1, /* n_texture_views */
-                                            &texture_view_create_info,
-                                            &context_ptr->fbo_ds_texture_view);
+            context_ptr->fbo_ds_texture_view = ral_texture_get_view(&texture_view_create_info);
         }
 
         /* Retrieve a framebuffer wrapper whose underlying GL object uses the attachments
