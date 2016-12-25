@@ -165,16 +165,23 @@ _mesh_material_property_texture::~_mesh_material_property_texture()
 {
     if (sampler != nullptr)
     {
+        ral_texture parent_texture = nullptr;
+
+        ral_texture_view_get_property(texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &parent_texture);
+
         ral_context_delete_objects(parent_property_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_objects */
                                    reinterpret_cast<void* const*>(&sampler) );
         ral_context_delete_objects(parent_property_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_objects */
-                                   reinterpret_cast<void* const*>(&texture_view) );
+                                   reinterpret_cast<void* const*>(&parent_texture) );
 
-        sampler = nullptr;
+        sampler      = nullptr;
+        texture_view = nullptr;
     }
 }
 
@@ -258,14 +265,20 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
+                    ral_texture parent_texture = nullptr;
+
+                    ral_texture_view_get_property(material_ptr->shading_properties[current_property].texture_data.texture_view,
+                                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                 &parent_texture);
+
                     ral_context_delete_objects(material_ptr->context,
                                                RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                                1, /* n_objects */
                                                reinterpret_cast<void* const*>(&material_ptr->shading_properties[current_property].texture_data.sampler) );
                     ral_context_delete_objects(material_ptr->context,
-                                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                                1, /* n_objects */
-                                               reinterpret_cast<void* const*>(&material_ptr->shading_properties[current_property].texture_data.texture_view) );
+                                               reinterpret_cast<void* const*>(&parent_texture) );
 
                     material_ptr->shading_properties[current_property].texture_data.sampler      = nullptr;
                     material_ptr->shading_properties[current_property].texture_data.texture_view = nullptr;
@@ -1961,17 +1974,22 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture_view(mesh_
 
     if (material_ptr->shading_properties[property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
     {
-        ral_sampler&      bound_sampler      = material_ptr->shading_properties[property].texture_data.sampler;
-        ral_texture_view& bound_texture_view = material_ptr->shading_properties[property].texture_data.texture_view;
+        ral_sampler&      bound_sampler                     = material_ptr->shading_properties[property].texture_data.sampler;
+        ral_texture_view& bound_texture_view                = material_ptr->shading_properties[property].texture_data.texture_view;
+        ral_texture       bound_texture_view_parent_texture = nullptr;
+
+        ral_texture_view_get_property(bound_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &bound_texture_view_parent_texture);
 
         ral_context_delete_objects(material_ptr->context,
                                    RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                    1, /* n_samplers */
                                    reinterpret_cast<void* const*>(&bound_sampler) );
         ral_context_delete_objects(material_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_samplers */
-                                   reinterpret_cast<void* const*>(&bound_texture_view) );
+                                   reinterpret_cast<void* const*>(&bound_texture_view_parent_texture) );
 
         bound_sampler      = nullptr;
         bound_texture_view = nullptr;

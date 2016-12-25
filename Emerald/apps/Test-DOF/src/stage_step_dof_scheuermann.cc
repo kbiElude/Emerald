@@ -120,14 +120,7 @@ PUBLIC void stage_step_dof_scheuermann_deinit(ral_context context)
         _dof_scheuermann_downsampled_texture,
         _dof_scheuermann_downsampled_blurred_texture
     };
-    ral_texture_view texture_views_to_release[] = 
-    {
-        _dof_scheuermann_combination_texture_view,
-        _dof_scheuermann_downsampled_texture_view,
-        _dof_scheuermann_downsampled_blurred_texture_view
-    };
-    const uint32_t n_textures_to_release      = sizeof(textures_to_release)      / sizeof(textures_to_release     [0]);
-    const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release) / sizeof(texture_views_to_release[0]);
+    const uint32_t n_textures_to_release = sizeof(textures_to_release) / sizeof(textures_to_release[0]);
 
     ral_context_delete_objects(context,
                                RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
@@ -145,10 +138,6 @@ PUBLIC void stage_step_dof_scheuermann_deinit(ral_context context)
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                n_textures_to_release,
                                reinterpret_cast<void* const*>(textures_to_release) );
-    ral_context_delete_objects(context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               n_texture_views_to_release,
-                               reinterpret_cast<void* const*>(texture_views_to_release) );
 
     ral_program_block_buffer_release   (_dof_scheuermann_combination_po_ub);
     postprocessing_blur_poisson_release(_dof_scheuermann_blur_poisson);

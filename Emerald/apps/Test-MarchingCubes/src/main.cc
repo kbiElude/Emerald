@@ -691,14 +691,8 @@ PRIVATE void _window_closing_callback_handler(system_window window,
         _rt_color,
         _rt_depth
     };
-    ral_texture_view texture_views_to_release[] =
-    {
-        _rt_color_view,
-        _rt_depth_view
-    };
     const uint32_t n_cmd_buffers_to_release   = sizeof(command_buffers_to_release) / sizeof(command_buffers_to_release[0]);
     const uint32_t n_present_tasks_to_release = sizeof(present_tasks_to_release)   / sizeof(present_tasks_to_release  [0]);
-    const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release)   / sizeof(texture_views_to_release  [0]);
     const uint32_t n_textures_to_release      = sizeof(textures_to_release)        / sizeof(textures_to_release       [0]);
 
     ral_context_delete_objects(_context,
@@ -709,10 +703,6 @@ PRIVATE void _window_closing_callback_handler(system_window window,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                n_textures_to_release,
                                reinterpret_cast<void* const*>(textures_to_release) );
-    ral_context_delete_objects(_context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               n_texture_views_to_release,
-                               reinterpret_cast<void* const*>(texture_views_to_release) );
 
     for (uint32_t n_present_task = 0;
                   n_present_task < n_present_tasks_to_release;

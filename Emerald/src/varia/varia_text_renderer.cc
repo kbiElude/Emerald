@@ -607,15 +607,7 @@ PRIVATE void _varia_text_renderer_release(void* text)
         text_ptr->font_table_texture = nullptr;
     }
 
-    if (text_ptr->font_table_texture_view != nullptr)
-    {
-        ral_context_delete_objects(text_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                   1, /* n_textures */
-                                   reinterpret_cast<void* const*>(&text_ptr->font_table_texture_view) );
-
-        text_ptr->font_table_texture_view = nullptr;
-    }
+    text_ptr->font_table_texture_view = nullptr;
 
     if (text_ptr->last_cached_command_buffer != nullptr)
     {

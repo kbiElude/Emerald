@@ -82,6 +82,8 @@ typedef struct _ral_texture
     system_hashed_ansi_string unique_name;
     ral_texture_usage_bits    usage;
 
+    bool being_released;
+
     system_hash64map        views; /* view hash -> owned ral_texture_view instance */
     system_critical_section views_cs;
 
@@ -109,6 +111,7 @@ typedef struct _ral_texture
         base_mipmap_size[0]    = in_base_mipmap_width;
         base_mipmap_size[1]    = in_base_mipmap_height;
         base_mipmap_size[2]    = in_base_mipmap_depth;
+        being_released         = false;
         callback_manager       = system_callback_manager_create( (_callback_id) RAL_TEXTURE_CALLBACK_ID_COUNT);
         context                = in_context;
         description            = in_description;
@@ -128,6 +131,8 @@ typedef struct _ral_texture
 
     ~_ral_texture()
     {
+        being_released = true;
+
         if (callback_manager != nullptr)
         {
             system_callback_manager_release(callback_manager);
@@ -989,6 +994,13 @@ PUBLIC EMERALD_API bool ral_texture_get_property(const ral_texture    texture,
             break;
         }
 
+        case RAL_TEXTURE_PROPERTY_IS_BEING_RELEASED:
+        {
+            *reinterpret_cast<bool*>(out_result_ptr) = texture_ptr->being_released;
+
+            break;
+        }
+
         case RAL_TEXTURE_PROPERTY_N_LAYERS:
         {
             system_resizable_vector_get_property(texture_ptr->layers,
@@ -1099,10 +1111,6 @@ PUBLIC EMERALD_API ral_texture_view ral_texture_get_view(const ral_texture_view_
                             result,
                             nullptr,  /* on_removal_callback          */
                             nullptr); /* on_removal_callback_user_arg */
-
-    ral_context_retain_object(texture_ptr->context,
-                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                              result);
 
 end:
     if (create_info_ptr != nullptr)

@@ -481,10 +481,6 @@ PRIVATE void _varia_skybox_release(void* skybox)
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                1, /* n_objects */
                                reinterpret_cast<void* const*>(&skybox_ptr->texture) );
-    ral_context_delete_objects(skybox_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               1, /* n_objects */
-                               reinterpret_cast<void* const*>(&skybox_ptr->texture_view) );
 
     if (skybox_ptr->cached_present_task != nullptr)
     {

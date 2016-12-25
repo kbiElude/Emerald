@@ -15,9 +15,11 @@ typedef struct _ral_texture_view
 
     explicit _ral_texture_view(const ral_texture_view_create_info* create_info_ptr)
     {
-        /* Note: We do NOT retain parent texture here. Texture views are owned by textures, so
-         *       everything should be fine, as long as the application does not attempt to
-         *       manipulate with texture view ref counters. */
+        /* Note: We do NOT retain parent texture here, as that would lead to cycles.
+         *       Texture views are owned by textures, so everything should be fine,
+         *       as long as the application does not attempt to manipulate with texture
+         *       view ref counters.
+         */
         create_info = *create_info_ptr;
 
         ral_texture_get_property(create_info_ptr->texture,
@@ -27,7 +29,14 @@ typedef struct _ral_texture_view
 
     ~_ral_texture_view()
     {
-        /* Stub */
+        bool parent_texture_being_released = false;
+
+        ral_texture_get_property(create_info.texture,
+                                 RAL_TEXTURE_PROPERTY_IS_BEING_RELEASED,
+                                &parent_texture_being_released);
+
+        ASSERT_DEBUG_SYNC(parent_texture_being_released,
+                          "Texture view being destroyed, even though parent texture is still alive");
     }
 } _ral_texture_view;
 

@@ -8,6 +8,8 @@
 #include "demo/demo_timeline_segment.h"
 #include "ral/ral_context.h"
 #include "ral/ral_present_job.h"
+#include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "ral/ral_utils.h"
 #include "system/system_callback_manager.h"
 
@@ -55,6 +57,8 @@ PRIVATE void _nodes_postprocessing_on_texture_view_attached_callback(const void*
         callback_data_ptr->node        == node_data_ptr->node)
     {
         /* Cache the texture */
+        ral_texture parent_texture = nullptr;
+
         ASSERT_DEBUG_SYNC(callback_data_ptr->texture_view != nullptr,
                           "NULL texture view attached to a post-processing output node");
         ASSERT_DEBUG_SYNC(node_data_ptr->input_data_texture_view == nullptr,
@@ -62,9 +66,13 @@ PRIVATE void _nodes_postprocessing_on_texture_view_attached_callback(const void*
 
         node_data_ptr->input_data_texture_view = callback_data_ptr->texture_view;
 
+        ral_texture_view_get_property(node_data_ptr->input_data_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &parent_texture);
+
         ral_context_retain_object(node_data_ptr->context,
-                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                  node_data_ptr->input_data_texture_view);
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                  parent_texture);
     }
 }
 
@@ -79,14 +87,20 @@ PRIVATE void _nodes_postprocessing_on_texture_view_detached_callback(const void*
         callback_data_ptr->id   == node_data_ptr->color_data_node_input_id &&
         callback_data_ptr->node == node_data_ptr->node)
     {
+        ral_texture parent_texture = nullptr;
+
         /* Drop the attachment */
         ASSERT_DEBUG_SYNC(node_data_ptr->input_data_texture_view != nullptr,
                           "No texture view attached to a node input, for which a \"texture detached\" callback was received");
 
+        ral_texture_view_get_property(node_data_ptr->input_data_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &parent_texture);
+
         ral_context_delete_objects(node_data_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_objects */
-                                   reinterpret_cast<void* const*>(&node_data_ptr->input_data_texture_view) );
+                                   reinterpret_cast<void* const*>(&parent_texture) );
 
         node_data_ptr->input_data_texture_view = nullptr;
     }
@@ -140,10 +154,16 @@ PUBLIC void nodes_postprocessing_output_deinit(demo_timeline_segment_node_privat
 
     if (node_ptr->input_data_texture_view != nullptr)
     {
+        ral_texture parent_texture = nullptr;
+
+        ral_texture_view_get_property(node_ptr->input_data_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &parent_texture);
+
         ral_context_delete_objects(node_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                    1, /* n_objects */
-                                   reinterpret_cast<void* const*>(&node_ptr->input_data_texture_view) );
+                                   reinterpret_cast<void* const*>(&parent_texture) );
 
         node_ptr->input_data_texture_view = nullptr;
     }

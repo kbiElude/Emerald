@@ -1787,27 +1787,37 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
             if (light_ptr->shadow_map_texture_view_color != nullptr)
             {
+                ral_texture parent_texture = nullptr;
+
                 ral_texture_view_get_property(light_ptr->shadow_map_texture_view_color,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &context);
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_color,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &parent_texture);
 
                 ral_context_delete_objects(context,
-                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                            1, /* n_objects */
-                                           reinterpret_cast<void* const*>(&light_ptr->shadow_map_texture_view_color) );
+                                           reinterpret_cast<void* const*>(&parent_texture) );
             }
 
             light_ptr->shadow_map_texture_view_color = *reinterpret_cast<const ral_texture_view*>(data);
 
             if (light_ptr->shadow_map_texture_view_color != nullptr)
             {
+                ral_texture parent_texture = nullptr;
+
                 ral_texture_view_get_property(light_ptr->shadow_map_texture_view_color,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &context);
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_color,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &parent_texture);
 
                 ral_context_retain_object(context,
-                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                          light_ptr->shadow_map_texture_view_color);
+                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                          parent_texture);
             }
 
             break;
@@ -1819,27 +1829,37 @@ PUBLIC EMERALD_API void scene_light_set_property(scene_light          light,
 
             if (light_ptr->shadow_map_texture_view_depth != nullptr)
             {
+                ral_texture parent_texture = nullptr;
+
                 ral_texture_view_get_property(light_ptr->shadow_map_texture_view_depth,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &context);
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_depth,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &parent_texture);
 
                 ral_context_delete_objects(context,
-                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                           RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                            1, /* n_objects */
-                                           reinterpret_cast<void* const*>(&light_ptr->shadow_map_texture_view_depth) );
+                                           reinterpret_cast<void* const*>(&parent_texture) );
             }
 
             light_ptr->shadow_map_texture_view_depth = *reinterpret_cast<const ral_texture_view*>(data);
 
             if (light_ptr->shadow_map_texture_view_depth != nullptr)
             {
+                ral_texture parent_texture = nullptr;
+
                 ral_texture_view_get_property(light_ptr->shadow_map_texture_view_depth,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &context);
+                ral_texture_view_get_property(light_ptr->shadow_map_texture_view_depth,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &parent_texture);
 
                 ral_context_retain_object(context,
-                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                          light_ptr->shadow_map_texture_view_depth);
+                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                          parent_texture);
             }
 
             break;

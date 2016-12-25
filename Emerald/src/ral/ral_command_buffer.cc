@@ -95,26 +95,34 @@ private:
             case RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE:
             {
                 ral_context dst_texture_view_context = nullptr;
+                ral_texture dst_texture_view_texture = nullptr;
                 ral_context src_texture_view_context = nullptr;
+                ral_texture src_texture_view_texture = nullptr;
 
                 ral_texture_view_get_property(copy_texture_to_texture_command.dst_texture_view,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &dst_texture_view_context);
+                ral_texture_view_get_property(copy_texture_to_texture_command.dst_texture_view,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &dst_texture_view_texture);
                 ral_texture_view_get_property(copy_texture_to_texture_command.src_texture_view,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &src_texture_view_context);
+                ral_texture_view_get_property(copy_texture_to_texture_command.src_texture_view,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &src_texture_view_texture);
 
-                ral_texture_view texture_views[] =
+                ral_texture textures[] =
                 {
-                    copy_texture_to_texture_command.dst_texture_view,
-                    copy_texture_to_texture_command.src_texture_view
+                    dst_texture_view_texture,
+                    src_texture_view_texture
                 };
-                const uint32_t n_texture_views = sizeof(texture_views) / sizeof(texture_views[0]);
+                const uint32_t n_textures = sizeof(textures) / sizeof(textures[0]);
 
                 pfn_update_ref_proc(dst_texture_view_context,
-                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                    n_texture_views,
-                                    reinterpret_cast<void* const*>(texture_views) );
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                    n_textures,
+                                    reinterpret_cast<void* const*>(textures) );
 
                 break;
             }
@@ -209,15 +217,19 @@ private:
                         const ral_texture_view texture_view         = (set_binding_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE) ? set_binding_command.sampled_image_binding.texture_view
                                                                                                                                            : set_binding_command.storage_image_binding.texture_view;
                         ral_context            texture_view_context = nullptr;
+                        ral_texture            texture_view_texture = nullptr;
 
                         ral_texture_view_get_property(texture_view,
                                                       RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                                      &texture_view_context);
+                        ral_texture_view_get_property(texture_view,
+                                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                     &texture_view_texture);
 
                         pfn_update_ref_proc(texture_view_context,
-                                            RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                            RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                             1, /* n_objects */
-                                            reinterpret_cast<void* const*>(&texture_view) );
+                                            reinterpret_cast<void* const*>(&texture_view_texture) );
 
                         if (set_binding_command.binding_type == RAL_BINDING_TYPE_SAMPLED_IMAGE)
                         {
@@ -270,15 +282,19 @@ private:
             case RAL_COMMAND_TYPE_SET_COLOR_RENDERTARGET:
             {
                 ral_context texture_view_context = nullptr;
+                ral_texture texture_view_texture = nullptr;
 
                 ral_texture_view_get_property(set_color_rendertarget_command.texture_view,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &texture_view_context);
+                ral_texture_view_get_property(set_color_rendertarget_command.texture_view,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &texture_view_texture);
 
                 pfn_update_ref_proc(texture_view_context,
-                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                     1, /* n_objects */
-                                    reinterpret_cast<void* const*>(&set_color_rendertarget_command.texture_view) );
+                                    reinterpret_cast<void* const*>(&texture_view_texture) );
 
                 break;
             }
@@ -286,15 +302,19 @@ private:
             case RAL_COMMAND_TYPE_SET_DEPTH_RENDERTARGET:
             {
                 ral_context rt_context = nullptr;
+                ral_texture rt_texture = nullptr;
 
                 ral_texture_view_get_property(set_depth_rendertarget_command.depth_rt,
                                               RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
                                              &rt_context);
+                ral_texture_view_get_property(set_depth_rendertarget_command.depth_rt,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &rt_texture);
 
                 pfn_update_ref_proc(rt_context,
-                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                    RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                     1, /* n_objects */
-                                    reinterpret_cast<void* const*>(&set_depth_rendertarget_command.depth_rt) );
+                                    reinterpret_cast<void* const*>(&rt_texture) );
 
                 break;
             }

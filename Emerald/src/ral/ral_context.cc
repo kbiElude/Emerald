@@ -2479,6 +2479,9 @@ PUBLIC EMERALD_API bool ral_context_retain_objects(ral_context             conte
         goto end;
     }
 
+    ASSERT_DEBUG_SYNC(object_type != RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                      "Texture views are not retainable");
+
     system_critical_section_enter(context_ptr->object_to_refcount_cs);
     {
         for (uint32_t n_object = 0;

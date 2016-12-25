@@ -1549,22 +1549,17 @@ PRIVATE void _ogl_context_on_ral_context_about_to_release_callback(const void* c
 
     /* FBO's color + DS textures had been grabbed from the texture pool. It just so happens
      * that by the time this location is reached, the very pool, as well as all owned textures,
-     * have already been released. Nothing to be done. */
-
-    ral_texture_view fbo_texture_views[] =
-    {
-        context_ptr->fbo_color_texture_view,
-        context_ptr->fbo_ds_texture_view
-    };
-    const uint32_t n_fbo_texture_views = sizeof(fbo_texture_views) / sizeof(fbo_texture_views[0]);
-
-    ral_context_delete_objects(context_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               n_fbo_texture_views,
-                               reinterpret_cast<void* const*>(fbo_texture_views) );
-
-    context_ptr->fbo_color_texture = nullptr;
-    context_ptr->fbo_ds_texture    = nullptr;
+     * have already been released.
+     *
+     * Texture views are exclusively owned by textures. The moment a texture is released, all
+     * associated views are purged as well.
+     *
+     * Nothing to be done.
+     */
+    context_ptr->fbo_color_texture      = nullptr;
+    context_ptr->fbo_color_texture_view = nullptr;
+    context_ptr->fbo_ds_texture         = nullptr;
+    context_ptr->fbo_ds_texture_view    = nullptr;
 }
 
 /** TODO */

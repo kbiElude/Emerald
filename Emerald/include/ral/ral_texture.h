@@ -67,6 +67,9 @@ typedef enum
     /* not settable, ral_format */
     RAL_TEXTURE_PROPERTY_FORMAT,
 
+    /* not settable, bool */
+    RAL_TEXTURE_PROPERTY_IS_BEING_RELEASED,
+
     /* not settable, uint32_t */
     RAL_TEXTURE_PROPERTY_N_LAYERS,
 

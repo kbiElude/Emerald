@@ -480,22 +480,12 @@ void _rendering_window_closing_callback_handler(system_window window,
         _color_texture,
         _depth_texture
     };
-    ral_texture_view texture_views_to_release[] =
-    {
-        _color_texture_view,
-        _depth_texture_view
-    };
-    const uint32_t n_textures_to_release      = sizeof(textures_to_release)      / sizeof(textures_to_release     [0]);
-    const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release) / sizeof(texture_views_to_release[0]);
+    const uint32_t n_textures_to_release = sizeof(textures_to_release) / sizeof(textures_to_release[0]);
 
     ral_context_delete_objects(_context,
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                n_textures_to_release,
                                reinterpret_cast<void* const*>(textures_to_release) );
-    ral_context_delete_objects(_context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               n_texture_views_to_release,
-                               reinterpret_cast<void* const*>(texture_views_to_release) );
 
     ral_present_task_release(_clear_present_task);
     _clear_present_task = nullptr;

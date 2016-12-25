@@ -1052,10 +1052,6 @@ PRIVATE void _demo_timeline_segment_on_texture_view_detached_from_node(const voi
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                1, /* n_objects */
                                reinterpret_cast<void* const*>(&texture_view_parent_texture) );
-    ral_context_delete_objects(segment_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               1, /* n_objects */
-                               reinterpret_cast<void* const*>(&callback_arg_ptr->texture_view) );
 
     /* Notify any subscribers about the event */
     system_callback_manager_call_back(segment_ptr->callback_manager,

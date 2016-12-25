@@ -135,22 +135,12 @@ PRIVATE void _deinit()
         _rt_color_texture,
         _rt_depth_texture
     };
-    ral_texture_view texture_views_to_delete[] =
-    {
-        _rt_color_texture_view,
-        _rt_depth_texture_view
-    };
-    const uint32_t n_textures_to_delete      = sizeof(textures_to_delete)      / sizeof(textures_to_delete     [0]);
-    const uint32_t n_texture_views_to_delete = sizeof(texture_views_to_delete) / sizeof(texture_views_to_delete[0]);
+    const uint32_t n_textures_to_delete = sizeof(textures_to_delete) / sizeof(textures_to_delete[0]);
 
     ral_context_delete_objects(_context,
                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                               n_textures_to_delete,
                               reinterpret_cast<void* const*>(textures_to_delete) );
-    ral_context_delete_objects(_context,
-                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                              n_texture_views_to_delete,
-                              reinterpret_cast<void* const*>(texture_views_to_delete) );
 
     stage_step_julia_deinit(_context);
     stage_step_light_deinit(_context);

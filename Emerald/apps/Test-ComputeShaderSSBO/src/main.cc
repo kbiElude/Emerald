@@ -405,15 +405,7 @@ PRIVATE void _window_closing_callback_handler(system_window window,
         _texture = nullptr;
     }
 
-    if (_texture_view != nullptr)
-    {
-        ral_context_delete_objects(_context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                   1, /* n_texture_views */
-                                   reinterpret_cast<void* const*>(&_texture_view) );
-
-        _texture_view = nullptr;
-    }
+    _texture_view = nullptr;
 
     system_event_set(_window_closed_event);
 }

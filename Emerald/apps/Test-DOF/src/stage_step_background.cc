@@ -82,10 +82,6 @@ PUBLIC void stage_step_background_deinit(ral_context context)
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                n_textures_to_release,
                                reinterpret_cast<void* const*>(textures_to_release) );
-    ral_context_delete_objects(context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               1, /* n_objects */
-                               reinterpret_cast<void* const*>(&_result_texture_view) );
 
     varia_skybox_release(_skybox);
     gfx_image_release   (_skybox_image);

@@ -199,12 +199,9 @@ typedef struct _postprocessing_blur_gaussian
         {
             gfx_state
         };
-        const ral_texture_view texture_views_to_release[] =
+        const ral_texture textures_to_release[] =
         {
-            ping_pong_rt_view_l0,
-            ping_pong_rt_view_l012,
-            ping_pong_rt_view_l1,
-            ping_pong_rt_view_l2,
+            ping_pong_rt,
         };
         const ral_sampler samplers_to_release[] =
         {
@@ -212,10 +209,10 @@ typedef struct _postprocessing_blur_gaussian
             sampler_blur_nearest
         };
 
-        const uint32_t n_buffers_to_release       = sizeof(buffers_to_release)       / sizeof(buffers_to_release      [0]);
-        const uint32_t n_gfx_states_to_release    = sizeof(gfx_states_to_release)    / sizeof(gfx_states_to_release   [0]);
-        const uint32_t n_samplers_to_release      = sizeof(samplers_to_release)      / sizeof(samplers_to_release     [0]);
-        const uint32_t n_texture_views_to_release = sizeof(texture_views_to_release) / sizeof(texture_views_to_release[0]);
+        const uint32_t n_buffers_to_release    = sizeof(buffers_to_release)    / sizeof(buffers_to_release   [0]);
+        const uint32_t n_gfx_states_to_release = sizeof(gfx_states_to_release) / sizeof(gfx_states_to_release[0]);
+        const uint32_t n_samplers_to_release   = sizeof(samplers_to_release)   / sizeof(samplers_to_release  [0]);
+        const uint32_t n_textures_to_release   = sizeof(textures_to_release)   / sizeof(textures_to_release  [0]);
 
         if (cached_command_buffer != nullptr)
         {
@@ -247,9 +244,9 @@ typedef struct _postprocessing_blur_gaussian
         }
 
         ral_context_delete_objects(context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                   n_texture_views_to_release,
-                                   reinterpret_cast<void* const*>(texture_views_to_release) );
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   n_textures_to_release,
+                                   reinterpret_cast<void* const*>(textures_to_release) );
 
         if (po != nullptr)
         {
@@ -1106,23 +1103,10 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
             ping_pong_rt_size[0] != dst_src_texture_view_width  ||
             ping_pong_rt_size[1] != dst_src_texture_view_height)
         {
-            const ral_texture_view ping_pong_rt_views[] =
-            {
-                blur_ptr->ping_pong_rt_view_l0,
-                blur_ptr->ping_pong_rt_view_l012,
-                blur_ptr->ping_pong_rt_view_l1,
-                blur_ptr->ping_pong_rt_view_l2,
-            };
-            const uint32_t n_ping_pong_rt_views = sizeof(ping_pong_rt_views) / sizeof(ping_pong_rt_views[0]);
-
             ral_context_delete_objects(blur_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                        1, /* n_objects */
                                        reinterpret_cast<void* const*>(&blur_ptr->ping_pong_rt) );
-            ral_context_delete_objects(blur_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                       n_ping_pong_rt_views,
-                                       reinterpret_cast<void* const*>(ping_pong_rt_views) );
 
             blur_ptr->ping_pong_rt           = nullptr;
             blur_ptr->ping_pong_rt_view_l0   = nullptr;

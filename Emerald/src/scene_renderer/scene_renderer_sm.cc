@@ -1396,16 +1396,7 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         {
             handler_ptr->current_sm_depth_l0_texture_view = handler_ptr->current_sm_depth_texture_view;
             handler_ptr->current_sm_depth_l1_texture_view = nullptr;
-
-            ral_context_retain_object(handler_ptr->context,
-                                      RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                      handler_ptr->current_sm_depth_texture_view);
         }
-
-        ral_context_delete_objects(handler_ptr->context,
-                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                   1, /* n_objects */
-                                   reinterpret_cast<void* const*>(&sm_depth_texture) );
 
         if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
         {
@@ -1472,16 +1463,7 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
             {
                 handler_ptr->current_sm_color0_l0_texture_view = handler_ptr->current_sm_color0_texture_view;
                 handler_ptr->current_sm_color0_l1_texture_view = nullptr;
-
-                ral_context_retain_object(handler_ptr->context,
-                                          RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                          handler_ptr->current_sm_color0_texture_view);
             }
-
-            ral_context_delete_objects(handler_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                       1, /* n_objects */
-                                       reinterpret_cast<void* const*>(&sm_color_texture) );
         }
 
         scene_light_set_property(light,
@@ -1776,29 +1758,44 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
                           "TODO: Implement");
     }
 
-    /* "Specialized" views are not shared with external objects, and therefore need to be
-     * released explicitly */
-    ral_texture_view tvs_to_release[] =
+    /* "Unbind" the SM texture from the scene_renderer_sm instance */
+    ral_texture_view ref_texture_views[] =
     {
         handler_ptr->current_sm_color0_texture_view,
-        handler_ptr->current_sm_color0_l0_texture_view,
-        handler_ptr->current_sm_color0_l1_texture_view,
-        handler_ptr->current_sm_depth_texture_view,
-        handler_ptr->current_sm_depth_l0_texture_view,
-        handler_ptr->current_sm_depth_l1_texture_view,
+        handler_ptr->current_sm_depth_texture_view
     };
-    const uint32_t n_tvs_to_release = sizeof(tvs_to_release) / sizeof(tvs_to_release[0]);
+    const uint32_t n_ref_texture_views = sizeof(ref_texture_views) / sizeof(ref_texture_views[0]);
 
-    ral_context_delete_objects(handler_ptr->context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               n_tvs_to_release,
-                               reinterpret_cast<void* const*>(tvs_to_release) );
+    for (uint32_t n_ref_texture_view = 0;
+                  n_ref_texture_view < n_ref_texture_views;
+                ++n_ref_texture_view)
+    {
+        ral_context            parent_context   = nullptr;
+        ral_texture            parent_texture   = nullptr;
+        const ral_texture_view ref_texture_view = ref_texture_views[n_ref_texture_view];
 
-    /* "Unbind" the SM texture from the scene_renderer_sm instance */
+        if (ref_texture_view == nullptr)
+        {
+            continue;
+        }
+
+        ral_texture_view_get_property(ref_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                     &parent_context);
+        ral_texture_view_get_property(ref_texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &parent_texture);
+
+        ral_context_delete_objects(parent_context,
+                                   RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                   1, /* n_objects */
+                                   reinterpret_cast<void* const*>(&parent_texture) );
+    }
+
     handler_ptr->current_sm_color0_texture_view    = nullptr;
-    handler_ptr->current_sm_depth_texture_view     = nullptr;
     handler_ptr->current_sm_color0_l0_texture_view = nullptr;
     handler_ptr->current_sm_color0_l1_texture_view = nullptr;
+    handler_ptr->current_sm_depth_texture_view     = nullptr;
     handler_ptr->current_sm_depth_l0_texture_view  = nullptr;
     handler_ptr->current_sm_depth_l1_texture_view  = nullptr;
 

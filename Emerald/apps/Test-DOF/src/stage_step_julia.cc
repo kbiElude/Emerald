@@ -433,14 +433,8 @@ PUBLIC void stage_step_julia_deinit(ral_context context)
         _julia_color_rt,
         _julia_depth_rt
     };
-    const ral_texture_view texture_views[] = 
-    {
-        _julia_color_rt_view,
-        _julia_depth_rt_view
-    };
 
-    const uint32_t n_textures      = sizeof(textures)      / sizeof(textures     [0]);
-    const uint32_t n_texture_views = sizeof(texture_views) / sizeof(texture_views[0]);
+    const uint32_t n_textures = sizeof(textures) / sizeof(textures[0]);
 
     ral_context_delete_objects(context,
                                RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
@@ -454,10 +448,6 @@ PUBLIC void stage_step_julia_deinit(ral_context context)
                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                n_textures,
                                reinterpret_cast<void* const*>(textures) );
-    ral_context_delete_objects(context,
-                               RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                               n_texture_views,
-                               reinterpret_cast<void* const*>(texture_views) );
 
     procedural_mesh_sphere_release(_julia_sphere);
     system_matrix4x4_release      (_julia_view_matrix);
