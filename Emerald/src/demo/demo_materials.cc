@@ -923,11 +923,13 @@ PRIVATE system_hashed_ansi_string _demo_materials_get_uber_name(mesh_material ma
                                MESH_MATERIAL_PROPERTY_NAME,
                               &material_name);
 
+#if 0
     /* Prefix */
     name_sstream << "\n"
                  << "Material name:["
                  << system_hashed_ansi_string_get_buffer(material_name)
                  << "]\n";
+#endif
 
     /* Type */
     mesh_material_type material_type = MESH_MATERIAL_TYPE_UNDEFINED;

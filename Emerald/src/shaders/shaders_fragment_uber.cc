@@ -1315,18 +1315,6 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
     glsl_shader_constructor                  shader_constructor            = nullptr;
     ral_shader_create_info                   shader_create_info;
 
-    /* Create a new ral_shader instance only if one is not already registered */
-    if ((ral_context_get_shader_by_name(context,
-                                        ral_shader_instance_name)) != nullptr)
-    {
-        /* It is an error if a shader with the same name already exists. */
-        ASSERT_DEBUG_SYNC(false,
-                          "A RAL shader named [%s] already exists!",
-                          system_hashed_ansi_string_get_buffer(ral_shader_instance_name) );
-
-        goto end;
-    }
-
     /* Initialize the shader constructor */
     shader_constructor = glsl_shader_constructor_create(RAL_SHADER_TYPE_FRAGMENT,
                                                         system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
@@ -1391,27 +1379,37 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(ral_contex
                                               system_hashed_ansi_string_create("vec3 normal     = normalize(out_vs_normal);\n"
                                                                                "result_fragment = vec4(0, 0, 0, 1);\n") );
 
-    /* Spawn a new RAL shader instance */
-    system_hashed_ansi_string shader_body = glsl_shader_constructor_get_shader_body(shader_constructor);
-
-    shader_create_info.name   = ral_shader_instance_name;
-    shader_create_info.source = RAL_SHADER_SOURCE_GLSL;
-    shader_create_info.type   = RAL_SHADER_TYPE_FRAGMENT;
-
-    if (!ral_context_create_shaders(context,
-                                    1, /* n_create_info_items */
-                                   &shader_create_info,
-                                   &embedded_shader) )
+    /* Create a new ral_shader instance only if one is not already registered */
+    if ((embedded_shader = ral_context_get_shader_by_name(context,
+                                                          ral_shader_instance_name)) == nullptr)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not create a new ral_shader instance for a uber fragment shader.");
+        system_hashed_ansi_string shader_body = glsl_shader_constructor_get_shader_body(shader_constructor);
 
-        goto end;
+        shader_create_info.name   = ral_shader_instance_name;
+        shader_create_info.source = RAL_SHADER_SOURCE_GLSL;
+        shader_create_info.type   = RAL_SHADER_TYPE_FRAGMENT;
+
+        if (!ral_context_create_shaders(context,
+                                        1, /* n_create_info_items */
+                                       &shader_create_info,
+                                       &embedded_shader) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not create a new ral_shader instance for a uber fragment shader.");
+
+            goto end;
+        }
+
+        ral_shader_set_property(embedded_shader,
+                                RAL_SHADER_PROPERTY_GLSL_BODY,
+                               &shader_body);
     }
-
-    ral_shader_set_property(embedded_shader,
-                            RAL_SHADER_PROPERTY_GLSL_BODY,
-                           &shader_body);
+    else
+    {
+        ral_context_retain_object(context,
+                                  RAL_CONTEXT_OBJECT_TYPE_SHADER,
+                                  embedded_shader);
+    }
 
     /* Everything went okay. Instantiate the object */
     result_object_ptr = new (std::nothrow) _shaders_fragment_uber;
@@ -1460,7 +1458,7 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(shaders_fragment_ube
                                                 item_id,
                                                &item_ptr) )
     {
-        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%u]",
+        LOG_ERROR("Could not retrieve uber fragment shader item type at index [%u]",
                   item_id);
 
         goto end;

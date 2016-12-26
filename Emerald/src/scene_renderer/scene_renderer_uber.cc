@@ -1325,12 +1325,8 @@ PUBLIC scene_renderer_uber scene_renderer_uber_create(ral_context               
 
     if (result_ptr != nullptr)
     {
-        result_ptr->shader_fragment = shaders_fragment_uber_create(context,
-                                                                   name);
-        result_ptr->shader_vertex   = shaders_vertex_uber_create  (context,
-                                                                   name);
-        result_ptr->type            = SCENE_RENDERER_UBER_TYPE_REGULAR;
-        result_ptr->variant_float   = system_variant_create       (SYSTEM_VARIANT_FLOAT);
+        result_ptr->type          = SCENE_RENDERER_UBER_TYPE_REGULAR;
+        result_ptr->variant_float = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_ptr,
                                                        _scene_renderer_uber_release,
@@ -1338,32 +1334,50 @@ PUBLIC scene_renderer_uber scene_renderer_uber_create(ral_context               
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Renderer Ubers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
-        /* Create a program with the shaders we were provided */
-        ral_program_create_info program_create_info;
+        /* Create a program with the shaders we were provided if necessary. */
+        result_ptr->program = ral_context_get_program_by_name(context,
+                                                              name);
 
-        program_create_info.active_shader_stages = RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX;
-        program_create_info.name                 = name;
+        /** TODO: These should be reusable across uber instances */
+        result_ptr->shader_fragment = shaders_fragment_uber_create(context,
+                                                                   name);
+        result_ptr->shader_vertex   = shaders_vertex_uber_create  (context,
+                                                                   name);
 
-        ral_context_create_programs(context,
-                                    1, /* n_create_info_items */
-                                   &program_create_info,
-                                   &result_ptr->program);
-
-        ASSERT_ALWAYS_SYNC(result_ptr->program != nullptr,
-                           "Cannot instantiate uber program");
-
-        if (result_ptr->program != nullptr)
+        if (result_ptr->program == nullptr)
         {
-            if (!ral_program_attach_shader(result_ptr->program,
-                                           shaders_fragment_uber_get_shader(result_ptr->shader_fragment),
-                                           true /* async */) ||
-                !ral_program_attach_shader(result_ptr->program,
-                                           shaders_vertex_uber_get_shader(result_ptr->shader_vertex),
-                                           true /* async */) )
+            ral_program_create_info program_create_info;
+
+            program_create_info.active_shader_stages = RAL_PROGRAM_SHADER_STAGE_BIT_FRAGMENT | RAL_PROGRAM_SHADER_STAGE_BIT_VERTEX;
+            program_create_info.name                 = name;
+
+            ral_context_create_programs(context,
+                                        1, /* n_create_info_items */
+                                       &program_create_info,
+                                       &result_ptr->program);
+
+            ASSERT_ALWAYS_SYNC(result_ptr->program != nullptr,
+                               "Cannot instantiate uber program");
+
+            if (result_ptr->program != nullptr)
             {
-                ASSERT_ALWAYS_SYNC(false,
-                                   "Cannot attach shader(s) to uber program");
+                if (!ral_program_attach_shader(result_ptr->program,
+                                               shaders_fragment_uber_get_shader(result_ptr->shader_fragment),
+                                               true /* async */) ||
+                    !ral_program_attach_shader(result_ptr->program,
+                                               shaders_vertex_uber_get_shader(result_ptr->shader_vertex),
+                                               true /* async */) )
+                {
+                    ASSERT_ALWAYS_SYNC(false,
+                                       "Cannot attach shader(s) to uber program");
+                }
             }
+        }
+        else
+        {
+            ral_context_retain_object(context,
+                                      RAL_CONTEXT_OBJECT_TYPE_PROGRAM,
+                                      result_ptr->program);
         }
     }
 

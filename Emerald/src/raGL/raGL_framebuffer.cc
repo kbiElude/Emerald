@@ -264,6 +264,19 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
                     break;
                 }
 
+                case RAL_TEXTURE_TYPE_2D_ARRAY:
+                {
+                    ASSERT_DEBUG_SYNC(!texture_view_raGL_is_rb,
+                                      "OpenGL does not support 2D array renderbuffers");
+
+                    entrypoints_dsa_ptr->pGLNamedFramebufferTextureEXT(args_ptr->fbo_ptr->id,
+                                                                       target_gl,
+                                                                       texture_view_raGL_id,
+                                                                       texture_view_n_base_mipmap);
+
+                    break;
+                }
+
                 default:
                 {
                     ASSERT_DEBUG_SYNC(false,

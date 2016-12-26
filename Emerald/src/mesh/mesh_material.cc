@@ -265,8 +265,12 @@ PRIVATE void _mesh_material_release(void* data_ptr)
 
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
-                    ral_texture parent_texture = nullptr;
+                    ral_texture parent_texture         = nullptr;
+                    ral_context parent_texture_context = nullptr;
 
+                    ral_texture_view_get_property(material_ptr->shading_properties[current_property].texture_data.texture_view,
+                                                  RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                                 &parent_texture_context);
                     ral_texture_view_get_property(material_ptr->shading_properties[current_property].texture_data.texture_view,
                                                   RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
                                                  &parent_texture);
@@ -275,7 +279,7 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                                                RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
                                                1, /* n_objects */
                                                reinterpret_cast<void* const*>(&material_ptr->shading_properties[current_property].texture_data.sampler) );
-                    ral_context_delete_objects(material_ptr->context,
+                    ral_context_delete_objects(parent_texture_context,
                                                RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                                1, /* n_objects */
                                                reinterpret_cast<void* const*>(&parent_texture) );
@@ -595,8 +599,22 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(system_hashed_ansi_st
                 else
                 if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
                 {
-                    shading_property.texture_data.sampler      = nullptr;
-                    shading_property.texture_data.texture_view = nullptr;
+                    ral_texture parent_texture         = nullptr;
+                    ral_context parent_texture_context = nullptr;
+
+                    ral_texture_view_get_property(shading_property.texture_data.texture_view,
+                                                  RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                                 &parent_texture_context);
+                    ral_texture_view_get_property(shading_property.texture_data.texture_view,
+                                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                 &parent_texture);
+
+                    ral_context_retain_object(src_material_ptr->context,
+                                              RAL_CONTEXT_OBJECT_TYPE_SAMPLER,
+                                              shading_property.texture_data.sampler);
+                    ral_context_retain_object(parent_texture_context,
+                                              RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                              parent_texture);
                 }
             }
         }
@@ -2000,6 +2018,22 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture_view(mesh_
     material_ptr->shading_properties[property].texture_data.mag_filter   = mag_filter;
     material_ptr->shading_properties[property].texture_data.min_filter   = min_filter;
     material_ptr->shading_properties[property].texture_data.texture_view = texture_view;
+
+    {
+        ral_texture parent_texture         = nullptr;
+        ral_context parent_texture_context = nullptr;
+
+        ral_texture_view_get_property(texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_CONTEXT,
+                                     &parent_texture_context);
+        ral_texture_view_get_property(texture_view,
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &parent_texture);
+
+        ral_context_retain_object(parent_texture_context,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                  parent_texture);
+    }
 
     /* Cache the sampler object we will need to use for the sampling process.
      * Pass nullptr to all irrelevant arguments - we will use default state values

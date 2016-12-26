@@ -332,8 +332,8 @@ private:
                                                                                                                            : outputs_last_mapping_id_ptr;
                 const uint32_t                        n_max_ios              = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->n_total_unique_inputs
                                                                                                                            : in_create_info_ptr->n_total_unique_outputs;
-                const ral_present_task_group_mapping* mappings               = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->unique_input_to_ingroup_task_mapping :
-                                                                                                                             in_create_info_ptr->unique_output_to_ingroup_task_mapping;
+                const ral_present_task_group_mapping* mappings               = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->unique_input_to_ingroup_task_mapping
+                                                                                                                           : in_create_info_ptr->unique_output_to_ingroup_task_mapping;
                 const uint32_t                        n_mappings             = (io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? in_create_info_ptr->n_unique_input_to_ingroup_task_mappings
                                                                                                                            : in_create_info_ptr->n_unique_output_to_ingroup_task_mappings;
 
@@ -431,13 +431,13 @@ private:
                                                               RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                                               (void**) &current_io_object_type)     ||
                             !ral_present_task_get_io_property(last_io_user,
-                                                              RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
-                                                              io_last_mapping_id_ptr[mapping.group_task_io_index],
+                                                              io_type,
+                                                              mappings[io_last_mapping_id_ptr[mapping.group_task_io_index] ].present_task_io_index,
                                                               RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
                                                               (void**) &last_io_object)             ||
                             !ral_present_task_get_io_property(last_io_user,
-                                                              RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
-                                                              io_last_mapping_id_ptr[mapping.group_task_io_index],
+                                                              io_type,
+                                                              mappings[io_last_mapping_id_ptr[mapping.group_task_io_index] ].present_task_io_index,
                                                               RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                                               (void**) &last_io_object_type) )
                         {
@@ -1018,7 +1018,7 @@ PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_
             {
                 _ral_present_task*  current_subtask_ptr      = reinterpret_cast<_ral_present_task*>(group_task_ptr->group_task_subtasks[n_subtask]);
                 uint32_t            current_subtask_n_input  = 0;
-                const uint32_t&     current_subtask_n_inputs = (current_subtask_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? current_subtask_ptr->n_group_task_input_mappings
+                const uint32_t&     current_subtask_n_inputs = (current_subtask_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? current_subtask_ptr->n_group_task_unique_input_mappings
                                                                                                                           : current_subtask_ptr->n_inputs;
 
                 while (current_subtask_n_input < current_subtask_n_inputs)
