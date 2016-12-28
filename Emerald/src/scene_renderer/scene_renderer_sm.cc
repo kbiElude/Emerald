@@ -831,31 +831,6 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(gl
         }
     }
 
-#if 0
-    /* Min/max values may have been shuffled. Make sure the order is in place. */
-    if (result_min_ptr[0] > result_max_ptr[0])
-    {
-        float temp = result_max_ptr[0];
-
-        result_max_ptr[0] = result_min_ptr[0];
-        result_min_ptr[0] = temp;
-    }
-    if (result_min_ptr[1] > result_max_ptr[1])
-    {
-        float temp = result_max_ptr[1];
-
-        result_max_ptr[1] = result_min_ptr[1];
-        result_min_ptr[1] = temp;
-    }
-    if (result_min_ptr[2] > result_max_ptr[2])
-    {
-        float temp = result_max_ptr[2];
-
-        result_max_ptr[2] = result_min_ptr[2];
-        result_min_ptr[2] = temp;
-    }
-#endif
-
     ASSERT_DEBUG_SYNC(result_min_ptr[0] <= result_max_ptr[0] &&
                       result_min_ptr[1] <= result_max_ptr[1] &&
                       result_min_ptr[2] <= result_max_ptr[2],

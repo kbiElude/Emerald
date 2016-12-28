@@ -83,18 +83,20 @@ typedef struct _ogl_context_to_bindings
     ogl_context context;
     uint32_t    gl_max_texture_image_units_value;
     bool        is_arb_multi_bind_supported;
+    bool        is_ext_direct_state_access_supported;
 
     const ogl_context_gl_entrypoints_private* entrypoints_private_ptr;
 
     _ogl_context_to_bindings()
     {
-        context                            = nullptr;
-        entrypoints_private_ptr            = nullptr;
-        gl_max_texture_image_units_value   = 0;
-        is_arb_multi_bind_supported        = false;
-        sync_data_textures                 = nullptr;
-        texture_id_to_texture_metadata_map = nullptr;
-        texture_units                      = nullptr;
+        context                              = nullptr;
+        entrypoints_private_ptr              = nullptr;
+        gl_max_texture_image_units_value     = 0;
+        is_arb_multi_bind_supported          = false;
+        is_ext_direct_state_access_supported = false;
+        sync_data_textures                   = nullptr;
+        texture_id_to_texture_metadata_map   = nullptr;
+        texture_units                        = nullptr;
     }
 
     ~_ogl_context_to_bindings()
@@ -290,10 +292,18 @@ PRIVATE void _ogl_context_to_bindings_sync_non_multi_bind_process(ogl_context_to
 
                 if (binding_ptr->texture_context != binding_ptr->texture_local)
                 {
-                    /** TODO: This will crash without DSA support */
-                    bindings_ptr->entrypoints_private_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
-                                                                                  binding_target_gl,
-                                                                                  binding_ptr->texture_local);
+                    if (bindings_ptr->is_ext_direct_state_access_supported)
+                    {
+                        bindings_ptr->entrypoints_private_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
+                                                                                      binding_target_gl,
+                                                                                      binding_ptr->texture_local);
+                    }
+                    else
+                    {
+                        bindings_ptr->entrypoints_private_ptr->pGLActiveTexture(GL_TEXTURE0 + n_texture_unit);
+                        bindings_ptr->entrypoints_private_ptr->pGLBindTexture  (binding_target_gl,
+                                                                                binding_ptr->texture_local);
+                    }
 
                     /* Update internal representation */
                     binding_ptr->texture_context = binding_ptr->texture_local;
@@ -425,8 +435,12 @@ PUBLIC void ogl_context_to_bindings_init(ogl_context_to_bindings                
     bindings_ptr->gl_max_texture_image_units_value = limits_ptr->max_texture_image_units;
 
     /* Determine if GL_ARB_multi_bind is supported */
-    bindings_ptr->is_arb_multi_bind_supported = ogl_context_is_extension_supported(bindings_ptr->context,
-                                                                                   system_hashed_ansi_string_create("GL_ARB_multi_bind") );
+    ogl_context_get_property(bindings_ptr->context,
+                             OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_MULTI_BIND,
+                            &bindings_ptr->is_arb_multi_bind_supported);
+    ogl_context_get_property(bindings_ptr->context,
+                             OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_DIRECT_STATE_ACCESS,
+                            &bindings_ptr->is_ext_direct_state_access_supported);
 
     /* Initialize texture unit descriptors */
     ASSERT_ALWAYS_SYNC(limits_ptr->max_texture_image_units != 0,
@@ -611,10 +625,18 @@ PUBLIC void ogl_context_to_bindings_set_binding(ogl_context_to_bindings bindings
 
                 if (!texture_metadata_ptr->has_been_bound)
                 {
-                    bindings_ptr->entrypoints_private_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + texture_unit,
-                                                                                  target,
-                                                                                  texture);
-
+                    if (bindings_ptr->is_ext_direct_state_access_supported)
+                    {
+                        bindings_ptr->entrypoints_private_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + texture_unit,
+                                                                                      target,
+                                                                                      texture);
+                    }
+                    else
+                    {
+                        bindings_ptr->entrypoints_private_ptr->pGLActiveTexture(GL_TEXTURE0 + texture_unit);
+                        bindings_ptr->entrypoints_private_ptr->pGLBindTexture  (target,
+                                                                                texture);
+                    }
                     texture_metadata_ptr->has_been_bound = true;
                 }
             }
