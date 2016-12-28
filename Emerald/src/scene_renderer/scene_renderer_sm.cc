@@ -1448,7 +1448,7 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         if (light_shadow_map_cull_front_faces)
         {
             handler_ptr->current_gfx_state_create_info.culling   = true;
-            handler_ptr->current_gfx_state_create_info.cull_mode = RAL_CULL_MODE_FRONT;
+            handler_ptr->current_gfx_state_create_info.cull_mode = RAL_CULL_MODE_BACK;
         }
         else
         {

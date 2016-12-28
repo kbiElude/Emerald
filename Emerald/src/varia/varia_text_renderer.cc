@@ -45,13 +45,20 @@
 #define MAX_TEXT_LENGTH "256"
 
 /** Internal types */
+typedef enum
+{
+    DIRTY_STATUS_CLEAR,
+    DIRTY_STATUS_REALLOC_NEEDED,
+    DIRTY_STATUS_UPDATE_NEEDED
+} _dirty_status;
+
 typedef struct
 {
-    char*        data_buffer_contents;
-    uint32_t     data_buffer_contents_length;
-    uint32_t     data_buffer_contents_size;
-    bool         dirty;
-    unsigned int shader_storage_buffer_offset_alignment;
+    char*         data_buffer_contents;
+    uint32_t      data_buffer_contents_length;
+    uint32_t      data_buffer_contents_size;
+    _dirty_status dirty;
+    unsigned int  shader_storage_buffer_offset_alignment;
 
     ral_buffer data_buffer;
 
@@ -460,81 +467,94 @@ PRIVATE void _varia_text_renderer_prepare_vram_data_storage(_varia_text_renderer
     uint32_t n_text_strings     = 0;
     uint32_t summed_text_length = 0;
 
-    system_resizable_vector_get_property(text_ptr->strings,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_text_strings);
-
-    for (size_t n_text_string = 0;
-                n_text_string < n_text_strings;
-              ++n_text_string)
+    system_critical_section_enter(text_ptr->draw_cs);
     {
-        _varia_text_renderer_text_string* string_ptr = nullptr;
-
-        if (system_resizable_vector_get_element_at(text_ptr->strings,
-                                                   n_text_string,
-                                                  &string_ptr) )
+        if (text_ptr->dirty != DIRTY_STATUS_REALLOC_NEEDED)
         {
-            summed_text_length += string_ptr->string_length;
+            goto end;
         }
+
+        system_resizable_vector_get_property(text_ptr->strings,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_text_strings);
+
+        for (size_t n_text_string = 0;
+                    n_text_string < n_text_strings;
+                  ++n_text_string)
+        {
+            _varia_text_renderer_text_string* string_ptr = nullptr;
+
+            if (system_resizable_vector_get_element_at(text_ptr->strings,
+                                                       n_text_string,
+                                                      &string_ptr) )
+            {
+                summed_text_length += string_ptr->string_length;
+            }
+        }
+
+        if (text_ptr->data_buffer_contents_length < summed_text_length)
+        {
+            bool                   alloc_result;
+            ral_buffer_create_info alloc_info;
+
+            /* Need to reallocate */
+            if (text_ptr->data_buffer_contents != nullptr)
+            {
+                delete [] text_ptr->data_buffer_contents;
+
+                text_ptr->data_buffer_contents = nullptr;
+            }
+
+            text_ptr->data_buffer_contents_length = summed_text_length;
+            text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
+            text_ptr->data_buffer_contents        = reinterpret_cast<char*>(new (std::nothrow) char[text_ptr->data_buffer_contents_size]);
+
+            ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != nullptr,
+                               "Out of memory");
+
+            if (text_ptr->data_buffer_contents == nullptr)
+            {
+                return;
+            }
+
+            memset(text_ptr->data_buffer_contents,
+                   0,
+                   text_ptr->data_buffer_contents_size);
+
+            /* This implies we also need to resize the buffer object */
+            if (text_ptr->data_buffer != nullptr)
+            {
+                /* Free the region first */
+                ral_context_delete_objects(text_ptr->context,
+                                           RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                           1, /* n_buffers */
+                                           reinterpret_cast<void* const*>(&text_ptr->data_buffer) );
+
+                text_ptr->data_buffer = nullptr;
+            }
+
+            alloc_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
+            alloc_info.parent_buffer    = nullptr;
+            alloc_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
+            alloc_info.size             = text_ptr->data_buffer_contents_size;
+            alloc_info.start_offset     = 0;
+            alloc_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
+            alloc_info.user_queue_bits  = 0xFFFFFFFF;
+
+            alloc_result = ral_context_create_buffers(text_ptr->context,
+                                                      1, /* n_buffers */
+                                                     &alloc_info,
+                                                     &text_ptr->data_buffer);
+
+            ASSERT_DEBUG_SYNC(alloc_result,
+                              "Text data buffer allocation failed.");
+        }
+
+        text_ptr->dirty = DIRTY_STATUS_UPDATE_NEEDED;
     }
 
-    if (text_ptr->data_buffer_contents_length < summed_text_length)
-    {
-        bool                   alloc_result;
-        ral_buffer_create_info alloc_info;
-
-        /* Need to reallocate */
-        if (text_ptr->data_buffer_contents != nullptr)
-        {
-            delete [] text_ptr->data_buffer_contents;
-
-            text_ptr->data_buffer_contents = nullptr;
-        }
-
-        text_ptr->data_buffer_contents_length = summed_text_length;
-        text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
-        text_ptr->data_buffer_contents        = reinterpret_cast<char*>(new (std::nothrow) char[text_ptr->data_buffer_contents_size]);
-
-        ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != nullptr,
-                           "Out of memory");
-
-        if (text_ptr->data_buffer_contents == nullptr)
-        {
-            return;
-        }
-
-        memset(text_ptr->data_buffer_contents,
-               0,
-               text_ptr->data_buffer_contents_size);
-
-        /* This implies we also need to resize the buffer object */
-        if (text_ptr->data_buffer != nullptr)
-        {
-            /* Free the region first */
-            ral_context_delete_objects(text_ptr->context,
-                                       RAL_CONTEXT_OBJECT_TYPE_BUFFER,
-                                       1, /* n_buffers */
-                                       reinterpret_cast<void* const*>(&text_ptr->data_buffer) );
-
-            text_ptr->data_buffer = nullptr;
-        }
-
-        alloc_info.mappability_bits = RAL_BUFFER_MAPPABILITY_NONE;
-        alloc_info.parent_buffer    = nullptr;
-        alloc_info.property_bits    = RAL_BUFFER_PROPERTY_SPARSE_IF_AVAILABLE_BIT;
-        alloc_info.size             = text_ptr->data_buffer_contents_size;
-        alloc_info.start_offset     = 0;
-        alloc_info.usage_bits       = RAL_BUFFER_USAGE_SHADER_STORAGE_BUFFER_BIT;
-        alloc_info.user_queue_bits  = 0xFFFFFFFF;
-
-        alloc_result = ral_context_create_buffers(text_ptr->context,
-                                                  1, /* n_buffers */
-                                                 &alloc_info,
-                                                 &text_ptr->data_buffer);
-
-        ASSERT_DEBUG_SYNC(alloc_result,
-                          "Text data buffer allocation failed.");
-    }
+end:
+    system_critical_section_leave(text_ptr->draw_cs);
 }
 
 /** Please see header for specification */
@@ -663,8 +683,25 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(voi
     std::vector<std::shared_ptr<ral_buffer_client_sourced_update_info> > data_update_ptrs;
     _varia_text_renderer*                                                text_ptr     = reinterpret_cast<_varia_text_renderer*>(text_raw_ptr);
 
-    if (!text_ptr->dirty)
+    if (text_ptr->dirty == DIRTY_STATUS_CLEAR)
     {
+        goto end;
+    }
+
+    if (text_ptr->dirty == DIRTY_STATUS_REALLOC_NEEDED)
+    {
+        /* tl;dr: This is not critical.
+         *
+         * The problem here is that RAL buffer has a predefined size, and when a new text string is added,
+         * or an existing one is modified, more space than initially requested may be needed. Now, the
+         * events can happen at CPU callback time, which is when the frame is being rendered. Since RAL buffers
+         * do not support dynamic resizing at the time of writing, we need to defer the task of updating data
+         * buffer's contents until the RAL buffer is re-created.
+         *
+         * Adding dynamic buffer resizing requires changes to RAL + backends, so this is deferred for now.
+         */
+        LOG_ERROR("_varia_text_renderer_update_vram_data_storage_cpu_task_callback() called without a preceding mem realloc. Skipping an update.")
+
         goto end;
     }
 
@@ -726,6 +763,9 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(voi
         }
     }
 
+    ASSERT_DEBUG_SYNC(reinterpret_cast<char*>(character_data_traveller_ptr) - text_ptr->data_buffer_contents <= text_ptr->data_buffer_contents_size,
+                      "Buffer overflow detected");
+
     /* Upload the data */
     data_update.data         = text_ptr->data_buffer_contents;
     data_update.data_size    = text_ptr->data_buffer_contents_size;
@@ -739,8 +779,9 @@ PRIVATE void _varia_text_renderer_update_vram_data_storage_cpu_task_callback(voi
                                            false, /* async */
                                            false  /* sync_other_contexts */);
 
+    text_ptr->dirty = DIRTY_STATUS_CLEAR;
+
 end:
-    text_ptr->dirty = false;
     ;
 }
 
@@ -776,7 +817,6 @@ PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_st
         text_string_ptr->string_length           = 0;
         text_string_ptr->width_px                = 0;
         text_string_ptr->visible                 = true;
-        text_ptr->dirty                          = true;
         text_ptr->last_cached_present_task_dirty = true;
 
         system_resizable_vector_get_property(text_ptr->strings,
@@ -785,6 +825,8 @@ PUBLIC EMERALD_API varia_text_renderer_text_string_id varia_text_renderer_add_st
 
         system_critical_section_enter(text_ptr->draw_cs);
         {
+            text_ptr->dirty = DIRTY_STATUS_REALLOC_NEEDED;
+
             system_resizable_vector_push(text_ptr->strings,
                                          text_string_ptr);
         }
@@ -1434,6 +1476,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
                                                 const char*                        raw_text_ptr)
 {
     size_t                            raw_text_length = 0;
+    bool                              realloc_needed  = false;
     _varia_text_renderer*             text_ptr        = reinterpret_cast<_varia_text_renderer*>(text);
     _varia_text_renderer_text_string* text_string_ptr = nullptr;
 
@@ -1497,12 +1540,7 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
             text_string_ptr->string = nullptr;
         }
 
-        if (raw_text_length == 0)
-        {
-            raw_text_length = 1;
-        }
-
-        text_string_ptr->string_buffer_length = (unsigned int) raw_text_length * 2;
+        text_string_ptr->string_buffer_length = (unsigned int) raw_text_length + 1;
         text_string_ptr->string               = new (std::nothrow) unsigned char[text_string_ptr->string_buffer_length];
 
         ASSERT_ALWAYS_SYNC(text_string_ptr->string != nullptr,
@@ -1514,6 +1552,8 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
 
             goto end;
         }
+
+        realloc_needed = true;
     }
 
     if (text_string_ptr->string != nullptr)
@@ -1532,7 +1572,15 @@ PUBLIC EMERALD_API void varia_text_renderer_set(varia_text_renderer             
     }
 
     /* We'll need to rebuild the internal data structure at next draw call. Update the dirty flag */
-    text_ptr->dirty = true;
+    if (realloc_needed)
+    {
+        text_ptr->dirty = DIRTY_STATUS_REALLOC_NEEDED;
+    }
+    else
+    if (text_ptr->dirty != DIRTY_STATUS_REALLOC_NEEDED)
+    {
+        text_ptr->dirty = DIRTY_STATUS_UPDATE_NEEDED;
+    }
 
 end:
     system_critical_section_leave(text_ptr->draw_cs);
@@ -1655,5 +1703,8 @@ PUBLIC EMERALD_API void varia_text_renderer_set_text_string_property(varia_text_
         }
     }
 
-    text_ptr->dirty = true;
+    if (text_ptr->dirty != DIRTY_STATUS_REALLOC_NEEDED)
+    {
+        text_ptr->dirty = DIRTY_STATUS_UPDATE_NEEDED;
+    }
 }
