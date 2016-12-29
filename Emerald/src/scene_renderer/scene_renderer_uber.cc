@@ -3341,7 +3341,6 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
 
     ral_command_buffer_start_recording(uber_ptr->preamble_command_buffer);
     {
-        /* Activate the uber program */
         ral_command_buffer_record_set_program(uber_ptr->preamble_command_buffer,
                                               uber_ptr->program);
 

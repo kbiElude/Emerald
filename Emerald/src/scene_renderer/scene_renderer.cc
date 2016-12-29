@@ -8,6 +8,7 @@
 #include "demo/demo_app.h"
 #include "demo/demo_materials.h"
 #include "mesh/mesh_material.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
 #include "ral/ral_present_task.h"
 #include "ral/ral_program.h"
@@ -2998,25 +2999,57 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
                          renderer,
                          frame_time);
 
-    /* Prepare a reference gfx state create info configuration */
-    ral_gfx_state_create_info ref_gfx_state_create_info;
-
-    ref_gfx_state_create_info.culling               = true;
-    ref_gfx_state_create_info.depth_test            = true;
-    ref_gfx_state_create_info.depth_test_compare_op = RAL_COMPARE_OP_LESS;
-    ref_gfx_state_create_info.depth_writes          = (depth_rt != nullptr);
-
     /* 2. Start uber rendering. Issue as many render requests as there are materials. */
     if (render_mode == RENDER_MODE_SHADOW_MAP)
     {
         result_present_task = scene_renderer_sm_render_shadow_map_meshes(renderer_ptr->shadow_mapping,
                                                                          renderer,
                                                                          renderer_ptr->owned_scene,
-                                                                         frame_time,
-                                                                        &ref_gfx_state_create_info);
+                                                                         frame_time);
     }
     else
     {
+        ral_gfx_state_create_info                       ref_gfx_state_create_info;
+        ral_command_buffer_set_scissor_box_command_info scissor_box;
+        ral_command_buffer_set_viewport_command_info    viewport;
+        uint32_t                                        viewport_size[2];
+
+        ral_texture_view_get_mipmap_property(color_rt,
+                                             0, /* n_layer */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                             viewport_size + 0);
+        ral_texture_view_get_mipmap_property(color_rt,
+                                             0, /* n_layer */
+                                             0, /* n_mipmap */
+                                             RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                             viewport_size + 1);
+
+        scissor_box.index   = 0;
+        scissor_box.size[0] = viewport_size[0];
+        scissor_box.size[1] = viewport_size[1];
+        scissor_box.xy  [0] = 0;
+        scissor_box.xy  [1] = 0;
+
+        viewport.depth_range[0] = 0.0f;
+        viewport.depth_range[1] = 1.0f;
+        viewport.index          = 0;
+        viewport.size[0]        = static_cast<float>(viewport_size[0]);
+        viewport.size[1]        = static_cast<float>(viewport_size[1]);
+        viewport.xy  [0]        = 0;
+        viewport.xy  [1]        = 0;
+
+        ref_gfx_state_create_info.culling                              = true;
+        ref_gfx_state_create_info.depth_test                           = true;
+        ref_gfx_state_create_info.depth_test_compare_op                = RAL_COMPARE_OP_LESS;
+        ref_gfx_state_create_info.depth_writes                         = (depth_rt != nullptr);
+        ref_gfx_state_create_info.scissor_test                         = true;
+        ref_gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
+        ref_gfx_state_create_info.static_scissor_boxes                 = &scissor_box;
+        ref_gfx_state_create_info.static_scissor_boxes_enabled         = true;
+        ref_gfx_state_create_info.static_viewports                     = &viewport;
+        ref_gfx_state_create_info.static_viewports_enabled             = true;
+
         result_present_task = _scene_renderer_render_traversed_scene_graph(renderer_ptr,
                                                                            render_mode,
                                                                            frame_time,

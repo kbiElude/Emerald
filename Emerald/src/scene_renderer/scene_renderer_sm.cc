@@ -26,6 +26,7 @@
 #include "scene_renderer/scene_renderer.h"
 #include "scene_renderer/scene_renderer_sm.h"
 #include "scene_renderer/scene_renderer_uber.h"
+#include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_math_vector.h"
@@ -63,7 +64,6 @@ typedef struct _scene_renderer_sm
      * instance, for which the SMs are to be rendered. */
     scene_camera current_camera;
 
-    /** TODO */
     ral_gfx_state_create_info current_gfx_state_create_info;
 
     /** TODO */
@@ -1222,7 +1222,6 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
                                                            &light_shadow_map_texture_type,
                                                            &light_shadow_map_n_layer);
 
-    /* Create all texture views we're going to need */
     if (!handler_ptr->is_enabled)
     {
         ral_command_buffer_create_info   command_buffer_create_info;
@@ -1238,6 +1237,8 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         ral_texture                      sm_depth_texture                  = nullptr;
         ral_texture_create_info          sm_depth_texture_create_info;
         ral_texture_view_create_info     sm_depth_texture_view_create_info;
+
+        handler_ptr->current_gfx_state_create_info = ral_gfx_state_create_info();
 
         command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
         command_buffer_create_info.is_executable                           = true;
@@ -1442,13 +1443,13 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
 
         /* Set up color & depth masks */
         handler_ptr->current_gfx_state_create_info.depth_writes       = true;
-        handler_ptr->current_gfx_state_create_info.rasterizer_discard = (handler_ptr->current_sm_color0_l0_texture_view == nullptr);
+        handler_ptr->current_gfx_state_create_info.rasterizer_discard = false;
 
         /* render back-facing faces only: THIS WON'T WORK FOR NON-CONVEX GEOMETRY */
         if (light_shadow_map_cull_front_faces)
         {
             handler_ptr->current_gfx_state_create_info.culling   = true;
-            handler_ptr->current_gfx_state_create_info.cull_mode = RAL_CULL_MODE_BACK;
+            handler_ptr->current_gfx_state_create_info.cull_mode = RAL_CULL_MODE_FRONT;
         }
         else
         {
@@ -3476,8 +3477,7 @@ PUBLIC void scene_renderer_sm_release(scene_renderer_sm handler)
 PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm                shadow_mapping,
                                                                    scene_renderer                   renderer,
                                                                    scene                            scene,
-                                                                   system_time                      frame_time,
-                                                                   const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr)
+                                                                   system_time                      frame_time)
 {
     demo_materials      materials          = nullptr;
     ral_present_task    result_task        = nullptr;
@@ -3666,7 +3666,7 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
                                             sm_material_uber,
                                             nullptr, /* material */
                                             frame_time,
-                                            ref_gfx_state_create_info_ptr);
+                                           &shadow_mapping_ptr->current_gfx_state_create_info);
         }
     }
     result_task = scene_renderer_uber_rendering_stop(sm_material_uber);

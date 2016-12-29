@@ -155,8 +155,7 @@ PUBLIC void scene_renderer_sm_release(scene_renderer_sm handler);
 PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_renderer_sm                shadow_mapping,
                                                                    scene_renderer                   renderer,
                                                                    scene                            scene,
-                                                                   system_time                      frame_time,
-                                                                   const ral_gfx_state_create_info* ref_gfx_state_create_info_ptr);
+                                                                   system_time                      frame_time);
 
 /** TODO.
  *

@@ -69,6 +69,9 @@ typedef enum
      */
     SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,
 
+    /* Not settable, system_time */
+    SCENE_LIGHT_PROPERTY_LAST_MODIFICATION_TIME,
+
     /* Not settable, system_hashed_ansi_string */
     SCENE_LIGHT_PROPERTY_NAME,
 
@@ -88,7 +91,7 @@ typedef enum
      *
      * NOTE: This property is set during run-time by scene_renderer and is NOT
      *       serialized. It acts merely as a communication mean between the scene
-     *       graph traversation layer and actual renderer.
+     *       graph traversal layer and actual renderer.
      *
      * This property is only accepted for point & spot lights. Any attempt to access it
      * for a directional light will throw assertion failure. Getters will return
