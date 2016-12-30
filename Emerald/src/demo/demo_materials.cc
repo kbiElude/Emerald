@@ -9,6 +9,7 @@
 #include "demo/demo_window.h"
 #include "mesh/mesh_material.h"
 #include "ral/ral_context.h"
+#include "ral/ral_program.h"
 #include "ral/ral_texture.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
@@ -942,163 +943,197 @@ PRIVATE system_hashed_ansi_string _demo_materials_get_uber_name(mesh_material ma
                  << system_hashed_ansi_string_get_buffer(mesh_material_get_mesh_material_type_has(material_type) )
                  << "]\n";
 
-    if (material_type == MESH_MATERIAL_TYPE_GENERAL)
+    switch (material_type)
     {
-        /* Shading */
-        mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
-
-        mesh_material_get_property(material,
-                                   MESH_MATERIAL_PROPERTY_SHADING,
-                                  &material_shading);
-
-        name_sstream << "Shading:["
-                     << system_hashed_ansi_string_get_buffer(mesh_material_get_mesh_material_shading_has(material_shading) )
-                     << "]\n";
-
-        /* Iterate over all shading properties, whose attachments are not MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE */
-        name_sstream << "Mesh material shading properties:\n>>\n";
-
-        for (mesh_material_shading_property current_property  = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
-                                            current_property != MESH_MATERIAL_SHADING_PROPERTY_COUNT;
-                                    ++(int&)current_property)
+        case MESH_MATERIAL_TYPE_GENERAL:
         {
-            mesh_material_property_attachment property_attachment = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                       current_property);
+            /* Shading */
+            mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
 
-            if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
+            mesh_material_get_property(material,
+                                       MESH_MATERIAL_PROPERTY_SHADING,
+                                      &material_shading);
+
+            name_sstream << "Shading:["
+                         << system_hashed_ansi_string_get_buffer(mesh_material_get_mesh_material_shading_has(material_shading) )
+                         << "]\n";
+
+            /* Iterate over all shading properties, whose attachments are not MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE */
+            name_sstream << "Mesh material shading properties:\n>>\n";
+
+            for (mesh_material_shading_property current_property  = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
+                                                current_property != MESH_MATERIAL_SHADING_PROPERTY_COUNT;
+                                        ++(int&)current_property)
             {
-                system_hashed_ansi_string current_attachment_has = mesh_material_get_mesh_material_property_attachment_has(property_attachment);
-                system_hashed_ansi_string current_property_has   = mesh_material_get_mesh_material_shading_property_has   (current_property);
+                mesh_material_property_attachment property_attachment = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                           current_property);
 
-                name_sstream << "Property ["
-                             << system_hashed_ansi_string_get_buffer(current_property_has)
-                             << "] uses an attachment of type ["
-                             << system_hashed_ansi_string_get_buffer(current_attachment_has)
-                             << "]\n";
+                if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
+                {
+                    system_hashed_ansi_string current_attachment_has = mesh_material_get_mesh_material_property_attachment_has(property_attachment);
+                    system_hashed_ansi_string current_property_has   = mesh_material_get_mesh_material_shading_property_has   (current_property);
+
+                    name_sstream << "Property ["
+                                 << system_hashed_ansi_string_get_buffer(current_property_has)
+                                 << "] uses an attachment of type ["
+                                 << system_hashed_ansi_string_get_buffer(current_attachment_has)
+                                 << "]\n";
+                }
             }
+
+            name_sstream << "<<\n\n";
+
+            /* Store material info details, if available */
+            if (material_shading != MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE &&
+                material_shading != MESH_MATERIAL_SHADING_NONE)
+            {
+                /* Light configuration */
+                unsigned int n_lights = 0;
+
+                scene_get_property(scene,
+                                   SCENE_PROPERTY_N_LIGHTS,
+                                  &n_lights);
+
+                name_sstream << "Lights:["
+                             << n_lights
+                             << "]:\n>>\n";
+
+                for (unsigned int n_light = 0;
+                                  n_light < n_lights;
+                                ++n_light)
+                {
+                    scene_light               current_light           = scene_get_light_by_index(scene,
+                                                                                                 n_light);
+                    bool                      current_light_is_caster = false;
+                    scene_light_type          current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
+                    system_hashed_ansi_string current_light_type_has  = nullptr;
+
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_TYPE,
+                                            &current_light_type);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
+                                            &current_light_is_caster);
+
+                    current_light_type_has = scene_light_get_scene_light_type_has(current_light_type);
+
+                    name_sstream << "Light ["
+                                 << n_light
+                                 << "] (type:["
+                                 << system_hashed_ansi_string_get_buffer(current_light_type_has)
+                                 << "]):\n";
+
+                    /* If this light is a caster, include SM-specific info */
+                    if (current_light_is_caster)
+                    {
+                        scene_light_shadow_map_algorithm shadow_map_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+                        system_hashed_ansi_string        shadow_map_algorithm_has = nullptr;
+                        scene_light_shadow_map_bias      shadow_map_bias          = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
+                        system_hashed_ansi_string        shadow_map_bias_has      = nullptr;
+                        scene_light_shadow_map_filtering shadow_map_filtering     = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
+                        system_hashed_ansi_string        shadow_map_filtering_has = nullptr;
+
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                                &shadow_map_algorithm);
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+                                                &shadow_map_bias);
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
+                                                &shadow_map_filtering);
+
+                        shadow_map_algorithm_has = scene_light_get_scene_light_shadow_map_algorithm_has(shadow_map_algorithm);
+                        shadow_map_bias_has      = scene_light_get_scene_light_shadow_map_bias_has     (shadow_map_bias);
+                        shadow_map_filtering_has = scene_light_get_scene_light_shadow_map_filtering_has(shadow_map_filtering);
+
+                        name_sstream << "Shadow caster: "
+                                        "algorithm:["
+                                     << system_hashed_ansi_string_get_buffer(shadow_map_algorithm_has)
+                                     << "] bias:["
+                                     << system_hashed_ansi_string_get_buffer(shadow_map_bias_has)
+                                     << "] filtering:["
+                                     << system_hashed_ansi_string_get_buffer(shadow_map_filtering_has)
+                                     << "]\n";
+                    }
+
+                    /* If this is a point or a spot light, include falloff setting */
+                    if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
+                        current_light_type == SCENE_LIGHT_TYPE_SPOT)
+                    {
+                        scene_light_falloff       current_light_falloff     = SCENE_LIGHT_FALLOFF_UNKNOWN;
+                        system_hashed_ansi_string current_light_falloff_has = nullptr;
+
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_FALLOFF,
+                                                &current_light_falloff);
+
+                        current_light_falloff_has = scene_light_get_scene_light_falloff_has(current_light_falloff);
+
+                        name_sstream << "Light falloff:["
+                                     << system_hashed_ansi_string_get_buffer(current_light_falloff_has)
+                                     << "]\n";
+                    }
+
+                    /* If this is a point light, also query the SM algorithm */
+                    if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+                    {
+                        scene_light_shadow_map_pointlight_algorithm sm_algorithm;
+                        system_hashed_ansi_string                   sm_algorithm_has;
+
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                                &sm_algorithm);
+
+                        sm_algorithm_has = scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(sm_algorithm);
+
+                        name_sstream << "SM pointlight algorithm:["
+                                     << system_hashed_ansi_string_get_buffer(sm_algorithm_has)
+                                     << "]\n";
+                    }
+
+                    name_sstream << "\n";
+                }
+            }
+
+            /* SM global setting */
+            name_sstream << "<<\n"
+                         << "\n"
+                         << "Global SM setting:["
+                         << ((use_shadow_maps) ? "ON" : "OFF")
+                         << "]\n";
+
+            break;
         }
 
-        name_sstream << "<<\n\n";
-
-        /* Store material info details, if available */
-        if (material_shading != MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE &&
-            material_shading != MESH_MATERIAL_SHADING_NONE)
+        case MESH_MATERIAL_TYPE_PROGRAM:
         {
-            /* Light configuration */
-            unsigned int n_lights = 0;
+            ral_program               material_program      = nullptr;
+            system_hashed_ansi_string material_program_name = nullptr;
 
-            scene_get_property(scene,
-                               SCENE_PROPERTY_N_LIGHTS,
-                              &n_lights);
+            mesh_material_get_property(material,
+                                       MESH_MATERIAL_PROPERTY_SOURCE_RAL_PROGRAM,
+                                      &material_program);
 
-            name_sstream << "Lights:["
-                         << n_lights
-                         << "]:\n>>\n";
+            ASSERT_DEBUG_SYNC(material_program != nullptr,
+                              "Null RAL program associated to a program mesh_material instance");
 
-            for (unsigned int n_light = 0;
-                              n_light < n_lights;
-                            ++n_light)
-            {
-                scene_light               current_light           = scene_get_light_by_index(scene,
-                                                                                             n_light);
-                bool                      current_light_is_caster = false;
-                scene_light_type          current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
-                system_hashed_ansi_string current_light_type_has  = nullptr;
+            ral_program_get_property(material_program,
+                                     RAL_PROGRAM_PROPERTY_NAME,
+                                    &material_program_name);
 
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_TYPE,
-                                        &current_light_type);
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
-                                        &current_light_is_caster);
+            name_sstream << "Program name:["
+                         << system_hashed_ansi_string_get_buffer(material_program_name)
+                         << "]";
 
-                current_light_type_has = scene_light_get_scene_light_type_has(current_light_type);
-
-                name_sstream << "Light ["
-                             << n_light
-                             << "] (type:["
-                             << system_hashed_ansi_string_get_buffer(current_light_type_has)
-                             << "]):\n";
-
-                /* If this light is a caster, include SM-specific info */
-                if (current_light_is_caster)
-                {
-                    scene_light_shadow_map_algorithm shadow_map_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
-                    system_hashed_ansi_string        shadow_map_algorithm_has = nullptr;
-                    scene_light_shadow_map_bias      shadow_map_bias          = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
-                    system_hashed_ansi_string        shadow_map_bias_has      = nullptr;
-                    scene_light_shadow_map_filtering shadow_map_filtering     = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
-                    system_hashed_ansi_string        shadow_map_filtering_has = nullptr;
-
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
-                                            &shadow_map_algorithm);
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
-                                            &shadow_map_bias);
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
-                                            &shadow_map_filtering);
-
-                    shadow_map_algorithm_has = scene_light_get_scene_light_shadow_map_algorithm_has(shadow_map_algorithm);
-                    shadow_map_bias_has      = scene_light_get_scene_light_shadow_map_bias_has     (shadow_map_bias);
-                    shadow_map_filtering_has = scene_light_get_scene_light_shadow_map_filtering_has(shadow_map_filtering);
-
-                    name_sstream << "Shadow caster: "
-                                    "algorithm:["
-                                 << system_hashed_ansi_string_get_buffer(shadow_map_algorithm_has)
-                                 << "] bias:["
-                                 << system_hashed_ansi_string_get_buffer(shadow_map_bias_has)
-                                 << "] filtering:["
-                                 << system_hashed_ansi_string_get_buffer(shadow_map_filtering_has)
-                                 << "]\n";
-                }
-
-                /* If this is a point or a spot light, include falloff setting */
-                if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
-                    current_light_type == SCENE_LIGHT_TYPE_SPOT)
-                {
-                    scene_light_falloff       current_light_falloff     = SCENE_LIGHT_FALLOFF_UNKNOWN;
-                    system_hashed_ansi_string current_light_falloff_has = nullptr;
-
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_FALLOFF,
-                                            &current_light_falloff);
-
-                    current_light_falloff_has = scene_light_get_scene_light_falloff_has(current_light_falloff);
-
-                    name_sstream << "Light falloff:["
-                                 << system_hashed_ansi_string_get_buffer(current_light_falloff_has)
-                                 << "]\n";
-                }
-
-                /* If this is a point light, also query the SM algorithm */
-                if (current_light_type == SCENE_LIGHT_TYPE_POINT)
-                {
-                    scene_light_shadow_map_pointlight_algorithm sm_algorithm;
-                    system_hashed_ansi_string                   sm_algorithm_has;
-
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
-                                            &sm_algorithm);
-
-                    sm_algorithm_has = scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(sm_algorithm);
-
-                    name_sstream << "SM pointlight algorithm:["
-                                 << system_hashed_ansi_string_get_buffer(sm_algorithm_has)
-                                 << "]\n";
-                }
-
-                name_sstream << "\n";
-            }
+            break;
         }
 
-        /* SM global setting */
-        name_sstream << "<<\n"
-                     << "\n"
-                     << "Global SM setting:["
-                     << ((use_shadow_maps) ? "ON" : "OFF")
-                     << "]\n";
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized material type");
+        }
     }
 
     name_string = name_sstream.str();

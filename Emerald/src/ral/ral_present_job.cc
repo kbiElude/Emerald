@@ -699,14 +699,17 @@ PUBLIC bool ral_present_job_flatten(ral_present_job job)
             uint32_t input_present_task_io_index;
             uint32_t output_present_task_index;
             uint32_t output_present_task_io_index;
+            bool     result_getter;
 
-            ral_present_task_get_ingroup_connection(task_ptr->task,
-                                                    n_connection,
-                                                   &input_present_task_index,
-                                                   &input_present_task_io_index,
-                                                   &output_present_task_index,
-                                                   &output_present_task_io_index);
+            result_getter = ral_present_task_get_ingroup_connection(task_ptr->task,
+                                                                    n_connection,
+                                                                   &input_present_task_index,
+                                                                   &input_present_task_io_index,
+                                                                   &output_present_task_index,
+                                                                   &output_present_task_io_index);
 
+            ASSERT_DEBUG_SYNC(result_getter,
+                              "ral_present_task_get_ingroup_connection() failed");
             ASSERT_DEBUG_SYNC(input_present_task_index  < n_subtasks &&
                               output_present_task_index < n_subtasks,
                               "Invalid IO referred to from an ingroup connection");

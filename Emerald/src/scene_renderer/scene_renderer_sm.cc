@@ -987,7 +987,7 @@ PRIVATE void _scene_renderer_sm_get_texture_targets_from_target_face(scene_rende
         case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR:
         {
             *out_texture_type_ptr = RAL_TEXTURE_TYPE_2D_ARRAY;
-            *out_n_layer_ptr      = 0;
+            *out_n_layer_ptr      = (target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT) ? 0 : 1;
 
             break;
         }
@@ -1450,7 +1450,7 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         if (light_shadow_map_cull_front_faces)
         {
             handler_ptr->current_gfx_state_create_info.culling   = true;
-            handler_ptr->current_gfx_state_create_info.cull_mode = RAL_CULL_MODE_FRONT;
+            handler_ptr->current_gfx_state_create_info.cull_mode = RAL_CULL_MODE_BACK;
         }
         else
         {
@@ -4067,6 +4067,8 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
             }
 
             /* Step 2) */
+            ral_present_task_ingroup_connection* current_connection_ptr = light_sm_present_task_connections;
+
             ral_present_task_get_property(init_present_task,
                                           RAL_PRESENT_TASK_PROPERTY_N_OUTPUTS,
                                          &n_init_present_task_outputs);
@@ -4075,8 +4077,7 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                           n_output < n_init_present_task_outputs;
                         ++n_output)
             {
-                ral_present_task_ingroup_connection* current_connection_ptr      = light_sm_present_task_connections;
-                ral_texture_view                     current_output_texture_view = nullptr;
+                ral_texture_view current_output_texture_view = nullptr;
 
                 ral_present_task_get_io_property(init_present_task,
                                                  RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
@@ -4229,31 +4230,30 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
         }
     }
 
-    /* Form the final present task - only needed if n_lights > 1*/
+    /* Form the final present task - only needed if n_lights > 1 */
     if (n_shadow_caster_lights > 1)
     {
-        #if 0
-            TODO: Try to re-use the logic implemented for per-light present task generation.
+        ral_present_task* in_present_tasks = reinterpret_cast<ral_present_task*>(_malloca(sizeof(ral_present_task) * n_shadow_caster_lights));
 
-            ral_present_task_group_create_info result_present_task_create_info;
+        for (uint32_t n_task = 0;
+                      n_task < n_shadow_caster_lights;
+                    ++n_task)
+        {
+            in_present_tasks[n_task] = per_light_present_tasks[shadow_caster_lights[n_task] ];
+        }
 
-            result_present_task_create_info.ingroup_connections                      = nullptr;
-            result_present_task_create_info.n_ingroup_connections                    = 0;
-            result_present_task_create_info.n_present_tasks                          = n_render_present_tasks_used;
-            result_present_task_create_info.n_total_unique_inputs                    = 0;
-            result_present_task_create_info.n_total_unique_outputs                   = n_lights * 2;
-            result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 0;
-            result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = n_result_present_task_mappings;
-            result_present_task_create_info.present_tasks                            = render_present_tasks;
-            result_present_task_create_info.unique_input_to_ingroup_task_mapping     = nullptr;
-            result_present_task_create_info.unique_output_to_ingroup_task_mapping    = result_present_task_mappings;
+        result_present_task = ral_present_task_create_black_box(system_hashed_ansi_string_create("Shadow maps: SM rasterization"),
+                                                                n_shadow_caster_lights,
+                                                                in_present_tasks);
 
-            result_present_task = ral_present_task_create_group(system_hashed_ansi_string_create("Shadow maps: rasterization"),
-                                                                &result_present_task_create_info);
-        #else
-            ASSERT_DEBUG_SYNC(false,
-                              "TODO");
-        #endif
+        for (uint32_t n_task = 0;
+                      n_task < n_shadow_caster_lights;
+                    ++n_task)
+        {
+            ral_present_task_release(in_present_tasks[n_task]);
+        }
+
+        _freea(in_present_tasks);
     }
     else
     {

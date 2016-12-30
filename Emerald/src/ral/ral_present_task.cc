@@ -1072,6 +1072,246 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_black_box(system_hashed_ansi_string name,
+                                                                      uint32_t                  n_present_tasks,
+                                                                      const ral_present_task*   present_tasks)
+{
+    ral_present_task_group_create_info group_create_info;
+    ral_present_task                   result;
+
+    ASSERT_DEBUG_SYNC(n_present_tasks > 1,
+                      "ral_present_task_create_black_box() should not be called for less than 2 present tasks.");
+
+    group_create_info.ingroup_connections                      = nullptr;
+    group_create_info.n_ingroup_connections                    = 0;
+    group_create_info.n_present_tasks                          = n_present_tasks;
+    group_create_info.n_total_unique_inputs                    = -1; /* filled later */
+    group_create_info.n_total_unique_outputs                   = -1; /* filled later */
+    group_create_info.n_unique_input_to_ingroup_task_mappings  = -1; /* filled later */
+    group_create_info.n_unique_output_to_ingroup_task_mappings = -1; /* filled later */
+    group_create_info.present_tasks                            = present_tasks;
+    group_create_info.unique_input_to_ingroup_task_mapping     = nullptr; /* filled later */
+    group_create_info.unique_output_to_ingroup_task_mapping    = nullptr; /* filled later */
+
+    /* 1. Prepare an array of unique inputs & outputs */
+    struct _unique_io
+    {
+        void*                   object;
+        ral_context_object_type type;
+    };
+
+    _unique_io* result_unique_inputs    = nullptr;
+    _unique_io* result_unique_outputs   = nullptr;
+    uint32_t    n_result_unique_inputs  = 0;
+    uint32_t    n_result_unique_outputs = 0;
+    uint32_t    n_total_unique_inputs   = 0;
+    uint32_t    n_total_unique_outputs  = 0;
+
+    for (uint32_t n_iteration = 0;
+                  n_iteration < 2;
+                ++n_iteration)
+    {
+        if (n_iteration == 1)
+        {
+            result_unique_inputs  = (n_total_unique_inputs  != 0) ? reinterpret_cast<_unique_io*>(_malloca(sizeof(_unique_io) * n_total_unique_inputs))
+                                                                  : nullptr;
+            result_unique_outputs = (n_total_unique_outputs != 0) ? reinterpret_cast<_unique_io*>(_malloca(sizeof(_unique_io) * n_total_unique_outputs))
+                                                                  : nullptr;
+        }
+
+        for (uint32_t n_present_task = 0;
+                      n_present_task < n_present_tasks;
+                    ++n_present_task)
+        {
+            const ral_present_task current_task     = present_tasks[n_present_task];
+            _ral_present_task*     current_task_ptr = reinterpret_cast<_ral_present_task*>(present_tasks[n_present_task]);
+
+            for (ral_present_task_io_type current_io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
+                                          current_io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
+                                  ++(int&)current_io_type)
+            {
+                uint32_t*   current_result_unique_io_count_ptr = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? &n_result_unique_inputs
+                                                                                                                     : &n_result_unique_outputs;
+                uint32_t*   current_total_unique_io_count_ptr  = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? &n_total_unique_inputs
+                                                                                                                     : &n_total_unique_outputs;
+                _unique_io* current_unique_ios                 = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ?  result_unique_inputs
+                                                                                                                     :  result_unique_outputs;
+
+                if (n_iteration == 0)
+                {
+                    if (current_task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP)
+                    {
+                        const uint32_t n_task_unique_io_mappings = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_group_task_unique_input_mappings
+                                                                                                                       : current_task_ptr->n_group_task_unique_output_mappings;
+
+                        *current_total_unique_io_count_ptr += n_task_unique_io_mappings;
+                    }
+                    else
+                    {
+                        const uint32_t n_task_ios = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_inputs
+                                                                                                        : current_task_ptr->n_outputs;
+
+                        *current_total_unique_io_count_ptr += n_task_ios;
+                    }
+                }
+                else
+                {
+                    const uint32_t n_task_ios = (current_task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_group_task_input_mappings
+                                                                                                                                                               : current_task_ptr->n_group_task_output_mappings)
+                                                                                                        : ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_inputs
+                                                                                                                                                               : current_task_ptr->n_outputs);
+
+                    for (uint32_t n_task_io = 0;
+                                  n_task_io < n_task_ios;
+                                ++n_task_io)
+                    {
+                        void*                   current_object;
+                        ral_context_object_type current_object_type;
+                        bool                    is_already_defined  = false;
+
+                        ral_present_task_get_io_property(current_task,
+                                                         current_io_type,
+                                                         n_task_io,
+                                                         RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                        &current_object);
+                        ral_present_task_get_io_property(current_task,
+                                                         current_io_type,
+                                                         n_task_io,
+                                                         RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                         reinterpret_cast<void**>(&current_object_type) );
+
+                        for (uint32_t n_unique_io = 0;
+                                      n_unique_io < *current_result_unique_io_count_ptr && !is_already_defined;
+                                    ++n_unique_io)
+                        {
+                            _unique_io* unique_io_ptr = current_unique_ios + n_unique_io;
+
+                            is_already_defined = (unique_io_ptr->object == current_object       &&
+                                                  unique_io_ptr->type   == current_object_type);
+                        }
+
+                        if (!is_already_defined)
+                        {
+                            uint32_t new_io_index = *current_result_unique_io_count_ptr;
+
+                            current_unique_ios[new_io_index].object = current_object;
+                            current_unique_ios[new_io_index].type   = current_object_type;
+                            ++(*current_result_unique_io_count_ptr);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ASSERT_DEBUG_SYNC(n_result_unique_inputs  <= n_total_unique_inputs &&
+                      n_result_unique_outputs <= n_total_unique_outputs,
+                      "Buffer overflow condition detected");
+
+    group_create_info.n_total_unique_inputs  = n_result_unique_inputs;
+    group_create_info.n_total_unique_outputs = n_result_unique_outputs;
+
+    /* 2. Bake input & output mappings. */
+    ral_present_task_group_mapping* result_input_mappings  = nullptr;
+    ral_present_task_group_mapping* result_output_mappings = nullptr;
+
+    result_input_mappings  = (n_total_unique_inputs != 0)  ? reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_total_unique_inputs))
+                                                           : nullptr;
+    result_output_mappings = (n_total_unique_outputs != 0) ? reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_total_unique_outputs))
+                                                           : nullptr;
+
+    for (ral_present_task_io_type current_io_type = RAL_PRESENT_TASK_IO_TYPE_FIRST;
+                                  current_io_type < RAL_PRESENT_TASK_IO_TYPE_COUNT;
+                          ++(int&)current_io_type)
+    {
+        uint32_t                        n_result_mappings = 0;
+        const uint32_t                  n_unique_ios      = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? n_result_unique_inputs
+                                                                                                                : n_result_unique_outputs;
+        ral_present_task_group_mapping* result_mappings   = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? result_input_mappings
+                                                                                                                : result_output_mappings;
+        const _unique_io*               unique_ios        = (current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? result_unique_inputs
+                                                                                                                : result_unique_outputs;
+
+        for (uint32_t n_present_task = 0;
+                      n_present_task < n_present_tasks;
+                    ++n_present_task)
+        {
+            const ral_present_task current_task     = present_tasks[n_present_task];
+            _ral_present_task*     current_task_ptr = reinterpret_cast<_ral_present_task*>(present_tasks[n_present_task]);
+            const uint32_t         n_task_ios       = (current_task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_group_task_input_mappings
+                                                                                                                                                                     : current_task_ptr->n_group_task_output_mappings)
+                                                                                                              : ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_inputs
+                                                                                                                                                                     : current_task_ptr->n_outputs);
+
+            for (uint32_t n_task_io = 0;
+                          n_task_io < n_task_ios;
+                        ++n_task_io, ++n_result_mappings)
+            {
+                void*    current_object;
+                uint32_t unique_io_index = -1;
+
+                ral_present_task_get_io_property(current_task,
+                                                 current_io_type,
+                                                 n_task_io,
+                                                 RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
+                                                &current_object);
+
+                for (uint32_t n_unique_io = 0;
+                              n_unique_io < n_unique_ios;
+                            ++n_unique_io)
+                {
+                    if (unique_ios[n_unique_io].object == current_object)
+                    {
+                        unique_io_index = n_unique_io;
+
+                        break;
+                    }
+                }
+
+                ASSERT_DEBUG_SYNC(unique_io_index != -1,
+                                  "Could not identify unique IO index! This is a fatal problem.");
+
+                result_mappings[n_result_mappings].group_task_io_index   = unique_io_index;
+                result_mappings[n_result_mappings].n_present_task        = n_present_task;
+                result_mappings[n_result_mappings].present_task_io_index = n_task_io;
+            }
+        }
+    }
+
+    group_create_info.n_unique_input_to_ingroup_task_mappings  = n_total_unique_inputs;
+    group_create_info.n_unique_output_to_ingroup_task_mappings = n_total_unique_outputs;
+    group_create_info.unique_input_to_ingroup_task_mapping     = result_input_mappings;
+    group_create_info.unique_output_to_ingroup_task_mapping    = result_output_mappings;
+
+    /* 3. Create the result group task */
+    result = ral_present_task_create_group(name,
+                                          &group_create_info);
+
+    /* All done */
+    if (result_input_mappings != nullptr)
+    {
+        _freea(result_input_mappings);
+    }
+
+    if (result_output_mappings != nullptr)
+    {
+        _freea(result_output_mappings);
+    }
+
+    if (result_unique_inputs != nullptr)
+    {
+        _freea(result_unique_inputs);
+    }
+
+    if (result_unique_outputs != nullptr)
+    {
+        _freea(result_unique_outputs);
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
                                                                 const ral_present_task_cpu_create_info* create_info_ptr)
 
@@ -1238,6 +1478,18 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_group(system_hashed_
 
     #ifdef _DEBUG
     {
+        /* Make sure all user-specified connections refer to valid present tasks */
+        for (uint32_t n_connection = 0;
+                      n_connection < create_info_ptr->n_ingroup_connections;
+                    ++n_connection)
+        {
+            const ral_present_task_ingroup_connection* connection_ptr = create_info_ptr->ingroup_connections + n_connection;
+
+            ASSERT_DEBUG_SYNC(connection_ptr->input_present_task_index  < create_info_ptr->n_present_tasks &&
+                              connection_ptr->output_present_task_index < create_info_ptr->n_present_tasks,
+                              "Invalid connection was specified");
+        }
+
         /* Make sure all user-specified subtasks are unique */
         for (uint32_t n_subtask = 0;
                       n_subtask < create_info_ptr->n_present_tasks;

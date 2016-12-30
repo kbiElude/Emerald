@@ -78,8 +78,8 @@ typedef struct
 
 typedef struct
 {
-    uint32_t          n_present_tasks;
-    ral_present_task* present_tasks;
+    uint32_t                n_present_tasks;
+    const ral_present_task* present_tasks;
 
     uint32_t                                   n_ingroup_connections;
     const ral_present_task_ingroup_connection* ingroup_connections;
@@ -239,8 +239,8 @@ typedef enum
     RAL_PRESENT_TASK_TYPE_UNKNOWN
 } ral_present_task_type;
 
-/** Adds a new subtask to the specified group task and connects all outputs of @param group_task
- *  to existing subtask inputs, whose objects match.
+/** Adds a new subtask to the specified group task and connects all outputs of @param task_to_add
+ *  to existing @param group_task 's subtask inputs, whenever objects match.
  *
  *  @param group_task  TODO
  *  @param task_to_add TODO. Retained.
@@ -249,6 +249,20 @@ typedef enum
  */
 PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_present_task group_task,
                                                                             ral_present_task task_to_add);
+
+/** Takes user-specified present tasks and creates a new group task which:
+ *
+ *  0) encapsulates all the tasks.
+ *  1) exposes inputs of all the tasks. Duplicate entries are skipped.
+ *  2) exposes outputs of all the tasks. Duplicate entries are skipped, again.
+ *  3) maps result task's inputs to user-specified task inputs.
+ *  4) maps result task's outputs to user-specified task outputs.
+ *
+ *  All user-specified present tasks are retained by the returned result task.
+ */
+PUBLIC EMERALD_API ral_present_task ral_present_task_create_black_box(system_hashed_ansi_string name,
+                                                                      uint32_t                  n_present_tasks,
+                                                                      const ral_present_task*   present_tasks);
 
 /** TODO */
 PUBLIC EMERALD_API ral_present_task ral_present_task_create_cpu(system_hashed_ansi_string               name,
