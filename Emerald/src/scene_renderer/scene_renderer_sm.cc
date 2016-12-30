@@ -1417,6 +1417,7 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
             sm_color_texture_view_create_info.n_base_layer       = 0;
             sm_color_texture_view_create_info.n_base_mip         = 0;
             sm_color_texture_view_create_info.n_layers           = sm_color_texture_create_info.n_layers;
+            sm_color_texture_view_create_info.n_mips             = 1;
             sm_color_texture_view_create_info.texture            = sm_color_texture;
             sm_color_texture_view_create_info.type               = sm_color_texture_create_info.type;
 
@@ -3149,7 +3150,7 @@ PUBLIC system_hashed_ansi_string scene_renderer_sm_get_special_material_shader_b
                 "#version 430 core\n"
                 "\n"
                 "                     in  vec2 out_vs_depth;\n"
-                "layout(location = 0) out vec2 result;\n"
+                "layout(location = 0) out vec2 result_fragment;\n"
                 "\n"
                 "uniform FragmentShaderProperties\n"
                 "{\n"
@@ -3162,11 +3163,11 @@ PUBLIC system_hashed_ansi_string scene_renderer_sm_get_special_material_shader_b
                 "    float dy               = dFdy(out_vs_depth).x;\n"
                 "    float normalized_depth = clamp(out_vs_depth.x / out_vs_depth.y * 0.5 + 0.5, 0.0, 1.0);\n"
                 "\n"
-                "    result = vec2(normalized_depth,\n"
+                "    result_fragment = vec2(normalized_depth,\n"
                 /* Use derivatives to account for necessary bias (as per the article in GPU Gems 3).
                  * Note that we parametrize the upper boundary. This turns out to be necessary for
                  * some scenes, where excessive variance causes the derivates to explode. */
-                "                  clamp(normalized_depth * normalized_depth + 0.25*(dx * dx + dy * dy), 0.0, max_variance) );\n"
+                "                           clamp(normalized_depth * normalized_depth + 0.25*(dx * dx + dy * dy), 0.0, max_variance) );\n"
                 "}\n");
 
             result = depth_clip_and_squared_depth_clip_fs;

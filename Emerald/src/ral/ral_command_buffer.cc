@@ -92,6 +92,36 @@ private:
 
         switch (type)
         {
+            case RAL_COMMAND_TYPE_COPY_BUFFER_TO_BUFFER:
+            {
+                ral_context dst_buffer_context = nullptr;
+                ral_context src_buffer_context = nullptr;
+
+                ral_buffer_get_property(copy_buffer_to_buffer_command.dst_buffer,
+                                        RAL_BUFFER_PROPERTY_CONTEXT,
+                                       &dst_buffer_context);
+                ral_buffer_get_property(copy_buffer_to_buffer_command.src_buffer,
+                                        RAL_BUFFER_PROPERTY_CONTEXT,
+                                       &src_buffer_context);
+
+                ASSERT_DEBUG_SYNC(dst_buffer_context == src_buffer_context,
+                                  "Context mismatch");
+
+                const ral_buffer buffers[] =
+                {
+                    copy_buffer_to_buffer_command.dst_buffer,
+                    copy_buffer_to_buffer_command.src_buffer
+                };
+                const uint32_t n_buffers = sizeof(buffers) / sizeof(buffers[0]);
+
+                pfn_update_ref_proc(dst_buffer_context,
+                                    RAL_CONTEXT_OBJECT_TYPE_BUFFER,
+                                    n_buffers,
+                                    reinterpret_cast<void* const*>(buffers) );
+
+                break;
+            }
+
             case RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE:
             {
                 ral_context dst_texture_view_context = nullptr;
@@ -118,6 +148,9 @@ private:
                     src_texture_view_texture
                 };
                 const uint32_t n_textures = sizeof(textures) / sizeof(textures[0]);
+
+                ASSERT_DEBUG_SYNC(dst_texture_view_context == src_texture_view_context,
+                                  "Context mismatch");
 
                 pfn_update_ref_proc(dst_texture_view_context,
                                     RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
@@ -1873,8 +1906,17 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_color_rendertargets(ral_co
 
         #ifdef _DEBUG
         {
+            uint32_t n_mips = 0;
+
             ASSERT_DEBUG_SYNC(src_command.texture_view != nullptr,
                               "Null texture view specified");
+
+            ral_texture_view_get_property(src_command.texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                         &n_mips);
+
+            ASSERT_DEBUG_SYNC(n_mips == 1,
+                              "A texture view to be bound to a color rendertarget must not hold more than one mip");
         }
         #endif
 
@@ -1912,6 +1954,7 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_depth_rendertarget(ral_com
     {
         ral_format depth_rt_format;
         bool       depth_rt_format_has_depth_components = false;
+        uint32_t   depth_rt_n_mips                      = 0;
 
         ASSERT_DEBUG_SYNC(depth_rt != nullptr,
                           "Null texture view specified");
@@ -1919,12 +1962,18 @@ PUBLIC EMERALD_API void ral_command_buffer_record_set_depth_rendertarget(ral_com
         ral_texture_view_get_property(depth_rt,
                                       RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
                                      &depth_rt_format);
+        ral_texture_view_get_property(depth_rt,
+                                      RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                     &depth_rt_n_mips);
+
         ral_utils_get_format_property(depth_rt_format,
                                       RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
                                      &depth_rt_format_has_depth_components);
 
         ASSERT_DEBUG_SYNC(depth_rt_format_has_depth_components,
                           "Depth texture view uses a format which does not contain depth data.");
+        ASSERT_DEBUG_SYNC(depth_rt_n_mips == 1,
+                          "A texture view to be bound to a depth rendertarget must not hold more than one mip");
     }
     #endif
 

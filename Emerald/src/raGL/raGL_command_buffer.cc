@@ -1191,6 +1191,13 @@ void _raGL_command_buffer::bake_commands()
                 break;
             }
 
+            case RAL_COMMAND_TYPE_COPY_BUFFER_TO_BUFFER:
+            {
+                process_copy_buffer_to_buffer_command(reinterpret_cast<const ral_command_buffer_copy_buffer_to_buffer_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
             case RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE:
             {
                 process_copy_texture_to_texture_command(reinterpret_cast<const ral_command_buffer_copy_texture_to_texture_command_info*>(command_ral_raw_ptr) );

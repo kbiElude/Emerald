@@ -896,9 +896,6 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
     ral_texture_type               dst_src_texture_view_type   = RAL_TEXTURE_TYPE_UNKNOWN;
     ral_present_task               result                      = nullptr;
 
-    ASSERT_DEBUG_SYNC(false,
-                      "TODO: Separate into cpu+gpu tasks, so that n_iterations can be changed in run-time w/o rebuilding the whole thing.");
-
     ASSERT_DEBUG_SYNC(n_taps >= blur_ptr->n_min_taps &&
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
@@ -1065,6 +1062,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         set_viewport_command_info.xy[1]          = 0;
 
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_STRIP;
+        gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &set_scissor_box_command_info;
         gfx_state_create_info.static_scissor_boxes_enabled         = true;
@@ -1211,6 +1209,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
         ral_command_buffer_set_binding_command_info set_data_texture_binding_command_info;
 
         set_data_texture_binding_command_info.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
+        set_data_texture_binding_command_info.name                               = system_hashed_ansi_string_create("data_sampler");
         set_data_texture_binding_command_info.sampled_image_binding.sampler      = target_sampler;
         set_data_texture_binding_command_info.sampled_image_binding.texture_view = blur_ptr->ping_pong_rt_view_l012;
 
