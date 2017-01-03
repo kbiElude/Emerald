@@ -170,9 +170,6 @@ typedef enum
     /* Command args stored in _raGL_command_enable_vertex_attrib_array_command_info */
     RAGL_COMMAND_TYPE_ENABLE_VERTEX_ATTRIB_ARRAY,
 
-    /* Command args stored in _raGL_command_execute_command_buffer_command_info */
-    RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER,
-
     /* Command args stored in _raGL_command_front_face_command_info */
     RAGL_COMMAND_TYPE_FRONT_FACE,
 
@@ -579,12 +576,6 @@ typedef struct
 
 typedef struct
 {
-    raGL_command_buffer command_buffer_raGL;
-
-} _raGL_command_execute_command_buffer_command_info;
-
-typedef struct
-{
     GLenum mode;
 
 } _raGL_command_front_face_command_info;
@@ -772,7 +763,6 @@ typedef struct
         _raGL_command_draw_elements_instanced_command_info                           draw_elements_instanced_command_info;
         _raGL_command_enable_command_info                                            enable_command_info;
         _raGL_command_enable_vertex_attrib_array_command_info                        enable_vertex_attrib_array_command_info;
-        _raGL_command_execute_command_buffer_command_info                            execute_command_buffer_command_info;
         _raGL_command_front_face_command_info                                        front_face_command_info;
         _raGL_command_invalidate_tex_image_command_info                              invalidate_tex_image_command_info;
         _raGL_command_line_width_command_info                                        line_width_command_info;
@@ -1005,7 +995,7 @@ typedef struct _raGL_command_buffer
     void bake_pre_dispatch_draw_memory_barriers();
     void bake_rt_state                         ();
 
-    void bake_commands();
+    void bake_commands (ral_command_buffer in_command_buffer);
     void clear_commands();
 
     void process_clear_rt_binding_command       (const ral_command_buffer_clear_rt_binding_command_info*        command_ral_ptr);
@@ -1159,11 +1149,11 @@ void _raGL_command_buffer::bake_and_bind_vao()
 }
 
 /** TODO */
-void _raGL_command_buffer::bake_commands()
+void _raGL_command_buffer::bake_commands(ral_command_buffer in_command_buffer)
 {
     uint32_t n_ral_commands = 0;
 
-    ral_command_buffer_get_property(command_buffer_ral,
+    ral_command_buffer_get_property(in_command_buffer,
                                     RAL_COMMAND_BUFFER_PROPERTY_N_RECORDED_COMMANDS,
                                    &n_ral_commands);
 
@@ -1175,7 +1165,7 @@ void _raGL_command_buffer::bake_commands()
         ral_command_type command_ral_type    = RAL_COMMAND_TYPE_UNKNOWN;
         bool             result;
 
-        result = ral_command_buffer_get_recorded_command(command_buffer_ral,
+        result = ral_command_buffer_get_recorded_command(in_command_buffer,
                                                          n_ral_command,
                                                         &command_ral_type,
                                                         &command_ral_raw_ptr);
@@ -3622,26 +3612,7 @@ void _raGL_command_buffer::process_draw_call_regular_command(const ral_command_b
 /** TODO */
 void _raGL_command_buffer::process_execute_command_buffer_command(const ral_command_buffer_execute_command_buffer_command_info* command_ral_ptr)
 {
-    raGL_backend        backend_raGL        = nullptr;
-    raGL_command_buffer command_buffer_raGL = nullptr;
-    _raGL_command*      execute_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_BACKEND,
-                            &backend_raGL);
-
-    raGL_backend_get_command_buffer(backend_raGL,
-                                    command_ral_ptr->command_buffer,
-                                   &command_buffer_raGL);
-
-    ASSERT_DEBUG_SYNC(command_buffer_raGL != nullptr,
-                      "raGL command buffer returned by GL backend is null");
-
-    execute_command_ptr->execute_command_buffer_command_info.command_buffer_raGL = command_buffer_raGL;
-    execute_command_ptr->type                                                    = RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER;
-
-    system_resizable_vector_push(commands,
-                                 execute_command_ptr);
+    bake_commands(command_ral_ptr->command_buffer);
 }
 
 /** TODO */
@@ -4911,14 +4882,6 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
                 break;
             }
 
-            case RAGL_COMMAND_TYPE_EXECUTE_COMMAND_BUFFER:
-            {
-                raGL_command_buffer_execute(command_ptr->execute_command_buffer_command_info.command_buffer_raGL,
-                                            dep_tracker);
-
-                break;
-            }
-
             case RAGL_COMMAND_TYPE_FRONT_FACE:
             {
                 const _raGL_command_front_face_command_info& command_args = command_ptr->front_face_command_info;
@@ -5172,6 +5135,18 @@ PUBLIC void raGL_command_buffer_stop_recording(raGL_command_buffer command_buffe
 {
     _raGL_command_buffer* command_buffer_ptr = reinterpret_cast<_raGL_command_buffer*>(command_buffer);
 
-    /* Process the RAL commands and convert them to a set of GL instructions */
-    command_buffer_ptr->bake_commands();
+    /* Process the RAL commands and convert them to a set of GL instructions. This must NOT
+     * be done for secondary-level command buffers - these will be embedded within calling
+     * command buffers.
+     */
+    bool invokable_from_other_cmd_buffers;
+
+    ral_command_buffer_get_property(command_buffer_ptr->command_buffer_ral,
+                                    RAL_COMMAND_BUFFER_PROPERTY_IS_INVOKABLE_FROM_OTHER_COMMAND_BUFFERS,
+                                   &invokable_from_other_cmd_buffers);
+
+    if (!invokable_from_other_cmd_buffers)
+    {
+        command_buffer_ptr->bake_commands(command_buffer_ptr->command_buffer_ral);
+    }
 }
