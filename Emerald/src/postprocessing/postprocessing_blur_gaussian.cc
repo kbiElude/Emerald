@@ -216,7 +216,10 @@ typedef struct _postprocessing_blur_gaussian
 
         if (cached_command_buffer != nullptr)
         {
-            ral_command_buffer_release(cached_command_buffer);
+            ral_context_delete_objects(context,
+                                       RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                                       1, /* n_objects */
+                                       reinterpret_cast<void* const*>(&cached_command_buffer) );
 
             cached_command_buffer = nullptr;
         }
@@ -233,14 +236,6 @@ typedef struct _postprocessing_blur_gaussian
             delete [] coeff_buffer_offsets;
 
             coeff_buffer_offsets = nullptr;
-        }
-
-        if (ping_pong_rt != nullptr)
-        {
-            ral_context_delete_objects(context,
-                                       RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
-                                       1, /* n_objects */
-                                       reinterpret_cast<void* const*>(&ping_pong_rt) );
         }
 
         ral_context_delete_objects(context,
@@ -1181,7 +1176,7 @@ PUBLIC ral_present_task postprocessing_blur_gaussian_create_present_task(postpro
     }
 
     cmd_buffer = blur_ptr->cached_command_buffer;
-    
+
     ral_command_buffer_start_recording(cmd_buffer);
 
     /* Step 2): Set-up

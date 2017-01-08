@@ -1405,14 +1405,29 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_black_box(system_has
                           n_task_io < n_task_ios;
                         ++n_task_io, ++n_result_mappings)
             {
-                void*    current_object;
-                uint32_t unique_io_index = -1;
+                void*                   current_object;
+                ral_context_object_type current_object_type;
+                uint32_t                unique_io_index = -1;
 
                 ral_present_task_get_io_property(current_task,
                                                  current_io_type,
                                                  n_task_io,
                                                  RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
                                                 &current_object);
+                ral_present_task_get_io_property(current_task,
+                                                 current_io_type,
+                                                 n_task_io,
+                                                 RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                 reinterpret_cast<void**>(&current_object_type) );
+
+                if (current_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW)
+                {
+                    ral_texture_view current_texture_view = reinterpret_cast<ral_texture_view>(current_object);
+
+                    ral_texture_view_get_property(current_texture_view,
+                                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                 &current_object);
+                }
 
                 for (uint32_t n_unique_io = 0;
                               n_unique_io < n_unique_ios;
