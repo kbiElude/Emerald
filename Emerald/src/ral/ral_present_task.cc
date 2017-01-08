@@ -446,7 +446,9 @@ private:
                                               "Could not validate group task mappings.");
                         }
 
-                        ASSERT_DEBUG_SYNC(current_io_object_type == last_io_object_type,
+                        ASSERT_DEBUG_SYNC(current_io_object_type == last_io_object_type                                                                                 ||
+                                          current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE      && last_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW ||
+                                          current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW && last_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
                                           "A group IO maps to present task IOs of different object types");
 
                         switch (current_io_object_type)
@@ -987,12 +989,12 @@ PUBLIC EMERALD_API bool ral_present_task_add_subtask_to_group_task(ral_present_t
     
     if (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER)
     {
-        n_ios = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_output_mappings
+        n_ios = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_unique_output_mappings
                                                                        : task_to_add_ptr->n_outputs;
     }
     else
     {
-        n_ios = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_input_mappings
+        n_ios = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_unique_input_mappings
                                                                        : task_to_add_ptr->n_inputs;
     }
 
@@ -1427,6 +1429,8 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_black_box(system_has
                     ral_texture_view_get_property(current_texture_view,
                                                   RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
                                                  &current_object);
+
+                    current_object_type = RAL_CONTEXT_OBJECT_TYPE_TEXTURE;
                 }
 
                 for (uint32_t n_unique_io = 0;

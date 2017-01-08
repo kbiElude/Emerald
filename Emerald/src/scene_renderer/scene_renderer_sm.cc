@@ -1513,67 +1513,73 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
                                                              handler_ptr->current_sm_depth_texture_view);
         }
 
-        /* TODO: The code below should be re-written to use texture-driven clear ops, instead of the ones that refer to
-         *       current rendertarget bindings.
-         */
-
         /* Clear the color & depth buffers */
-        ral_command_buffer_clear_rt_binding_command_info clear_command_info;
+        ral_command_buffer_clear_rt_binding_command_info clear_command_info_items[2];
+        uint32_t                                         n_clear_command_info_items   = 0;
 
-        clear_command_info.clear_regions[0].n_base_layer      = 0;
-        clear_command_info.clear_regions[0].n_layers          = 1;
-        clear_command_info.clear_regions[0].size[0]           = static_cast<uint32_t>(light_shadow_map_size[0]);
-        clear_command_info.clear_regions[0].size[1]           = static_cast<uint32_t>(light_shadow_map_size[1]);
-        clear_command_info.clear_regions[0].xy  [0]           = 0;
-        clear_command_info.clear_regions[0].xy  [1]           = 0;
-        clear_command_info.n_clear_regions                    = 1;
-        clear_command_info.n_rendertargets                    = 0;
-
-        if (handler_ptr->current_sm_color0_l0_texture_view != nullptr)
+        if (handler_ptr->current_sm_color0_l0_texture_view != nullptr ||
+            handler_ptr->current_sm_color0_l1_texture_view != nullptr)
         {
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[0] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[1] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[2] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[3] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].rt_index                 = 0;
-            clear_command_info.clear_regions[0].n_layers                                                  = 1;
+            ral_command_buffer_clear_rt_binding_command_info* clear_info_ptr = clear_command_info_items + n_clear_command_info_items;
 
-            ++clear_command_info.n_rendertargets;
-        }
+            clear_info_ptr->clear_regions[0].n_base_layer      = 0;
+            clear_info_ptr->clear_regions[0].n_layers          = 1;
+            clear_info_ptr->clear_regions[0].size[0]           = static_cast<uint32_t>(light_shadow_map_size[0]);
+            clear_info_ptr->clear_regions[0].size[1]           = static_cast<uint32_t>(light_shadow_map_size[1]);
+            clear_info_ptr->clear_regions[0].xy  [0]           = 0;
+            clear_info_ptr->clear_regions[0].xy  [1]           = 0;
+            clear_info_ptr->n_clear_regions                    = 1;
+            clear_info_ptr->n_rendertargets                    = 0;
 
-        if (handler_ptr->current_sm_color0_l1_texture_view != nullptr)
-        {
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[0] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[1] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[2] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.color.f32[3] = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].rt_index                 = 1;
-            clear_command_info.clear_regions[0].n_layers                                                  = 1;
+            if (handler_ptr->current_sm_color0_l0_texture_view != nullptr)
+            {
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[0] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[1] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[2] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[3] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].rt_index                 = 0;
 
-            ++clear_command_info.n_rendertargets;
+                ++clear_info_ptr->n_rendertargets;
+            }
+
+            if (handler_ptr->current_sm_color0_l1_texture_view != nullptr)
+            {
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[0] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[1] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[2] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[3] = 1.0f;
+                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].rt_index                 = 1;
+
+                ++clear_info_ptr->n_rendertargets;
+            }
+
+            ++n_clear_command_info_items;
         }
 
         if (handler_ptr->current_sm_depth_texture_view != nullptr)
         {
-            if (clear_command_info.n_rendertargets != 0)
-            {
-                ASSERT_DEBUG_SYNC(1 == sm_depth_texture_create_info.n_layers,
-                                  "TODO");
-            }
+            ral_command_buffer_clear_rt_binding_command_info* clear_info_ptr = clear_command_info_items + n_clear_command_info_items;
 
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].aspect            = RAL_TEXTURE_ASPECT_DEPTH_BIT;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].clear_value.depth = 1.0f;
-            clear_command_info.rendertargets[clear_command_info.n_rendertargets].rt_index          = -1; /* irrelevant */
-            clear_command_info.clear_regions[0].n_layers                                           = sm_depth_texture_create_info.n_layers;
+            clear_info_ptr->clear_regions[0].n_base_layer      = 0;
+            clear_info_ptr->clear_regions[0].n_layers          = sm_depth_texture_create_info.n_layers;
+            clear_info_ptr->clear_regions[0].size[0]           = static_cast<uint32_t>(light_shadow_map_size[0]);
+            clear_info_ptr->clear_regions[0].size[1]           = static_cast<uint32_t>(light_shadow_map_size[1]);
+            clear_info_ptr->clear_regions[0].xy  [0]           = 0;
+            clear_info_ptr->clear_regions[0].xy  [1]           = 0;
+            clear_info_ptr->n_clear_regions                    = 1;
+            clear_info_ptr->n_rendertargets                    = 1;
+            clear_info_ptr->rendertargets[0].aspect            = RAL_TEXTURE_ASPECT_DEPTH_BIT;
+            clear_info_ptr->rendertargets[0].clear_value.depth = 1.0f;
+            clear_info_ptr->rendertargets[0].rt_index          = -1; /* irrelevant */
 
-            ++clear_command_info.n_rendertargets;
+            ++n_clear_command_info_items;
         }
 
         ral_command_buffer_record_clear_rendertarget_binding(init_cmd_buffer,
-                                                             1, /* n_clear_ops */
-                                                            &clear_command_info);
+                                                             n_clear_command_info_items,
+                                                             clear_command_info_items);
 
         ral_command_buffer_stop_recording(init_cmd_buffer);
 
@@ -1813,7 +1819,6 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
     ral_texture_view ref_texture_views[] =
     {
         handler_ptr->current_sm_color0_l0_texture_view,
-        handler_ptr->current_sm_color0_l1_texture_view,
         handler_ptr->current_sm_depth_texture_view
     };
     const uint32_t n_ref_texture_views = sizeof(ref_texture_views) / sizeof(ref_texture_views[0]);
@@ -3239,7 +3244,7 @@ PUBLIC system_hashed_ansi_string scene_renderer_sm_get_special_material_shader_b
                 "\n"
                 "                     in  vec2 out_vs_paraboloid_depth;\n"
                 "                     in  vec2 out_vs_depth;\n"
-                "layout(location = 0) out vec2 result;\n"
+                "layout(location = 0) out vec2 result_fragment;\n"
                 "\n"
                 "uniform FragmentShaderProperties\n"
                 "{\n"
@@ -3256,11 +3261,11 @@ PUBLIC system_hashed_ansi_string scene_renderer_sm_get_special_material_shader_b
                 "\n"
                 "    float normalized_depth = clamp(out_vs_paraboloid_depth.x / out_vs_paraboloid_depth.y * 0.5 + 0.5, 0.0, 1.0);\n"
                 "\n"
-                "    result = vec2(normalized_depth,\n"
+                "    result_fragment = vec2(normalized_depth,\n"
                 /* Use derivatives to account for necessary bias (as per the article in GPU Gems 3).
                  * Note that we parametrize the upper boundary. This turns out to be necessary for
                  * some scenes, where excessive variance causes the derivates to explode. */
-                "                  clamp(normalized_depth * normalized_depth, 0.0, max_variance) );\n"
+                "                           clamp(normalized_depth * normalized_depth, 0.0, max_variance) );\n"
                 "}\n");
 
             result = dc_and_squared_dc_dp_fs;
