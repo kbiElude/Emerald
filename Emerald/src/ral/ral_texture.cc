@@ -5,7 +5,9 @@
  */
 #include "shared.h"
 #include "gfx/gfx_image.h"
+#include "ral/ral_command_buffer.h"
 #include "ral/ral_context.h"
+#include "ral/ral_present_task.h"
 #include "ral/ral_texture.h"
 #include "ral/ral_texture_view.h"
 #include "ral/ral_types.h"
@@ -82,7 +84,7 @@ typedef struct _ral_texture
     system_hashed_ansi_string unique_name;
     ral_texture_usage_bits    usage;
 
-    bool being_released;
+    bool             being_released;
 
     system_hash64map        views; /* view hash -> owned ral_texture_view instance */
     system_critical_section views_cs;
@@ -108,25 +110,25 @@ typedef struct _ral_texture
                  ral_texture_type          in_type,
                  ral_texture_usage_bits    in_usage)
     {
-        base_mipmap_size[0]    = in_base_mipmap_width;
-        base_mipmap_size[1]    = in_base_mipmap_height;
-        base_mipmap_size[2]    = in_base_mipmap_depth;
-        being_released         = false;
-        callback_manager       = system_callback_manager_create( (_callback_id) RAL_TEXTURE_CALLBACK_ID_COUNT);
-        context                = in_context;
-        description            = in_description;
-        file_name              = nullptr;
-        fixed_sample_locations = in_fixed_sample_locations;
-        format                 = in_format;
-        layers                 = system_resizable_vector_create(in_n_layers);
-        n_layers               = in_n_layers;
-        n_mipmaps_per_layer    = in_n_mipmaps;
-        n_samples              = in_n_samples;
-        type                   = in_type;
-        unique_name            = in_unique_name;
-        usage                  = in_usage;
-        views                  = system_hash64map_create       (sizeof(ral_texture_view) );
-        views_cs               = system_critical_section_create();
+        base_mipmap_size[0]     = in_base_mipmap_width;
+        base_mipmap_size[1]     = in_base_mipmap_height;
+        base_mipmap_size[2]     = in_base_mipmap_depth;
+        being_released          = false;
+        callback_manager        = system_callback_manager_create( (_callback_id) RAL_TEXTURE_CALLBACK_ID_COUNT);
+        context                 = in_context;
+        description             = in_description;
+        file_name               = nullptr;
+        fixed_sample_locations  = in_fixed_sample_locations;
+        format                  = in_format;
+        layers                  = system_resizable_vector_create(in_n_layers);
+        n_layers                = in_n_layers;
+        n_mipmaps_per_layer     = in_n_mipmaps;
+        n_samples               = in_n_samples;
+        type                    = in_type;
+        unique_name             = in_unique_name;
+        usage                   = in_usage;
+        views                   = system_hash64map_create       (sizeof(ral_texture_view) );
+        views_cs                = system_critical_section_create();
     }
 
     ~_ral_texture()
@@ -802,6 +804,165 @@ PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture,
 
     /* All done */
     result = true;
+
+end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API ral_present_task ral_texture_get_generate_mips_present_task(ral_texture texture)
+{
+    ral_command_buffer               cmd_buffer;
+    ral_command_buffer_create_info   cmd_buffer_create_info;
+    ral_present_task                 result               = nullptr;
+    ral_present_task_gpu_create_info task_create_info;
+    ral_present_task_io              task_io;
+    _ral_texture*                    texture_ptr          = reinterpret_cast<_ral_texture*>(texture);
+    ral_texture_view                 texture_view         = nullptr;
+
+    ASSERT_DEBUG_SYNC(texture_ptr != nullptr,
+                      "Input ral_texture instance is null");
+    ASSERT_DEBUG_SYNC(texture_ptr->n_layers == 1,
+                      "TODO: Parallelize mip generation, so that each mipchain is generated in parallel.");
+    ASSERT_DEBUG_SYNC(texture_ptr->n_samples == 1,
+                      "Cannot generate mipchain for a MS texture");
+
+    /* Record a command buffer for the task */
+    cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_COMPUTE_BIT | RAL_QUEUE_GRAPHICS_BIT;
+    cmd_buffer_create_info.is_executable                           = true;
+    cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
+    cmd_buffer_create_info.is_resettable                           = false;
+    cmd_buffer_create_info.is_transient                            = false;
+
+    ral_context_create_command_buffers(texture_ptr->context,
+                                       1, /* n_command_buffers */
+                                      &cmd_buffer_create_info,
+                                      &cmd_buffer);
+
+    ASSERT_DEBUG_SYNC(cmd_buffer != nullptr,
+                      "Failed to create a ral_command_buffer instance.");
+
+    ral_command_buffer_start_recording(cmd_buffer);
+    {
+        ral_texture_aspect           format_aspects           = static_cast<ral_texture_aspect>(0);
+        bool                         format_has_color_comps   = false;
+        bool                         format_has_depth_comps   = false;
+        bool                         format_has_stencil_comps = false;
+        ral_texture_view_create_info texture_view_create_info;
+
+        ral_utils_get_format_property(texture_ptr->format,
+                                      RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                     &format_has_color_comps);
+        ral_utils_get_format_property(texture_ptr->format,
+                                      RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                     &format_has_depth_comps);
+        ral_utils_get_format_property(texture_ptr->format,
+                                      RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                     &format_has_depth_comps);
+
+        format_aspects = static_cast<ral_texture_aspect>(((format_has_color_comps)   ? RAL_TEXTURE_ASPECT_COLOR_BIT   : 0) |
+                                                         ((format_has_depth_comps)   ? RAL_TEXTURE_ASPECT_DEPTH_BIT   : 0) |
+                                                         ((format_has_stencil_comps) ? RAL_TEXTURE_ASPECT_STENCIL_BIT : 0));
+
+        texture_view_create_info = ral_texture_view_create_info(texture);
+        texture_view             = ral_texture_get_view(&texture_view_create_info);
+
+        for (uint32_t n_layer = 0;
+                      n_layer < texture_ptr->n_layers;
+                    ++n_layer)
+        {
+            uint32_t next_mip_size[3];
+            uint32_t this_mip_size[3];
+
+            ral_texture_get_mipmap_property(texture,
+                                            n_layer,
+                                            0, /* n_mipmap */
+                                            RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                            next_mip_size);
+            ral_texture_get_mipmap_property(texture,
+                                            n_layer,
+                                            0, /* n_mipmap */
+                                            RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                            next_mip_size + 1);
+            ral_texture_get_mipmap_property(texture,
+                                            n_layer,
+                                            0, /* n_mipmap */
+                                            RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+                                            next_mip_size + 2);
+
+            for (uint32_t n_mip = 0;
+                          n_mip < texture_ptr->n_mipmaps_per_layer - 1;
+                        ++n_mip)
+            {
+                ral_command_buffer_copy_texture_to_texture_command_info command;
+
+                memcpy(this_mip_size,
+                       next_mip_size,
+                       sizeof(this_mip_size) );
+
+                ral_texture_get_mipmap_property(texture,
+                                                n_layer,
+                                                n_mip + 1,
+                                                RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                                next_mip_size);
+                ral_texture_get_mipmap_property(texture,
+                                                n_layer,
+                                                n_mip + 1,
+                                                RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                                next_mip_size + 1);
+                ral_texture_get_mipmap_property(texture,
+                                                n_layer,
+                                                n_mip + 1,
+                                                RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+                                                next_mip_size + 2);
+
+                command.aspect           = format_aspects;
+                command.dst_size[0]      = next_mip_size[0];
+                command.dst_size[1]      = next_mip_size[1];
+                command.dst_size[2]      = next_mip_size[2];
+                command.dst_start_xyz[0] = 0;
+                command.dst_start_xyz[1] = 0;
+                command.dst_start_xyz[2] = 0;
+                command.dst_texture_view = texture_view;
+                command.n_dst_layer      = n_layer;
+                command.n_dst_mipmap     = n_mip + 1;
+                command.n_src_layer      = n_layer;
+                command.n_src_mipmap     = n_mip;
+                command.scaling_filter   = RAL_TEXTURE_FILTER_LINEAR;
+                command.src_size[0]      = this_mip_size[0];
+                command.src_size[1]      = this_mip_size[1];
+                command.src_size[2]      = this_mip_size[2];
+                command.src_start_xyz[0] = 0;
+                command.src_start_xyz[1] = 0;
+                command.src_start_xyz[2] = 0;
+                command.src_texture_view = texture_view;
+
+                ral_command_buffer_record_copy_texture_to_texture(cmd_buffer,
+                                                                  1, /* n_copy_ops */
+                                                                 &command);
+            }
+        }
+    }
+    ral_command_buffer_stop_recording(cmd_buffer);
+
+    /* Bake the task */
+    task_io.object_type = RAL_CONTEXT_OBJECT_TYPE_TEXTURE;
+    task_io.texture     = texture;
+
+    task_create_info.command_buffer   = cmd_buffer;
+    task_create_info.n_unique_inputs  = 1;
+    task_create_info.n_unique_outputs = 1;
+    task_create_info.unique_inputs    = &task_io;
+    task_create_info.unique_outputs   = &task_io;
+
+    result = ral_present_task_create_gpu(system_hashed_ansi_string_create("Texture mip gen task"),
+                                        &task_create_info);
+
+    /* Clean up */
+    ral_context_delete_objects(texture_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&cmd_buffer) );
 
 end:
     return result;

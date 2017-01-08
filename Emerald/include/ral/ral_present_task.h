@@ -223,6 +223,12 @@ typedef enum
 
 typedef enum
 {
+    RAL_PRESENT_TASK_SUBTASK_ROLE_CONSUMER,
+    RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER
+} ral_present_task_subtask_role;
+
+typedef enum
+{
     RAL_PRESENT_TASK_TYPE_CPU_TASK,
     RAL_PRESENT_TASK_TYPE_GPU_TASK,
 
@@ -239,16 +245,19 @@ typedef enum
     RAL_PRESENT_TASK_TYPE_UNKNOWN
 } ral_present_task_type;
 
-/** Adds a new subtask to the specified group task and connects all outputs of @param task_to_add
- *  to existing @param group_task 's subtask inputs, whenever objects match.
+/** Adds a new subtask to the specified group task. The role argument specifies
+ *  whether the new subtask is to act as a consumer of outputs already defined,
+ *  or as a producer for any already defined inputs.
  *
  *  @param group_task  TODO
  *  @param task_to_add TODO. Retained.
+ *  @param role        TODO
  *
  *  TODO
  */
-PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_present_task group_task,
-                                                                            ral_present_task task_to_add);
+PUBLIC EMERALD_API bool ral_present_task_add_subtask_to_group_task(ral_present_task              group_task,
+                                                                   ral_present_task              task_to_add,
+                                                                   ral_present_task_subtask_role role);
 
 /** Takes user-specified present tasks and creates a new group task which:
  *

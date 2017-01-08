@@ -123,6 +123,9 @@ PUBLIC EMERALD_API bool ral_texture_generate_mipmaps(ral_texture texture,
                                                      bool        async);
 
 /** TODO */
+PUBLIC EMERALD_API ral_present_task ral_texture_get_generate_mips_present_task(ral_texture texture);
+
+/** TODO */
 PUBLIC EMERALD_API bool ral_texture_get_mipmap_property(ral_texture                 texture,
                                                         uint32_t                    n_layer,
                                                         uint32_t                    n_mipmap,

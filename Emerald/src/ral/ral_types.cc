@@ -2,6 +2,7 @@
 #include "ral/ral_types.h"
 #include "ral/ral_command_buffer.h"
 #include "ral/ral_texture.h"
+#include "ral/ral_texture_view.h"
 #include "ral/ral_utils.h"
 
 /** Please see header for spec */
@@ -144,4 +145,35 @@ EMERALD_API ral_texture_view_create_info::ral_texture_view_create_info(ral_textu
     this->n_mips             = texture_n_mips;
     this->texture            = in_texture;
     this->type               = texture_type;
+}
+
+EMERALD_API ral_texture_view_create_info::ral_texture_view_create_info(ral_texture_view in_texture_view)
+{
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_ASPECT,
+                                 &aspect);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_COMPONENT_ORDER,
+                                  component_order);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
+                                 &format);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER,
+                                 &n_base_layer);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP,
+                                 &n_base_mip);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
+                                 &n_layers);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                 &n_mips);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                 &texture);
+    ral_texture_view_get_property(in_texture_view,
+                                  RAL_TEXTURE_VIEW_PROPERTY_TYPE,
+                                 &type);
 }

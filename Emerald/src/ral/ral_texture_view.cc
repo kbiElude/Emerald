@@ -539,7 +539,9 @@ PUBLIC EMERALD_API void ral_texture_view_get_property(ral_texture_view          
 
         case RAL_TEXTURE_VIEW_PROPERTY_COMPONENT_ORDER:
         {
-            *reinterpret_cast<ral_texture_component**>(out_result_ptr) = texture_view_ptr->create_info.component_order;
+            memcpy(out_result_ptr,
+                   texture_view_ptr->create_info.component_order,
+                   sizeof(texture_view_ptr->create_info.component_order) );
 
             break;
         }

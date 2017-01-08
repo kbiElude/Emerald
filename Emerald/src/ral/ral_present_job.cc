@@ -288,7 +288,9 @@ PUBLIC EMERALD_API bool ral_present_job_connect_tasks(ral_present_job           
                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
                                      reinterpret_cast<void**>(&dst_task_input_type) );
 
-    if (dst_task_input_type != src_task_output_type)
+    if (dst_task_input_type != src_task_output_type                                                                                   &&
+        !(dst_task_input_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE      && src_task_output_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW ||
+          dst_task_input_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW && src_task_output_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE) )
     {
         ASSERT_DEBUG_SYNC(!(dst_task_input_type != src_task_output_type),
                           "Destination RAL present task output's type does not match RAL present task input's type");

@@ -3035,26 +3035,50 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
     {
         /* This is a blit op.
          *
-         * TODO: Current implementation does not support any non-trivial cases. Add support by modifying raGL_framebuffer
-         *       accordingly. */
-        _raGL_command_blit_framebuffer_command_info& command_args = new_command_ptr->blit_framebuffer_command_info;
-        raGL_framebuffer                             draw_fb_raGL = nullptr;
-        raGL_framebuffer                             read_fb_raGL = nullptr;
+         * NOTE: glBlitFramebuffer() does not let us directly specify source/target layer/mip range. Instead,
+         *       these can be enforced by passing appropriately configured texture views.
+         */
+        _raGL_command_blit_framebuffer_command_info& command_args     = new_command_ptr->blit_framebuffer_command_info;
+        raGL_framebuffer                             draw_fb_raGL     = nullptr;
+        ral_texture_view                             dst_texture_view = nullptr;
+        raGL_framebuffer                             read_fb_raGL     = nullptr;
+        ral_texture_view                             src_texture_view = nullptr;
 
-        ASSERT_DEBUG_SYNC(command_ral_ptr->n_dst_layer  == 0 &&
-                          command_ral_ptr->n_src_layer  == 0 &&
-                          command_ral_ptr->n_dst_mipmap == 0 &&
-                          command_ral_ptr->n_src_mipmap == 0,
-                          "TODO");
+        if (command_ral_ptr->n_dst_layer  == 0 &&
+            command_ral_ptr->n_dst_mipmap == 0 &&
+            command_ral_ptr->n_src_layer  == 0 &&
+            command_ral_ptr->n_src_mipmap == 0)
+        {
+            dst_texture_view = command_ral_ptr->dst_texture_view;
+            src_texture_view = command_ral_ptr->src_texture_view;
+        }
+        else
+        {
+            ral_texture_view_create_info dst_texture_view_create_info = ral_texture_view_create_info(command_ral_ptr->dst_texture_view);
+            ral_texture_view_create_info src_texture_view_create_info = ral_texture_view_create_info(command_ral_ptr->src_texture_view);
+
+            dst_texture_view_create_info.n_base_layer += command_ral_ptr->n_dst_layer;
+            dst_texture_view_create_info.n_base_mip   += command_ral_ptr->n_dst_mipmap;
+            dst_texture_view_create_info.n_layers      = 1;
+            dst_texture_view_create_info.n_mips        = 1;
+
+            src_texture_view_create_info.n_base_layer += command_ral_ptr->n_src_layer;
+            src_texture_view_create_info.n_base_mip   += command_ral_ptr->n_src_mipmap;
+            src_texture_view_create_info.n_layers      = 1;
+            src_texture_view_create_info.n_mips        = 1;
+
+            dst_texture_view = ral_texture_get_view(&dst_texture_view_create_info);
+            src_texture_view = ral_texture_get_view(&src_texture_view_create_info);
+        }
 
         raGL_framebuffers_get_framebuffer(backend_fbos,
                                           1, /* n_attachments */
-                                         &command_ral_ptr->dst_texture_view,
+                                         &dst_texture_view,
                                           nullptr, /* in_opt_ds_attachment */
                                          &draw_fb_raGL);
         raGL_framebuffers_get_framebuffer(backend_fbos,
                                           1, /* n_attachments */
-                                         &command_ral_ptr->src_texture_view,
+                                         &src_texture_view,
                                           nullptr, /* in_opt_ds_attachment */
                                          &read_fb_raGL);
 

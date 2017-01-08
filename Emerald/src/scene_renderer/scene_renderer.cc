@@ -3060,8 +3060,9 @@ PUBLIC EMERALD_API ral_present_task scene_renderer_get_present_task_for_scene_gr
     {
         bool result;
 
-        result = ral_present_task_add_producer_subtask_to_group_task(result_present_task,
-                                                                     bake_sm_present_task);
+        result = ral_present_task_add_subtask_to_group_task(result_present_task,
+                                                            bake_sm_present_task,
+                                                            RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER);
 
         ASSERT_DEBUG_SYNC(result,
                           "ral_present_task_add_producer_subtask_to_group_task() failed.");

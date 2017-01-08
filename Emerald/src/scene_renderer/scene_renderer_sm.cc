@@ -1691,8 +1691,9 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
                                                  scene_light                   light,
                                                  scene_renderer_sm_target_face target_face = SCENE_RENDERER_SM_TARGET_FACE_2D)
 {
-    ral_present_task result_finalize_task = nullptr;
-    ral_present_task sm_blur_present_task = nullptr;
+    ral_present_task result_finalize_task    = nullptr;
+    ral_present_task sm_blur_present_task    = nullptr;
+    ral_present_task sm_gen_mip_present_task = nullptr;
 
     ASSERT_DEBUG_SYNC(handler_ptr->is_enabled,
                       "_scene_renderer_sm_stop() must not be called without a preceding _scene_renderer_sm_start() invocation.");
@@ -1746,36 +1747,66 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
     }
 
     /* If necessary, also generate mipmaps for the color texture */
-    if (handler_ptr->current_sm_color0_l0_texture_view != nullptr ||
-        handler_ptr->current_sm_color0_l1_texture_view != nullptr)
+    if (handler_ptr->current_sm_color0_l0_texture_view != nullptr)
     {
-        uint32_t n_mips = 0;
+        ral_texture sm_color_texture;
 
         ral_texture_view_get_property(handler_ptr->current_sm_color0_l0_texture_view,
-                                      RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
-                                     &n_mips);
+                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                     &sm_color_texture);
 
-        if (n_mips > 1)
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "TODO");
-
-            #if 0
-            {
-                /* TODO: Must be implemented as a GPU task */
-                ral_texture_generate_mipmaps(handler_ptr->current_sm_color0_texture,
-                                             false /* async */);
-            }
-            #endif
-        }
+        sm_gen_mip_present_task = ral_texture_get_generate_mips_present_task(sm_color_texture);
     }
 
     /* Form the result present task */
+    if (sm_gen_mip_present_task != nullptr)
+    {
+        ASSERT_DEBUG_SYNC(sm_blur_present_task != nullptr,
+                          "TODO");
+
+        ral_present_task_ingroup_connection finalize_task_connection;
+        ral_present_task_group_create_info  finalize_task_create_info;
+        ral_present_task_group_mapping      finalize_task_input_mapping;
+        ral_present_task_group_mapping      finalize_task_output_mapping;
+        ral_present_task                    finalize_task_subtasks[2];
+
+        finalize_task_subtasks[0] = sm_blur_present_task;
+        finalize_task_subtasks[1] = sm_gen_mip_present_task;
+
+        finalize_task_connection.input_present_task_index     = 1;
+        finalize_task_connection.input_present_task_io_index  = 0;
+        finalize_task_connection.output_present_task_index    = 0;
+        finalize_task_connection.output_present_task_io_index = 0;
+
+        finalize_task_input_mapping.group_task_io_index   = 0;
+        finalize_task_input_mapping.n_present_task        = 0;
+        finalize_task_input_mapping.present_task_io_index = 0;
+
+        finalize_task_output_mapping.group_task_io_index   = 0;
+        finalize_task_output_mapping.n_present_task        = 1;
+        finalize_task_output_mapping.present_task_io_index = 0;
+
+        finalize_task_create_info.ingroup_connections                      = &finalize_task_connection;
+        finalize_task_create_info.n_ingroup_connections                    = 1;
+        finalize_task_create_info.n_present_tasks                          = sizeof(finalize_task_subtasks) / sizeof(finalize_task_subtasks[0]);
+        finalize_task_create_info.n_total_unique_inputs                    = 1;
+        finalize_task_create_info.n_total_unique_outputs                   = 1;
+        finalize_task_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
+        finalize_task_create_info.n_unique_output_to_ingroup_task_mappings = 1;
+        finalize_task_create_info.present_tasks                            = finalize_task_subtasks;
+        finalize_task_create_info.unique_input_to_ingroup_task_mapping     = &finalize_task_input_mapping;
+        finalize_task_create_info.unique_output_to_ingroup_task_mapping    = &finalize_task_output_mapping;
+
+        result_finalize_task = ral_present_task_create_group(system_hashed_ansi_string_create("SM post-processing task"),
+                                                            &finalize_task_create_info);
+
+        ral_present_task_release(sm_blur_present_task);
+        ral_present_task_release(sm_gen_mip_present_task);
+    }
+    else
     if (sm_blur_present_task != nullptr)
     {
-        /* This one is a bit more complex. Need a group present task here */
-        ASSERT_DEBUG_SYNC(false,
-                          "TODO: Implement");
+        result_finalize_task = sm_blur_present_task;
     }
 
     /* "Unbind" the SM texture from the scene_renderer_sm instance */
@@ -4022,21 +4053,21 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
             finalize_present_task = _scene_renderer_sm_stop(shadow_mapping_ptr,
                                                             current_light);
 
-            ASSERT_DEBUG_SYNC(finalize_present_task == nullptr,
-                              "TODO");
-
             /* Form a final present task for the light. There's a couple of things we need to do here:
              *
              * 1) Coalesce all present subtasks for the per-light SM present task
              * 2) Connect outputs of the init task to relevant inputs of the consumer helper tasks.
              * 3) Expose the same set of outputs as the init task.
              * 4) Map helper task outputs to group task's outputs.
+             *
+             * If a non-null post present task is defined, the result task's output needs to be routed through
+             * it.
              **/
             ral_present_task_group_create_info  light_sm_present_task_create_info;
             ral_present_task_ingroup_connection light_sm_present_task_connections[n_max_helper_present_tasks * 4 /* 2 x color + 2 x depth */];
             ral_present_task_group_mapping*     light_sm_present_task_output_mappings   = nullptr;
             ral_present_task_io*                light_sm_present_task_outputs;
-            ral_present_task                    light_sm_present_task_subtasks   [1 + n_max_helper_present_tasks + 0 /* TODO: finalize task is always null for now */];
+            ral_present_task                    light_sm_present_task_subtasks   [1 + n_max_helper_present_tasks];
             uint32_t                            n_init_present_task_outputs             = 0;
             uint32_t                            n_light_sm_present_task_connections     = 0;
             uint32_t                            n_light_sm_present_task_output_mappings = 0;
@@ -4216,6 +4247,15 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
 
             per_light_present_tasks[n_light] = ral_present_task_create_group(system_hashed_ansi_string_create("Per-light shadow map bake present task"),
                                                                             &light_sm_present_task_create_info);
+
+            if (finalize_present_task != nullptr)
+            {
+                ral_present_task_add_subtask_to_group_task(per_light_present_tasks[n_light],
+                                                           finalize_present_task,
+                                                           RAL_PRESENT_TASK_SUBTASK_ROLE_CONSUMER);
+
+                ral_present_task_release(finalize_present_task);
+            }
 
             /* Clean up */
             for (uint32_t n_helper_task = 0;

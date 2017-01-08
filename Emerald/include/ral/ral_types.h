@@ -1552,7 +1552,8 @@ typedef struct ral_texture_view_create_info
         type               = RAL_TEXTURE_TYPE_UNKNOWN;
     }
 
-    EMERALD_API ral_texture_view_create_info(ral_texture in_texture);
+    EMERALD_API ral_texture_view_create_info(ral_texture      in_texture);
+    EMERALD_API ral_texture_view_create_info(ral_texture_view in_texture_view);
 } ral_texture_view_create_info;
 
 #endif /* RAL_TYPES_H */

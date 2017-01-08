@@ -394,6 +394,7 @@ private:
                         else
                         {
                             ASSERT_DEBUG_SYNC(current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_BUFFER      ||
+                                              current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE     ||
                                               current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
                                               "An object of an invalid type is assigned to an IO");
                         }
@@ -458,19 +459,40 @@ private:
                                 break;
                             }
 
+                            case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
                             case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
                             {
-                                ral_texture      current_io_user_parent_texture = nullptr;
-                                ral_texture_view current_io_user_texture_view   = reinterpret_cast<ral_texture_view>(current_io_object);
-                                ral_texture      last_io_user_parent_texture    = nullptr;
-                                ral_texture_view last_io_user_texture_view      = reinterpret_cast<ral_texture_view>(last_io_object);
+                                ral_texture current_io_user_parent_texture = nullptr;
+                                ral_texture last_io_user_parent_texture    = nullptr;
 
-                                ral_texture_view_get_property(current_io_user_texture_view,
-                                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                                             &current_io_user_parent_texture);
-                                ral_texture_view_get_property(last_io_user_texture_view,
-                                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
-                                                             &last_io_user_parent_texture);
+                                if (last_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
+                                {
+                                    last_io_user_parent_texture = reinterpret_cast<ral_texture>(last_io_object);
+                                }
+                                else
+                                {
+                                    ral_texture_view last_io_user_texture_view = reinterpret_cast<ral_texture_view>(last_io_object);
+
+                                    ASSERT_DEBUG_SYNC(last_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                                      "Incompatible object type encountered");
+
+                                    ral_texture_view_get_property(last_io_user_texture_view,
+                                                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                                 &last_io_user_parent_texture);
+                                }
+
+                                if (current_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW)
+                                {
+                                    ral_texture_view current_io_user_texture_view = reinterpret_cast<ral_texture_view>(current_io_object);
+
+                                    ral_texture_view_get_property(current_io_user_texture_view,
+                                                                  RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                                 &current_io_user_parent_texture);
+                                }
+                                else
+                                {
+                                    current_io_user_parent_texture = reinterpret_cast<ral_texture>(current_io_object);
+                                }
 
                                 ASSERT_DEBUG_SYNC(current_io_user_parent_texture == last_io_user_parent_texture,
                                                   "A group IO maps to present task IOs which make use of different RAL texture objects");
@@ -888,8 +910,9 @@ void _ral_present_task::update_ios_internal(ral_command_buffer in_command_buffer
 #endif
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_present_task group_task,
-                                                                            ral_present_task task_to_add)
+PUBLIC EMERALD_API bool ral_present_task_add_subtask_to_group_task(ral_present_task              group_task,
+                                                                   ral_present_task              task_to_add,
+                                                                   ral_present_task_subtask_role role)
 {
     _ral_present_task* group_task_ptr   = reinterpret_cast<_ral_present_task*>(group_task);
     ral_present_task*  new_subtasks_ptr = nullptr;
@@ -946,18 +969,32 @@ PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_
     delete [] group_task_ptr->group_task_subtasks;
     group_task_ptr->group_task_subtasks = new_subtasks_ptr;
 
-    /* Iterate over task_to_add's outputs and check if it can be connected to input(s) of
+    /* For producer role:
+     *
+     * Iterate over task_to_add's outputs and check if it can be connected to input(s) of
      * any of the already defined subtasks in group_task. If so, add a new connection and carry on
      * until all group_task's subtasks are checked.
      *
      * We need two iterations here:
      * 1) Count how many new connections are needed.
      * 2) Reallocate connection array + append new connections
+     *
+     * For consumer role, behavior is analogous, except we now care about outputs instead of inputs.
      */
     ral_present_task_ingroup_connection* new_connections_ptr = nullptr;
+    uint32_t                             n_ios;
     uint32_t                             n_new_connections   = 0;
-    const uint32_t&                      n_outputs           = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_output_mappings
-                                                                                                                      : task_to_add_ptr->n_outputs;
+    
+    if (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER)
+    {
+        n_ios = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_output_mappings
+                                                                       : task_to_add_ptr->n_outputs;
+    }
+    else
+    {
+        n_ios = (task_to_add_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? task_to_add_ptr->n_group_task_input_mappings
+                                                                       : task_to_add_ptr->n_inputs;
+    }
 
     for (uint32_t n_iteration = 0;
                   n_iteration < 2;
@@ -971,7 +1008,7 @@ PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_
             if (n_new_connections == 0)
             {
                 /* No new connections? */
-                LOG_ERROR("Perf warning: redundant ral_present_task_add_producer_subtask_to_group_task() call detected.");
+                LOG_ERROR("Perf warning: redundant ral_present_task_add_subtask_to_group_task() call detected.");
 
                 break;
             }
@@ -993,45 +1030,97 @@ PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_
             group_task_ptr->group_task_connections = new_connections_ptr;
         }
 
-        /* Iterate over producer's outputs */
-        for (uint32_t n_output = 0;
-                      n_output < n_outputs;
-                    ++n_output)
+        /* Iterate over relevant IOs */
+        const ral_present_task_io_type io_type = (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER) ? RAL_PRESENT_TASK_IO_TYPE_OUTPUT
+                                                                                                  : RAL_PRESENT_TASK_IO_TYPE_INPUT;
+
+        for (uint32_t n_io = 0;
+                      n_io < n_ios;
+                    ++n_io)
         {
-            void*                      current_output_object = nullptr;
-            const ral_present_task_io* current_output_ptr    = nullptr;
+            void*                      current_io_object      = nullptr;
+            ral_context_object_type    current_io_object_type;
+            const ral_present_task_io* current_io_ptr         = nullptr;
 
             ral_present_task_get_io_property(task_to_add,
-                                             RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
-                                             n_output,
+                                             io_type,
+                                             n_io,
                                              RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                            &current_output_object);
+                                            &current_io_object);
+            ral_present_task_get_io_property(task_to_add,
+                                             io_type,
+                                             n_io,
+                                             RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                             reinterpret_cast<void**>(&current_io_object_type) );
 
-            ASSERT_DEBUG_SYNC(current_output_object != nullptr,
-                              "Could not retrieve object assigned to output [%d]",
-                              n_output);
+            ASSERT_DEBUG_SYNC(current_io_object != nullptr,
+                              "Could not retrieve object assigned to IO [%d]",
+                              n_io);
 
-            /* Identify any inputs in the existing task, whose exposed objects match our current output's */
+            /* For a new producer, identify any inputs in the existing task, whose exposed objects match our current output's.
+             * For a new consumer, check outputs instead.
+             */
             for (uint32_t n_subtask = 0;
                           n_subtask < group_task_ptr->n_group_task_subtasks - 1;
                         ++n_subtask)
             {
-                _ral_present_task*  current_subtask_ptr      = reinterpret_cast<_ral_present_task*>(group_task_ptr->group_task_subtasks[n_subtask]);
-                uint32_t            current_subtask_n_input  = 0;
-                const uint32_t&     current_subtask_n_inputs = (current_subtask_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? current_subtask_ptr->n_group_task_unique_input_mappings
-                                                                                                                          : current_subtask_ptr->n_inputs;
+                _ral_present_task* current_subtask_ptr    = reinterpret_cast<_ral_present_task*>(group_task_ptr->group_task_subtasks[n_subtask]);
+                uint32_t           current_subtask_n_io  = 0;
+                uint32_t           current_subtask_n_ios;
 
-                while (current_subtask_n_input < current_subtask_n_inputs)
+                if (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER)
                 {
-                    void* current_subtask_input_object = nullptr;
+                    current_subtask_n_ios = (current_subtask_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? current_subtask_ptr->n_group_task_unique_input_mappings
+                                                                                                       : current_subtask_ptr->n_inputs;
+                }
+                else
+                {
+                    current_subtask_n_ios = (current_subtask_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? current_subtask_ptr->n_group_task_unique_output_mappings
+                                                                                                       : current_subtask_ptr->n_outputs;
+                }
+
+                while (current_subtask_n_io < current_subtask_n_ios)
+                {
+                    void*                          current_subtask_io_object      = nullptr;
+                    ral_context_object_type        current_subtask_io_object_type;
+                    const ral_present_task_io_type current_subtask_io_type        = (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER) ? RAL_PRESENT_TASK_IO_TYPE_INPUT
+                                                                                                                                     : RAL_PRESENT_TASK_IO_TYPE_OUTPUT;
+                    bool                           do_ios_match                   = false;
 
                     ral_present_task_get_io_property(group_task_ptr->group_task_subtasks[n_subtask],
-                                                     RAL_PRESENT_TASK_IO_TYPE_INPUT,
-                                                     current_subtask_n_input,
+                                                     current_subtask_io_type,
+                                                     current_subtask_n_io,
                                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                    &current_subtask_input_object);
+                                                    &current_subtask_io_object);
+                    ral_present_task_get_io_property(group_task_ptr->group_task_subtasks[n_subtask],
+                                                     current_subtask_io_type,
+                                                     current_subtask_n_io,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                     reinterpret_cast<void**>(&current_subtask_io_object_type) );
 
-                    if (current_subtask_input_object == current_output_object)
+                    if (current_subtask_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE      &&
+                        current_io_object_type         == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW ||
+                        current_subtask_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW &&
+                        current_io_object_type         == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
+                    {
+                        ral_texture      texture      = (current_subtask_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)      ? reinterpret_cast<ral_texture>     (current_subtask_io_object)
+                                                                                                                                 : reinterpret_cast<ral_texture>     (current_io_object);
+                        ral_texture_view texture_view = (current_subtask_io_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW) ? reinterpret_cast<ral_texture_view>(current_subtask_io_object)
+                                                                                                                                 : reinterpret_cast<ral_texture_view>(current_io_object);
+                        ral_texture      texture_view_parent_texture;
+
+                        ral_texture_view_get_property(texture_view,
+                                                      RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                     &texture_view_parent_texture);
+
+                        do_ios_match = (texture_view_parent_texture == texture);
+                    }
+                    else
+                    {
+                        do_ios_match = (current_subtask_io_object == current_io_object);
+                    }
+
+                    if (do_ios_match)
                     {
                         if (n_iteration == 0)
                         {
@@ -1042,20 +1131,54 @@ PUBLIC EMERALD_API bool ral_present_task_add_producer_subtask_to_group_task(ral_
                         {
                             ral_present_task_ingroup_connection* new_connection_ptr = group_task_ptr->group_task_connections + group_task_ptr->n_group_task_connections + n_current_connection;
 
-                            new_connection_ptr->input_present_task_index     = n_subtask;
-                            new_connection_ptr->input_present_task_io_index  = current_subtask_n_input;
-                            new_connection_ptr->output_present_task_index    = group_task_ptr->n_group_task_subtasks - 1;
-                            new_connection_ptr->output_present_task_io_index = n_output;
+                            if (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER)
+                            {
+                                new_connection_ptr->input_present_task_index     = n_subtask;
+                                new_connection_ptr->input_present_task_io_index  = current_subtask_n_io;
+                                new_connection_ptr->output_present_task_index    = group_task_ptr->n_group_task_subtasks - 1;
+                                new_connection_ptr->output_present_task_io_index = n_io;
+                            }
+                            else
+                            {
+                                new_connection_ptr->output_present_task_index    = n_subtask;
+                                new_connection_ptr->output_present_task_io_index = current_subtask_n_io;
+                                new_connection_ptr->input_present_task_index     = group_task_ptr->n_group_task_subtasks - 1;
+                                new_connection_ptr->input_present_task_io_index  = n_io;
+                            }
 
                             ++n_current_connection;
+
+                            /* (Producer role) The group task may define input mappings which refer to the now deprecated consumer present task.
+                             * Iterate over all mappings and update all items that do so.
+                             *
+                             * (Consumer role) Analogous.
+                             */
+                            ral_present_task_group_mapping* mappings   = (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER) ? group_task_ptr->group_task_input_mappings
+                                                                                                                          : group_task_ptr->group_task_output_mappings;
+                            const uint32_t                  n_mappings = (role == RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER) ? group_task_ptr->n_group_task_unique_input_mappings
+                                                                                                                          : group_task_ptr->n_group_task_unique_output_mappings;
+
+                            for (uint32_t n_mapping = 0;
+                                          n_mapping < n_mappings;
+                                        ++n_mapping)
+                            {
+                                auto mapping_ptr = mappings + n_mapping;
+
+                                if (mapping_ptr->n_present_task        == n_subtask            &&
+                                    mapping_ptr->present_task_io_index == current_subtask_n_io)
+                                {
+                                    mapping_ptr->n_present_task        = group_task_ptr->n_group_task_subtasks - 1;
+                                    mapping_ptr->present_task_io_index = n_io;
+                                }
+                            }
                         }
                     }
 
-                    ++current_subtask_n_input;
+                    ++current_subtask_n_io;
                 }
             }
 
-            /* Move to the next output .. */
+            /* Move to the next IO .. */
         }
 
         if (n_iteration == 1)
@@ -1186,16 +1309,51 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_black_box(system_has
                         {
                             _unique_io* unique_io_ptr = current_unique_ios + n_unique_io;
 
-                            is_already_defined = (unique_io_ptr->object == current_object       &&
-                                                  unique_io_ptr->type   == current_object_type);
+                            if (unique_io_ptr->type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE      &&
+                                current_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW ||
+                                unique_io_ptr->type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW &&
+                                current_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
+                            {
+                                ral_texture      texture      = (unique_io_ptr->type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)      ? reinterpret_cast<ral_texture>     (unique_io_ptr->object)
+                                                                                                                              : reinterpret_cast<ral_texture>     (current_object);
+                                ral_texture_view texture_view = (unique_io_ptr->type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW) ? reinterpret_cast<ral_texture_view>(unique_io_ptr->object)
+                                                                                                                              : reinterpret_cast<ral_texture_view>(current_object);
+                                ral_texture      texture_view_parent_texture;
+
+                                ral_texture_view_get_property(texture_view,
+                                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                             &texture_view_parent_texture);
+
+                                is_already_defined = (texture_view_parent_texture == texture);
+                            }
+                            else
+                            {
+                                is_already_defined = (unique_io_ptr->object == current_object       &&
+                                                      unique_io_ptr->type   == current_object_type);
+                            }
                         }
 
                         if (!is_already_defined)
                         {
                             uint32_t new_io_index = *current_result_unique_io_count_ptr;
 
-                            current_unique_ios[new_io_index].object = current_object;
-                            current_unique_ios[new_io_index].type   = current_object_type;
+                            if (current_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW)
+                            {
+                                ral_texture_view texture_view                = reinterpret_cast<ral_texture_view>(current_object);
+                                ral_texture      texture_view_parent_texture;
+
+                                ral_texture_view_get_property(texture_view,
+                                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                             &texture_view_parent_texture);
+
+                                current_unique_ios[new_io_index].object = texture_view_parent_texture;
+                                current_unique_ios[new_io_index].type   = RAL_CONTEXT_OBJECT_TYPE_TEXTURE;
+                            }
+                            else
+                            {
+                                current_unique_ios[new_io_index].object = current_object;
+                                current_unique_ios[new_io_index].type   = current_object_type;
+                            }
                             ++(*current_result_unique_io_count_ptr);
                         }
                     }

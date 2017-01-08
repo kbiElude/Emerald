@@ -149,9 +149,8 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
             ral_texture_view   texture_view = attachments[n_attachment];
             ral_texture_aspect texture_view_aspect;
             ral_format         texture_view_format;
-            uint32_t           texture_view_n_base_layer;
-            uint32_t           texture_view_n_base_mipmap;
             uint32_t           texture_view_n_layers;
+            uint32_t           texture_view_n_mips;
             raGL_texture       texture_view_raGL       = nullptr;
             GLuint             texture_view_raGL_id    = 0;
             bool               texture_view_raGL_is_rb = false;
@@ -170,14 +169,11 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
                                           RAL_TEXTURE_VIEW_PROPERTY_FORMAT,
                                          &texture_view_format);
             ral_texture_view_get_property(texture_view,
-                                          RAL_TEXTURE_VIEW_PROPERTY_N_BASE_LAYER,
-                                         &texture_view_n_base_layer);
-            ral_texture_view_get_property(texture_view,
-                                          RAL_TEXTURE_VIEW_PROPERTY_N_BASE_MIPMAP,
-                                         &texture_view_n_base_mipmap);
-            ral_texture_view_get_property(texture_view,
                                           RAL_TEXTURE_VIEW_PROPERTY_N_LAYERS,
                                          &texture_view_n_layers);
+            ral_texture_view_get_property(texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_N_MIPMAPS,
+                                         &texture_view_n_mips);
             ral_texture_view_get_property(texture_view,
                                           RAL_TEXTURE_VIEW_PROPERTY_TYPE,
                                          &texture_view_type);
@@ -229,12 +225,10 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
                 {
                     if (texture_view_raGL_is_rb)
                     {
-                        ASSERT_DEBUG_SYNC(texture_view_n_base_layer == 0,
-                                          "Invalid base layer specified.");
-                        ASSERT_DEBUG_SYNC(texture_view_n_base_mipmap == 0,
-                                          "Invalid base mipmap level specified.");
                         ASSERT_DEBUG_SYNC(texture_view_n_layers == 1,
                                           "Invalid number of layers specified.");
+                        ASSERT_DEBUG_SYNC(texture_view_n_mips == 1,
+                                          "Invalid number of mips specified.");
 
                         entrypoints_dsa_ptr->pGLNamedFramebufferRenderbufferEXT(args_ptr->fbo_ptr->id,
                                                                                 target_gl,
@@ -249,13 +243,11 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
                                                                                  target_gl,
                                                                                  GL_TEXTURE_2D,
                                                                                  texture_view_raGL_id,
-                                                                                 texture_view_n_base_mipmap);
+                                                                                 0); /* level */
                         }
                         else
                         {
                             /* TODO: This is a bit tricky and needs to be implemented carefully. */
-                            ASSERT_DEBUG_SYNC(texture_view_n_base_layer == 0,
-                                              "Invalid base layer specified.");
                             ASSERT_DEBUG_SYNC(false,
                                               "TODO");
                         }
@@ -272,7 +264,7 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
                     entrypoints_dsa_ptr->pGLNamedFramebufferTextureEXT(args_ptr->fbo_ptr->id,
                                                                        target_gl,
                                                                        texture_view_raGL_id,
-                                                                       texture_view_n_base_mipmap);
+                                                                       0); /* level */
 
                     break;
                 }
