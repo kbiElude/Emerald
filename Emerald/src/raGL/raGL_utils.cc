@@ -688,7 +688,6 @@ PUBLIC GLenum raGL_utils_get_ogl_enum_for_ral_texture_type(ral_texture_type in_t
         GL_TEXTURE_2D,
         GL_TEXTURE_2D_ARRAY,
         GL_TEXTURE_3D,
-        GL_TEXTURE_BUFFER,
         GL_TEXTURE_CUBE_MAP,
         GL_TEXTURE_CUBE_MAP_ARRAY,
         GL_TEXTURE_RECTANGLE,

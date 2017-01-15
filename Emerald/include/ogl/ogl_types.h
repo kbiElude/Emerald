@@ -1035,6 +1035,7 @@ typedef struct
 
     /* DSA */
     PFNGLBINDMULTITEXTUREEXTPROC             pGLBindMultiTextureEXT;
+    PFNGLCHECKNAMEDFRAMEBUFFERSTATUSEXTPROC  pGLCheckNamedFramebufferStatusEXT;
     PFNGLCOMPRESSEDTEXTUREIMAGE3DEXTPROC     pGLCompressedTextureImage3DEXT;
     PFNGLCOMPRESSEDTEXTUREIMAGE2DEXTPROC     pGLCompressedTextureImage2DEXT;
     PFNGLCOMPRESSEDTEXTUREIMAGE1DEXTPROC     pGLCompressedTextureImage1DEXT;
@@ -1097,6 +1098,13 @@ typedef struct
     PFNGLBUFFERSTORAGEPROC pGLBufferStorage;
 
 } ogl_context_gl_entrypoints_arb_buffer_storage;
+
+typedef struct
+{
+    PFNGLCLEARTEXIMAGEPROC    pGLClearTexImage;
+    PFNGLCLEARTEXSUBIMAGEPROC pGLClearTexSubImage;
+
+} ogl_context_gl_entrypoints_arb_clear_texture;
 
 typedef struct
 {

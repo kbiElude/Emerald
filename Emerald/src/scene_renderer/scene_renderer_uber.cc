@@ -2576,11 +2576,11 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                 }
 
                 /* Issue the draw call. We need to handle two separate cases here:
-                     *
-                     * 1) We're dealing with a regular mesh:    need to do an indexed draw call.
-                     * 2) We're dealing with a GPU stream mesh: trickier! need to check what kind of draw call
-                     *                                          we need to make and act accordingly.
-                     */
+                 *
+                 * 1) We're dealing with a regular mesh:    need to do an indexed draw call.
+                 * 2) We're dealing with a GPU stream mesh: trickier! need to check what kind of draw call
+                 *                                          we need to make and act accordingly.
+                 */
                 if (instance_type == MESH_TYPE_REGULAR)
                 {
                     /* Retrieve mesh index type */
@@ -2817,6 +2817,9 @@ PUBLIC void scene_renderer_uber_set_shader_general_property(scene_renderer_uber 
     /* All properties below refer to the uniform block defined in uber vertex shader. */
     if (uber_ptr->ub_vs == nullptr)
     {
+        ASSERT_DEBUG_SYNC(uber_ptr->ub_vs != nullptr,
+                          "ub_vs block is null?");
+
         goto end;
     }
 

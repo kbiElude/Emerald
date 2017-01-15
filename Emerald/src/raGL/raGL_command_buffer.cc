@@ -95,6 +95,9 @@ typedef enum
     /* Command args stored in _raGL_command_clear_stencil_command_info */
     RAGL_COMMAND_TYPE_CLEAR_STENCIL,
 
+    /* Command args stored in _raGL_command_clear_tex_sub_image_command_info */
+    RAGL_COMMAND_TYPE_CLEAR_TEX_SUB_IMAGE,
+
     /* Command args stored in _raGL_command_color_mask_command_info */
     RAGL_COMMAND_TYPE_COLOR_MASK,
 
@@ -368,6 +371,18 @@ typedef struct
     GLint stencil;
 
 } _raGL_command_clear_stencil_command_info;
+
+typedef struct
+{
+    ral_color data;
+    GLenum    format;
+    GLint     level;
+    GLint     offset[3];
+    GLsizei   size  [3];
+    GLuint    texture;
+    GLenum    type;
+
+} _raGL_command_clear_tex_sub_image_command_info;
 
 typedef struct
 {
@@ -738,6 +753,7 @@ typedef struct
         _raGL_command_clear_color_command_info                                       clear_color_command_info;
         _raGL_command_clear_depthf_command_info                                      clear_depthf_command_info;
         _raGL_command_clear_stencil_command_info                                     clear_stencil_command_info;
+        _raGL_command_clear_tex_sub_image_command_info                               clear_tex_sub_image_command_info;
         _raGL_command_color_mask_command_info                                        color_mask_command_info;
         _raGL_command_color_maski_command_info                                       color_maski_command_info;
         _raGL_command_copy_buffer_sub_data_command_info                              copy_buffer_sub_data_command_info;
@@ -943,6 +959,7 @@ typedef struct _raGL_command_buffer
     system_resizable_vector                                   commands;
     raGL_dep_tracker                                          dep_tracker;
     ogl_context                                               context; /* do NOT release */
+    const ogl_context_gl_entrypoints_arb_clear_texture*       entrypoints_clear_texture_ptr;
     const ogl_context_gl_entrypoints_ext_direct_state_access* entrypoints_dsa_ptr;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr;
     const ogl_context_gl_limits*                              limits_ptr;
@@ -978,11 +995,17 @@ typedef struct _raGL_command_buffer
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entrypoints_ptr);
         ogl_context_get_property(in_context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_CLEAR_TEXTURE,
+                                &entrypoints_clear_texture_ptr);
+        ogl_context_get_property(in_context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &entrypoints_dsa_ptr);
         ogl_context_get_property(in_context,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
+
+        ASSERT_DEBUG_SYNC(entrypoints_clear_texture_ptr != nullptr,
+                          "GL_ARB_clear_texture is not supported");
 
         raGL_backend_get_private_property(backend,
                                           RAGL_BACKEND_PRIVATE_PROPERTY_DEP_TRACKER,
@@ -999,6 +1022,7 @@ typedef struct _raGL_command_buffer
     void clear_commands();
 
     void process_clear_rt_binding_command       (const ral_command_buffer_clear_rt_binding_command_info*        command_ral_ptr);
+    void process_clear_texture_command          (const ral_command_buffer_clear_texture_command_info*           command_ral_ptr);
     void process_copy_buffer_to_buffer_command  (const ral_command_buffer_copy_buffer_to_buffer_command_info*   command_ral_ptr);
     void process_copy_texture_to_texture_command(const ral_command_buffer_copy_texture_to_texture_command_info* command_ral_ptr);
     void process_dispatch_command               (const ral_command_buffer_dispatch_command_info*                command_ral_ptr);
@@ -1177,6 +1201,13 @@ void _raGL_command_buffer::bake_commands(ral_command_buffer in_command_buffer)
             case RAL_COMMAND_TYPE_CLEAR_RT_BINDING:
             {
                 process_clear_rt_binding_command(reinterpret_cast<const ral_command_buffer_clear_rt_binding_command_info*>(command_ral_raw_ptr) );
+
+                break;
+            }
+
+            case RAL_COMMAND_TYPE_CLEAR_TEXTURE:
+            {
+                process_clear_texture_command(reinterpret_cast<const ral_command_buffer_clear_texture_command_info*>(command_ral_raw_ptr) );
 
                 break;
             }
@@ -2610,9 +2641,9 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
                       n_region < command_ral_ptr->n_clear_regions;
                     ++n_region)
         {
-            _raGL_command*                                          clear_command_ptr;
-            const ral_command_buffer_clear_rt_binding_clear_region& current_region = command_ral_ptr->clear_regions[n_region];
-            _raGL_command*                                          scissor_command_ptr;
+            _raGL_command*                         clear_command_ptr;
+            const ral_command_buffer_clear_region& current_region = command_ral_ptr->clear_regions[n_region];
+            _raGL_command*                         scissor_command_ptr;
 
             if (current_region.n_base_layer + current_region.n_layers > current_rt_n_layers)
             {
@@ -2774,6 +2805,162 @@ void _raGL_command_buffer::process_clear_rt_binding_command(const ral_command_bu
 
             system_resizable_vector_push(commands,
                                          disable_command_ptr);
+        }
+    }
+}
+
+/** TODO */
+void _raGL_command_buffer::process_clear_texture_command(const ral_command_buffer_clear_texture_command_info* command_ral_ptr)
+{
+    raGL_backend backend_raGL = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BACKEND,
+                            &backend_raGL);
+
+    for (uint32_t n_target = 0;
+                  n_target < command_ral_ptr->n_targets;
+                ++n_target)
+    {
+        GLenum           format;
+        const auto&      target         = command_ral_ptr->targets[n_target];
+        ral_format       target_format;
+        ral_texture      target_ral;
+        raGL_texture     target_raGL;
+        GLuint           target_raGL_id = -1;
+        ral_texture_type target_type;
+
+        raGL_backend_get_texture(backend_raGL,
+                                 target.texture,
+                                &target_raGL);
+
+        raGL_texture_get_property(target_raGL,
+                                  RAGL_TEXTURE_PROPERTY_ID,
+                                  reinterpret_cast<void**>(&target_raGL_id) );
+
+        raGL_texture_get_property(target_raGL,
+                                  RAGL_TEXTURE_PROPERTY_RAL_TEXTURE,
+                                  reinterpret_cast<void**>(&target_ral) );
+        ral_texture_get_property (target_ral,
+                                  RAL_TEXTURE_PROPERTY_FORMAT,
+                                  reinterpret_cast<void**>(&target_format) );
+        ral_texture_get_property (target_ral,
+                                  RAL_TEXTURE_PROPERTY_TYPE,
+                                  reinterpret_cast<void**>(&target_type) );
+
+        if (target.aspects == RAL_TEXTURE_ASPECT_COLOR_BIT)
+        {
+            format = raGL_utils_get_ogl_enum_for_ral_format(target_format);
+        }
+        else
+        if (target.aspects == RAL_TEXTURE_ASPECT_DEPTH_BIT)
+        {
+            format = GL_DEPTH_COMPONENT;
+        }
+        else
+        if (target.aspects == RAL_TEXTURE_ASPECT_STENCIL_BIT)
+        {
+            format = GL_STENCIL_INDEX;
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(target.aspects == RAL_TEXTURE_ASPECT_DEPTH_BIT  ||
+                              target.aspects == RAL_TEXTURE_ASPECT_STENCIL_BIT,
+                              "Unrecognized aspect specified for the texture acting as a target for the clear command");
+
+            format = GL_DEPTH_STENCIL;
+        }
+
+        for (uint32_t n_region = 0;
+                      n_region < command_ral_ptr->n_clear_regions;
+                    ++n_region)
+        {
+            const auto& region = command_ral_ptr->clear_regions[n_region];
+
+            for (uint32_t n_mip = target.base_mip_level;
+                          n_mip < target.base_mip_level + target.n_mips;
+                        ++n_mip)
+            {
+                _raGL_command* clear_command_ptr = reinterpret_cast<_raGL_command*>(system_resource_pool_get_from_pool(command_pool) );
+                auto&          command           = clear_command_ptr->clear_tex_sub_image_command_info;
+
+                command.data      = command_ral_ptr->clear_value;
+                command.format    = format;
+                command.level     = n_mip;
+                command.offset[0] = region.xy[0];
+                command.offset[1] = region.xy[1];
+                command.offset[2] = 0;
+                command.size  [0] = region.size[0];
+                command.size  [1] = region.size[1];
+                command.size  [2] = 0;
+                command.texture   = target_raGL_id;
+
+                switch (command_ral_ptr->clear_value.data_type)
+                {
+                    case RAL_COLOR_DATA_TYPE_FLOAT: command.type = GL_FLOAT;        break;
+                    case RAL_COLOR_DATA_TYPE_SINT:  command.type = GL_INT;          break;
+                    case RAL_COLOR_DATA_TYPE_UINT:  command.type = GL_UNSIGNED_INT; break;
+
+                    default:
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unrecognized data type of the clear color.");
+                    }
+                }
+
+                switch (target_type)
+                {
+                    case RAL_TEXTURE_TYPE_1D:
+                    case RAL_TEXTURE_TYPE_2D:
+                    case RAL_TEXTURE_TYPE_3D:
+                    case RAL_TEXTURE_TYPE_MULTISAMPLE_2D:
+                    {
+                        /* Nop */
+                        ASSERT_DEBUG_SYNC(region.n_base_layer == 0 &&
+                                          region.n_layers     == 1,
+                                          "Invalid layers requested for a clear region");
+
+                        break;
+                    }
+
+                    case RAL_TEXTURE_TYPE_1D_ARRAY:
+                    {
+                        command.offset[1] = region.n_base_layer;
+                        command.size  [1] = region.n_layers;
+
+                        break;
+                    }
+
+                    case RAL_TEXTURE_TYPE_2D_ARRAY:
+                    case RAL_TEXTURE_TYPE_CUBE_MAP:
+                    case RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY:
+                    {
+                        command.offset[2] = region.n_base_layer;
+                        command.size  [2] = region.n_layers;
+
+                        break;
+                    }
+
+                    case RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY:
+                    {
+                        command.offset[3] = region.n_base_layer;
+                        command.size  [3] = region.n_layers;
+
+                        break;
+                    }
+
+                    default:
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unrecognized RAL texture type");
+                    }
+                }
+
+                clear_command_ptr->type = RAGL_COMMAND_TYPE_CLEAR_TEX_SUB_IMAGE;
+
+                system_resizable_vector_push(commands,
+                                             clear_command_ptr);
+            }
         }
     }
 }
@@ -3061,11 +3248,13 @@ void _raGL_command_buffer::process_copy_texture_to_texture_command(const ral_com
             dst_texture_view_create_info.n_base_mip   += command_ral_ptr->n_dst_mipmap;
             dst_texture_view_create_info.n_layers      = 1;
             dst_texture_view_create_info.n_mips        = 1;
+            dst_texture_view_create_info.type          = RAL_TEXTURE_TYPE_2D;
 
             src_texture_view_create_info.n_base_layer += command_ral_ptr->n_src_layer;
             src_texture_view_create_info.n_base_mip   += command_ral_ptr->n_src_mipmap;
             src_texture_view_create_info.n_layers      = 1;
             src_texture_view_create_info.n_mips        = 1;
+            src_texture_view_create_info.type          = RAL_TEXTURE_TYPE_2D;
 
             dst_texture_view = ral_texture_get_view(&dst_texture_view_create_info);
             src_texture_view = ral_texture_get_view(&src_texture_view_create_info);
@@ -3781,10 +3970,11 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             GLuint                       sampler_raGL_id                 = 0;
             _raGL_command*               texture_parameterfv_command_ptr = nullptr;
             raGL_texture                 texture_raGL                    = nullptr;
-            GLuint                       texture_raGL_id                 = 0;
             bool                         texture_raGL_is_rb;
             ral_texture                  texture_ral                     = nullptr;
             ral_texture_type             texture_ral_type;
+            raGL_texture                 texture_view_raGL               = nullptr;
+            GLuint                       texture_view_raGL_id            = 0;
             const raGL_program_variable* variable_raGL_ptr               = nullptr;
 
             raGL_program_get_uniform_by_name(bake_state.active_program,
@@ -3802,22 +3992,25 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
                                           RAL_TEXTURE_VIEW_PROPERTY_TYPE,
                                          &texture_ral_type);
 
-            raGL_backend_get_sampler(backend_gl,
-                                     command_ral_ptr->sampled_image_binding.sampler,
-                                    &sampler_raGL);
-            raGL_backend_get_texture(backend_gl,
-                                     texture_ral,
-                                    &texture_raGL);
+            raGL_backend_get_sampler     (backend_gl,
+                                          command_ral_ptr->sampled_image_binding.sampler,
+                                         &sampler_raGL);
+            raGL_backend_get_texture     (backend_gl,
+                                          texture_ral,
+                                         &texture_raGL);
+            raGL_backend_get_texture_view(backend_gl,
+                                          command_ral_ptr->sampled_image_binding.texture_view,
+                                         &texture_view_raGL);
 
             raGL_sampler_get_property(sampler_raGL,
                                       RAGL_SAMPLER_PROPERTY_ID,
                                       (void**) &sampler_raGL_id);
             raGL_texture_get_property(texture_raGL,
-                                      RAGL_TEXTURE_PROPERTY_ID,
-                                      (void**) &texture_raGL_id);
-            raGL_texture_get_property(texture_raGL,
                                       RAGL_TEXTURE_PROPERTY_IS_RENDERBUFFER,
                                       (void**) &texture_raGL_is_rb);
+            raGL_texture_get_property(texture_view_raGL,
+                                      RAGL_TEXTURE_PROPERTY_ID,
+                                      (void**) &texture_view_raGL_id);
 
             ASSERT_DEBUG_SYNC(!texture_raGL_is_rb,
                               "Cannot use a renderbuffer for sampling purposes");
@@ -3847,12 +4040,12 @@ void _raGL_command_buffer::process_set_binding_command(const ral_command_buffer_
             bind_sampler_command_ptr->type                                 = RAGL_COMMAND_TYPE_BIND_SAMPLER;
 
             bind_texture_command_ptr->bind_texture_command_info.target = texture_target_gl;
-            bind_texture_command_ptr->bind_texture_command_info.to_id  = texture_raGL_id;
+            bind_texture_command_ptr->bind_texture_command_info.to_id  = texture_view_raGL_id;
             bind_texture_command_ptr->type                             = RAGL_COMMAND_TYPE_BIND_TEXTURE;
 
             texture_parameterfv_command_ptr->texture_parameterfv_command_info.pname    = GL_TEXTURE_LOD_BIAS;
             texture_parameterfv_command_ptr->texture_parameterfv_command_info.target   = texture_target_gl;
-            texture_parameterfv_command_ptr->texture_parameterfv_command_info.texture  = texture_raGL_id;
+            texture_parameterfv_command_ptr->texture_parameterfv_command_info.texture  = texture_view_raGL_id;
             texture_parameterfv_command_ptr->texture_parameterfv_command_info.value[0] = sampler_lod_bias;
             texture_parameterfv_command_ptr->type                                      = RAGL_COMMAND_TYPE_TEXTURE_PARAMETERFV;
 
@@ -4605,6 +4798,25 @@ PUBLIC void raGL_command_buffer_execute(raGL_command_buffer command_buffer,
                 const _raGL_command_clear_stencil_command_info& command_args = command_ptr->clear_stencil_command_info;
 
                 command_buffer_ptr->entrypoints_ptr->pGLClearStencil(command_args.stencil);
+
+                break;
+            }
+
+            case RAGL_COMMAND_TYPE_CLEAR_TEX_SUB_IMAGE:
+            {
+                const _raGL_command_clear_tex_sub_image_command_info& command_args = command_ptr->clear_tex_sub_image_command_info;
+
+                command_buffer_ptr->entrypoints_clear_texture_ptr->pGLClearTexSubImage(command_args.texture,
+                                                                                       command_args.level,
+                                                                                       command_args.offset[0],
+                                                                                       command_args.offset[1],
+                                                                                       command_args.offset[2],
+                                                                                       command_args.size[0],
+                                                                                       command_args.size[1],
+                                                                                       command_args.size[2],
+                                                                                       command_args.format,
+                                                                                       command_args.type,
+                                                                                      &command_args.data.f32[0]);
 
                 break;
             }

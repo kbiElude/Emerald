@@ -1129,6 +1129,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
 }
 
 /** Please see header for spec */
+PUBLIC GLenum APIENTRY ogl_context_wrappers_glCheckNamedFramebufferStatusEXT(GLuint framebuffer,
+                                                                             GLenum target)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    return _private_entrypoints_ptr->pGLCheckNamedFramebufferStatusEXT(framebuffer,
+                                                                       target);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
 {
     int                     clear_mask  = 0;

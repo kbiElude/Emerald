@@ -93,8 +93,11 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
         case RAL_TEXTURE_TYPE_2D:
         case RAL_TEXTURE_TYPE_2D_ARRAY:
         {
-            texture_type_valid = (parent_texture_type == RAL_TEXTURE_TYPE_2D ||
-                                  parent_texture_type == RAL_TEXTURE_TYPE_2D_ARRAY);
+            texture_type_valid = (parent_texture_type == RAL_TEXTURE_TYPE_2D             ||
+                                  parent_texture_type == RAL_TEXTURE_TYPE_2D_ARRAY       ||
+                                  parent_texture_type == RAL_TEXTURE_TYPE_3D             ||
+                                  parent_texture_type == RAL_TEXTURE_TYPE_CUBE_MAP       ||
+                                  parent_texture_type == RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY);
 
             break;
         }
@@ -102,6 +105,14 @@ PUBLIC ral_texture_view ral_texture_view_create(const ral_texture_view_create_in
         case RAL_TEXTURE_TYPE_3D:
         {
             texture_type_valid = (parent_texture_type == RAL_TEXTURE_TYPE_3D);
+
+            break;
+        }
+
+        case RAL_TEXTURE_TYPE_CUBE_MAP:
+        {
+            texture_type_valid = (parent_texture_type == RAL_TEXTURE_TYPE_2D_ARRAY ||
+                                  parent_texture_type == RAL_TEXTURE_TYPE_CUBE_MAP);
 
             break;
         }

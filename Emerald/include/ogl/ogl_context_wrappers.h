@@ -138,6 +138,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
                                                           const GLvoid* data);
 
 /** TODO */
+PUBLIC GLenum APIENTRY ogl_context_wrappers_glCheckNamedFramebufferStatusEXT(GLuint framebuffer,
+                                                                             GLenum target);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask);
 
 /** TODO */

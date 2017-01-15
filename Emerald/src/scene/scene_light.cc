@@ -298,14 +298,14 @@ PRIVATE void _scene_light_init(_scene_light* light_ptr)
     light_ptr->range                 = nullptr;
 
     light_ptr->callback_manager                 = system_callback_manager_create( (_callback_id) SCENE_LIGHT_CALLBACK_ID_LAST);
-    light_ptr->shadow_map_algorithm             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM;
+    light_ptr->shadow_map_algorithm             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN;
     light_ptr->shadow_map_bias                  = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
     light_ptr->shadow_map_cull_front_faces      = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
                                                    light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_format_color          = RAL_FORMAT_RG32_FLOAT;
     light_ptr->shadow_map_format_depth          = RAL_FORMAT_DEPTH16_SNORM;
-    light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
+    light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL;
     light_ptr->shadow_map_pointlight_far_plane  = 0.0f;
     light_ptr->shadow_map_pointlight_near_plane = 0.1f;
     light_ptr->shadow_map_projection            = system_matrix4x4_create();

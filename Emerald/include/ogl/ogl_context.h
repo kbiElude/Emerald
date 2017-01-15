@@ -57,6 +57,12 @@ typedef enum ogl_context_property
      * Only accessible for GL contexts */
     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
 
+    /* not settable, ogl_context_entrypoints_arb_clear_texture*
+     *
+     * Only accessible for GL contexts
+     */
+    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_CLEAR_TEXTURE,
+
     /* not settable, ogl_context_entrypoints_arb_buffer_storage*
      *
      * Only accessible for GL contexts
@@ -134,6 +140,9 @@ typedef enum ogl_context_property
 
     /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,
+
+    /* not settable, bool */
+    OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_CLEAR_TEXTURE,
 
     /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_MULTI_BIND,

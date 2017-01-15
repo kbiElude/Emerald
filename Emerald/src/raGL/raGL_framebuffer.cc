@@ -282,8 +282,10 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
      *
      * NOTE: Completeness should be checked in regard for each context state configuration we use. Oh well.
      */
-    GLenum completeness_status = entrypoints_dsa_ptr->pGLCheckNamedFramebufferStatusEXT(args_ptr->fbo_ptr->id,
-                                                                                        GL_DRAW_FRAMEBUFFER);
+    GLenum completeness_status;
+
+    completeness_status = entrypoints_dsa_ptr->pGLCheckNamedFramebufferStatusEXT(args_ptr->fbo_ptr->id,
+                                                                                 GL_DRAW_FRAMEBUFFER);
 
     ASSERT_DEBUG_SYNC(completeness_status == GL_FRAMEBUFFER_COMPLETE,
                       "Incomplete framebuffer reported.");

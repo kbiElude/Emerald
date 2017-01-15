@@ -109,6 +109,7 @@ typedef struct
 
     ogl_context_gl_entrypoints                           entry_points_gl;
     ogl_context_gl_entrypoints_arb_buffer_storage        entry_points_gl_arb_buffer_storage;
+    ogl_context_gl_entrypoints_arb_clear_texture         entry_points_gl_arb_clear_texture;
     ogl_context_gl_entrypoints_arb_multi_bind            entry_points_gl_arb_multi_bind;
     ogl_context_gl_entrypoints_arb_sparse_buffer         entry_points_gl_arb_sparse_buffer;
     ogl_context_gl_entrypoints_ext_direct_state_access   entry_points_gl_ext_direct_state_access;
@@ -125,6 +126,7 @@ typedef struct
     bool es_ext_texture_buffer_support;
 
     bool gl_arb_buffer_storage_support;
+    bool gl_arb_clear_texture_support;
     bool gl_arb_multi_bind_support;
     bool gl_arb_sparse_buffer_support;
     bool gl_arb_texture_buffer_object_rgb32_support;
@@ -208,6 +210,7 @@ PRIVATE void _ogl_context_init_context_after_creation                           
 PRIVATE void _ogl_context_initialize_es_ext_texture_buffer_extension            (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_initialize_fbo                                        (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_initialize_gl_arb_buffer_storage_extension            (_ogl_context*                context_ptr);
+PRIVATE void _ogl_context_initialize_gl_arb_clear_texture_extension             (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_initialize_gl_arb_multi_bind_extension                (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_initialize_gl_arb_sparse_buffer_extension             (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_initialize_gl_ext_direct_state_access_extension       (_ogl_context*                context_ptr);
@@ -217,6 +220,7 @@ PRIVATE void _ogl_context_on_ral_context_about_to_release_callback              
 PRIVATE void _ogl_context_release                                               (void*                        ptr);
 PRIVATE void _ogl_context_retrieve_ES_function_pointers                         (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers      (_ogl_context*                context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_clear_texture_function_pointers       (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers          (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers       (_ogl_context*                context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                  (_ogl_context*                context_ptr);
@@ -965,6 +969,7 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
     context_ptr->fbo_ds_texture                             = nullptr;
     context_ptr->fbo_ds_texture_view                        = nullptr;
     context_ptr->gl_arb_buffer_storage_support              = false;
+    context_ptr->gl_arb_clear_texture_support               = false;
     context_ptr->gl_arb_multi_bind_support                  = false;
     context_ptr->gl_arb_sparse_buffer_support               = false;
     context_ptr->gl_arb_texture_buffer_object_rgb32_support = false;
@@ -1024,6 +1029,13 @@ PRIVATE void _ogl_context_init_context_after_creation(ogl_context context)
                                                system_hashed_ansi_string_create("GL_ARB_buffer_storage") ))
         {
             _ogl_context_initialize_gl_arb_buffer_storage_extension(context_ptr);
+        }
+
+        /* If GL_ARB_clear_texture is supported, initialize func pointers */
+        if (ogl_context_is_extension_supported( (ogl_context) context_ptr,
+                                               system_hashed_ansi_string_create("GL_ARB_clear_texture") ))
+        {
+            _ogl_context_initialize_gl_arb_clear_texture_extension(context_ptr);
         }
 
         /* If GL_ARB_multi_bind is supported, initialize func pointers */
@@ -1425,6 +1437,12 @@ end:
 PRIVATE void _ogl_context_initialize_gl_arb_buffer_storage_extension(_ogl_context* context_ptr)
 {
     _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers(context_ptr);
+}
+
+/** TODO */
+PRIVATE void _ogl_context_initialize_gl_arb_clear_texture_extension(_ogl_context* context_ptr)
+{
+    _ogl_context_retrieve_GL_ARB_clear_texture_function_pointers(context_ptr);
 }
 
 /** TODO */
@@ -1905,6 +1923,24 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers(_ogl_
 }
 
 /** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_clear_texture_function_pointers(_ogl_context* context_ptr)
+{
+    func_ptr_table_entry func_ptr_table[] =
+    {
+        {&context_ptr->entry_points_gl_arb_clear_texture.pGLClearTexImage,    "glClearTexImage"},
+        {&context_ptr->entry_points_gl_arb_clear_texture.pGLClearTexSubImage, "glClearTexSubImage"},
+    };
+    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
+
+    if (_ogl_context_get_function_pointers(context_ptr,
+                                           func_ptr_table,
+                                           n_func_ptr_table_entries) )
+    {
+        context_ptr->gl_arb_clear_texture_support = true;
+    }
+}
+
+/** TODO */
 PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers(_ogl_context* context_ptr)
 {
     ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
@@ -1980,7 +2016,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     func_ptr_table_entry func_ptr_table[] =
     {
         {&context_ptr->entry_points_private.pGLBindMultiTextureEXT,                                            "glBindMultiTextureEXT"},
-        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLCheckNamedFramebufferStatusEXT,              "glCheckNamedFramebufferStatusEXT"},
+        {&context_ptr->entry_points_private.pGLCheckNamedFramebufferStatusEXT,                                 "glCheckNamedFramebufferStatusEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureImage1DEXT,                                    "glCompressedTextureImage1DEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureImage2DEXT,                                    "glCompressedTextureImage2DEXT"},
         {&context_ptr->entry_points_private.pGLCompressedTextureImage3DEXT,                                    "glCompressedTextureImage3DEXT"},
@@ -2102,6 +2138,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     }
 
     context_ptr->entry_points_gl_ext_direct_state_access.pGLBindMultiTextureEXT               = ogl_context_wrappers_glBindMultiTextureEXT;
+    context_ptr->entry_points_gl_ext_direct_state_access.pGLCheckNamedFramebufferStatusEXT    = ogl_context_wrappers_glCheckNamedFramebufferStatusEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage1DEXT    = ogl_context_wrappers_glCompressedTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage2DEXT    = ogl_context_wrappers_glCompressedTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCompressedTextureSubImage3DEXT    = ogl_context_wrappers_glCompressedTextureSubImage3DEXT;
@@ -3457,6 +3494,16 @@ PUBLIC void ogl_context_get_property(const ogl_context    context,
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_CLEAR_TEXTURE:
+        {
+            ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
+                              "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_CLEAR_TEXTURE property requested for a non-GL context");
+
+            *reinterpret_cast<const ogl_context_gl_entrypoints_arb_clear_texture**>(out_result_ptr) = &context_ptr->entry_points_gl_arb_clear_texture;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER:
         {
             ASSERT_DEBUG_SYNC(context_ptr->backend_type == RAL_BACKEND_TYPE_GL,
@@ -3583,6 +3630,13 @@ PUBLIC void ogl_context_get_property(const ogl_context    context,
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE:
         {
             *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->gl_arb_buffer_storage_support;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_CLEAR_TEXTURE:
+        {
+            *reinterpret_cast<bool*>(out_result_ptr) = context_ptr->gl_arb_clear_texture_support;
 
             break;
         }

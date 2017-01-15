@@ -934,11 +934,6 @@ PRIVATE void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* text
 
     ral_general_type_gl = raGL_utils_get_ogl_enum_for_ral_texture_type(ral_general_type);
 
-    /* TODO: Cube-map textures will need some more love. */
-    ASSERT_DEBUG_SYNC(ral_general_type != RAL_TEXTURE_TYPE_CUBE_MAP &&
-                      ral_general_type != RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY,
-                      "TODO");
-
     if (texture_ptr->is_renderbuffer)
     {
         entrypoints_dsa_ptr->pGLGetNamedRenderbufferParameterivEXT(texture_ptr->id,
@@ -947,6 +942,14 @@ PRIVATE void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* text
     }
     else
     {
+        /* TODO: Cube-map textures will need some more love. */
+        if (ral_general_type == RAL_TEXTURE_TYPE_CUBE_MAP       ||
+            ral_general_type == RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY)
+        {
+            /* For validation, we're OK to use any face's enum for querying mip properties */
+            ral_general_type_gl = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+        }
+
         entrypoints_dsa_ptr->pGLGetTextureLevelParameterivEXT(texture_ptr->id,
                                                               ral_general_type_gl,
                                                               0, /* level */
@@ -958,9 +961,16 @@ PRIVATE void _raGL_texture_verify_conformance_to_ral_texture(_raGL_texture* text
                                                               GL_TEXTURE_SAMPLES,
                                                               &gl_general_n_samples);
         entrypoints_dsa_ptr->pGLGetTextureParameterivEXT     (texture_ptr->id,
-                                                              ral_general_type_gl,
+                                                              (ral_general_type_gl == GL_TEXTURE_CUBE_MAP_POSITIVE_X) ? GL_TEXTURE_CUBE_MAP
+                                                                                                                      : ral_general_type_gl,
                                                               GL_TEXTURE_IMMUTABLE_LEVELS,
                                                               reinterpret_cast<GLint*>(&gl_general_n_mipmaps) );
+
+        if (ral_general_type == RAL_TEXTURE_TYPE_CUBE_MAP       ||
+            ral_general_type == RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY)
+        {
+            gl_general_n_layers *= 6; /* cube map faces */
+        }
     }
 
     if (gl_general_n_layers == 0)

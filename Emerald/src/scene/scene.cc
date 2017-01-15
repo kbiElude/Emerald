@@ -918,6 +918,8 @@ PUBLIC EMERALD_API void scene_get_property(scene          scene,
 
         case SCENE_PROPERTY_N_LIGHTS:
         {
+            *(uint32_t*) out_result_ptr = 1;
+
             system_resizable_vector_get_property(scene_ptr->lights,
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                  out_result_ptr);

@@ -47,6 +47,7 @@ typedef struct _ral_command
     union
     {
         ral_command_buffer_clear_rt_binding_command_info        clear_rt_binding_command;
+        ral_command_buffer_clear_texture_command_info           clear_texture_command;
         ral_command_buffer_copy_buffer_to_buffer_command_info   copy_buffer_to_buffer_command;
         ral_command_buffer_copy_texture_to_texture_command_info copy_texture_to_texture_command;
         ral_command_buffer_dispatch_command_info                dispatch_command;
@@ -92,6 +93,27 @@ private:
 
         switch (type)
         {
+            case RAL_COMMAND_TYPE_CLEAR_TEXTURE:
+            {
+                for (uint32_t n_rt = 0;
+                              n_rt < clear_texture_command.n_targets;
+                            ++n_rt)
+                {
+                    ral_context dst_texture_context;
+
+                    ral_texture_get_property(clear_texture_command.targets[n_rt].texture,
+                                             RAL_TEXTURE_PROPERTY_CONTEXT,
+                                            &dst_texture_context);
+
+                    pfn_update_ref_proc(dst_texture_context,
+                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                        1, /* n_objects */
+                                        reinterpret_cast<void**>(&clear_texture_command.targets[n_rt].texture) );
+                }
+
+                break;
+            }
+
             case RAL_COMMAND_TYPE_COPY_BUFFER_TO_BUFFER:
             {
                 ral_context dst_buffer_context = nullptr;
@@ -960,6 +982,206 @@ PUBLIC EMERALD_API void ral_command_buffer_record_clear_rendertarget_binding(ral
             system_resizable_vector_push(command_buffer_ptr->commands,
                                          new_command_ptr);
         }
+    }
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void ral_command_buffer_record_clear_texture(ral_command_buffer                                   dst_command_buffer,
+                                                                uint32_t                                             n_clear_ops,
+                                                                const ral_command_buffer_clear_texture_command_info* clear_op_ptrs)
+{
+    _ral_command_buffer* command_buffer_ptr = reinterpret_cast<_ral_command_buffer*>(dst_command_buffer);
+    _ral_command*        new_command_ptr    = nullptr;
+
+    if (command_buffer_ptr == nullptr)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer_ptr != nullptr,
+                          "Input command buffer is null");
+
+        goto end;
+    }
+
+    if (command_buffer_ptr->status != RAL_COMMAND_BUFFER_STATUS_RECORDING)
+    {
+        ASSERT_DEBUG_SYNC(command_buffer_ptr->status == RAL_COMMAND_BUFFER_STATUS_RECORDING,
+                          "Command buffer not in recording status");
+
+        goto end;
+    }
+
+    for (uint32_t n_clear_op = 0;
+                  n_clear_op < n_clear_ops;
+                ++n_clear_op)
+    {
+        const auto& clear_op = clear_op_ptrs[n_clear_op];
+
+        #ifdef _DEBUG
+        {
+            if (clear_op.n_clear_regions >= N_MAX_CLEAR_REGIONS)
+            {
+                ASSERT_DEBUG_SYNC(clear_op.n_clear_regions < N_MAX_CLEAR_REGIONS,
+                                  "Invalid number of clear regions requested.");
+
+                goto end;
+            }
+
+            for (uint32_t n_target = 0;
+                          n_target < clear_op.n_targets;
+                        ++n_target)
+            {
+                ral_format      format;
+                ral_format_type format_type;
+                bool            has_color_comps   = false;
+                bool            has_depth_comps   = false;
+                bool            has_stencil_comps = false;
+                uint32_t        n_layers          = 0;
+                uint32_t        n_mips            = 0;
+                const auto&     target            = clear_op.targets[n_target];
+
+                ral_texture_get_property(target.texture,
+                                         RAL_TEXTURE_PROPERTY_FORMAT,
+                                        &format);
+                ral_texture_get_property(target.texture,
+                                         RAL_TEXTURE_PROPERTY_N_LAYERS,
+                                        &n_layers);
+                ral_texture_get_property(target.texture,
+                                         RAL_TEXTURE_PROPERTY_N_MIPMAPS,
+                                        &n_mips);
+
+                ral_utils_get_format_property(format,
+                                              RAL_FORMAT_PROPERTY_FORMAT_TYPE,
+                                             &format_type);
+                ral_utils_get_format_property(format,
+                                              RAL_FORMAT_PROPERTY_HAS_COLOR_COMPONENTS,
+                                             &has_color_comps);
+                ral_utils_get_format_property(format,
+                                              RAL_FORMAT_PROPERTY_HAS_DEPTH_COMPONENTS,
+                                             &has_depth_comps);
+                ral_utils_get_format_property(format,
+                                              RAL_FORMAT_PROPERTY_HAS_STENCIL_COMPONENTS,
+                                             &has_stencil_comps);
+
+                if ((target.aspects & RAL_TEXTURE_ASPECT_COLOR_BIT)   != 0 &&
+                    !has_color_comps                                       ||
+                    (target.aspects & RAL_TEXTURE_ASPECT_DEPTH_BIT)   != 0 &&
+                    !has_depth_comps                                       ||
+                    (target.aspects & RAL_TEXTURE_ASPECT_STENCIL_BIT) != 0 &&
+                    !has_stencil_comps)
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Clear op requested for an invalid texture aspect");
+
+                    goto end;
+                }
+
+                if (target.base_mip_level + target.n_mips > n_mips)
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Clear op requested for an invalid mip range");
+
+                    goto end;
+                }
+
+                for (uint32_t n_mip = target.base_mip_level;
+                              n_mip < target.base_mip_level + target.n_mips;
+                            ++n_mip)
+                {
+                    for (uint32_t n_clear_region = 0;
+                                  n_clear_region < clear_op.n_clear_regions;
+                                ++n_clear_region)
+                    {
+                        const auto& clear_region = clear_op.clear_regions[n_clear_region];
+                        uint32_t    mip_size[2];
+
+                        if (has_color_comps)
+                        {
+                            switch (format_type)
+                            {
+                                case RAL_FORMAT_TYPE_SINT:
+                                case RAL_FORMAT_TYPE_SNORM:
+                                {
+                                    ASSERT_DEBUG_SYNC(clear_op.clear_value.data_type == RAL_COLOR_DATA_TYPE_SINT,
+                                                      "Invalid type used by the specified clear color");
+
+                                    break;
+                                }
+
+                                case RAL_FORMAT_TYPE_UINT:
+                                case RAL_FORMAT_TYPE_UNORM:
+                                {
+                                    ASSERT_DEBUG_SYNC(clear_op.clear_value.data_type == RAL_COLOR_DATA_TYPE_UINT,
+                                                      "Invalid type used by the specified clear color");
+
+                                    break;
+                                }
+
+                                case RAL_FORMAT_TYPE_SFLOAT:
+                                case RAL_FORMAT_TYPE_UFLOAT:
+                                {
+                                    ASSERT_DEBUG_SYNC(clear_op.clear_value.data_type == RAL_COLOR_DATA_TYPE_FLOAT,
+                                                      "Invalid type used by the specified clear color");
+
+                                    break;
+                                }
+
+                                default:
+                                {
+                                    ASSERT_DEBUG_SYNC(false,
+                                                      "Unrecognized format type");
+                                }
+                            }
+                        }
+
+                        for (uint32_t n_layer = clear_region.n_base_layer;
+                                      n_layer < clear_region.n_base_layer + clear_region.n_layers;
+                                    ++n_layer)
+                        {
+                            ral_texture_get_mipmap_property(target.texture,
+                                                            n_layer,
+                                                            n_mip,
+                                                            RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                                            mip_size + 0);
+                            ral_texture_get_mipmap_property(target.texture,
+                                                            n_layer,
+                                                            n_mip,
+                                                            RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                                            mip_size + 1);
+
+                            if (clear_region.n_base_layer + clear_region.n_layers > n_layers)
+                            {
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Clear op requested for an invalid layer range");
+
+                                goto end;
+                            }
+
+                            if (clear_region.xy[0] + clear_region.size[0] > mip_size[0] ||
+                                clear_region.xy[1] + clear_region.size[1] > mip_size[1])
+                            {
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Clear op requested for an invalid rect");
+
+                                goto end;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        #endif
+
+        new_command_ptr = reinterpret_cast<_ral_command*>(system_resource_pool_get_from_pool(command_pool) );
+
+        new_command_ptr->clear_texture_command = clear_op_ptrs[n_clear_op];
+        new_command_ptr->type                  = RAL_COMMAND_TYPE_CLEAR_TEXTURE;
+
+        new_command_ptr->init();
+
+        system_resizable_vector_push(command_buffer_ptr->commands,
+                                     new_command_ptr);
     }
 
 end:

@@ -1427,14 +1427,6 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_iteration_items);
 
-            /* Update global properties of uber's vertex shader  */
-            scene_renderer_uber_set_shader_general_property(material_uber,
-                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
-                                                            camera_location);
-            scene_renderer_uber_set_shader_general_property(material_uber,
-                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_VP,
-                                                            renderer_ptr->current_vp);
-
             /* Okay. Go on with the rendering. Start from the regular meshes. These are stored in helper maps */
             scene_renderer_uber_start_info uber_start_info;
 
@@ -1451,6 +1443,14 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
             scene_renderer_uber_rendering_start(material_uber,
                                                &uber_start_info);
             {
+                /* Update global properties of uber's vertex shader  */
+                scene_renderer_uber_set_shader_general_property(material_uber,
+                                                                SCENE_RENDERER_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
+                                                                camera_location);
+                scene_renderer_uber_set_shader_general_property(material_uber,
+                                                                SCENE_RENDERER_UBER_GENERAL_PROPERTY_VP,
+                                                                renderer_ptr->current_vp);
+
                 if (is_depth_prepass)
                 {
                     uint32_t n_uber_map_items = 0;

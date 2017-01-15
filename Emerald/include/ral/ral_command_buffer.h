@@ -195,14 +195,23 @@ private:
     }
 } ral_dependency;
 
-typedef struct ral_command_buffer_clear_rt_binding_clear_region
+typedef struct ral_command_buffer_clear_region
 {
     uint32_t n_base_layer;
     uint32_t n_layers;
 
     uint32_t size[2];
     uint32_t xy  [2];
-} ral_command_buffer_clear_rt_binding_clear_region;
+} ral_command_buffer_clear_region;
+
+typedef struct ral_command_buffer_clear_texture_target
+{
+    ral_texture_aspect_bits aspects;
+    uint32_t                base_mip_level;
+    uint32_t                n_mips;
+    ral_texture             texture;
+
+} ral_command_buffer_clear_texture_target;
 
 typedef struct ral_command_buffer_clear_rt_binding_rendertarget
 {
@@ -215,12 +224,23 @@ typedef struct ral_command_buffer_clear_rt_binding_rendertarget
 
 typedef struct ral_command_buffer_clear_rt_binding_command_info
 {
-    ral_command_buffer_clear_rt_binding_clear_region clear_regions[N_MAX_CLEAR_REGIONS];
-    uint32_t                                         n_clear_regions;
+    ral_command_buffer_clear_region clear_regions[N_MAX_CLEAR_REGIONS];
+    uint32_t                        n_clear_regions;
 
     ral_command_buffer_clear_rt_binding_rendertarget rendertargets[N_MAX_CLEAR_RENDERTARGETS];
     uint32_t                                         n_rendertargets;
 } ral_command_buffer_clear_rt_binding_command_info;
+
+typedef struct ral_command_buffer_clear_texture_command_info
+{
+    ral_color clear_value;
+
+    ral_command_buffer_clear_region clear_regions[N_MAX_CLEAR_REGIONS];
+    uint32_t                        n_clear_regions;
+
+    ral_command_buffer_clear_texture_target targets[N_MAX_CLEAR_RENDERTARGETS];
+    uint32_t                                n_targets;
+} ral_command_buffer_clear_texture_command_info;
 
 typedef struct ral_command_buffer_dispatch_command_info
 {
@@ -486,6 +506,7 @@ typedef enum
 typedef enum
 {
     RAL_COMMAND_TYPE_CLEAR_RT_BINDING,
+    RAL_COMMAND_TYPE_CLEAR_TEXTURE,
     RAL_COMMAND_TYPE_COPY_BUFFER_TO_BUFFER,
     RAL_COMMAND_TYPE_COPY_TEXTURE_TO_TEXTURE,
     RAL_COMMAND_TYPE_DISPATCH,
@@ -541,6 +562,11 @@ PUBLIC EMERALD_API void ral_command_buffer_insert_commands_from_command_buffer(r
 PUBLIC EMERALD_API void ral_command_buffer_record_clear_rendertarget_binding(ral_command_buffer                                      recording_command_buffer,
                                                                              uint32_t                                                n_clear_ops,
                                                                              const ral_command_buffer_clear_rt_binding_command_info* clear_op_ptrs);
+
+/** TODO */
+PUBLIC EMERALD_API void ral_command_buffer_record_clear_texture(ral_command_buffer                                   dst_command_buffer,
+                                                                uint32_t                                             n_clear_ops,
+                                                                const ral_command_buffer_clear_texture_command_info* clear_op_ptrs);
 
 /** TODO */
 PUBLIC EMERALD_API void ral_command_buffer_record_copy_buffer_to_buffer(ral_command_buffer                                           recording_command_buffer,

@@ -51,6 +51,13 @@ typedef struct
 
 } _scene_renderer_sm_mesh_item;
 
+typedef struct
+{
+    bool             is_color_sm_tv;
+    ral_texture_view final_tv;
+    scene_light      light;
+} _scene_renderer_sm_light_update;
+
 /** TODO */
 typedef struct _scene_renderer_sm
 {
@@ -100,16 +107,15 @@ typedef struct _scene_renderer_sm
      *
      * These only make sense while is_enabled is true.
      */
-    ral_texture_view current_sm_color0_l0_texture_view;
-    ral_texture_view current_sm_color0_l1_texture_view;
+    ral_texture_view current_sm_color_texture_view;
+    ral_texture_view current_sm_color_texture_views[6];
 
-    /* Tells what ogl_texture is currently being used as a depth attachment for SM rendering.
+    /* Tells what ral_texture_view is currently being used as a depth attachment for SM rendering.
      *
      * These only make sense while is_enabled is true.
      */
-    ral_texture_view current_sm_depth_l0_texture_view;
-    ral_texture_view current_sm_depth_l1_texture_view;
     ral_texture_view current_sm_depth_texture_view;
+    ral_texture_view current_sm_depth_texture_views[6];
 
     /* Tells whether scene_renderer_sm has been toggled on.
      *
@@ -127,28 +133,32 @@ typedef struct _scene_renderer_sm
 
     _scene_renderer_sm()
     {
-        blur_handler                      = nullptr;
-        context                           = nullptr;
-        current_camera                    = nullptr;
-        current_light                     = nullptr;
-        current_sm_color0_l0_texture_view = nullptr;
-        current_sm_color0_l1_texture_view = nullptr;
-        current_sm_depth_texture_view     = nullptr;
-        current_sm_depth_l0_texture_view  = nullptr;
-        current_sm_depth_l1_texture_view  = nullptr;
-        current_target_face               = SCENE_RENDERER_SM_TARGET_FACE_UNKNOWN;
-        is_enabled                        = false;
-        meshes_to_render                  = system_resizable_vector_create(16,     /* capacity              */
-                                                                           false); /* should_be_thread_safe */
-        mesh_item_pool                    = system_resource_pool_create   (sizeof(_scene_renderer_sm_mesh_item),
-                                                                           64 ,      /* n_elements_to_preallocate */
-                                                                           nullptr,  /* init_fn                   */
-                                                                           nullptr); /* deinit_fn                 */
-        pcf_color_sampler                 = nullptr;
-        pcf_depth_sampler                 = nullptr;
-        plain_color_sampler               = nullptr;
-        plain_depth_sampler               = nullptr;
-        temp_variant_float                = system_variant_create(SYSTEM_VARIANT_FLOAT);
+        memset(current_sm_color_texture_views,
+               0,
+               sizeof(current_sm_color_texture_views) );
+        memset(current_sm_depth_texture_views,
+               0,
+               sizeof(current_sm_depth_texture_views) );
+
+        blur_handler                  = nullptr;
+        context                       = nullptr;
+        current_camera                = nullptr;
+        current_light                 = nullptr;
+        current_sm_color_texture_view = nullptr;
+        current_sm_depth_texture_view = nullptr;
+        current_target_face           = SCENE_RENDERER_SM_TARGET_FACE_UNKNOWN;
+        is_enabled                    = false;
+        meshes_to_render              = system_resizable_vector_create(16,     /* capacity              */
+                                                                       false); /* should_be_thread_safe */
+        mesh_item_pool                = system_resource_pool_create   (sizeof(_scene_renderer_sm_mesh_item),
+                                                                       64 ,      /* n_elements_to_preallocate */
+                                                                       nullptr,  /* init_fn                   */
+                                                                       nullptr); /* deinit_fn                 */
+        pcf_color_sampler             = nullptr;
+        pcf_depth_sampler             = nullptr;
+        plain_color_sampler           = nullptr;
+        plain_depth_sampler           = nullptr;
+        temp_variant_float            = system_variant_create(SYSTEM_VARIANT_FLOAT);
     }
 
     ~_scene_renderer_sm()
@@ -911,7 +921,7 @@ PRIVATE scene_renderer_sm_target_face _scene_renderer_sm_get_target_face_for_poi
         {
             if (algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL)
             {
-                result = (scene_renderer_sm_target_face) (SCENE_RENDERER_SM_TARGET_FACE_POSITIVE_X + 1);
+                result = (scene_renderer_sm_target_face) (SCENE_RENDERER_SM_TARGET_FACE_NEGATIVE_X);
             }
             else
             {
@@ -1261,12 +1271,13 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
                 if (target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT ||
                     target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR)
                 {
-                    light_shadow_map_type    = RAL_TEXTURE_TYPE_2D_ARRAY;
                     light_shadow_map_size[2] = 2; /* front + rear */
+                    light_shadow_map_type    = RAL_TEXTURE_TYPE_2D_ARRAY;
                 }
                 else
                 {
-                    light_shadow_map_type = RAL_TEXTURE_TYPE_CUBE_MAP;
+                    light_shadow_map_size[2] = 6;
+                    light_shadow_map_type    = RAL_TEXTURE_TYPE_CUBE_MAP;
                 }
 
                 break;
@@ -1315,8 +1326,12 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         ASSERT_DEBUG_SYNC(light_shadow_map_size[0] > 0 &&
                           light_shadow_map_size[1] > 0,
                           "Invalid shadow map size requested for a scene_light instance.");
-        ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_l0_texture_view == nullptr &&
-                          handler_ptr->current_sm_color0_l1_texture_view == nullptr &&
+        ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color_texture_views[0] == nullptr &&
+                          handler_ptr->current_sm_color_texture_views[1] == nullptr &&
+                          handler_ptr->current_sm_color_texture_views[2] == nullptr &&
+                          handler_ptr->current_sm_color_texture_views[3] == nullptr &&
+                          handler_ptr->current_sm_color_texture_views[4] == nullptr &&
+                          handler_ptr->current_sm_color_texture_views[5] == nullptr &&
                           handler_ptr->current_sm_depth_texture_view     == nullptr,
                           "SM texture views are already defined");
 
@@ -1357,22 +1372,25 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
 
         if (sm_depth_texture_create_info.n_layers != 1)
         {
-            ASSERT_DEBUG_SYNC(sm_depth_texture_create_info.n_layers == 2,
-                              "TODO");
+            sm_depth_texture_view_create_info.n_layers = 1;
+            sm_depth_texture_view_create_info.type     = RAL_TEXTURE_TYPE_2D;
 
-            sm_depth_texture_view_create_info.n_base_layer = 0;
-            sm_depth_texture_view_create_info.n_layers     = 1;
+            for (uint32_t n_layer = 0;
+                          n_layer < sm_depth_texture_create_info.n_layers;
+                        ++n_layer)
+            {
+                sm_depth_texture_view_create_info.n_base_layer = n_layer;
 
-            handler_ptr->current_sm_depth_l0_texture_view = ral_texture_get_view(&sm_depth_texture_view_create_info);
-
-            sm_depth_texture_view_create_info.n_base_layer = 1;
-
-            handler_ptr->current_sm_depth_l1_texture_view = ral_texture_get_view(&sm_depth_texture_view_create_info);
+                handler_ptr->current_sm_depth_texture_views[n_layer] = ral_texture_get_view(&sm_depth_texture_view_create_info);
+            }
         }
         else
         {
-            handler_ptr->current_sm_depth_l0_texture_view = handler_ptr->current_sm_depth_texture_view;
-            handler_ptr->current_sm_depth_l1_texture_view = nullptr;
+            memset(handler_ptr->current_sm_depth_texture_views,
+                   0,
+                   sizeof(handler_ptr->current_sm_depth_texture_views) );
+
+            handler_ptr->current_sm_depth_texture_views[0] = handler_ptr->current_sm_depth_texture_view;
         }
 
         if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
@@ -1381,7 +1399,7 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
                               "For VSM, shadow map textures must be square.");
             ASSERT_DEBUG_SYNC(light_shadow_map_type == RAL_TEXTURE_TYPE_2D       && light_shadow_map_size[2] == 1 ||
                               light_shadow_map_type == RAL_TEXTURE_TYPE_2D_ARRAY && light_shadow_map_size[2] >  1 ||
-                              light_shadow_map_type == RAL_TEXTURE_TYPE_CUBE_MAP && light_shadow_map_size[2] == 1,
+                              light_shadow_map_type == RAL_TEXTURE_TYPE_CUBE_MAP && light_shadow_map_size[2] == 6,
                               "Sanity check failed");
 
             sm_color_texture_create_info.base_mipmap_depth      = 1;
@@ -1421,24 +1439,29 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
             sm_color_texture_view_create_info.texture            = sm_color_texture;
             sm_color_texture_view_create_info.type               = sm_color_texture_create_info.type;
 
+            handler_ptr->current_sm_color_texture_view = ral_texture_get_view(&sm_color_texture_view_create_info);
+
             if (sm_color_texture_create_info.n_layers != 1)
             {
-                ASSERT_DEBUG_SYNC(sm_color_texture_create_info.n_layers == 2,
-                                  "TODO");
+                sm_color_texture_view_create_info.n_layers = 1;
+                sm_color_texture_view_create_info.type     = RAL_TEXTURE_TYPE_2D;
 
-                sm_color_texture_view_create_info.n_base_layer = 0;
-                sm_color_texture_view_create_info.n_layers     = 1;
+                for (uint32_t n_layer = 0;
+                              n_layer < sm_color_texture_create_info.n_layers;
+                            ++n_layer)
+                {
+                    sm_color_texture_view_create_info.n_base_layer = n_layer;
 
-                handler_ptr->current_sm_color0_l0_texture_view = ral_texture_get_view(&sm_color_texture_view_create_info);
-
-                sm_color_texture_view_create_info.n_base_layer = 1;
-
-                handler_ptr->current_sm_color0_l1_texture_view = ral_texture_get_view(&sm_color_texture_view_create_info);
+                    handler_ptr->current_sm_color_texture_views[n_layer] = ral_texture_get_view(&sm_color_texture_view_create_info);
+                }
             }
             else
             {
-                handler_ptr->current_sm_color0_l0_texture_view = ral_texture_get_view(&sm_color_texture_view_create_info);
-                handler_ptr->current_sm_color0_l1_texture_view = nullptr;
+                memset(handler_ptr->current_sm_color_texture_views,
+                       0,
+                       sizeof(handler_ptr->current_sm_color_texture_views) );
+
+                handler_ptr->current_sm_color_texture_views[0] = ral_texture_get_view(&sm_color_texture_view_create_info);
             }
         }
 
@@ -1476,30 +1499,28 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         handler_ptr->current_gfx_state_create_info.static_viewports                     = &handler_ptr->current_viewport;
 
         /* Set up rendertargets for the clear op below. */
-        if (handler_ptr->current_sm_color0_l0_texture_view != nullptr ||
-            handler_ptr->current_sm_color0_l1_texture_view != nullptr)
+        if (handler_ptr->current_sm_color_texture_views[0] != nullptr)
         {
-            ral_command_buffer_set_color_rendertarget_command_info color_rts[2] =
+            ral_command_buffer_set_color_rendertarget_command_info color_rts[6];
+            uint32_t                                               n_color_rts = 0;
+
+            for (uint32_t n_color_rt = 0;
+                          n_color_rt < sizeof(handler_ptr->current_sm_color_texture_views) / sizeof(handler_ptr->current_sm_color_texture_views[0]);
+                        ++n_color_rt)
             {
-                ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance(),
-                ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance()
-            };
-            uint32_t n_color_rts = 0;
+                if (handler_ptr->current_sm_color_texture_views[n_color_rt] != nullptr)
+                {
+                    color_rts[n_color_rts] = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance(),
 
-            if (handler_ptr->current_sm_color0_l0_texture_view != nullptr)
-            {
-                color_rts[n_color_rts].rendertarget_index = n_color_rts;
-                color_rts[n_color_rts].texture_view       = handler_ptr->current_sm_color0_l0_texture_view;
+                    color_rts[n_color_rts].rendertarget_index = n_color_rts;
+                    color_rts[n_color_rts].texture_view       = handler_ptr->current_sm_color_texture_views[n_color_rt];
 
-                ++n_color_rts;
-            }
-
-            if (handler_ptr->current_sm_color0_l1_texture_view != nullptr)
-            {
-                color_rts[n_color_rts].rendertarget_index = n_color_rts;
-                color_rts[n_color_rts].texture_view       = handler_ptr->current_sm_color0_l1_texture_view;
-
-                ++n_color_rts;
+                    ++n_color_rts;
+                }
+                else
+                {
+                    break;
+                }
             }
 
             ral_command_buffer_record_set_color_rendertargets(init_cmd_buffer,
@@ -1507,18 +1528,18 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
                                                               color_rts);
         }
 
-        if (handler_ptr->current_sm_depth_texture_view != nullptr)
+        if (handler_ptr->current_sm_depth_texture_view != nullptr &&
+            sm_depth_texture_create_info.n_layers      == 1)
         {
             ral_command_buffer_record_set_depth_rendertarget(init_cmd_buffer,
                                                              handler_ptr->current_sm_depth_texture_view);
         }
 
         /* Clear the color & depth buffers */
-        ral_command_buffer_clear_rt_binding_command_info clear_command_info_items[2];
+        ral_command_buffer_clear_rt_binding_command_info clear_command_info_items[6];
         uint32_t                                         n_clear_command_info_items   = 0;
 
-        if (handler_ptr->current_sm_color0_l0_texture_view != nullptr ||
-            handler_ptr->current_sm_color0_l1_texture_view != nullptr)
+        if (handler_ptr->current_sm_color_texture_views[0] != nullptr)
         {
             ral_command_buffer_clear_rt_binding_command_info* clear_info_ptr = clear_command_info_items + n_clear_command_info_items;
 
@@ -1531,34 +1552,32 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
             clear_info_ptr->n_clear_regions                    = 1;
             clear_info_ptr->n_rendertargets                    = 0;
 
-            if (handler_ptr->current_sm_color0_l0_texture_view != nullptr)
+            for (uint32_t n_rt = 0;
+                          n_rt < sizeof(clear_command_info_items) / sizeof(clear_command_info_items[0]);
+                        ++n_rt)
             {
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[0] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[1] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[2] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[3] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].rt_index                 = 0;
+                if (handler_ptr->current_sm_color_texture_views[n_rt] != nullptr)
+                {
+                    clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
+                    clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[0] = 1.0f;
+                    clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[1] = 1.0f;
+                    clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[2] = 1.0f;
+                    clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[3] = 1.0f;
+                    clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].rt_index                 = clear_info_ptr->n_rendertargets;
 
-                ++clear_info_ptr->n_rendertargets;
-            }
-
-            if (handler_ptr->current_sm_color0_l1_texture_view != nullptr)
-            {
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].aspect                   = RAL_TEXTURE_ASPECT_COLOR_BIT;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[0] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[1] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[2] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].clear_value.color.f32[3] = 1.0f;
-                clear_info_ptr->rendertargets[clear_info_ptr->n_rendertargets].rt_index                 = 1;
-
-                ++clear_info_ptr->n_rendertargets;
+                    ++clear_info_ptr->n_rendertargets;
+                }
+                else
+                {
+                    break;
+                }
             }
 
             ++n_clear_command_info_items;
         }
 
-        if (handler_ptr->current_sm_depth_texture_view != nullptr)
+        if (handler_ptr->current_sm_depth_texture_view != nullptr &&
+            sm_depth_texture_create_info.n_layers      == 1)
         {
             ral_command_buffer_clear_rt_binding_command_info* clear_info_ptr = clear_command_info_items + n_clear_command_info_items;
 
@@ -1581,12 +1600,56 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
                                                              n_clear_command_info_items,
                                                              clear_command_info_items);
 
+        if (handler_ptr->current_sm_depth_texture_view != nullptr &&
+            sm_depth_texture_create_info.n_layers      >  1)
+        {
+            ral_command_buffer_clear_texture_command_info clear_command;
+            ral_texture                                   parent_texture;
+            uint32_t                                      parent_texture_size[2];
+
+            ral_texture_view_get_property(handler_ptr->current_sm_depth_texture_view,
+                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                         &parent_texture);
+
+            ral_texture_get_mipmap_property(parent_texture,
+                                            0, /* n_layer  */
+                                            0, /* n_mipmap */
+                                            RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                            parent_texture_size + 0);
+            ral_texture_get_mipmap_property(parent_texture,
+                                            0, /* n_layer  */
+                                            0, /* n_mipmap */
+                                            RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                            parent_texture_size + 1);
+
+            clear_command.clear_regions[0].n_base_layer = 0;
+            clear_command.clear_regions[0].n_layers     = sm_depth_texture_create_info.n_layers;
+            clear_command.clear_regions[0].size[0]      = parent_texture_size[0];
+            clear_command.clear_regions[0].size[1]      = parent_texture_size[1];
+            clear_command.clear_regions[0].xy[0]        = 0;
+            clear_command.clear_regions[0].xy[1]        = 0;
+            clear_command.clear_value.data_type         = RAL_COLOR_DATA_TYPE_FLOAT;
+            clear_command.clear_value.f32[0]            = 1.0f;
+            clear_command.n_clear_regions               = 1;
+            clear_command.n_targets                     = 1;
+            clear_command.targets[0].aspects            = RAL_TEXTURE_ASPECT_DEPTH_BIT;
+            clear_command.targets[0].base_mip_level     = 0;
+            clear_command.targets[0].n_mips             = 1;
+            clear_command.targets[0].texture            = parent_texture;
+
+            ral_command_buffer_record_clear_texture(init_cmd_buffer,
+                                                    1, /* n_clear_ops */
+                                                   &clear_command);
+        }
+
         ral_command_buffer_stop_recording(init_cmd_buffer);
 
         /* All init commands have been recorded. Create a present task which exposes all initialized
          * texture views on outputs. */
         ral_present_task_gpu_create_info init_present_task_create_info;
-        ral_present_task_io              init_present_task_outputs[4];
+        constexpr uint32_t               n_color_texture_views = sizeof(handler_ptr->current_sm_color_texture_views) / sizeof(handler_ptr->current_sm_color_texture_views[0]);
+        constexpr uint32_t               n_depth_texture_views = sizeof(handler_ptr->current_sm_depth_texture_views) / sizeof(handler_ptr->current_sm_depth_texture_views[0]);
+        ral_present_task_io              init_present_task_outputs[n_color_texture_views + n_depth_texture_views];
 
         init_present_task_create_info.command_buffer   = init_cmd_buffer;
         init_present_task_create_info.n_unique_inputs  = 0;
@@ -1598,20 +1661,15 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
                       n_present_task_output < sizeof(init_present_task_outputs) / sizeof(init_present_task_outputs[0]);
                     ++n_present_task_output)
         {
-            ral_texture_view cur_texture_view;
+            ral_texture_view   cur_texture_view;
 
-            switch (n_present_task_output)
+            if (n_present_task_output < n_color_texture_views)
             {
-                case 0: cur_texture_view = handler_ptr->current_sm_color0_l0_texture_view; break;
-                case 1: cur_texture_view = handler_ptr->current_sm_color0_l1_texture_view; break;
-                case 2: cur_texture_view = handler_ptr->current_sm_depth_l0_texture_view;  break;
-                case 3: cur_texture_view = handler_ptr->current_sm_depth_l1_texture_view;  break;
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "This has not happened");
-                }
+                cur_texture_view = handler_ptr->current_sm_color_texture_views[n_present_task_output];
+            }
+            else
+            {
+                cur_texture_view = handler_ptr->current_sm_depth_texture_views[n_present_task_output - n_color_texture_views];
             }
 
             if (cur_texture_view != nullptr)
@@ -1640,11 +1698,11 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
     }
 
     /* Update shadow maps, as assigned to the specified light */
-    if (light_shadow_map_texture_type != RAL_TEXTURE_TYPE_2D_ARRAY)
+    if (light_shadow_map_texture_type == RAL_TEXTURE_TYPE_2D)
     {
         scene_light_set_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
-                                &handler_ptr->current_sm_color0_l0_texture_view);
+                                &handler_ptr->current_sm_color_texture_view);
         scene_light_set_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
                                 &handler_ptr->current_sm_depth_texture_view);
@@ -1655,19 +1713,14 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
 
         switch (target_face)
         {
-            case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT:
-            {
-                slice_index = 0;
-
-                break;
-            }
-
-            case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR:
-            {
-                slice_index = 1;
-
-                break;
-            }
+            case SCENE_RENDERER_SM_TARGET_FACE_POSITIVE_X:          slice_index = 0; break;
+            case SCENE_RENDERER_SM_TARGET_FACE_NEGATIVE_X:          slice_index = 1; break;
+            case SCENE_RENDERER_SM_TARGET_FACE_POSITIVE_Y:          slice_index = 2; break;
+            case SCENE_RENDERER_SM_TARGET_FACE_NEGATIVE_Y:          slice_index = 3; break;
+            case SCENE_RENDERER_SM_TARGET_FACE_POSITIVE_Z:          slice_index = 4; break;
+            case SCENE_RENDERER_SM_TARGET_FACE_NEGATIVE_Z:          slice_index = 5; break;
+            case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_FRONT: slice_index = 0; break;
+            case SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR:  slice_index = 1; break;
 
             default:
             {
@@ -1676,10 +1729,8 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
             }
         }
 
-        const ral_texture_view color_rt_texture_view = (slice_index == 0) ? handler_ptr->current_sm_color0_l0_texture_view
-                                                                          : handler_ptr->current_sm_color0_l1_texture_view;
-        const ral_texture_view depth_rt_texture_view = (slice_index == 0) ? handler_ptr->current_sm_depth_l0_texture_view
-                                                                          : handler_ptr->current_sm_depth_l1_texture_view;
+        const ral_texture_view color_rt_texture_view = handler_ptr->current_sm_color_texture_views[slice_index];
+        const ral_texture_view depth_rt_texture_view = handler_ptr->current_sm_depth_texture_views[slice_index];
 
         scene_light_set_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
@@ -1753,11 +1804,11 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
     }
 
     /* If necessary, also generate mipmaps for the color texture */
-    if (handler_ptr->current_sm_color0_l0_texture_view != nullptr)
+    if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
     {
         ral_texture sm_color_texture;
 
-        ral_texture_view_get_property(handler_ptr->current_sm_color0_l0_texture_view,
+        ral_texture_view_get_property(handler_ptr->current_sm_color_texture_views[0],
                                       RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
                                      &sm_color_texture);
 
@@ -1815,10 +1866,20 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
         result_finalize_task = sm_blur_present_task;
     }
 
+    /* Update the SM texture view, cached for scene_light. We need to ensure a texture view,
+     * which encapsulates all layers, is exposed, not just a single layer, to which we have
+     * rendered in the last iteration. */
+    scene_light_set_property(handler_ptr->current_light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_COLOR_RAL,
+                            &handler_ptr->current_sm_color_texture_view);
+    scene_light_set_property(handler_ptr->current_light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_VIEW_DEPTH_RAL,
+                            &handler_ptr->current_sm_depth_texture_view);
+
     /* "Unbind" the SM texture from the scene_renderer_sm instance */
     ral_texture_view ref_texture_views[] =
     {
-        handler_ptr->current_sm_color0_l0_texture_view,
+        handler_ptr->current_sm_color_texture_view,
         handler_ptr->current_sm_depth_texture_view
     };
     const uint32_t n_ref_texture_views = sizeof(ref_texture_views) / sizeof(ref_texture_views[0]);
@@ -1849,11 +1910,16 @@ PRIVATE ral_present_task _scene_renderer_sm_stop(_scene_renderer_sm*           h
                                    reinterpret_cast<void* const*>(&parent_texture) );
     }
 
-    handler_ptr->current_sm_color0_l0_texture_view = nullptr;
-    handler_ptr->current_sm_color0_l1_texture_view = nullptr;
-    handler_ptr->current_sm_depth_texture_view     = nullptr;
-    handler_ptr->current_sm_depth_l0_texture_view  = nullptr;
-    handler_ptr->current_sm_depth_l1_texture_view  = nullptr;
+    handler_ptr->current_sm_color_texture_view = nullptr;
+    handler_ptr->current_sm_depth_texture_view = nullptr;
+
+    memset(handler_ptr->current_sm_color_texture_views,
+           0,
+           sizeof(handler_ptr->current_sm_color_texture_views) );
+
+    memset(handler_ptr->current_sm_depth_texture_views,
+           0,
+           sizeof(handler_ptr->current_sm_depth_texture_views) );
 
     /* All done */
     handler_ptr->is_enabled = false;
@@ -2750,8 +2816,8 @@ PUBLIC void scene_renderer_sm_get_matrices_for_light(scene_renderer_sm          
 
                 case SCENE_RENDERER_SM_TARGET_FACE_NEGATIVE_Z:
                 {
-                    up_direction  [1] = -1.0f;
-                    view_direction[2] = -1.0f;
+                    up_direction  [1] = -1.0f; // V
+                    view_direction[2] = -1.0f; // V
 
                     break;
                 }
@@ -3642,17 +3708,6 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
         }
     }
 
-    /* Set VP */
-    system_matrix4x4 vp = nullptr;
-
-    scene_renderer_get_property(renderer,
-                                SCENE_RENDERER_PROPERTY_VP,
-                               &vp);
-
-    scene_renderer_uber_set_shader_general_property(sm_material_uber,
-                                                    SCENE_RENDERER_UBER_GENERAL_PROPERTY_VP,
-                                                    vp);
-
     /* Kick off the rendering */
     ral_texture_view               current_light_color_sm_tv = nullptr;
     ral_texture_view               current_light_depth_sm_tv = nullptr;
@@ -3680,6 +3735,16 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
     scene_renderer_uber_rendering_start(sm_material_uber,
                                        &uber_rendering_start_info);
     {
+        /* Set VP */
+        system_matrix4x4 vp = nullptr;
+
+        scene_renderer_get_property(renderer,
+                                    SCENE_RENDERER_PROPERTY_VP,
+                                   &vp);
+
+        scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                        SCENE_RENDERER_UBER_GENERAL_PROPERTY_VP,
+                                                        vp);
         for (uint32_t n_mesh = 0;
                       n_mesh < n_meshes;
                     ++n_mesh)
