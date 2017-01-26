@@ -401,33 +401,28 @@ ral_present_job _render_frame(ral_context                                       
         }
     #endif
 
-    /* Construct the result present task */
+    /* Construct the result present job */
+    uint32_t result_io_index = -1;
+
     result_present_job = ral_present_job_create();
 
-    ral_present_job_add_task(result_present_job,
-                             scene_render_task,
-                            &scene_render_task_id);
-    ral_present_job_add_task(result_present_job,
-                             _clear_present_task,
-                            &clear_present_task_id);
+    ral_present_task_add_subtask_to_group_task(scene_render_task,
+                                               _clear_present_task,
+                                               RAL_PRESENT_TASK_SUBTASK_ROLE_PRODUCER);
+    ral_present_job_add_task                  (result_present_job,
+                                               scene_render_task,
+                                              &scene_render_task_id);
 
-    ral_present_job_connect_tasks(result_present_job,
-                                  clear_present_task_id,
-                                  0, /* n_src_task_output */
-                                  scene_render_task_id,
-                                  0,        /* n_dst_task_input          */
-                                  nullptr); /* out_opt_connection_id_ptr */
-    ral_present_job_connect_tasks(result_present_job,
-                                  clear_present_task_id,
-                                  1, /* n_src_task_output */
-                                  scene_render_task_id,
-                                  1,        /* n_dst_task_input          */
-                                  nullptr); /* out_opt_connection_id_ptr */
+    ral_present_task_get_io_index(scene_render_task,
+                                  RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  _color_texture_view,
+                                  &result_io_index);
 
     ral_present_job_set_presentable_output(result_present_job,
                                            scene_render_task_id,
-                                           false, /* is_input_io */
-                                           0);    /* n_io        */
+                                           false,            /* is_input_io */
+                                           result_io_index); /* n_io        */
 
     /* All done */
     state_set_last_frame_time(frame_time);

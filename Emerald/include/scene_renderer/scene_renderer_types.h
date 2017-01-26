@@ -70,6 +70,8 @@ typedef enum
      * scene_renderer_sm. */
     RENDER_MODE_SHADOW_MAP,
 
+
+    RENDER_MODE_UNDEFINED
 } scene_renderer_render_mode;
 
 #endif /* SCENE_RENDERER_TYPES_H */

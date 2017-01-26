@@ -1281,8 +1281,8 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_black_box(system_has
                 }
                 else
                 {
-                    const uint32_t n_task_ios = (current_task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_group_task_input_mappings
-                                                                                                                                                               : current_task_ptr->n_group_task_output_mappings)
+                    const uint32_t n_task_ios = (current_task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_group_task_unique_input_mappings
+                                                                                                                                                               : current_task_ptr->n_group_task_unique_output_mappings)
                                                                                                         : ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_inputs
                                                                                                                                                                : current_task_ptr->n_outputs);
 
@@ -1398,8 +1398,8 @@ PUBLIC EMERALD_API ral_present_task ral_present_task_create_black_box(system_has
         {
             const ral_present_task current_task     = present_tasks[n_present_task];
             _ral_present_task*     current_task_ptr = reinterpret_cast<_ral_present_task*>(present_tasks[n_present_task]);
-            const uint32_t         n_task_ios       = (current_task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_group_task_input_mappings
-                                                                                                                                                                     : current_task_ptr->n_group_task_output_mappings)
+            const uint32_t         n_task_ios       = (current_task_ptr->type == RAL_PRESENT_TASK_TYPE_GROUP) ? ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_group_task_unique_input_mappings
+                                                                                                                                                                     : current_task_ptr->n_group_task_unique_output_mappings)
                                                                                                               : ((current_io_type == RAL_PRESENT_TASK_IO_TYPE_INPUT) ? current_task_ptr->n_inputs
                                                                                                                                                                      : current_task_ptr->n_outputs);
 

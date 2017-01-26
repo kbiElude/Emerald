@@ -1437,6 +1437,7 @@ PRIVATE ral_present_task _scene_renderer_render_traversed_scene_graph(_scene_ren
                                                                                        : nullptr;
             uber_start_info.depth_rt        = (ref_gfx_state_create_info.depth_writes) ? renderer_ptr->current_depth_rt
                                                                                        : nullptr;
+            uber_start_info.render_mode     = render_mode;
             uber_start_info.scene_to_render = renderer_ptr->owned_scene;
             uber_start_info.sm              = renderer_ptr->shadow_mapping;
 

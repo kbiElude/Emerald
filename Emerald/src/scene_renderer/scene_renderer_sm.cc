@@ -1539,7 +1539,8 @@ PRIVATE ral_present_task _scene_renderer_sm_start(_scene_renderer_sm*           
         ral_command_buffer_clear_rt_binding_command_info clear_command_info_items[6];
         uint32_t                                         n_clear_command_info_items   = 0;
 
-        if (handler_ptr->current_sm_color_texture_views[0] != nullptr)
+        if (handler_ptr->current_sm_depth_texture_view != nullptr &&
+            sm_depth_texture_create_info.n_layers      == 1)
         {
             ral_command_buffer_clear_rt_binding_command_info* clear_info_ptr = clear_command_info_items + n_clear_command_info_items;
 
@@ -2816,8 +2817,8 @@ PUBLIC void scene_renderer_sm_get_matrices_for_light(scene_renderer_sm          
 
                 case SCENE_RENDERER_SM_TARGET_FACE_NEGATIVE_Z:
                 {
-                    up_direction  [1] = -1.0f; // V
-                    view_direction[2] = -1.0f; // V
+                    up_direction  [1] = -1.0f;
+                    view_direction[2] = -1.0f;
 
                     break;
                 }
@@ -3638,76 +3639,6 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
                                                            scene,
                                                            false); /* use_shadow_maps */
 
-    /* Configure the uber.
-     *
-     * NOTE: Since we're rendering a shadow map, far & near planes
-     *       are configured relative to the light space.
-     */
-    scene_light_shadow_map_algorithm light_sm_algorithm;
-    scene_light_type                 light_type;
-
-    scene_light_get_property(shadow_mapping_ptr->current_light,
-                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
-                            &light_sm_algorithm);
-    scene_light_get_property(shadow_mapping_ptr->current_light,
-                             SCENE_LIGHT_PROPERTY_TYPE,
-                            &light_type);
-
-    if (light_sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
-    {
-        float light_vsm_max_variance;
-
-        scene_light_get_property(shadow_mapping_ptr->current_light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE,
-                                &light_vsm_max_variance);
-
-        scene_renderer_uber_set_shader_general_property(sm_material_uber,
-                                                        SCENE_RENDERER_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE,
-                                                       &light_vsm_max_variance);
-    }
-
-    if (light_type == SCENE_LIGHT_TYPE_POINT)
-    {
-        scene_light_shadow_map_pointlight_algorithm sm_algorithm;
-
-        scene_light_get_property(shadow_mapping_ptr->current_light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
-                                &sm_algorithm);
-
-        if (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID)
-        {
-            float light_far_near_plane_diff;
-            float light_far_plane;
-            float light_flip_z = (shadow_mapping_ptr->current_target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR) ? -1.0f : 1.0f;
-            float light_near_plane;
-
-            scene_light_get_property(shadow_mapping_ptr->current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
-                                    &light_far_plane);
-            scene_light_get_property(shadow_mapping_ptr->current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
-                                    &light_near_plane);
-
-            ASSERT_DEBUG_SYNC(light_far_plane >= light_near_plane,
-                              "Light clipping planes are incorrect");
-
-            light_far_near_plane_diff = light_far_plane - light_near_plane;
-
-            ASSERT_DEBUG_SYNC(light_far_near_plane_diff > 0.0f,
-                              "(Light far plane distance - near plane distance) is invalid.");
-
-            scene_renderer_uber_set_shader_general_property(sm_material_uber,
-                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
-                                                           &light_far_near_plane_diff);
-            scene_renderer_uber_set_shader_general_property(sm_material_uber,
-                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_FLIP_Z,
-                                                           &light_flip_z);
-            scene_renderer_uber_set_shader_general_property(sm_material_uber,
-                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_NEAR_PLANE,
-                                                           &light_near_plane);
-        }
-    }
-
     /* Kick off the rendering */
     ral_texture_view               current_light_color_sm_tv = nullptr;
     ral_texture_view               current_light_depth_sm_tv = nullptr;
@@ -3729,12 +3660,83 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_map_meshes(scene_rendere
                       current_light_depth_sm_tv != nullptr,
                       "About to start rendering shadow map meshes without render-targets assigned");
 
-    uber_rendering_start_info.color_rt = current_light_color_sm_tv;
-    uber_rendering_start_info.depth_rt = current_light_depth_sm_tv;
+    uber_rendering_start_info.color_rt    = current_light_color_sm_tv;
+    uber_rendering_start_info.depth_rt    = current_light_depth_sm_tv;
+    uber_rendering_start_info.render_mode = RENDER_MODE_SHADOW_MAP;
 
     scene_renderer_uber_rendering_start(sm_material_uber,
                                        &uber_rendering_start_info);
     {
+        /* Configure the uber.
+         *
+         * NOTE: Since we're rendering a shadow map, far & near planes
+         *       are configured relative to the light space.
+         */
+        scene_light_shadow_map_algorithm light_sm_algorithm;
+        scene_light_type                 light_type;
+
+        scene_light_get_property(shadow_mapping_ptr->current_light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                &light_sm_algorithm);
+        scene_light_get_property(shadow_mapping_ptr->current_light,
+                                 SCENE_LIGHT_PROPERTY_TYPE,
+                                &light_type);
+
+        if (light_sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+        {
+            float light_vsm_max_variance;
+
+            scene_light_get_property(shadow_mapping_ptr->current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE,
+                                    &light_vsm_max_variance);
+
+            scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                            SCENE_RENDERER_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE,
+                                                           &light_vsm_max_variance);
+        }
+
+        if (light_type == SCENE_LIGHT_TYPE_POINT)
+        {
+            scene_light_shadow_map_pointlight_algorithm sm_algorithm;
+
+            scene_light_get_property(shadow_mapping_ptr->current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                    &sm_algorithm);
+
+            if (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID)
+            {
+                float light_far_near_plane_diff;
+                float light_far_plane;
+                float light_flip_z = (shadow_mapping_ptr->current_target_face == SCENE_RENDERER_SM_TARGET_FACE_2D_PARABOLOID_REAR) ? -1.0f : 1.0f;
+                float light_near_plane;
+
+                scene_light_get_property(shadow_mapping_ptr->current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+                                        &light_far_plane);
+                scene_light_get_property(shadow_mapping_ptr->current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
+                                        &light_near_plane);
+
+                ASSERT_DEBUG_SYNC(light_far_plane >= light_near_plane,
+                                  "Light clipping planes are incorrect");
+
+                light_far_near_plane_diff = light_far_plane - light_near_plane;
+
+                ASSERT_DEBUG_SYNC(light_far_near_plane_diff > 0.0f,
+                                  "(Light far plane distance - near plane distance) is invalid.");
+
+                scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                                SCENE_RENDERER_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
+                                                               &light_far_near_plane_diff);
+                scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                                SCENE_RENDERER_UBER_GENERAL_PROPERTY_FLIP_Z,
+                                                               &light_flip_z);
+                scene_renderer_uber_set_shader_general_property(sm_material_uber,
+                                                                SCENE_RENDERER_UBER_GENERAL_PROPERTY_NEAR_PLANE,
+                                                               &light_near_plane);
+            }
+        }
+
         /* Set VP */
         system_matrix4x4 vp = nullptr;
 
@@ -4135,12 +4137,11 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
              **/
             ral_present_task_group_create_info  light_sm_present_task_create_info;
             ral_present_task_ingroup_connection light_sm_present_task_connections[n_max_helper_present_tasks * 4 /* 2 x color + 2 x depth */];
-            ral_present_task_group_mapping*     light_sm_present_task_output_mappings   = nullptr;
+            ral_present_task_group_mapping      light_sm_present_task_output_mappings[6 * 6]; /* max we should ever need */
             ral_present_task_io*                light_sm_present_task_outputs;
             ral_present_task                    light_sm_present_task_subtasks   [1 + n_max_helper_present_tasks];
             uint32_t                            n_init_present_task_outputs             = 0;
             uint32_t                            n_light_sm_present_task_connections     = 0;
-            uint32_t                            n_light_sm_present_task_output_mappings = 0;
             uint32_t                            n_light_sm_present_task_subtasks        = 1 + n_helper_present_tasks_used;
 
             /* Step 1) */
@@ -4158,13 +4159,6 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                 }
 
                 light_sm_present_task_subtasks[n_helper_task + 1] = per_light_helper_present_tasks[n_helper_task];
-
-                /* To perform step 4, we also need to know how many outputs the task exposes. */
-                ral_present_task_get_property(per_light_helper_present_tasks[n_helper_task],
-                                              RAL_PRESENT_TASK_PROPERTY_N_UNIQUE_OUTPUT_MAPPINGS,
-                                             &n_helper_present_task_outputs);
-
-                n_light_sm_present_task_output_mappings += n_helper_present_task_outputs;
             }
 
             /* Step 2) */
@@ -4178,13 +4172,22 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                           n_output < n_init_present_task_outputs;
                         ++n_output)
             {
-                ral_texture_view current_output_texture_view = nullptr;
+                void*                   current_output_object = nullptr;
+                ral_context_object_type current_output_object_type;
 
                 ral_present_task_get_io_property(init_present_task,
                                                  RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
                                                  n_output,
                                                  RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                 reinterpret_cast<void**>(&current_output_texture_view) );
+                                                 reinterpret_cast<void**>(&current_output_object) );
+                ral_present_task_get_io_property(init_present_task,
+                                                 RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                 n_output,
+                                                 RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                 reinterpret_cast<void**>(&current_output_object_type) );
+
+                ASSERT_DEBUG_SYNC(current_output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  "TODO");
 
                 for (uint32_t n_consumer = 0;
                               n_consumer < n_helper_present_tasks_used;
@@ -4195,7 +4198,7 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                     if (!ral_present_task_get_io_index(per_light_helper_present_tasks[n_consumer],
                                                        RAL_PRESENT_TASK_IO_TYPE_INPUT,
                                                        RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
-                                                       current_output_texture_view,
+                                                       current_output_object,
                                                       &io_index) )
                     {
                         continue;
@@ -4248,8 +4251,6 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
             /* Step 4) */
             uint32_t n_mappings_configured = 0;
 
-            light_sm_present_task_output_mappings = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_light_sm_present_task_output_mappings) );
-
             for (uint32_t n_helper_task = 0;
                           n_helper_task < n_helper_present_tasks_used;
                         ++n_helper_task)
@@ -4269,38 +4270,88 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                               n_output_mapping < n_helper_present_task_output_mappings;
                             ++n_output_mapping)
                 {
-                    uint32_t         init_present_task_output_index = -1;
-                    ral_texture_view output_texture_view;
+                    uint32_t                init_present_task_output_index = -1;
+                    void*                   output_object;
+                    ral_context_object_type output_object_type;
 
                     ral_present_task_get_io_property(per_light_helper_present_tasks[n_helper_task],
                                                      RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
                                                      n_output_mapping,
                                                      RAL_PRESENT_TASK_IO_PROPERTY_OBJECT,
-                                                     reinterpret_cast<void**>(&output_texture_view) );
+                                                     reinterpret_cast<void**>(&output_object) );
+                    ral_present_task_get_io_property(per_light_helper_present_tasks[n_helper_task],
+                                                     RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                                     n_output_mapping,
+                                                     RAL_PRESENT_TASK_IO_PROPERTY_OBJECT_TYPE,
+                                                     reinterpret_cast<void**>(&output_object_type) );
+
+                    ASSERT_DEBUG_SYNC(output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE ||
+                                      output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                      "Unsupported output object type");
 
                     for (uint32_t n_present_task_output = 0;
                                   n_present_task_output < n_init_present_task_outputs && init_present_task_output_index == -1;
                                 ++n_present_task_output)
                     {
-                        if (light_sm_present_task_outputs[n_present_task_output].object == output_texture_view)
+                        if (light_sm_present_task_outputs[n_present_task_output].object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW)
                         {
-                            init_present_task_output_index = n_present_task_output;
-                            break;
+                            if (output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW)
+                            {
+                                if (light_sm_present_task_outputs[n_present_task_output].object == output_object)
+                                {
+                                    init_present_task_output_index = n_present_task_output;
+                                }
+                            }
+                            else
+                            {
+                                ral_texture task_output_texture_view_parent_texture = nullptr;
+
+                                ASSERT_DEBUG_SYNC(output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE,
+                                                  "Unsupported object type");
+
+                                ral_texture_view_get_property(light_sm_present_task_outputs[n_present_task_output].texture_view,
+                                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                             &task_output_texture_view_parent_texture);
+
+                                if (task_output_texture_view_parent_texture == output_object)
+                                {
+                                    init_present_task_output_index = n_present_task_output;
+                                }
+                            }
+                        }
+                        else
+                        if (light_sm_present_task_outputs[n_present_task_output].object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
+                        {
+                            ral_texture output_texture_view_parent_texture = nullptr;
+
+                            ASSERT_DEBUG_SYNC(output_object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                              "TODO");
+
+                            ral_texture_view_get_property(reinterpret_cast<ral_texture_view>(output_object),
+                                                          RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                                         &output_texture_view_parent_texture);
+
+                            if (output_texture_view_parent_texture == light_sm_present_task_outputs[n_present_task_output].object)
+                            {
+                                init_present_task_output_index = n_present_task_output;
+                            }
+                        }
+
+                        if (init_present_task_output_index != -1)
+                        {
+                            light_sm_present_task_output_mappings[n_mappings_configured].group_task_io_index   = init_present_task_output_index;
+                            light_sm_present_task_output_mappings[n_mappings_configured].n_present_task        = 1 /* init task */ + n_helper_task;
+                            light_sm_present_task_output_mappings[n_mappings_configured].present_task_io_index = n_output_mapping;
+
+                            ++n_mappings_configured;
+
+                            init_present_task_output_index = -1;
                         }
                     }
-
-                    ASSERT_DEBUG_SYNC(init_present_task_output_index != -1,
-                                      "Texture view exposed by a helper present task is not set up by the init present task");
-
-                    light_sm_present_task_output_mappings[n_mappings_configured].group_task_io_index   = init_present_task_output_index;
-                    light_sm_present_task_output_mappings[n_mappings_configured].n_present_task        = 1 /* init task */ + n_helper_task;
-                    light_sm_present_task_output_mappings[n_mappings_configured].present_task_io_index = n_output_mapping;
-
-                    ++n_mappings_configured;
                 }
             }
 
-            ASSERT_DEBUG_SYNC(n_mappings_configured == n_light_sm_present_task_output_mappings,
+            ASSERT_DEBUG_SYNC(n_mappings_configured <= sizeof(light_sm_present_task_output_mappings) / sizeof(light_sm_present_task_output_mappings[0]),
                               "This should never happen");
 
             /* We now know everything needed to create the result task */
@@ -4310,7 +4361,7 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
             light_sm_present_task_create_info.n_total_unique_inputs                    = 0;
             light_sm_present_task_create_info.n_total_unique_outputs                   = n_init_present_task_outputs;
             light_sm_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 0;
-            light_sm_present_task_create_info.n_unique_output_to_ingroup_task_mappings = n_light_sm_present_task_output_mappings;
+            light_sm_present_task_create_info.n_unique_output_to_ingroup_task_mappings = n_mappings_configured;
             light_sm_present_task_create_info.present_tasks                            = light_sm_present_task_subtasks;
             light_sm_present_task_create_info.unique_input_to_ingroup_task_mapping     = 0;
             light_sm_present_task_create_info.unique_output_to_ingroup_task_mapping    = light_sm_present_task_output_mappings;
@@ -4335,7 +4386,6 @@ PUBLIC ral_present_task scene_renderer_sm_render_shadow_maps(scene_renderer_sm s
                 ral_present_task_release(light_sm_present_task_create_info.present_tasks[n_helper_task]);
             }
 
-            _freea(light_sm_present_task_output_mappings);
             _freea(light_sm_present_task_outputs);
         }
     }

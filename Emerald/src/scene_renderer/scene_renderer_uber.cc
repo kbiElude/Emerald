@@ -172,7 +172,11 @@ typedef struct _scene_renderer_uber_mesh_data
 
 typedef struct _scene_renderer_uber_mesh_data_material
 {
-    ral_command_buffer              command_buffer;
+    // TODO: change this to a preamble_command_buffer, storing commands which should do not change
+    //       across render_mesh() invocations and which can be appended to a cmd buffer re-created
+    //       every invocation.
+    //
+    // ral_command_buffer              command_buffer;
     ral_context                     context;
     mesh_material                   material;
     _scene_renderer_uber_mesh_data* mesh_data_ptr;
@@ -184,19 +188,6 @@ typedef struct _scene_renderer_uber_mesh_data_material
                                                      _scene_renderer_uber_mesh_data* in_mesh_data_ptr,
                                                      _scene_renderer_uber*           in_uber_ptr)
     {
-        ral_command_buffer_create_info command_buffer_create_info;
-
-        command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
-        command_buffer_create_info.is_executable                           = true;
-        command_buffer_create_info.is_invokable_from_other_command_buffers = true;
-        command_buffer_create_info.is_resettable                           = true;
-        command_buffer_create_info.is_transient                            = false;
-
-        ral_context_create_command_buffers(in_context,
-                                           1, /* n_command_buffers */
-                                           &command_buffer_create_info,
-                                           &command_buffer);
-
         context       = in_context;
         material      = in_material;
         mesh_data_ptr = in_mesh_data_ptr;
@@ -205,15 +196,7 @@ typedef struct _scene_renderer_uber_mesh_data_material
 
     ~_scene_renderer_uber_mesh_data_material()
     {
-        if (command_buffer != nullptr)
-        {
-            ral_context_delete_objects(context,
-                                       RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
-                                       1, /* n_objects */
-                                       reinterpret_cast<void* const*>(&command_buffer) );
-
-            command_buffer = nullptr;
-        }
+        /* Stub */
     }
 } _scene_renderer_uber_mesh_data_material;
 
@@ -236,11 +219,11 @@ typedef struct _scene_renderer_uber
     uint32_t                  shader_fragment_n_items;
     shaders_vertex_uber       shader_vertex;
 
-    ral_texture_view active_color_rt;
-    ral_texture_view active_depth_rt;
-
-    ral_texture_view active_sm_rts[16];
-    uint32_t         n_active_sm_rts;
+    ral_texture_view           active_color_rt;
+    ral_texture_view           active_depth_rt;
+    scene_renderer_render_mode active_render_mode;
+    ral_texture_view           active_sm_rts[16];
+    uint32_t                   n_active_sm_rts;
 
     /* These are stored in UBs so we need to store UB offsets instead of locations */
     uint32_t ambient_material_ub_offset;
@@ -273,7 +256,7 @@ typedef struct _scene_renderer_uber
     _scene_renderer_uber_type type;
     system_variant            variant_float;
 
-    ral_command_buffer root_command_buffer;
+    ral_command_buffer active_cmd_buffer;
 
     system_hash64map        mesh_to_mesh_data_map;
     system_resizable_vector scheduled_mesh_buffers;
@@ -302,6 +285,8 @@ _scene_renderer_uber::_scene_renderer_uber(ral_context               in_context,
                                            system_hashed_ansi_string in_name,
                                            _scene_renderer_uber_type in_type)
 {
+    active_cmd_buffer              = nullptr;
+    active_render_mode             = RENDER_MODE_UNDEFINED;
     added_items                    = system_resizable_vector_create(4 /* capacity */);
     context                        = in_context;    /* DO NOT retain, or face circular dependencies! */
     current_vp                     = system_matrix4x4_create();
@@ -312,7 +297,6 @@ _scene_renderer_uber::_scene_renderer_uber(ral_context               in_context,
                                                              false);
     name                           = in_name;
     program                        = nullptr;
-    root_command_buffer            = nullptr;
     scheduled_mesh_buffers         = system_resizable_vector_create(16); /* capacity */
     shader_fragment                = nullptr;
     shader_vertex                  = nullptr;
@@ -320,21 +304,8 @@ _scene_renderer_uber::_scene_renderer_uber(ral_context               in_context,
     ub_fs                          = nullptr;
     ub_vs                          = nullptr;
 
+
     _scene_renderer_uber_reset_uniform_offsets(this);
-
-    /* Instantiate the preamble command buffer */
-    ral_command_buffer_create_info root_cmd_buffer_create_info;
-
-    root_cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
-    root_cmd_buffer_create_info.is_executable                           = false;
-    root_cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
-    root_cmd_buffer_create_info.is_resettable                           = true;
-    root_cmd_buffer_create_info.is_transient                            = true;
-
-    ral_context_create_command_buffers(context,
-                                       1, /* n_command_buffers */
-                                       &root_cmd_buffer_create_info,
-                                       &root_command_buffer);
 }
 
 /** TODO */
@@ -901,14 +872,12 @@ PRIVATE void _scene_renderer_uber_release(void* uber)
             uber_ptr->shader_vertex = nullptr;
         }
 
-        if (uber_ptr->root_command_buffer != nullptr)
+        if (uber_ptr->active_cmd_buffer != nullptr)
         {
             ral_context_delete_objects(uber_ptr->context,
                                        RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
                                        1, /* n_objects */
-                                       reinterpret_cast<void* const*>(&uber_ptr->root_command_buffer) );
-
-            uber_ptr->root_command_buffer = nullptr;
+                                       reinterpret_cast<void* const*>(&uber_ptr->active_cmd_buffer) );
         }
 
         if (uber_ptr->program != nullptr)
@@ -2207,10 +2176,29 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                           "Mesh material data instance is null");
     }
 
-    /* Start recording the command buffer */
-    ral_command_buffer_start_recording(mesh_data_material_ptr->command_buffer);
+    /* Start recording the command buffer
+     *
+     * TODO: Many of the recorded commands do not change across render_mesh() invocations, hence
+     *       can be cached in a preamble cmd buffer, which would then be appended to the new command
+     *       buffer, instead of processing all this stuff every invocation.
+     */
+    ral_command_buffer             command_buffer;
+    ral_command_buffer_create_info command_buffer_create_info;
+
+    command_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+    command_buffer_create_info.is_executable                           = true;
+    command_buffer_create_info.is_invokable_from_other_command_buffers = true;
+    command_buffer_create_info.is_resettable                           = true;
+    command_buffer_create_info.is_transient                            = false;
+
+    ral_context_create_command_buffers(uber_ptr->context,
+                                       1, /* n_command_buffers */
+                                       &command_buffer_create_info,
+                                       &command_buffer);
+
+    ral_command_buffer_start_recording(command_buffer);
     {
-        ral_command_buffer_record_set_gfx_state(mesh_data_material_ptr->command_buffer,
+        ral_command_buffer_record_set_gfx_state(command_buffer,
                                                 mesh_data_ptr->gfx_state);
 
         /* Set up rendertarget bindings */
@@ -2231,17 +2219,17 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
             rt_info.rendertarget_index = 0;
             rt_info.texture_view       = uber_ptr->active_color_rt;
 
-            ral_command_buffer_record_set_color_rendertargets(mesh_data_material_ptr->command_buffer,
+            ral_command_buffer_record_set_color_rendertargets(command_buffer,
                                                               1, /* n_rendertargets */
                                                              &rt_info);
-            ral_command_buffer_record_set_bindings           (mesh_data_material_ptr->command_buffer,
+            ral_command_buffer_record_set_bindings           (command_buffer,
                                                               1, /* n_rendertargets */
                                                              &rt_binding);
         }
 
         if (uber_ptr->active_depth_rt != nullptr)
         {
-            ral_command_buffer_record_set_depth_rendertarget(mesh_data_material_ptr->command_buffer,
+            ral_command_buffer_record_set_depth_rendertarget(command_buffer,
                                                              uber_ptr->active_depth_rt);
         }
         else
@@ -2308,7 +2296,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                 ++n_vertex_buffers;
             }
 
-            ral_command_buffer_record_set_vertex_buffers(mesh_data_material_ptr->command_buffer,
+            ral_command_buffer_record_set_vertex_buffers(command_buffer,
                                                          n_vertex_buffers,
                                                          vertex_buffers);
         }
@@ -2516,7 +2504,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                                 attachment_texture_binding.sampled_image_binding.sampler      = attachment_sampler;
                                 attachment_texture_binding.sampled_image_binding.texture_view = attachment_texture_view;
 
-                                ral_command_buffer_record_set_bindings(mesh_data_material_ptr->command_buffer,
+                                ral_command_buffer_record_set_bindings(command_buffer,
                                                                        1, /* n_bindings */
                                                                       &attachment_texture_binding);
 
@@ -2566,13 +2554,13 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                 if (mesh_data_material_ptr->uber_ptr->ub_fs != nullptr)
                 {
                     ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_fs,
-                                                                     mesh_data_material_ptr->command_buffer);
+                                                                     command_buffer);
                 }
 
                 if (mesh_data_material_ptr->uber_ptr->ub_vs != nullptr)
                 {
                     ral_program_block_buffer_sync_via_command_buffer(mesh_data_material_ptr->uber_ptr->ub_vs,
-                                                                     mesh_data_material_ptr->command_buffer);
+                                                                     command_buffer);
                 }
 
                 /* Issue the draw call. We need to handle two separate cases here:
@@ -2663,7 +2651,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                     draw_call_info.n_indices     = layer_pass_n_indices;
                     draw_call_info.n_instances   = 1;
 
-                    ral_command_buffer_record_draw_call_indexed(mesh_data_material_ptr->command_buffer,
+                    ral_command_buffer_record_draw_call_indexed(command_buffer,
                                                                 1, /* n_draw_calls */
                                                                &draw_call_info);
                 }
@@ -2697,7 +2685,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                             draw_call_info.n_instances   = 1;
                             draw_call_info.n_vertices    = draw_call_arguments.n_vertices;
 
-                            ral_command_buffer_record_draw_call_regular(mesh_data_material_ptr->command_buffer,
+                            ral_command_buffer_record_draw_call_regular(command_buffer,
                                                                         1, /* n_draw_calls */
                                                                        &draw_call_info);
 
@@ -2714,7 +2702,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                             draw_call_info.offset          = draw_call_arguments.indirect_offset;
                             draw_call_info.stride          = 0;
 
-                            ral_command_buffer_record_draw_call_indirect_regular(mesh_data_material_ptr->command_buffer,
+                            ral_command_buffer_record_draw_call_indirect_regular(command_buffer,
                                                                                  1, /* n_draw_calls */
                                                                                 &draw_call_info);
 
@@ -2731,14 +2719,14 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
             }
         }
     }
-    ral_command_buffer_stop_recording(mesh_data_material_ptr->command_buffer);
+    ral_command_buffer_stop_recording(command_buffer);
 
     /* Append the command buffer to the root command buffer */
     ral_command_buffer_execute_command_buffer_command_info execute_command;
 
-    execute_command.command_buffer = mesh_data_material_ptr->command_buffer;
+    execute_command.command_buffer = command_buffer;
 
-    ral_command_buffer_record_execute_command_buffer(mesh_data_material_ptr->uber_ptr->root_command_buffer,
+    ral_command_buffer_record_execute_command_buffer(mesh_data_material_ptr->uber_ptr->active_cmd_buffer,
                                                      1, /* n_commands */
                                                     &execute_command);
 
@@ -2803,6 +2791,13 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
         }
     }
 
+    /* Clean up */
+    ral_context_delete_objects(uber_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&command_buffer) );
+
+    command_buffer = nullptr;
 end:
     ;
 }
@@ -3262,9 +3257,10 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                       start_info_ptr->depth_rt != nullptr,
                       "All specified rendertargets are null");
 
-    uber_ptr->active_color_rt = start_info_ptr->color_rt;
-    uber_ptr->active_depth_rt = start_info_ptr->depth_rt;
-    uber_ptr->n_active_sm_rts = 0;
+    uber_ptr->active_color_rt    = start_info_ptr->color_rt;
+    uber_ptr->active_depth_rt    = start_info_ptr->depth_rt;
+    uber_ptr->active_render_mode = start_info_ptr->render_mode;
+    uber_ptr->n_active_sm_rts    = 0;
 
     /* Update shaders if the configuration has been changed since the last call */
     if (uber_ptr->dirty)
@@ -3283,11 +3279,31 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_items);
 
+    /* Spawn a new root command buffer.
+     *
+     * We cannot reuse them because the mesh list & render-targets may vary across sessions.
+     */
+    ral_command_buffer_create_info root_cmd_buffer_create_info;
+
+    root_cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
+    root_cmd_buffer_create_info.is_executable                           = true;
+    root_cmd_buffer_create_info.is_invokable_from_other_command_buffers = false;
+    root_cmd_buffer_create_info.is_resettable                           = false;
+    root_cmd_buffer_create_info.is_transient                            = true;
+
+    ASSERT_DEBUG_SYNC(uber_ptr->active_cmd_buffer == nullptr,
+                      "No active command buffer should be assigned at scene_renderer_uber_rendering_start() call time.");
+
+    ral_context_create_command_buffers(uber_ptr->context,
+                                       1, /* n_command_buffers */
+                                       &root_cmd_buffer_create_info,
+                                       &uber_ptr->active_cmd_buffer);
+
     /* Start recording the root command buffer. Note that the recording session will not be stopped
      * until scene_renderer_uber_rendering_stop() is called */
-    ral_command_buffer_start_recording(uber_ptr->root_command_buffer);
+    ral_command_buffer_start_recording(uber_ptr->active_cmd_buffer);
 
-    ral_command_buffer_record_set_program(uber_ptr->root_command_buffer,
+    ral_command_buffer_record_set_program(uber_ptr->active_cmd_buffer,
                                           uber_ptr->program);
 
     for (unsigned int n_item = 0;
@@ -3321,7 +3337,6 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
 
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_color_uniform_name != nullptr)
                     {
-                        ral_texture_type                            shadow_map_texture_type = RAL_TEXTURE_TYPE_UNKNOWN;
                         ral_command_buffer_set_binding_command_info sm_binding_info;
 
                         scene_renderer_sm_get_sampler_for_light(start_info_ptr->sm,
@@ -3336,16 +3351,12 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                         ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_color != nullptr,
                                           "No color shadow map assigned to a light which casts shadows");
 
-                        ral_texture_view_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_color,
-                                                      RAL_TEXTURE_VIEW_PROPERTY_TYPE,
-                                                     &shadow_map_texture_type);
-
                         sm_binding_info.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
                         sm_binding_info.name                               = item_ptr->fragment_shader_item.current_light_shadow_map_color_uniform_name;
                         sm_binding_info.sampled_image_binding.sampler      = shadow_map_sampler;
                         sm_binding_info.sampled_image_binding.texture_view = item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_color;
 
-                        ral_command_buffer_record_set_bindings(uber_ptr->root_command_buffer,
+                        ral_command_buffer_record_set_bindings(uber_ptr->active_cmd_buffer,
                                                                1, /* n_bindings */
                                                               &sm_binding_info);
 
@@ -3358,7 +3369,6 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
 
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_depth_uniform_name != nullptr)
                     {
-                        ral_texture_type                            shadow_map_texture_type = RAL_TEXTURE_TYPE_UNKNOWN;
                         ral_command_buffer_set_binding_command_info sm_binding_info;
 
                         scene_renderer_sm_get_sampler_for_light(start_info_ptr->sm,
@@ -3373,16 +3383,12 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
                         ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_depth != nullptr,
                                           "No depth shadow map assigned to a light which casts shadows");
 
-                        ral_texture_view_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_depth,
-                                                      RAL_TEXTURE_VIEW_PROPERTY_TYPE,
-                                                     &shadow_map_texture_type);
-
                         sm_binding_info.binding_type                       = RAL_BINDING_TYPE_SAMPLED_IMAGE;
                         sm_binding_info.name                               = item_ptr->fragment_shader_item.current_light_shadow_map_depth_uniform_name;
                         sm_binding_info.sampled_image_binding.sampler      = shadow_map_sampler;
                         sm_binding_info.sampled_image_binding.texture_view = item_ptr->fragment_shader_item.current_light_shadow_map_texture_view_depth;
 
-                        ral_command_buffer_record_set_bindings(uber_ptr->root_command_buffer,
+                        ral_command_buffer_record_set_bindings(uber_ptr->active_cmd_buffer,
                                                                1, /* n_bindings */
                                                               &sm_binding_info);
 
@@ -3431,7 +3437,7 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
             ub_fs_binding_info.uniform_buffer_binding.offset = 0;
             ub_fs_binding_info.uniform_buffer_binding.size   = uber_ptr->ub_fs_bo_size;
 
-            ral_command_buffer_record_set_bindings(uber_ptr->root_command_buffer,
+            ral_command_buffer_record_set_bindings(uber_ptr->active_cmd_buffer,
                                                    1, /* n_bindings */
                                                   &ub_fs_binding_info);
         }
@@ -3453,13 +3459,14 @@ PUBLIC void scene_renderer_uber_rendering_start(scene_renderer_uber             
             ub_vs_binding_info.uniform_buffer_binding.offset = 0;
             ub_vs_binding_info.uniform_buffer_binding.size   = uber_ptr->ub_vs_bo_size;
 
-            ral_command_buffer_record_set_bindings(uber_ptr->root_command_buffer,
+            ral_command_buffer_record_set_bindings(uber_ptr->active_cmd_buffer,
                                                    1, /* n_bindings */
                                                   &ub_vs_binding_info);
         }
     }
 
-    /* Mark as 'being rendered' */
+    /* Mark as 'in progress' */
+end:
     uber_ptr->is_rendering = true;
 }
 
@@ -3488,7 +3495,7 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                              &ub_vs_bo);
     }
 
-    ral_command_buffer_stop_recording(uber_ptr->root_command_buffer);
+    ral_command_buffer_stop_recording(uber_ptr->active_cmd_buffer);
 
     /* Form the result present task */
     ral_present_task                     global_cpu_update_task;
@@ -3499,8 +3506,8 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
     uint32_t                             n_scheduled_mesh_buffers           = 0;
     ral_present_task                     render_gpu_task                    = nullptr;
     ral_present_task_gpu_create_info     render_gpu_task_info;
-    ral_present_task_io*                 render_gpu_task_unique_inputs      = nullptr;
-    ral_present_task_io                  render_gpu_task_unique_outputs[2];
+    ral_present_task_io                  render_gpu_task_unique_inputs [6 * 6];
+    ral_present_task_io                  render_gpu_task_unique_outputs[6 * 6];
     ral_present_task                     result_present_tasks[2]            = {nullptr};
     ral_present_task_group_create_info   result_task_create_info;
     ral_present_task_ingroup_connection  result_task_ingroup_connection;
@@ -3525,9 +3532,8 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                                         &global_cpu_update_task_info);
 
 
-    n_render_unique_inputs        = 1;
-    n_render_unique_outputs       = 0;
-    render_gpu_task_unique_inputs = reinterpret_cast<ral_present_task_io*>(_malloca(sizeof(ral_present_task_io) * (3 /* UB buffers + color rt (potentially) + ds rt (potentially) */ + n_scheduled_mesh_buffers + uber_ptr->n_active_sm_rts) ));
+    n_render_unique_inputs  = 1;
+    n_render_unique_outputs = 0;
 
     render_gpu_task_unique_inputs[0] = global_cpu_update_task_output;
 
@@ -3539,25 +3545,107 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
      *       This is not needed. While it won't matter for OpenGL, making these dependencies explicit could potentially reduce
      *       the number of buffer barriers in Vulkan.
      */
-    if (uber_ptr->active_color_rt != nullptr)
+    const ral_texture_view sm_rts[] =
     {
-        render_gpu_task_unique_outputs[n_render_unique_outputs].texture_view = uber_ptr->active_color_rt;
-        render_gpu_task_unique_outputs[n_render_unique_outputs].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
-        render_gpu_task_unique_inputs [n_render_unique_inputs]               = render_gpu_task_unique_outputs[n_render_unique_outputs];
+        uber_ptr->active_color_rt,
+        uber_ptr->active_depth_rt
+    };
+    constexpr uint32_t n_sm_rts = sizeof(sm_rts) / sizeof(sm_rts[0]);
 
-        ++n_render_unique_inputs;
-        ++n_render_unique_outputs;
+    for (uint32_t n_rt_type = 0;
+                  n_rt_type < 2; /* input, output */
+                ++n_rt_type)
+    {
+        const bool              is_processing_inputs = (n_rt_type == 0);
+        uint32_t                n_tvs                = 0;
+        uint32_t*               out_n_task_ios_ptr   = (is_processing_inputs) ? &n_render_unique_inputs
+                                                                              : &n_render_unique_outputs;
+        ral_present_task_io*    out_task_ios_ptr     = (is_processing_inputs) ? render_gpu_task_unique_inputs
+                                                                              : render_gpu_task_unique_outputs;
+        const ral_texture_view* tvs                  = nullptr;
+
+        if (uber_ptr->active_render_mode == RENDER_MODE_SHADOW_MAP)
+        {
+            n_tvs = n_sm_rts;
+            tvs   = sm_rts;
+        }
+        else
+        {
+            if (is_processing_inputs)
+            {
+                /* Inputs. */
+                n_tvs = uber_ptr->n_active_sm_rts;
+                tvs   = uber_ptr->active_sm_rts;
+            }
+            else
+            {
+                n_tvs = n_sm_rts;
+                tvs   = sm_rts;
+            }
+        }
+
+        for (uint32_t n_tv = 0;
+                      n_tv < n_tvs;
+                    ++n_tv)
+        {
+            const ral_texture_view current_tv = tvs[n_tv];
+
+            if (current_tv != nullptr)
+            {
+                ral_texture      current_tv_parent_texture = nullptr;
+                ral_texture_type current_tv_parent_texture_type;
+
+                ral_texture_view_get_property(current_tv,
+                                              RAL_TEXTURE_VIEW_PROPERTY_PARENT_TEXTURE,
+                                             &current_tv_parent_texture);
+                ral_texture_get_property     (current_tv_parent_texture,
+                                              RAL_TEXTURE_PROPERTY_TYPE,
+                                             &current_tv_parent_texture_type);
+
+                if (current_tv_parent_texture_type == RAL_TEXTURE_TYPE_CUBE_MAP &&
+                    uber_ptr->n_active_sm_rts      != 0)
+                {
+                    /* When sampling a cube-map SM, we can't really tell at this point which face we're going to
+                     * be sampling from.
+                     *
+                     * TODO: It would be better if we had used a TEXTURE object here, but doing so breaks the flattening
+                     *       process. Investigate when spare time is at hand..
+                     */
+                    ral_texture_view_create_info face_tv_create_info = ral_texture_view_create_info(current_tv_parent_texture);
+
+                    face_tv_create_info.n_layers = 1;
+                    face_tv_create_info.type     = RAL_TEXTURE_TYPE_2D;
+
+                    for (uint32_t n_face = 0;
+                                  n_face < 6;
+                                ++n_face)
+                    {
+                        ral_texture_view face_tv;
+
+                        face_tv_create_info.n_base_layer = n_face;
+
+                        face_tv = ral_texture_get_view(&face_tv_create_info);
+
+                        out_task_ios_ptr[*out_n_task_ios_ptr].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+                        out_task_ios_ptr[*out_n_task_ios_ptr].texture_view = face_tv;
+
+                        ++*out_n_task_ios_ptr;
+                   }
+                }
+                else
+                {
+                    out_task_ios_ptr[*out_n_task_ios_ptr].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
+                    out_task_ios_ptr[*out_n_task_ios_ptr].texture_view = current_tv;
+
+                    ++*out_n_task_ios_ptr;
+                }
+            }
+        }
     }
 
-    if (uber_ptr->active_depth_rt != nullptr)
-    {
-        render_gpu_task_unique_outputs[n_render_unique_outputs].texture_view = uber_ptr->active_depth_rt;
-        render_gpu_task_unique_outputs[n_render_unique_outputs].object_type  = RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW;
-        render_gpu_task_unique_inputs [n_render_unique_inputs]               = render_gpu_task_unique_outputs[n_render_unique_outputs];
-
-        ++n_render_unique_inputs;
-        ++n_render_unique_outputs;
-    }
+    ASSERT_DEBUG_SYNC(n_render_unique_inputs  < sizeof(render_gpu_task_unique_inputs)  / sizeof(render_gpu_task_unique_inputs [0]) &&
+                      n_render_unique_outputs < sizeof(render_gpu_task_unique_outputs) / sizeof(render_gpu_task_unique_outputs[0]),
+                      "Bump up static arrays");
 
     for (uint32_t n_scheduled_mesh_buffer = 0;
                   n_scheduled_mesh_buffer < n_scheduled_mesh_buffers;
@@ -3580,7 +3668,7 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
         ++n_render_unique_inputs;
     }
 
-    render_gpu_task_info.command_buffer   = uber_ptr->root_command_buffer;
+    render_gpu_task_info.command_buffer   = uber_ptr->active_cmd_buffer;
     render_gpu_task_info.n_unique_inputs  = n_render_unique_inputs;
     render_gpu_task_info.n_unique_outputs = n_render_unique_outputs;
     render_gpu_task_info.unique_inputs    = render_gpu_task_unique_inputs;
@@ -3651,12 +3739,15 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
                                                 &result_task_create_info);
 
     /* Mark as no longer rendered */
-    uber_ptr->is_rendering = false;
+    ral_context_delete_objects(uber_ptr->context,
+                               RAL_CONTEXT_OBJECT_TYPE_COMMAND_BUFFER,
+                               1, /* n_objects */
+                               reinterpret_cast<void* const*>(&uber_ptr->active_cmd_buffer) );
+
+    uber_ptr->active_cmd_buffer = nullptr;
+    uber_ptr->is_rendering      = false;
 
     /* Clean up */
-    uint32_t            n_scheduled_cmd_buffers = 0;
-    ral_command_buffer* scheduled_cmd_buffers   = nullptr;
-
     for (uint32_t n_present_task = 0;
                   n_present_task < result_task_create_info.n_present_tasks;
                 ++n_present_task)
@@ -3664,7 +3755,6 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
         ral_present_task_release(result_present_tasks[n_present_task]);
     }
 
-    _freea(render_gpu_task_unique_inputs);
     _freea(result_task_unique_input_mappings);
     _freea(result_task_unique_output_mappings);
 
