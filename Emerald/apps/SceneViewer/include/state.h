@@ -57,9 +57,6 @@ PUBLIC void state_lock_current_camera(scene_camera* out_current_camera,
 PUBLIC uint32_t state_get_number_of_cameras();
 
 /** TODO */
-PUBLIC uint32_t state_get_pipeline_stage_id();
-
-/** TODO */
 PUBLIC scene state_get_scene();
 
 /** TODO */

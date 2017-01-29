@@ -13,6 +13,7 @@
 #include "ral/ral_program.h"
 #include "ral/ral_program_block_buffer.h"
 #include "ral/ral_shader.h"
+#include "ral/ral_texture_view.h"
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "scene_renderer/scene_renderer.h"
@@ -557,6 +558,8 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
     uint32_t                      data_bo_size         =  0;
     uint32_t                      data_bo_start_offset = -1;
     _scene_renderer_bbox_preview* preview_ptr          = reinterpret_cast<_scene_renderer_bbox_preview*>(preview);
+    ral_texture_view              rt;
+    uint32_t                      rt_size[2];
 
     ASSERT_DEBUG_SYNC(color_rendertarget != nullptr &&
                       depth_rendertarget != nullptr,
@@ -570,10 +573,38 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
                             RAL_BUFFER_PROPERTY_SIZE,
                            &data_bo_size);
 
+    if (color_rendertarget != nullptr)
+    {
+        rt = color_rendertarget;
+    }
+    else
+    if (depth_rendertarget != nullptr)
+    {
+        rt = depth_rendertarget;
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Both color and depth render-targets are null");
+    }
+
+    ral_texture_view_get_mipmap_property(rt,
+                                         0, /* n_layer */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                         rt_size + 0);
+    ral_texture_view_get_mipmap_property(rt,
+                                         0, /* n_layer */
+                                         0, /* n_mipmap */
+                                         RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                         rt_size + 1);
+
     /* Start recording the result command buffer */
     ral_command_buffer_set_binding_command_info            bindings[2];
     ral_command_buffer_create_info                         cmd_buffer_create_info;
     ral_command_buffer_set_color_rendertarget_command_info color_rt_info           = ral_command_buffer_set_color_rendertarget_command_info::get_preinitialized_instance();
+    ral_command_buffer_set_scissor_box_command_info        scissor_box;
+    ral_command_buffer_set_viewport_command_info           viewport;
 
     cmd_buffer_create_info.compatible_queues                       = RAL_QUEUE_GRAPHICS_BIT;
     cmd_buffer_create_info.is_executable                           = true;
@@ -594,6 +625,20 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
     color_rt_info.rendertarget_index = 0;
     color_rt_info.texture_view       = color_rendertarget;
 
+    scissor_box.index   = 0;
+    scissor_box.size[0] = rt_size[0];
+    scissor_box.size[1] = rt_size[1];
+    scissor_box.xy  [0] = 0;
+    scissor_box.xy  [1] = 0;
+
+    viewport.depth_range[0] = 0.0f;
+    viewport.depth_range[1] = 1.0f;
+    viewport.index          = 0;
+    viewport.size[0]        = static_cast<float>(rt_size[0]);
+    viewport.size[1]        = static_cast<float>(rt_size[1]);
+    viewport.xy  [0]        = 0.0f;
+    viewport.xy  [1]        = 0.0f;
+
     ral_context_create_command_buffers(preview_ptr->context,
                                        1, /* n_command_buffers */
                                       &cmd_buffer_create_info,
@@ -612,6 +657,12 @@ PUBLIC void scene_renderer_bbox_preview_start(scene_renderer_bbox_preview previe
                                                       depth_rendertarget);
     ral_command_buffer_record_set_gfx_state          (preview_ptr->active_command_buffer,
                                                       preview_ptr->gfx_state);
+    ral_command_buffer_record_set_scissor_boxes      (preview_ptr->active_command_buffer,
+                                                      1, /* n_scissor_boxes */
+                                                     &scissor_box);
+    ral_command_buffer_record_set_viewports          (preview_ptr->active_command_buffer,
+                                                      1, /* n_viewports */
+                                                     &viewport);
 
     ral_command_buffer_record_update_buffer(preview_ptr->active_command_buffer,
                                             data_bo_ral,

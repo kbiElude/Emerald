@@ -272,6 +272,7 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
         viewport.size[1]        = static_cast<float>(target_texture_view_height);
 
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
+        gfx_state_create_info.scissor_test                         = true;
         gfx_state_create_info.static_n_scissor_boxes_and_viewports = 1;
         gfx_state_create_info.static_scissor_boxes                 = &scissor;
         gfx_state_create_info.static_scissor_boxes_enabled         = true;
@@ -331,6 +332,8 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
         ub_binding_info.uniform_buffer_binding.offset = 0;
         ub_binding_info.uniform_buffer_binding.size   = frame_ptr->program_ub_bo_size;
 
+        ral_command_buffer_record_set_program            (frame_ptr->last_cached_command_buffer,
+                                                          frame_ptr->program);
         ral_command_buffer_record_set_bindings           (frame_ptr->last_cached_command_buffer,
                                                           1,
                                                          &ub_binding_info);
@@ -339,8 +342,6 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
                                                          &rt_info);
         ral_command_buffer_record_set_gfx_state          (frame_ptr->last_cached_command_buffer,
                                                           frame_ptr->last_cached_gfx_state);
-        ral_command_buffer_record_set_program            (frame_ptr->last_cached_command_buffer,
-                                                          frame_ptr->program);
 
         ral_command_buffer_record_draw_call_regular(frame_ptr->last_cached_command_buffer,
                                                     1, /* n_draw_calls */

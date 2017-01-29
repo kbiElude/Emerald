@@ -458,6 +458,42 @@ private:
 } _ral_command;
 
 
+bool operator==(const ral_command_buffer_set_scissor_box_command_info& in1,
+                const ral_command_buffer_set_scissor_box_command_info& in2)
+{
+    return memcmp(&in1,
+                  &in2,
+                  sizeof(ral_command_buffer_set_scissor_box_command_info) ) == 0;
+}
+
+bool operator==(const ral_command_buffer_set_viewport_command_info& in1,
+                const ral_command_buffer_set_viewport_command_info& in2)
+{
+    bool result;
+
+    result = (in1.index == in2.index);
+
+    if (result)
+    {
+        result = (fabs(in1.depth_range[0] - in2.depth_range[0]) <= 1e-5f) &&
+                 (fabs(in1.depth_range[1] - in2.depth_range[1]) <= 1e-5f);
+    }
+
+    if (result)
+    {
+        result = (fabs(in1.size[0] - in2.size[0]) <= 1e-5f) &&
+                 (fabs(in1.size[1] - in2.size[1]) <= 1e-5f);
+    }
+
+    if (result)
+    {
+        result = (fabs(in1.xy[0] - in2.xy[0]) <= 1e-5f) &&
+                 (fabs(in1.xy[1] - in2.xy[1]) <= 1e-5f);
+    }
+
+    return result;
+}
+
 /** TODO */
 void _ral_command_buffer::clear_commands()
 {

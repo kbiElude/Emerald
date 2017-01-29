@@ -5,10 +5,8 @@
  */
 #include "shared.h"
 #include "demo/demo_window.h"
-#include "ogl/ogl_context.h"
-#include "ogl/ogl_rendering_handler.h"
 #include "ral/ral_context.h"
-#include "postprocessing/postprocessing_blur_gaussian.h"
+#include "ral/ral_rendering_handler.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_light.h"
 #include "scene_renderer/scene_renderer_sm.h"
@@ -18,26 +16,24 @@
 #include "ui/ui.h"
 #include "ui/ui_bag.h"
 #include "ui/ui_dropdown.h"
-#include "varia/varia_text_renderer.h"
 #include "app_config.h"
 #include "include/main.h"
 #include "state.h"
 
-PRIVATE system_variant      _temp_variant_float                           = NULL;
-PRIVATE varia_text_renderer _text_renderer                                = NULL;
-PRIVATE ui                  _ui                                           = NULL;
-PRIVATE ui_bag              _ui_bag                                       = NULL;
-PRIVATE ui_control          _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
-PRIVATE ui_control          _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
-PRIVATE ui_control          _ui_color_shadow_map_blur_resolution_dropdown = NULL;
-PRIVATE ui_control          _ui_color_shadow_map_format_dropdown          = NULL;
-PRIVATE ui_control          _ui_depth_shadow_map_format_dropdown          = NULL;
-PRIVATE ui_control          _ui_shadow_map_algorithm_dropdown             = NULL;
-PRIVATE ui_control          _ui_shadow_map_pl_algorithm_dropdown          = NULL;
-PRIVATE ui_control          _ui_shadow_map_size_dropdown                  = NULL;
-PRIVATE ui_control          _ui_vsm_cutoff_scrollbar                      = NULL;
-PRIVATE ui_control          _ui_vsm_max_variance_scrollbar                = NULL;
-PRIVATE ui_control          _ui_vsm_min_variance_scrollbar                = NULL;
+PRIVATE system_variant _temp_variant_float                           = NULL;
+PRIVATE ui             _ui                                           = NULL;
+PRIVATE ui_bag         _ui_bag                                       = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_blur_resolution_dropdown = NULL;
+PRIVATE ui_control     _ui_color_shadow_map_format_dropdown          = NULL;
+PRIVATE ui_control     _ui_depth_shadow_map_format_dropdown          = NULL;
+PRIVATE ui_control     _ui_shadow_map_algorithm_dropdown             = NULL;
+PRIVATE ui_control     _ui_shadow_map_pl_algorithm_dropdown          = NULL;
+PRIVATE ui_control     _ui_shadow_map_size_dropdown                  = NULL;
+PRIVATE ui_control     _ui_vsm_cutoff_scrollbar                      = NULL;
+PRIVATE ui_control     _ui_vsm_max_variance_scrollbar                = NULL;
+PRIVATE ui_control     _ui_vsm_min_variance_scrollbar                = NULL;
 
 
 scene_light_shadow_map_algorithm shadow_map_algorithm_emerald_enums[] =
@@ -84,10 +80,10 @@ const uint32_t n_color_shadow_map_blur_resolution_strings = sizeof(color_shadow_
                                                             sizeof(color_shadow_map_blur_resolution_strings[0]);
 
 
-const ral_texture_format color_shadow_map_format_enums[] =
+const ral_format color_shadow_map_format_enums[] =
 {
-    RAL_TEXTURE_FORMAT_RG16_FLOAT,
-    RAL_TEXTURE_FORMAT_RG32_FLOAT
+    RAL_FORMAT_RG16_FLOAT,
+    RAL_FORMAT_RG32_FLOAT
 };
 system_hashed_ansi_string color_shadow_map_format_strings[] =
 {
@@ -98,12 +94,12 @@ const uint32_t n_color_shadow_map_format_strings = sizeof(color_shadow_map_forma
                                                    sizeof(color_shadow_map_format_strings[0]);
 
 
-const ral_texture_format depth_shadow_map_format_enums[] =
+const ral_format depth_shadow_map_format_enums[] =
 {
-    RAL_TEXTURE_FORMAT_DEPTH16_SNORM,
-    RAL_TEXTURE_FORMAT_DEPTH24_SNORM,
-    RAL_TEXTURE_FORMAT_DEPTH32_FLOAT,
-    RAL_TEXTURE_FORMAT_DEPTH32_SNORM,
+    RAL_FORMAT_DEPTH16_SNORM,
+    RAL_FORMAT_DEPTH24_SNORM,
+    RAL_FORMAT_DEPTH32_FLOAT,
+    RAL_FORMAT_DEPTH32_SNORM,
 };
 system_hashed_ansi_string depth_shadow_map_format_strings[] =
 {
@@ -167,8 +163,8 @@ PRIVATE unsigned int _ui_get_current_color_shadow_map_blur_resolution_index()
 /** TODO */
 PRIVATE unsigned int _ui_get_current_color_shadow_map_format_index()
 {
-    ral_texture_format current_color_shadow_map_format = state_get_color_shadow_map_format();
-    unsigned int       result                          = -1;
+    ral_format   current_color_shadow_map_format = state_get_color_shadow_map_format();
+    unsigned int result                          = -1;
 
     for (unsigned int n_color_shadow_map_format = 0;
                       n_color_shadow_map_format < n_color_shadow_map_format_strings;
@@ -191,8 +187,8 @@ PRIVATE unsigned int _ui_get_current_color_shadow_map_format_index()
 /** TODO */
 PRIVATE unsigned int _ui_get_current_depth_shadow_map_format_index()
 {
-    ral_texture_format current_depth_shadow_map_format = state_get_depth_shadow_map_format();
-    unsigned int       result                          = -1;
+    ral_format   current_depth_shadow_map_format = state_get_depth_shadow_map_format();
+    unsigned int result                          = -1;
 
     for (unsigned int n_depth_shadow_map_format = 0;
                       n_depth_shadow_map_format < n_depth_shadow_map_format_strings;
@@ -348,7 +344,7 @@ PRIVATE void _ui_on_color_shadow_map_blur_resolution_changed(void* unused,
 PRIVATE void _ui_on_color_shadow_map_format_changed(void* unused,
                                                     void* event_user_arg)
 {
-    ral_texture_format new_color_sm_format = (ral_texture_format) (intptr_t) event_user_arg;
+    ral_format new_color_sm_format = (ral_format) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_color_shadow_map_format(new_color_sm_format);
@@ -358,7 +354,7 @@ PRIVATE void _ui_on_color_shadow_map_format_changed(void* unused,
 PRIVATE void _ui_on_depth_shadow_map_format_changed(void* unused,
                                                     void* event_user_arg)
 {
-    ral_texture_format new_depth_sm_format = (ral_texture_format) (intptr_t) event_user_arg;
+    ral_format new_depth_sm_format = (ral_format) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_depth_shadow_map_format(new_depth_sm_format);
@@ -519,45 +515,23 @@ PUBLIC void ui_deinit()
     ui_release(_ui);
     _ui = NULL;
 
-    varia_text_renderer_release(_text_renderer);
-    _text_renderer = NULL;
-
     system_variant_release(_temp_variant_float);
     _temp_variant_float = NULL;
 }
 
 /** Please see header for spec */
-PUBLIC void ui_draw()
-{
-    ui_draw                 (_ui);
-    varia_text_renderer_draw(_context,
-                             _text_renderer);
-}
-
-/** Please see header for spec */
 PUBLIC void ui_init()
 {
-    const float temp_x1y1[2]      = {0.0f};
-    const float text_default_size = 0.5f;
-    int         window_size[2]    = {0};
+    const float temp_x1y1[2]   = {0.0f};
+    int         window_size[2] = {0};
 
     /* Initialize components required to power UI */
-    demo_window_get_property(_window,
-                             DEMO_WINDOW_PROPERTY_RESOLUTION,
-                             window_size);
-
-    ogl_context_get_property(ral_context_get_gl_context(_context),
-                             OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
-                            &_text_renderer);
-
-    varia_text_renderer_retain                  (_text_renderer);
-    varia_text_renderer_set_text_string_property(_text_renderer,
-                                                 VARIA_TEXT_RENDERER_TEXT_STRING_ID_DEFAULT,
-                                                 VARIA_TEXT_RENDERER_TEXT_STRING_PROPERTY_SCALE,
-                                                &text_default_size);
-
-    _ui = ui_create(_text_renderer,
-                    system_hashed_ansi_string_create("UI") );
+    demo_window_get_property          (_window,
+                                       DEMO_WINDOW_PROPERTY_RESOLUTION,
+                                       window_size);
+    ral_rendering_handler_get_property(_rendering_handler,
+                                       RAL_RENDERING_HANDLER_PROPERTY_UI,
+                                      &_ui);
 
     /* Add shadow map algorithm dropdown */
     _ui_shadow_map_algorithm_dropdown = ui_add_dropdown(_ui,

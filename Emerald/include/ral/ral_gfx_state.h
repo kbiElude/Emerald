@@ -3,6 +3,13 @@
 
 #include "ral/ral_types.h"
 
+typedef enum
+{
+    RAL_GFX_STATE_COMPARE_FLAG_IGNORE_VERTEX_ATTRIBUTES = 1 << 0
+} ral_gfx_state_compare_flag;
+
+typedef uint32_t ral_gfx_state_compare_flags;
+
 
 typedef enum
 {
@@ -131,6 +138,11 @@ typedef enum
 /** TODO */
 PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      context,
                                           const ral_gfx_state_create_info* create_info_ptr);
+
+/** TODO */
+PUBLIC bool ral_gfx_state_is_equal_to_create_info(const ral_gfx_state              gfx_state,
+                                                  const ral_gfx_state_create_info* create_info_ptr,
+                                                  ral_gfx_state_compare_flags      flags);
 
 /** TODO */
 PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,

@@ -1063,6 +1063,9 @@ typedef struct ral_stencil_op_state
     }
 } ral_stencil_op_state;
 
+extern bool operator==(const ral_stencil_op_state& state1,
+                       const ral_stencil_op_state& state2);
+
 typedef enum
 {
     RAL_TEXTURE_ASPECT_COLOR_BIT   = 1 << 0,
@@ -1383,11 +1386,6 @@ typedef struct ral_gfx_state_vertex_attribute
     }
 } ral_gfx_state_vertex_attribute;
 
-/**
- *
- *  NOTE: This structure does not use a default destructor.
- *
- **/
 typedef struct ral_gfx_state_create_info
 {
     bool alpha_to_coverage;

@@ -466,6 +466,8 @@ typedef struct ral_command_buffer_set_scissor_box_command_info
     uint32_t xy  [2];
 } ral_command_buffer_set_scissor_box_command_info;
 
+extern bool operator==(const ral_command_buffer_set_scissor_box_command_info& in1,
+                       const ral_command_buffer_set_scissor_box_command_info& in2);
 
 typedef struct ral_command_buffer_set_vertex_buffer_command_info
 {
@@ -482,6 +484,9 @@ typedef struct ral_command_buffer_set_viewport_command_info
     float size       [2];
     float xy         [2];
 } ral_command_buffer_set_viewport_command_info;
+
+extern bool operator==(const ral_command_buffer_set_viewport_command_info& in1,
+                       const ral_command_buffer_set_viewport_command_info& in2);
 
 typedef struct ral_command_buffer_update_buffer_command_info
 {

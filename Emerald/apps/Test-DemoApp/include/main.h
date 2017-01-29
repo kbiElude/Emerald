@@ -10,7 +10,7 @@
 
 
 extern ral_context           _context;
-extern ogl_rendering_handler _rendering_handler;
+extern ral_rendering_handler _rendering_handler;
 extern demo_window           _window;
 
 /** TODO */

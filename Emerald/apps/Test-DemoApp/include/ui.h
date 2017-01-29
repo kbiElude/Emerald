@@ -10,9 +10,6 @@
 PUBLIC void ui_deinit();
 
 /** TODO */
-PUBLIC void ui_draw();
-
-/** TODO */
 PUBLIC void ui_init();
 
 

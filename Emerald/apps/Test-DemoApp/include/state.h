@@ -24,10 +24,10 @@ PUBLIC void state_get_current_frame_properties(scene*          out_current_scene
 PUBLIC postprocessing_blur_gaussian_resolution state_get_color_shadow_map_blur_resolution();
 
 /** TODO */
-PUBLIC ral_texture_format state_get_color_shadow_map_format();
+PUBLIC ral_format state_get_color_shadow_map_format();
 
 /** TODO */
-PUBLIC ral_texture_format state_get_depth_shadow_map_format();
+PUBLIC ral_format state_get_depth_shadow_map_format();
 
 /** TODO */
 PUBLIC scene_light_shadow_map_algorithm state_get_shadow_map_algorithm();
@@ -54,25 +54,19 @@ PUBLIC float state_get_shadow_map_vsm_max_variance();
 PUBLIC float state_get_shadow_map_vsm_min_variance();
 
 /** TODO */
-PUBLIC ogl_pipeline state_get_pipeline();
-
-/** TODO */
-PUBLIC uint32_t state_get_pipeline_stage_id();
-
-/** TODO */
 PUBLIC void state_init();
 
 /** TODO */
 PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gaussian_resolution blur_resolution);
 
 /** TODO */
-PUBLIC void state_set_color_shadow_map_format(ral_texture_format new_format);
+PUBLIC void state_set_color_shadow_map_format(ral_format new_format);
 
 /** TODO */
 PUBLIC void state_set_current_frame_time(system_time frame_time);
 
 /** TODO */
-PUBLIC void state_set_depth_shadow_map_format(ral_texture_format new_format);
+PUBLIC void state_set_depth_shadow_map_format(ral_format new_format);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_algorithm(scene_light_shadow_map_algorithm sm_algo);

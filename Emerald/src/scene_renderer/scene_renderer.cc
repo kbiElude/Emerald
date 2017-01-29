@@ -2391,7 +2391,7 @@ PRIVATE void _scene_renderer_update_uber_light_properties(scene_renderer_uber ma
 
 
 /** Please see header for specification */
-PUBLIC void scene_renderer_bake_gpu_assets(scene_renderer renderer)
+PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer)
 {
     demo_materials   context_materials = nullptr;
     _scene_renderer* renderer_ptr      = reinterpret_cast<_scene_renderer*>(renderer);

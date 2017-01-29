@@ -2129,6 +2129,7 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
     _scene_renderer_uber_mesh_data_material* mesh_data_material_ptr       = nullptr;
     _scene_renderer_uber_mesh_data*          mesh_data_ptr                = nullptr;
     system_time                              mesh_modification_timestamp  = 0;
+    bool                                     needs_mesh_data_bake         = false;
 
     mesh_get_property(mesh_instantiation_parent_gpu,
                       MESH_PROPERTY_TIMESTAMP_MODIFICATION,
@@ -2138,12 +2139,8 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                               reinterpret_cast<system_hash64>(mesh_gpu),
                              &mesh_data_ptr) )
     {
-        mesh_data_ptr = new _scene_renderer_uber_mesh_data(uber_ptr->context);
-
-        _scene_renderer_uber_bake_mesh_data(uber_ptr,
-                                            mesh_instantiation_parent_gpu,
-                                            mesh_data_ptr,
-                                            ref_gfx_state_create_info_ptr);
+        mesh_data_ptr        = new _scene_renderer_uber_mesh_data(uber_ptr->context);
+        needs_mesh_data_bake = true;
 
         system_hash64map_insert(uber_ptr->mesh_to_mesh_data_map,
                                 reinterpret_cast<system_hash64>(mesh_gpu),
@@ -2151,9 +2148,35 @@ PUBLIC void scene_renderer_uber_render_mesh(mesh                             mes
                                 nullptr,  /* on_removal_callback          */
                                 nullptr); /* on_removal_callback_user_arg */
     }
+    else
+    {
+        /* ref_gfx_state_create_info_ptr contains a zeroed out number of vertex attributes, as we're
+         * going to set it up later. Make sure the field is ignored for the comparison below. */
+        needs_mesh_data_bake = !ral_gfx_state_is_equal_to_create_info(mesh_data_ptr->gfx_state,
+                                                                      ref_gfx_state_create_info_ptr,
+                                                                      RAL_GFX_STATE_COMPARE_FLAG_IGNORE_VERTEX_ATTRIBUTES);
+    }
 
     ASSERT_DEBUG_SYNC(mesh_data_ptr != nullptr,
                       "Mesh data instance is null");
+
+    if (needs_mesh_data_bake)
+    {
+        if (mesh_data_ptr->gfx_state != nullptr)
+        {
+            ral_context_delete_objects(uber_ptr->context,
+                                        RAL_CONTEXT_OBJECT_TYPE_GFX_STATE,
+                                        1, /* n_objects */
+                                        reinterpret_cast<void* const*>(&mesh_data_ptr->gfx_state) );
+
+            mesh_data_ptr->gfx_state = nullptr;
+        }
+
+        _scene_renderer_uber_bake_mesh_data(uber_ptr,
+                                            mesh_instantiation_parent_gpu,
+                                            mesh_data_ptr,
+                                            ref_gfx_state_create_info_ptr);
+    }
 
     if (!system_hash64map_get(mesh_data_ptr->material_to_mesh_data_material_map,
                               reinterpret_cast<system_hash64>(material),

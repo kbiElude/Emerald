@@ -763,31 +763,18 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(gl
                   n_obb_camera_frustum_vertex < n_obb_camera_frustum_vertices;
                 ++n_obb_camera_frustum_vertex)
     {
-        if (result_max_ptr[0] < obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][0])
+        for (uint32_t n_component = 0;
+                      n_component < 3;
+                    ++n_component)
         {
-            result_max_ptr[0] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][0];
-        }
-        if (result_min_ptr[0] > obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][0])
-        {
-            result_min_ptr[0] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][0];
-        }
-
-        if (result_max_ptr[1] < obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][1])
-        {
-            result_max_ptr[1] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][1];
-        }
-        if (result_min_ptr[1] > obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][1])
-        {
-            result_min_ptr[1] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][1];
-        }
-
-        if (result_max_ptr[2] < obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][2])
-        {
-            result_max_ptr[2] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][2];
-        }
-        if (result_min_ptr[2] > obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][2])
-        {
-            result_min_ptr[2] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][2];
+            if (result_max_ptr[n_component] < obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][n_component])
+            {
+                result_max_ptr[n_component] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][n_component];
+            }
+            if (result_min_ptr[n_component] > obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][n_component])
+            {
+                result_min_ptr[n_component] = obb_camera_frustum_vertices[n_obb_camera_frustum_vertex][n_component];
+            }
         }
     }
 
@@ -813,38 +800,33 @@ PRIVATE void _scene_renderer_sm_add_uniforms_to_fragment_uber_for_point_light(gl
                   n_obb_world_vertex < n_obb_world_vertices;
                 ++n_obb_world_vertex)
     {
-        if (result_max_ptr[0] < obb_world_vertices[n_obb_world_vertex][0])
+        for (uint32_t n_component = 0;
+                      n_component < 3;
+                    ++n_component)
         {
-            result_max_ptr[0] = obb_world_vertices[n_obb_world_vertex][0];
-        }
-        if (result_min_ptr[0] > obb_world_vertices[n_obb_world_vertex][0])
-        {
-            result_min_ptr[0] = obb_world_vertices[n_obb_world_vertex][0];
-        }
-
-        if (result_max_ptr[1] < obb_world_vertices[n_obb_world_vertex][1])
-        {
-            result_max_ptr[1] = obb_world_vertices[n_obb_world_vertex][1];
-        }
-        if (result_min_ptr[1] > obb_world_vertices[n_obb_world_vertex][1])
-        {
-            result_min_ptr[1] = obb_world_vertices[n_obb_world_vertex][1];
-        }
-
-        if (result_max_ptr[2] < obb_world_vertices[n_obb_world_vertex][2])
-        {
-            result_max_ptr[2] = obb_world_vertices[n_obb_world_vertex][2];
-        }
-        if (result_min_ptr[2] > obb_world_vertices[n_obb_world_vertex][2])
-        {
-            result_min_ptr[2] = obb_world_vertices[n_obb_world_vertex][2];
+            if (result_max_ptr[n_component] > obb_world_vertices[n_obb_world_vertex][n_component])
+            {
+                result_max_ptr[n_component] = obb_world_vertices[n_obb_world_vertex][n_component];
+            }
+            if (result_min_ptr[n_component] < obb_world_vertices[n_obb_world_vertex][n_component])
+            {
+                result_min_ptr[n_component] = obb_world_vertices[n_obb_world_vertex][n_component];
+            }
         }
     }
 
-    ASSERT_DEBUG_SYNC(result_min_ptr[0] <= result_max_ptr[0] &&
-                      result_min_ptr[1] <= result_max_ptr[1] &&
-                      result_min_ptr[2] <= result_max_ptr[2],
-                      "Something's nuts with the OBB min/max calcs");
+    for (uint32_t n_component = 0;
+                  n_component < 3;
+                ++n_component)
+    {
+        if (result_max_ptr[n_component] < result_min_ptr[n_component])
+        {
+            float temp = result_min_ptr[n_component];
+
+            result_min_ptr[n_component] = result_max_ptr[n_component];
+            result_max_ptr[n_component] = temp;
+        }
+    }
 }
 
 /** TODO */

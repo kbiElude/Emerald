@@ -58,6 +58,103 @@ PUBLIC ral_gfx_state ral_gfx_state_create(ral_context                      conte
 }
 
 /** Please see header for specification */
+PUBLIC bool ral_gfx_state_is_equal_to_create_info(const ral_gfx_state              gfx_state,
+                                                  const ral_gfx_state_create_info* create_info_ptr,
+                                                  ral_gfx_state_compare_flags      flags)
+{
+    const _ral_gfx_state*            gfx_state_ptr         = reinterpret_cast<const _ral_gfx_state*>(gfx_state);
+    const ral_gfx_state_create_info& gfx_state_create_info = *gfx_state_ptr->create_info_ptr;
+    const bool                       skip_vas              = (flags & RAL_GFX_STATE_COMPARE_FLAG_IGNORE_VERTEX_ATTRIBUTES) != 0;
+    bool                             result                = false;
+
+    /* TODO: GFX state should be hashified into one or more 64-bit ints, so that
+     *       comparison becomes cheaper.
+     */
+    if (gfx_state_create_info.n_patch_control_points               != create_info_ptr->n_patch_control_points               ||
+        !skip_vas && gfx_state_create_info.n_vertex_attributes     != create_info_ptr->n_vertex_attributes                  ||
+        gfx_state_create_info.static_n_scissor_boxes_and_viewports != create_info_ptr->static_n_scissor_boxes_and_viewports)
+    {
+        goto end;
+    }
+
+    if (gfx_state_create_info.alpha_to_coverage            != create_info_ptr->alpha_to_coverage            ||
+        gfx_state_create_info.alpha_to_one                 != create_info_ptr->alpha_to_one                 ||
+        gfx_state_create_info.culling                      != create_info_ptr->culling                      ||
+        gfx_state_create_info.cull_mode                    != create_info_ptr->cull_mode                    ||
+        gfx_state_create_info.depth_bias                   != create_info_ptr->depth_bias                   ||
+        gfx_state_create_info.depth_bounds_test            != create_info_ptr->depth_bounds_test            ||
+        gfx_state_create_info.depth_clamp                  != create_info_ptr->depth_clamp                  ||
+        gfx_state_create_info.depth_test                   != create_info_ptr->depth_test                   ||
+        gfx_state_create_info.depth_test_compare_op        != create_info_ptr->depth_test_compare_op        ||
+        gfx_state_create_info.depth_writes                 != create_info_ptr->depth_writes                 ||
+        gfx_state_create_info.front_face                   != create_info_ptr->front_face                   ||
+        gfx_state_create_info.logic_op                     != create_info_ptr->logic_op                     ||
+        gfx_state_create_info.logic_op_test                != create_info_ptr->logic_op_test                ||
+        gfx_state_create_info.polygon_mode_back            != create_info_ptr->polygon_mode_back            ||
+        gfx_state_create_info.polygon_mode_front           != create_info_ptr->polygon_mode_front           ||
+        gfx_state_create_info.primitive_restart            != create_info_ptr->primitive_restart            ||
+        gfx_state_create_info.primitive_type               != create_info_ptr->primitive_type               ||
+        gfx_state_create_info.rasterizer_discard           != create_info_ptr->rasterizer_discard           ||
+        gfx_state_create_info.sample_shading               != create_info_ptr->sample_shading               ||
+        gfx_state_create_info.scissor_test                 != create_info_ptr->scissor_test                 ||
+        gfx_state_create_info.static_scissor_boxes_enabled != create_info_ptr->static_scissor_boxes_enabled ||
+        gfx_state_create_info.static_viewports_enabled     != create_info_ptr->static_viewports_enabled     ||
+        gfx_state_create_info.stencil_test                 != create_info_ptr->stencil_test                 ||
+        !(gfx_state_create_info.stencil_test_back_face     == create_info_ptr->stencil_test_back_face)      ||
+        !(gfx_state_create_info.stencil_test_front_face    == create_info_ptr->stencil_test_front_face) )
+    {
+        goto end;
+    }
+
+    if (gfx_state_create_info.static_scissor_boxes_enabled)
+    {
+        for (uint32_t n_scissor_box = 0;
+                      n_scissor_box < gfx_state_create_info.static_n_scissor_boxes_and_viewports;
+                    ++n_scissor_box)
+        {
+            if (!(gfx_state_create_info.static_scissor_boxes[n_scissor_box] == create_info_ptr->static_scissor_boxes[n_scissor_box]) )
+            {
+                goto end;
+            }
+        }
+    }
+
+    if (gfx_state_create_info.static_viewports_enabled)
+    {
+        for (uint32_t n_viewport = 0;
+                      n_viewport < gfx_state_create_info.static_n_scissor_boxes_and_viewports;
+                    ++n_viewport)
+        {
+            if (!(gfx_state_create_info.static_viewports[n_viewport] == create_info_ptr->static_viewports[n_viewport]) )
+            {
+                goto end;
+            }
+        }
+    }
+
+    if (fabs(gfx_state_create_info.depth_bias_constant_factor        - create_info_ptr->depth_bias_constant_factor)        >= 1e-5f ||
+        fabs(gfx_state_create_info.depth_bias_slope_factor           - create_info_ptr->depth_bias_slope_factor)           >= 1e-5f ||
+        fabs(gfx_state_create_info.depth_clamp_value                 - create_info_ptr->depth_clamp_value)                 >= 1e-5f ||
+        fabs(gfx_state_create_info.line_width                        - create_info_ptr->line_width)                        >= 1e-5f ||
+        fabs(gfx_state_create_info.max_depth_bounds                  - create_info_ptr->max_depth_bounds)                  >= 1e-5f ||
+        fabs(gfx_state_create_info.min_depth_bounds                  - create_info_ptr->min_depth_bounds)                  >= 1e-5f ||
+        fabs(gfx_state_create_info.sample_shading_min_sample_shading - create_info_ptr->sample_shading_min_sample_shading) >= 1e-5f)
+    {
+        goto end;
+    }
+
+    if (!skip_vas)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO");
+    }
+
+    result = true;
+end:
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC void ral_gfx_state_get_property(ral_gfx_state          gfx_state,
                                        ral_gfx_state_property property,
                                        void*                  out_result_ptr)

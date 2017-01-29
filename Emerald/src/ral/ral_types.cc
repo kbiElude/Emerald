@@ -5,6 +5,14 @@
 #include "ral/ral_texture_view.h"
 #include "ral/ral_utils.h"
 
+bool operator==(const ral_stencil_op_state& state1,
+                const ral_stencil_op_state& state2)
+{
+    return memcmp(&state1,
+                  &state2,
+                  sizeof(ral_stencil_op_state) ) == 0;
+}
+
 /** Please see header for spec */
 PUBLIC ral_gfx_state_create_info* ral_gfx_state_create_info::clone(const ral_gfx_state_create_info* in_gfx_state_ptr,
                                                                    bool                             should_include_static_scissor_box_data,

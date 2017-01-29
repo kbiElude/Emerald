@@ -65,7 +65,7 @@ typedef enum
  *  Bakes in advance all GPU assets required to render a given scene.
  *
  */
-PUBLIC void scene_renderer_bake_gpu_assets(scene_renderer renderer);
+PUBLIC EMERALD_API void scene_renderer_bake_gpu_assets(scene_renderer renderer);
 
 /** TODO.
  *
