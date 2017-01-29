@@ -160,8 +160,8 @@ PUBLIC EMERALD_API void ral_rendering_handler_get_property(ral_rendering_handler
 PUBLIC bool ral_rendering_handler_is_current_thread_rendering_thread(ral_rendering_handler rendering_handler);
 
 /** TODO */
-PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
-                                       system_time           start_time);
+PUBLIC EMERALD_API bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
+                                                   system_time           start_time);
 
 /** TODO */
 PUBLIC bool ral_rendering_handler_request_rendering_callback(ral_rendering_handler                   rendering_handler,
@@ -176,6 +176,6 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
                                                            const void*                    value);
 
 /** TODO */
-PUBLIC bool ral_rendering_handler_stop(ral_rendering_handler rendering_handler);
+PUBLIC EMERALD_API bool ral_rendering_handler_stop(ral_rendering_handler rendering_handler);
 
 #endif /* RAL_RENDERING_HANDLER_H */

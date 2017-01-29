@@ -494,10 +494,12 @@ PUBLIC void state_init()
 /** Please see header for spec */
 PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gaussian_resolution new_resolution)
 {
+    bool is_playing;
+
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the setting..
      */
-    // ral_rendering_handler_lock_bound_context(_rendering_handler);
+    is_playing = ral_rendering_handler_stop(_rendering_handler);
 
     /* Update color shadow map blur resolution for all scene lights */
     for (unsigned int n_scene = 0;
@@ -535,7 +537,11 @@ PUBLIC void state_set_color_shadow_map_blur_resolution(postprocessing_blur_gauss
     _color_shadow_map_blur_resolution = new_resolution;
 
     /* Unlock the rendering process */
-    // ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+    if (is_playing)
+    {
+        ral_rendering_handler_play(_rendering_handler,
+                                   _current_frame_time);
+    }
 }
 
 /** Please see header for spec */
@@ -547,10 +553,12 @@ PUBLIC void state_set_current_frame_time(system_time frame_time)
 /** Please see header for spec */
 PUBLIC void state_set_color_shadow_map_format(ral_format new_format)
 {
+    bool is_playing;
+
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
      */
-    // ogl_rendering_handler_lock_bound_context(_rendering_handler);
+    is_playing = ral_rendering_handler_stop(_rendering_handler);
 
     /* Update shadow map size for all scene lights */
     for (unsigned int n_scene = 0;
@@ -588,16 +596,22 @@ PUBLIC void state_set_color_shadow_map_format(ral_format new_format)
     _depth_shadow_map_format = new_format;
 
     /* Unlock the rendering process */
-    // ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+    if (is_playing)
+    {
+        ral_rendering_handler_play(_rendering_handler,
+                                   _current_frame_time);
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void state_set_depth_shadow_map_format(ral_format new_format)
 {
+    bool is_playing;
+
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
      */
-    // ogl_rendering_handler_lock_bound_context(_rendering_handler);
+    is_playing = ral_rendering_handler_stop(_rendering_handler);
 
     /* Update shadow map size for all scene lights */
     for (unsigned int n_scene = 0;
@@ -635,16 +649,22 @@ PUBLIC void state_set_depth_shadow_map_format(ral_format new_format)
     _depth_shadow_map_format = new_format;
 
     /* Unlock the rendering process */
-    // ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+    if (is_playing)
+    {
+        ral_rendering_handler_play(_rendering_handler,
+                                   _current_frame_time);
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void state_set_shadow_map_algorithm(scene_light_shadow_map_algorithm new_sm_algo)
 {
+    bool is_playing;
+
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
      */
-    // ogl_rendering_handler_lock_bound_context(_rendering_handler);
+    is_playing = ral_rendering_handler_stop(_rendering_handler);
 
     /* Update shadow map size for all scene lights */
     for (unsigned int n_scene = 0;
@@ -682,16 +702,22 @@ PUBLIC void state_set_shadow_map_algorithm(scene_light_shadow_map_algorithm new_
     _shadow_map_algo = new_sm_algo;
 
     /* Unlock the rendering process */
-    // ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+    if (is_playing)
+    {
+        ral_rendering_handler_play(_rendering_handler,
+                                   _current_frame_time);
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void state_set_shadow_map_pointlight_algorithm(scene_light_shadow_map_pointlight_algorithm pl_algo)
 {
+    bool is_playing;
+
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
      */
-    // ogl_rendering_handler_lock_bound_context(_rendering_handler);
+    is_playing = ral_rendering_handler_stop(_rendering_handler);
 
     /* Update PL algorithm for all point lights in all scenes we know of */
     for (unsigned int n_scene = 0;
@@ -729,16 +755,22 @@ PUBLIC void state_set_shadow_map_pointlight_algorithm(scene_light_shadow_map_poi
     _shadow_map_pl_algo = pl_algo;
 
     /* Unlock the rendering process */
-    // ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+    if (is_playing)
+    {
+        ral_rendering_handler_play(_rendering_handler,
+                                   _current_frame_time);
+    }
 }
 
 /** Please see header for spec */
 PUBLIC void state_set_shadow_map_size(unsigned int new_shadow_map_size)
 {
+    bool is_playing;
+
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
      */
-    // ogl_rendering_handler_lock_bound_context(_rendering_handler);
+    is_playing = ral_rendering_handler_stop(_rendering_handler);
 
     /* Update shadow map size for all scene lights */
     for (unsigned int n_scene = 0;
@@ -782,7 +814,11 @@ PUBLIC void state_set_shadow_map_size(unsigned int new_shadow_map_size)
     _shadow_map_size = new_shadow_map_size;
 
     /* Unlock the rendering process */
-    // ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+    if (is_playing)
+    {
+        ral_rendering_handler_play(_rendering_handler,
+                                   _current_frame_time);
+    }
 }
 
 /** Please see header for spec */

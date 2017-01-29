@@ -1412,8 +1412,8 @@ PUBLIC bool ral_rendering_handler_is_current_thread_rendering_thread(ral_renderi
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
-                                       system_time           start_time)
+PUBLIC EMERALD_API bool ral_rendering_handler_play(ral_rendering_handler rendering_handler,
+                                                   system_time           start_time)
 {
     unsigned int            pre_n_frames_rendered = 0;
     _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
@@ -1631,7 +1631,7 @@ PUBLIC EMERALD_API void ral_rendering_handler_set_property(ral_rendering_handler
 }
 
 /** Please see header for specification */
-PUBLIC bool ral_rendering_handler_stop(ral_rendering_handler rendering_handler)
+PUBLIC EMERALD_API bool ral_rendering_handler_stop(ral_rendering_handler rendering_handler)
 {
     _ral_rendering_handler* rendering_handler_ptr = reinterpret_cast<_ral_rendering_handler*>(rendering_handler);
     bool                    result                = false;
