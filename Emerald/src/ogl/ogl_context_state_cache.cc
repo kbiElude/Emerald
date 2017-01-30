@@ -45,6 +45,11 @@ typedef struct _ogl_context_state_cache
     GLint active_n_patch_vertices_context;
     GLint active_n_patch_vertices_local;
 
+    GLfloat active_polygon_offset_factor_context;
+    GLfloat active_polygon_offset_factor_local;
+    GLfloat active_polygon_offset_units_context;
+    GLfloat active_polygon_offset_units_local;
+
     GLuint active_program_context;
     GLuint active_program_local;
 
@@ -312,6 +317,20 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES:
         {
             *reinterpret_cast<GLint*>(out_result_ptr) = cache_ptr->active_n_patch_vertices_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_OFFSET_FACTOR:
+        {
+            *reinterpret_cast<GLfloat*>(out_result_ptr) = cache_ptr->active_polygon_offset_factor_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_OFFSET_UNITS:
+        {
+            *reinterpret_cast<GLfloat*>(out_result_ptr) = cache_ptr->active_polygon_offset_units_local;
 
             break;
         }
@@ -645,6 +664,12 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     cache_ptr->active_n_patch_vertices_context = 3;
     cache_ptr->active_n_patch_vertices_local   = 3;
 
+    /* Set default state: polygon offset state */
+    cache_ptr->active_polygon_offset_factor_context = 0.0f;
+    cache_ptr->active_polygon_offset_factor_local   = 0.0f;
+    cache_ptr->active_polygon_offset_units_context  = 0.0f;
+    cache_ptr->active_polygon_offset_units_local    = 0.0f;
+
     /* Set default state: rendering modes */
     cache_ptr->active_rendering_mode_blend_context                         = false;
     cache_ptr->active_rendering_mode_blend_local                           = false;
@@ -959,6 +984,20 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES:
         {
             cache_ptr->active_n_patch_vertices_local = *reinterpret_cast<const GLint*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_OFFSET_FACTOR:
+        {
+            cache_ptr->active_polygon_offset_factor_local = *reinterpret_cast<const GLfloat*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_OFFSET_UNITS:
+        {
+            cache_ptr->active_polygon_offset_units_local = *reinterpret_cast<const GLfloat*>(data);
 
             break;
         }
@@ -1335,6 +1374,18 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                                                                    cache_ptr->active_n_patch_vertices_local);
 
             cache_ptr->active_n_patch_vertices_context = cache_ptr->active_n_patch_vertices_local;
+        }
+
+        /* Polygon offset state */
+        if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE)                                                 &&
+            (fabs(cache_ptr->active_polygon_offset_factor_context - cache_ptr->active_polygon_offset_factor_local) > 1e-5f ||
+             fabs(cache_ptr->active_polygon_offset_units_context  - cache_ptr->active_polygon_offset_units_local)  > 1e-5f) )
+        {
+            cache_ptr->entrypoints_private_ptr->pGLPolygonOffset(cache_ptr->active_polygon_offset_factor_local,
+                                                                 cache_ptr->active_polygon_offset_units_local);
+
+            cache_ptr->active_polygon_offset_factor_context = cache_ptr->active_polygon_offset_factor_local;
+            cache_ptr->active_polygon_offset_units_context  = cache_ptr->active_polygon_offset_units_local;
         }
 
         /* Program object */
