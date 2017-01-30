@@ -1282,38 +1282,50 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
 
     if (needs_baking)
     {
-        /* Form a result group task
-         *
-         * TODO: This is not exactly right. We need to introduce ordered rendering support here, in order for ui_frame and text strings
-         *       to render in correct order. For now this must do.
-         **/
-        ral_present_task_group_create_info result_present_task_create_info;
-        ral_present_task_group_mapping*    input_to_ingroup_task_mappings   = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_present_tasks));
-        ral_present_task_group_mapping*    output_to_ingroup_task_mappings  = reinterpret_cast<ral_present_task_group_mapping*>(_malloca(sizeof(ral_present_task_group_mapping) * n_present_tasks));
+        ASSERT_DEBUG_SYNC(n_present_tasks >= 1,
+                          "Invalid number of UI present tasks");
 
-        for (uint32_t n_mapping = 0;
-                      n_mapping < n_present_tasks;
-                    ++n_mapping)
+        /* Form a result group task **/
+        ral_present_task_ingroup_connection* ingroup_connections             = nullptr;
+        ral_present_task_group_mapping       input_to_ingroup_task_mapping;
+        uint32_t                             n_ingroup_connections           = 0;
+        ral_present_task_group_mapping       output_to_ingroup_task_mapping;
+        ral_present_task_group_create_info   result_present_task_create_info;
+
+        if (n_present_tasks >= 2)
         {
-            input_to_ingroup_task_mappings[n_mapping].group_task_io_index   = 0;
-            input_to_ingroup_task_mappings[n_mapping].n_present_task        = n_mapping;
-            input_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
+            n_ingroup_connections = (n_present_tasks - 1);
+            ingroup_connections   = reinterpret_cast<ral_present_task_ingroup_connection*>(_malloca(sizeof(ral_present_task_ingroup_connection) * n_ingroup_connections));
 
-            output_to_ingroup_task_mappings[n_mapping].group_task_io_index   = 0;
-            output_to_ingroup_task_mappings[n_mapping].n_present_task        = n_mapping;
-            output_to_ingroup_task_mappings[n_mapping].present_task_io_index = 0;
+            for (uint32_t n_connection = 0;
+                          n_connection < n_ingroup_connections;
+                        ++n_connection)
+            {
+                ingroup_connections[n_connection].input_present_task_index     = n_connection + 1;
+                ingroup_connections[n_connection].input_present_task_io_index  = 0;
+                ingroup_connections[n_connection].output_present_task_index    = n_connection;
+                ingroup_connections[n_connection].output_present_task_io_index = 0;
+            }
         }
 
-        result_present_task_create_info.ingroup_connections                      = nullptr;
-        result_present_task_create_info.n_ingroup_connections                    = 0;
+        input_to_ingroup_task_mapping.group_task_io_index   = 0;
+        input_to_ingroup_task_mapping.n_present_task        = 0;
+        input_to_ingroup_task_mapping.present_task_io_index = 0;
+
+        output_to_ingroup_task_mapping.group_task_io_index   = 0;
+        output_to_ingroup_task_mapping.n_present_task        = n_present_tasks - 1;
+        output_to_ingroup_task_mapping.present_task_io_index = 0;
+
+        result_present_task_create_info.ingroup_connections                      = ingroup_connections;
+        result_present_task_create_info.n_ingroup_connections                    = n_ingroup_connections;
         result_present_task_create_info.n_present_tasks                          = n_present_tasks;
         result_present_task_create_info.n_total_unique_inputs                    = 1;
         result_present_task_create_info.n_total_unique_outputs                   = 1;
-        result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = n_present_tasks;
-        result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = n_present_tasks;
+        result_present_task_create_info.n_unique_input_to_ingroup_task_mappings  = 1;
+        result_present_task_create_info.n_unique_output_to_ingroup_task_mappings = 1;
         result_present_task_create_info.present_tasks                            = present_tasks;
-        result_present_task_create_info.unique_input_to_ingroup_task_mapping     = input_to_ingroup_task_mappings;
-        result_present_task_create_info.unique_output_to_ingroup_task_mapping    = output_to_ingroup_task_mappings;
+        result_present_task_create_info.unique_input_to_ingroup_task_mapping     = &input_to_ingroup_task_mapping;
+        result_present_task_create_info.unique_output_to_ingroup_task_mapping    = &output_to_ingroup_task_mapping;
 
         if (ui_ptr->last_present_task != nullptr)
         {
@@ -1332,8 +1344,7 @@ PUBLIC ral_present_task ui_get_present_task(ui               ui_instance,
             ral_present_task_release(present_tasks[n_present_task]);
         }
 
-        _freea(input_to_ingroup_task_mappings);
-        _freea(output_to_ingroup_task_mappings);
+        _freea(ingroup_connections);
     }
     else
     {
@@ -1551,8 +1562,8 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ui_reposition_control(ui_control   control,
-                                              unsigned int new_control_index)
+PUBLIC void ui_reposition_control(ui_control   control,
+                                  unsigned int new_control_index)
 {
     _ui_control* control_ptr = reinterpret_cast<_ui_control*>(control);
     unsigned int n_controls  = 0;

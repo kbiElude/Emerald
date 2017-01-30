@@ -138,8 +138,8 @@ PUBLIC bool ui_register_program(ui                        ui_instance,
                                 ral_program               program);
 
 /** TODO */
-PUBLIC EMERALD_API void ui_reposition_control(ui_control   control,
-                                              unsigned int new_control_index);
+PUBLIC void ui_reposition_control(ui_control   control,
+                                  unsigned int new_control_index);
 
 /** TODO */
 PUBLIC EMERALD_API void ui_set_control_property(ui_control          control,

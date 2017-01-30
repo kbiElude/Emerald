@@ -371,8 +371,8 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
 
     /* If VSM is enabled, how both color & depth SM internalformat dropdowns.
      * Otherwise, only show depth SM internalformat dropdown*/
-    bool not_visible = false;
-    bool visible     = true;
+    static const bool not_visible = false;
+    static const bool visible     = true;
 
     if (new_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN)
     {

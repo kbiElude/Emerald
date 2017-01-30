@@ -270,6 +270,8 @@ PUBLIC ral_present_task ui_frame_get_present_task(void*            internal_inst
         viewport.index          = 0;
         viewport.size[0]        = static_cast<float>(target_texture_view_width);
         viewport.size[1]        = static_cast<float>(target_texture_view_height);
+        viewport.xy[0]          = 0.0f;
+        viewport.xy[1]          = 0.0f;
 
         gfx_state_create_info.primitive_type                       = RAL_PRIMITIVE_TYPE_TRIANGLE_FAN;
         gfx_state_create_info.scissor_test                         = true;
