@@ -723,6 +723,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateSubFramebuffer(GLenum     
                                                                      GLsizei       height);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glLineWidth(GLfloat width);
+
+/** TODO */
 PUBLIC GLvoid* APIENTRY ogl_context_wrappers_glMapBuffer(GLenum target,
                                                          GLenum access);
 

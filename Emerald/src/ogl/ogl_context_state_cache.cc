@@ -39,6 +39,9 @@ typedef struct _ogl_context_state_cache
     GLenum active_front_face_context;
     GLenum active_front_face_local;
 
+    GLfloat active_line_width_context;
+    GLfloat active_line_width_local;
+
     GLfloat active_min_sample_shading_context;
     GLfloat active_min_sample_shading_local;
 
@@ -303,6 +306,13 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
         {
             *reinterpret_cast<GLuint*>(out_result_ptr) = cache_ptr->active_front_face_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_LINE_WIDTH:
+        {
+            *reinterpret_cast<GLfloat*>(out_result_ptr) = cache_ptr->active_line_width_local;
 
             break;
         }
@@ -656,6 +666,10 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     cache_ptr->active_depth_func_context = GL_LESS;
     cache_ptr->active_depth_func_local   = GL_LESS;
 
+    /* Set default state: line width */
+    cache_ptr->active_line_width_context = 1.0f;
+    cache_ptr->active_line_width_local   = 1.0f;
+
     /* Set default state: min sample shading */
     cache_ptr->active_min_sample_shading_context = 0.0f;
     cache_ptr->active_min_sample_shading_local   = 0.0f;
@@ -970,6 +984,13 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
         {
             cache_ptr->active_front_face_local = *reinterpret_cast<const GLenum*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_LINE_WIDTH:
+        {
+            cache_ptr->active_line_width_local = *reinterpret_cast<const GLfloat*>(data);
 
             break;
         }
@@ -1355,6 +1376,15 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
             cache_ptr->entrypoints_private_ptr->pGLFrontFace(cache_ptr->active_front_face_local);
 
             cache_ptr->active_front_face_context = cache_ptr->active_front_face_local;
+        }
+
+        /* Line Width */
+        if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH) &&
+            fabs(cache_ptr->active_line_width_context - cache_ptr->active_line_width_local) > 1e-5f)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLLineWidth(cache_ptr->active_line_width_local);
+
+            cache_ptr->active_line_width_context = cache_ptr->active_line_width_local;
         }
 
         /* Minimum fraction of samples to calculate per-fragment */

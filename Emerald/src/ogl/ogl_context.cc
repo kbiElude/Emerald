@@ -2390,7 +2390,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLIsTexture,                                        "glIsTexture"},
         {&context_ptr->entry_points_gl.pGLIsTransformFeedback,                              "glIsTransformFeedback"},
         {&context_ptr->entry_points_gl.pGLIsQuery,                                          "glIsQuery"},
-        {&context_ptr->entry_points_gl.pGLLineWidth,                                        "glLineWidth"},
+        {&context_ptr->entry_points_private.pGLLineWidth,                                   "glLineWidth"},
         {&context_ptr->entry_points_gl.pGLLinkProgram,                                      "glLinkProgram"},
         {&context_ptr->entry_points_gl.pGLLogicOp,                                          "glLogicOp"},
         {&context_ptr->entry_points_private.pGLMapBuffer,                                   "glMapBuffer"},
@@ -2689,6 +2689,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLGetVertexAttribPointerv                     = ogl_context_wrappers_glGetVertexAttribPointerv;
     context_ptr->entry_points_gl.pGLInvalidateFramebuffer                       = ogl_context_wrappers_glInvalidateFramebuffer;
     context_ptr->entry_points_gl.pGLInvalidateSubFramebuffer                    = ogl_context_wrappers_glInvalidateSubFramebuffer;
+    context_ptr->entry_points_gl.pGLLineWidth                                   = ogl_context_wrappers_glLineWidth;
     context_ptr->entry_points_gl.pGLMapBuffer                                   = ogl_context_wrappers_glMapBuffer;
     context_ptr->entry_points_gl.pGLMapBufferRange                              = ogl_context_wrappers_glMapBufferRange;
     context_ptr->entry_points_gl.pGLMemoryBarrier                               = ogl_context_wrappers_glMemoryBarrier;

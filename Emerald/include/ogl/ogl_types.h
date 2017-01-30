@@ -991,6 +991,7 @@ typedef struct
     PFNGLGETVERTEXATTRIBPOINTERVPROC                     pGLGetVertexAttribPointerv;
     PFNGLINVALIDATEFRAMEBUFFERPROC                       pGLInvalidateFramebuffer;
     PFNGLINVALIDATESUBFRAMEBUFFERPROC                    pGLInvalidateSubFramebuffer;
+    PFNGLLINEWIDTHPROC                                   pGLLineWidth;
     PFNGLMAPBUFFERPROC                                   pGLMapBuffer;
     PFNGLMAPBUFFERRANGEPROC                              pGLMapBufferRange;
     PFNGLMEMORYBARRIERPROC                               pGLMemoryBarrier;
