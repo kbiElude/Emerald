@@ -337,6 +337,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDepthFunc(GLenum func);
 PUBLIC void APIENTRY ogl_context_wrappers_glDepthMask(GLboolean flag);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDepthRangeIndexed(GLuint   index,
+                                                              GLdouble nearVal,
+                                                              GLdouble farVal);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDisable(GLenum cap);
 
 /** TODO */

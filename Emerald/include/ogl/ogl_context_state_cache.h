@@ -11,6 +11,9 @@
 
 enum ogl_context_state_cache_indexed_property
 {
+    /* settable, GLdouble[2] */
+    OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_DEPTH_RANGE,
+
     /* settable, GLint[4] */
     OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX,
 

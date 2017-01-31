@@ -33,6 +33,9 @@ typedef struct _ogl_context_state_cache
     GLboolean active_depth_mask_context;
     GLboolean active_depth_mask_local;
 
+    GLdouble* active_depth_ranges_context; /* each depth range = 2 consecutive GLdouble values */
+    GLdouble* active_depth_ranges_local;   /* each depth range = 2 consecutive GLdouble values */
+
     GLuint active_draw_fbo_context;
     GLuint active_draw_fbo_local;
 
@@ -185,6 +188,15 @@ PUBLIC void ogl_context_state_cache_get_indexed_property(const ogl_context_state
 
     switch (property)
     {
+        case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_DEPTH_RANGE:
+        {
+            memcpy(data,
+                   cache_ptr->active_depth_ranges_local + 2 * index,
+                   sizeof(GLdouble) * 2);
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX:
         {
             memcpy(data,
@@ -790,16 +802,35 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
            sizeof(GLint) * 4 * limits_ptr->max_viewports);
 
     /* Set default state: viewport */
-    cache_ptr->active_viewports_context = new GLfloat[4 * limits_ptr->max_viewports];
-    cache_ptr->active_viewports_local   = new GLfloat[4 * limits_ptr->max_viewports];
+    cache_ptr->active_depth_ranges_context = new GLdouble[2 * limits_ptr->max_viewports];
+    cache_ptr->active_depth_ranges_local   = new GLdouble[2 * limits_ptr->max_viewports];
+    cache_ptr->active_viewports_context    = new GLfloat[4 * limits_ptr->max_viewports];
+    cache_ptr->active_viewports_local      = new GLfloat[4 * limits_ptr->max_viewports];
+
+    ASSERT_DEBUG_SYNC(cache_ptr->active_depth_ranges_context != nullptr &&
+                      cache_ptr->active_depth_ranges_local   != nullptr &&
+                      cache_ptr->active_viewports_context    != nullptr &&
+                      cache_ptr->active_viewports_local      != nullptr,
+                      "Out of memory");
 
     entrypoints_private_ptr->pGLGetFloatv(GL_SCISSOR_BOX,
                                           cache_ptr->active_viewports_context);
+
+    cache_ptr->active_depth_ranges_context[0] = 0.0;
+    cache_ptr->active_depth_ranges_context[1] = 1.0;
+    cache_ptr->active_depth_ranges_local[0]   = 0.0;
+    cache_ptr->active_depth_ranges_local[1]   = 1.0;
 
     for (int32_t n_viewport = 1;
                  n_viewport < limits_ptr->max_viewports;
                ++n_viewport)
     {
+        memcpy(cache_ptr->active_depth_ranges_context + 2 * n_viewport,
+               cache_ptr->active_depth_ranges_context,
+               sizeof(GLdouble) * 2);
+        memcpy(cache_ptr->active_depth_ranges_local + 2 * n_viewport,
+               cache_ptr->active_depth_ranges_context,
+               sizeof(GLdouble) * 2);
         memcpy(cache_ptr->active_viewports_context + 4 * n_viewport,
                cache_ptr->active_viewports_context,
                sizeof(GLfloat) * 4);
@@ -808,13 +839,26 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     memcpy(cache_ptr->active_viewports_local,
            cache_ptr->active_viewports_context,
            sizeof(GLfloat) * 4 * limits_ptr->max_viewports);
-
 }
 
 /** Please see header for spec */
 PUBLIC void ogl_context_state_cache_release(ogl_context_state_cache cache)
 {
     _ogl_context_state_cache* cache_ptr = reinterpret_cast<_ogl_context_state_cache*>(cache);
+
+    if (cache_ptr->active_depth_ranges_context != nullptr)
+    {
+        delete [] cache_ptr->active_depth_ranges_context;
+
+        cache_ptr->active_depth_ranges_context = nullptr;
+    }
+
+    if (cache_ptr->active_depth_ranges_local != nullptr)
+    {
+        delete [] cache_ptr->active_depth_ranges_local;
+
+        cache_ptr->active_depth_ranges_local = nullptr;
+    }
 
     if (cache_ptr->active_scissor_boxes_context != nullptr)
     {
@@ -860,6 +904,15 @@ PUBLIC void ogl_context_state_cache_set_indexed_property(ogl_context_state_cache
 
     switch (property)
     {
+        case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_DEPTH_RANGE:
+        {
+            memcpy(cache_ptr->active_depth_ranges_local + 2 * index,
+                   data,
+                   sizeof(GLdouble) * 2);
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_SCISSOR_BOX:
         {
             memcpy(cache_ptr->active_scissor_boxes_local + 4 * index,
@@ -1786,6 +1839,19 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                          n_viewport < cache_ptr->limits_ptr->max_viewports;
                        ++n_viewport)
             {
+                if (memcmp(cache_ptr->active_depth_ranges_context + n_viewport * 2,
+                           cache_ptr->active_depth_ranges_local   + n_viewport * 2,
+                           2 * sizeof(GLdouble) ) != 0)
+                {
+                    cache_ptr->entrypoints_private_ptr->pGLDepthRangeIndexed(n_viewport,
+                                                                             cache_ptr->active_depth_ranges_local[n_viewport * 2],
+                                                                             cache_ptr->active_depth_ranges_local[n_viewport * 2 + 1]);
+
+                    memcpy(cache_ptr->active_depth_ranges_context + n_viewport * 2,
+                           cache_ptr->active_depth_ranges_local   + n_viewport * 2,
+                           sizeof(GLdouble) * 2);
+                }
+
                 if (memcmp(cache_ptr->active_viewports_context + n_viewport * 4,
                            cache_ptr->active_viewports_local   + n_viewport * 4,
                            4 * sizeof(GLint) ) != 0)

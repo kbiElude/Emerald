@@ -926,6 +926,7 @@ typedef struct
     PFNGLDELETEVERTEXARRAYSPROC                          pGLDeleteVertexArrays;
     PFNGLDEPTHFUNCPROC                                   pGLDepthFunc;
     PFNGLDEPTHMASKPROC                                   pGLDepthMask;
+    PFNGLDEPTHRANGEINDEXEDPROC                           pGLDepthRangeIndexed;
     PFNGLDISABLEPROC                                     pGLDisable;
     PFNGLDISABLEIPROC                                    pGLDisablei;
     PFNGLDISABLEVERTEXATTRIBARRAYPROC                    pGLDisableVertexAttribArray;

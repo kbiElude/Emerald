@@ -2048,6 +2048,25 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDepthMask(GLboolean flag)
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glDepthRangeIndexed(GLuint   index,
+                                                              GLdouble nearVal,
+                                                              GLdouble farVal)
+{
+    ogl_context             context       = ogl_context_get_current_context();
+    const GLdouble          depth_range[] = {nearVal, farVal};
+    ogl_context_state_cache state_cache   = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_indexed_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_INDEXED_PROPERTY_DEPTH_RANGE,
+                                                 index,
+                                                 depth_range);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDisable(GLenum cap)
 {
     ogl_context_state_cache_property cap_property = _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(cap);
