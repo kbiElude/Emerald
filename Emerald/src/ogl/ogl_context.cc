@@ -2412,7 +2412,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
         {&context_ptr->entry_points_gl.pGLPointParameterfv,                                 "glPointParameterfv"},
         {&context_ptr->entry_points_gl.pGLPointParameteri,                                  "glPointParameteri"},
         {&context_ptr->entry_points_gl.pGLPointParameteriv,                                 "glPointParameteriv"},
-        {&context_ptr->entry_points_gl.pGLPolygonMode,                                      "glPolygonMode"},
+        {&context_ptr->entry_points_private.pGLPolygonMode,                                 "glPolygonMode"},
         {&context_ptr->entry_points_private.pGLPolygonOffset,                               "glPolygonOffset"},
         {&context_ptr->entry_points_gl.pGLPopDebugGroup,                                    "glPopDebugGroup"},
         {&context_ptr->entry_points_gl.pGLPrimitiveRestartIndex,                            "glPrimitiveRestartIndex"},
@@ -2700,6 +2700,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(_ogl_context* context_pt
     context_ptr->entry_points_gl.pGLMultiDrawElementsBaseVertex                 = ogl_context_wrappers_glMultiDrawElementsBaseVertex;
     context_ptr->entry_points_gl.pGLMultiDrawElementsIndirect                   = ogl_context_wrappers_glMultiDrawElementsIndirect;
     context_ptr->entry_points_gl.pGLPatchParameteri                             = ogl_context_wrappers_glPatchParameteri;
+    context_ptr->entry_points_gl.pGLPolygonMode                                 = ogl_context_wrappers_glPolygonMode;
     context_ptr->entry_points_gl.pGLPolygonOffset                               = ogl_context_wrappers_glPolygonOffset;
     context_ptr->entry_points_gl.pGLReadBuffer                                  = ogl_context_wrappers_glReadBuffer;
     context_ptr->entry_points_gl.pGLReadPixels                                  = ogl_context_wrappers_glReadPixels;

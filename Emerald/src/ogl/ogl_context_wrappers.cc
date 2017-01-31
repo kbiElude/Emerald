@@ -2242,6 +2242,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2301,6 +2302,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysIndirect(GLenum      mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2362,6 +2364,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2425,6 +2428,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2533,6 +2537,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2603,6 +2608,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseInstance(GL
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2675,6 +2681,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertex(GLen
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2748,6 +2755,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseI
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2820,6 +2828,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2891,6 +2900,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -2959,6 +2969,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -3023,6 +3034,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackInstanced(GLenu
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -3090,6 +3102,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackStreamInstanced
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
@@ -5429,6 +5442,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
@@ -5497,6 +5511,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawArraysIndirect(GLenum      
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
@@ -5566,6 +5581,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
@@ -5637,6 +5653,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
@@ -5708,6 +5725,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawElementsIndirect(GLenum    
                                       STATE_CACHE_SYNC_BIT_ACTIVE_LINE_WIDTH           |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_MIN_SAMPLE_SHADING   |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_N_PATCH_VERTICES     |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_OFFSET_STATE |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT       |
@@ -5807,6 +5825,57 @@ PUBLIC void APIENTRY ogl_context_wrappers_glPatchParameteri(GLenum pname,
     ogl_context_state_cache_set_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES,
                                         &value);
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glPolygonMode(GLenum face,
+                                                        GLenum mode)
+{
+    ogl_context             context      = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache  = nullptr;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    switch (face)
+    {
+        case GL_BACK:
+        {
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_BACK_FACE,
+                                                &mode);
+
+            break;
+        }
+
+        case GL_FRONT:
+        {
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_FRONT_FACE,
+                                                &mode);
+
+            break;
+        }
+
+        case GL_FRONT_AND_BACK:
+        {
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_BACK_FACE,
+                                                &mode);
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_FRONT_FACE,
+                                                &mode);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized face argument value");
+        }
+    }
 }
 
 /* Please see header for specification */

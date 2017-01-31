@@ -1002,6 +1002,7 @@ typedef struct
     PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC                 pGLMultiDrawElementsBaseVertex;
     PFNGLMULTIDRAWELEMENTSINDIRECTPROC                   pGLMultiDrawElementsIndirect;
     PFNGLPATCHPARAMETERIPROC                             pGLPatchParameteri;
+    PFNGLPOLYGONMODEPROC                                 pGLPolygonMode;
     PFNGLPOLYGONOFFSETPROC                               pGLPolygonOffset;
     PFNGLREADBUFFERPROC                                  pGLReadBuffer;
     PFNGLREADPIXELSPROC                                  pGLReadPixels;

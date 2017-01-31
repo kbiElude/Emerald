@@ -48,6 +48,11 @@ typedef struct _ogl_context_state_cache
     GLint active_n_patch_vertices_context;
     GLint active_n_patch_vertices_local;
 
+    GLenum active_polygon_mode_back_face_context;
+    GLenum active_polygon_mode_back_face_local;
+    GLenum active_polygon_mode_front_face_context;
+    GLenum active_polygon_mode_front_face_local;
+
     GLfloat active_polygon_offset_factor_context;
     GLfloat active_polygon_offset_factor_local;
     GLfloat active_polygon_offset_units_context;
@@ -327,6 +332,20 @@ PUBLIC void ogl_context_state_cache_get_property(const ogl_context_state_cache  
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES:
         {
             *reinterpret_cast<GLint*>(out_result_ptr) = cache_ptr->active_n_patch_vertices_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_BACK_FACE:
+        {
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->active_polygon_mode_back_face_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_FRONT_FACE:
+        {
+            *reinterpret_cast<GLenum*>(out_result_ptr) = cache_ptr->active_polygon_mode_front_face_local;
 
             break;
         }
@@ -678,6 +697,12 @@ PUBLIC void ogl_context_state_cache_init(ogl_context_state_cache                
     cache_ptr->active_n_patch_vertices_context = 3;
     cache_ptr->active_n_patch_vertices_local   = 3;
 
+    /* Set default state: poylgon mode state */
+    cache_ptr->active_polygon_mode_back_face_context  = GL_FILL;
+    cache_ptr->active_polygon_mode_back_face_local    = GL_FILL;
+    cache_ptr->active_polygon_mode_front_face_context = GL_FILL;
+    cache_ptr->active_polygon_mode_front_face_local   = GL_FILL;
+
     /* Set default state: polygon offset state */
     cache_ptr->active_polygon_offset_factor_context = 0.0f;
     cache_ptr->active_polygon_offset_factor_local   = 0.0f;
@@ -1005,6 +1030,20 @@ PUBLIC void ogl_context_state_cache_set_property(ogl_context_state_cache        
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_N_PATCH_VERTICES:
         {
             cache_ptr->active_n_patch_vertices_local = *reinterpret_cast<const GLint*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_BACK_FACE:
+        {
+            cache_ptr->active_polygon_mode_back_face_local = *reinterpret_cast<const GLenum*>(data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_POLYGON_MODE_FRONT_FACE:
+        {
+            cache_ptr->active_polygon_mode_front_face_local = *reinterpret_cast<const GLenum*>(data);
 
             break;
         }
@@ -1404,6 +1443,39 @@ PUBLIC void ogl_context_state_cache_sync(ogl_context_state_cache cache,
                                                                    cache_ptr->active_n_patch_vertices_local);
 
             cache_ptr->active_n_patch_vertices_context = cache_ptr->active_n_patch_vertices_local;
+        }
+
+        /* Polygon mode state */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_POLYGON_MODE)
+        {
+            if ( cache_ptr->active_polygon_mode_back_face_local  == cache_ptr->active_polygon_mode_front_face_local  &&
+                (cache_ptr->active_polygon_mode_back_face_local  != cache_ptr->active_polygon_mode_back_face_context ||
+                 cache_ptr->active_polygon_mode_front_face_local != cache_ptr->active_polygon_mode_front_face_context) )
+            {
+                cache_ptr->entrypoints_private_ptr->pGLPolygonMode(GL_FRONT_AND_BACK,
+                                                                   cache_ptr->active_polygon_mode_back_face_local);
+
+                cache_ptr->active_polygon_mode_back_face_context  = cache_ptr->active_polygon_mode_back_face_local;
+                cache_ptr->active_polygon_mode_front_face_context = cache_ptr->active_polygon_mode_back_face_local;
+            }
+            else
+            {
+                if (cache_ptr->active_polygon_mode_back_face_local != cache_ptr->active_polygon_mode_back_face_context)
+                {
+                    cache_ptr->entrypoints_private_ptr->pGLPolygonMode(GL_BACK,
+                                                                       cache_ptr->active_polygon_mode_back_face_local);
+
+                    cache_ptr->active_polygon_mode_back_face_context = cache_ptr->active_polygon_mode_back_face_local;
+                }
+
+                if (cache_ptr->active_polygon_mode_front_face_local != cache_ptr->active_polygon_mode_front_face_context)
+                {
+                    cache_ptr->entrypoints_private_ptr->pGLPolygonMode(GL_FRONT,
+                                                                       cache_ptr->active_polygon_mode_front_face_local);
+
+                    cache_ptr->active_polygon_mode_front_face_context = cache_ptr->active_polygon_mode_front_face_local;
+                }
+            }
         }
 
         /* Polygon offset state */

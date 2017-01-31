@@ -792,6 +792,10 @@ PUBLIC void APIENTRY ogl_context_wrappers_glPatchParameteri(GLenum pname,
                                                             GLint  value);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glPolygonMode(GLenum face,
+                                                        GLenum mode);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glPolygonOffset(GLfloat factor,
                                                           GLfloat units);
 
