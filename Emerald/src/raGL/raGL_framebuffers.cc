@@ -14,7 +14,7 @@ typedef struct _raGL_framebuffers_fbo
 
     bool is_a_match(uint32_t                in_n_attachments,
                     const ral_texture_view* in_opt_color_attachments,
-                    ral_texture_view        in_opt_ds_attachment)
+                    ral_texture_view        in_opt_ds_attachment) const
     {
         bool result = (in_n_attachments     == n_color_attachments &&
                        in_opt_ds_attachment == ds_attachment);
@@ -29,6 +29,26 @@ typedef struct _raGL_framebuffers_fbo
         return result;
     }
 
+    bool uses_attachment(ral_texture_view in_attachment) const
+    {
+        if (ds_attachment == in_attachment)
+        {
+            return true;
+
+        }
+
+        for (uint32_t n_color_attachment = 0;
+                      n_color_attachment < n_color_attachments;
+                    ++n_color_attachment)
+        {
+            if (color_attachments[n_color_attachment] == in_attachment)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     explicit _raGL_framebuffers_fbo(ogl_context             in_context_gl,
                                     const ral_texture_view* in_color_attachments,
@@ -120,6 +140,47 @@ PUBLIC raGL_framebuffers raGL_framebuffers_create(ogl_context context_gl)
                        "Out of memory");
 
     return (raGL_framebuffers) framebuffers_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC void raGL_framebuffers_delete_fbos_with_attachment(raGL_framebuffers      in_framebuffers,
+                                                          const ral_texture_view in_attachment)
+{
+    _raGL_framebuffers* framebuffers_ptr = reinterpret_cast<_raGL_framebuffers*>(in_framebuffers);
+    bool                has_found        = false;
+    uint32_t            n_fbos           = 0;
+
+    system_resizable_vector_get_property(framebuffers_ptr->fbos,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_fbos);
+
+    for (uint32_t n_fbo = 0;
+                  n_fbo < n_fbos;
+                  )
+    {
+        _raGL_framebuffers_fbo* fbo_ptr = nullptr;
+
+        system_resizable_vector_get_element_at(framebuffers_ptr->fbos,
+                                               n_fbo,
+                                              &fbo_ptr);
+
+        if (fbo_ptr->uses_attachment(in_attachment) )
+        {
+            raGL_framebuffer_release(fbo_ptr->fbo);
+
+            delete fbo_ptr;
+
+            system_resizable_vector_delete_element_at(framebuffers_ptr->fbos,
+                                                      n_fbo);
+
+            --n_fbos;
+        }
+        else
+        {
+            ++n_fbo;
+        }
+    }
+
 }
 
 /** Please see header for specification */

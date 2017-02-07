@@ -203,6 +203,9 @@ typedef enum
     /* not settable; PFNRALCONTEXTCREATETEXTUREVIEWPROC */
     RAL_CONTEXT_PRIVATE_PROPERTY_CREATE_TEXTURE_VIEW_FUNC_PTR,
 
+    /* not settable; ral_texture_pool */
+    RAL_CONTEXT_PRIVATE_PROPERTY_TEXTURE_POOL,
+
 } ral_context_private_property;
 
 typedef struct

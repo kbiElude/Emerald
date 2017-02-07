@@ -15,6 +15,10 @@
 PUBLIC raGL_framebuffers raGL_framebuffers_create(ogl_context context_gl);
 
 /** TODO */
+PUBLIC void raGL_framebuffers_delete_fbos_with_attachment(raGL_framebuffers      in_framebuffers,
+                                                          const ral_texture_view in_attachment);
+
+/** TODO */
 PUBLIC void raGL_framebuffers_get_framebuffer(raGL_framebuffers       in_framebuffers,
                                               uint32_t                in_n_attachments,
                                               const ral_texture_view* in_opt_color_attachments,

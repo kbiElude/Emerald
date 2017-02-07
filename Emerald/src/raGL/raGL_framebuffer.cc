@@ -87,6 +87,9 @@ PRIVATE ral_present_job _raGL_framebuffer_deinit_rendering_thread_calback(ral_co
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
+    LOG_INFO("[!] Deleting GL FBO [%d]",
+             fb_ptr->id);
+
     entrypoints_ptr->pGLDeleteFramebuffers(1, /* n */
                                            reinterpret_cast<const GLuint*>(&fb_ptr->id) );
 
@@ -130,6 +133,9 @@ PRIVATE ral_present_job _raGL_framebuffer_init_rendering_thread_calback(ral_cont
     /* Generate a new FB id */
     entrypoints_ptr->pGLGenFramebuffers(1, /* n */
                                        &args_ptr->fbo_ptr->id);
+
+    LOG_INFO("[!] Created GL FBO [%d]",
+             args_ptr->fbo_ptr->id);
 
     /* Configure the attachments */
     for (uint32_t n_iteration = 0;

@@ -2204,6 +2204,13 @@ PUBLIC void ral_context_get_private_property(ral_context                  contex
             break;
         }
 
+        case RAL_CONTEXT_PRIVATE_PROPERTY_TEXTURE_POOL:
+        {
+            *reinterpret_cast<ral_texture_pool*>(out_result_ptr) = context_ptr->texture_pool;
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,

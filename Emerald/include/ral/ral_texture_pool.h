@@ -21,6 +21,13 @@ typedef enum
 PUBLIC void ral_texture_pool_attach_context(ral_texture_pool pool,
                                             ral_context      context);
 
+/** TODO
+ *
+ *  @return true if a texture has been released as a part of the collection process,
+ *          false otherwise.
+ **/
+PUBLIC bool ral_texture_pool_collect_garbage(ral_texture_pool pool);
+
 /** TODO */
 PUBLIC ral_texture_pool ral_texture_pool_create();
 
@@ -40,6 +47,7 @@ PUBLIC bool ral_texture_pool_get(ral_texture_pool               pool,
 PUBLIC void ral_texture_pool_get_property(ral_texture_pool          pool,
                                           ral_texture_pool_property property,
                                           void*                     out_result);
+
 
 /** TODO */
 PUBLIC void ral_texture_pool_release(ral_texture_pool pool);

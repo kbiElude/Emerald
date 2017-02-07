@@ -17,7 +17,6 @@
     #include <stdarg.h>
 #endif
 
-
 /** Internal typedefs */
 typedef struct
 {

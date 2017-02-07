@@ -1745,7 +1745,6 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
         }
 
         case RAL_CONTEXT_OBJECT_TYPE_SAMPLER:
-        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
         {
             /* No call-backs for these yet.. */
             break;
@@ -1774,6 +1773,19 @@ PRIVATE void _raGL_backend_on_objects_deleted(const void* callback_arg,
                 _raGL_backend_subscribe_for_texture_notifications(backend_ptr,
                                                                   (ral_texture) callback_arg_ptr->deleted_objects[n_deleted_texture],
                                                                   false); /* should_subscribe */
+            }
+
+            break;
+        }
+
+        case RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW:
+        {
+            for (uint32_t n_deleted_texture = 0;
+                          n_deleted_texture < callback_arg_ptr->n_objects;
+                        ++n_deleted_texture)
+            {
+                raGL_framebuffers_delete_fbos_with_attachment(backend_ptr->framebuffers,
+                                                              reinterpret_cast<ral_texture_view>(callback_arg_ptr->deleted_objects[n_deleted_texture]) );
             }
 
             break;

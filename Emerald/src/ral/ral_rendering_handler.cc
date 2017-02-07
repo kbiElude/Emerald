@@ -14,6 +14,7 @@
 #include "ral/ral_present_job.h"
 #include "ral/ral_present_task.h"
 #include "ral/ral_rendering_handler.h"
+#include "ral/ral_texture_pool.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -43,6 +44,7 @@ typedef struct
     uint32_t                              fps;
     uint32_t                              last_frame_index;      /* only when fps policy is used */
     system_time                           last_frame_time;       /* cached for the runtime time adjustment mode support */
+    system_time                           last_texture_pool_gc_time;
     volatile uint32_t                     n_frames_rendered;     /* NOTE: must be volatile for release builds to work correctly! */
     system_time                           playback_start_time;
     ral_rendering_handler_playback_status playback_status;
@@ -466,6 +468,29 @@ PRIVATE void _ral_rendering_handler_playback_in_progress_callback_handler(uint32
         system_critical_section_enter(rendering_handler_ptr->rendering_cs);
         {
             bool presentable_output_defined = false;
+
+            /* Let the texture pool do a run over all unused textures and release those that
+             * have not been used in a while.
+             *
+             * This does not need to be executed too frequently, so only spend cycles on this
+             * if at least a second has passed since the last time the process has been reported
+             * 
+             */
+            system_time time_now = system_time_now();
+
+            if (time_now - rendering_handler_ptr->last_texture_pool_gc_time > system_time_get_time_for_s(1) )
+            {
+                ral_texture_pool texture_pool = nullptr;
+
+                ral_context_get_private_property(rendering_handler_ptr->context,
+                                                 RAL_CONTEXT_PRIVATE_PROPERTY_TEXTURE_POOL,
+                                                &texture_pool);
+
+                if (!ral_texture_pool_collect_garbage(texture_pool) )
+                {
+                    rendering_handler_ptr->last_texture_pool_gc_time = time_now;
+                }
+            }
 
             /* Determine current frame index & time */
             _ral_rendering_handler_get_frame_properties(rendering_handler_ptr,
@@ -1146,6 +1171,7 @@ PRIVATE ral_rendering_handler ral_rendering_handler_create_shared(ral_backend_ty
         new_handler_ptr->context_window                               = nullptr;
         new_handler_ptr->fps                                          = desired_fps;
         new_handler_ptr->is_space_key_pressed                         = false;
+        new_handler_ptr->last_texture_pool_gc_time                    = system_time_now();
         new_handler_ptr->left_arrow_key_press_start_time              = 0;
         new_handler_ptr->n_frames_rendered                            = 0;
         new_handler_ptr->playback_in_progress_event                   = system_event_create(true); /* manual_reset */
