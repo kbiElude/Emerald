@@ -41,6 +41,7 @@ typedef struct _system_window_win32
 
     HCURSOR current_mouse_cursor_system_resource;
 
+    uint32_t                    refresh_rate;
     system_window_dc            system_dc;
     system_window_handle        system_handle;
     system_window               window; /* DO NOT retain */
@@ -67,6 +68,7 @@ typedef struct _system_window_win32
         message_pump_thread_id               = 0;
         message_pump_unlock_event            = system_event_create(true); /* manual_reset */
         move_cursor_resource                 = 0;
+        refresh_rate                         = 0;
         system_dc                            = nullptr;
         system_handle                        = nullptr;
         teardown_completed_event             = system_event_create(true); /* manual_reset */
@@ -577,6 +579,13 @@ PUBLIC bool system_window_win32_get_property(  system_window_win32    window,
             break;
         }
 
+        case SYSTEM_WINDOW_PROPERTY_REFRESH_RATE:
+        {
+            *reinterpret_cast<uint32_t*>(out_result) = win32_ptr->refresh_rate;
+
+            break;
+        }
+
         default:
         {
             /* Fall-back! */
@@ -629,6 +638,11 @@ PUBLIC void system_window_win32_handle_window(system_window_win32 window)
     }
 
     ::UpdateWindow(win32_ptr->system_handle);
+
+    /* Cache the refresh rate. It is anticipated user will never attempt to change refresh rate
+     * while an Emerald application is running */
+    win32_ptr->refresh_rate = GetDeviceCaps(win32_ptr->system_dc,
+                                            VREFRESH);
 
     /* Cache the message pump thread ID */
     win32_ptr->message_pump_thread_id = system_threads_get_thread_id();

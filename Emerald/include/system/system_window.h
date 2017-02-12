@@ -89,6 +89,9 @@ typedef enum
     /* settable, int[2] */
     SYSTEM_WINDOW_PROPERTY_POSITION,
 
+    /* not settable, uint32_t */
+    SYSTEM_WINDOW_PROPERTY_REFRESH_RATE,
+
     /* settable (for internal purposes only), ral_context */
     SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT_RAL,
 

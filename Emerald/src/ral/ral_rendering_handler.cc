@@ -135,17 +135,43 @@ PRIVATE void _ral_rendering_handler_get_frame_properties(_ral_rendering_handler*
                                       handler_ptr->runtime_time_adjustment -
                                       handler_ptr->playback_start_time);
             int32_t     frame_time_msec;
+            bool        is_vsync_enabled = false;
             int32_t     new_frame_time_msec;
+            uint32_t    refresh_rate      = 0;
+            uint32_t    refresh_time_msec = 0;
 
+            system_window_get_property   (handler_ptr->context_window,
+                                          SYSTEM_WINDOW_PROPERTY_IS_VSYNC_ENABLED,
+                                         &is_vsync_enabled);
+            system_window_get_property   (handler_ptr->context_window,
+                                          SYSTEM_WINDOW_PROPERTY_REFRESH_RATE,
+                                         &refresh_rate);
             system_time_get_msec_for_time(frame_time,
                                           reinterpret_cast<uint32_t*>(&frame_time_msec) );
+
+            refresh_time_msec = uint32_t(1000.0f / float(refresh_rate) );
+
+            if (is_vsync_enabled)
+            {
+                const uint32_t frame_time_msec_rounded_down_to_refresh_rate = frame_time_msec + (refresh_time_msec - frame_time_msec % refresh_time_msec);
+
+                frame_time_msec = frame_time_msec_rounded_down_to_refresh_rate;
+            }
 
             frame_index = frame_time_msec * handler_ptr->fps / 1000 /* ms in s */;
 
             /* Convert the frame index to global frame time. */
             new_frame_time_msec = frame_index * 1000 /* ms in s */ / handler_ptr->fps;
-            *out_frame_time_ptr = system_time_get_time_for_msec(new_frame_time_msec);
 
+            /* If vertical sync is enabled, we should NOT render duplicate frames. Instead,
+             * we should render the one that follows. */
+            if (frame_time == handler_ptr->last_frame_time && is_vsync_enabled)
+            {
+                new_frame_time_msec = new_frame_time_msec + refresh_time_msec;
+                frame_index++;
+            }
+
+            *out_frame_time_ptr  = system_time_get_time_for_msec(new_frame_time_msec);
             *out_frame_index_ptr = frame_index;
 
             if (should_update_frame_counter)
