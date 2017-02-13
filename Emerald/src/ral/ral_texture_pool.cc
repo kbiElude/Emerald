@@ -8,6 +8,7 @@
 #include "ral/ral_texture_pool.h"
 #include "system/system_callback_manager.h"
 #include "system/system_hash64map.h"
+#include "system/system_log.h"
 #include "system/system_read_write_mutex.h"
 #include "system/system_resource_pool.h"
 #include "system/system_resizable_vector.h"
@@ -466,6 +467,15 @@ PUBLIC bool ral_texture_pool_collect_garbage(ral_texture_pool pool)
     system_read_write_mutex_unlock(pool_ptr->access_mutex,
                                    ACCESS_WRITE);
 
+    #ifdef _DEBUG
+    {
+        if (has_released_texture)
+        {
+            ral_texture_pool_dump_status(pool);
+        }
+    }
+    #endif
+
     return has_released_texture;
 }
 
@@ -515,6 +525,105 @@ PUBLIC void ral_texture_pool_detach_context(ral_texture_pool pool,
     _ral_texture_pool_subscribe_for_notifications(pool_ptr,
                                                   context,
                                                   false); /* should_subscribe */
+}
+
+/** Please see header for specification */
+PUBLIC void ral_texture_pool_dump_status(ral_texture_pool pool)
+{
+    uint32_t           n_textures_dumped = 0;
+    _ral_texture_pool* pool_ptr          = reinterpret_cast<_ral_texture_pool*>(pool);
+
+    LOG_INFO("Texture pool dump status:\n"
+             "-------------------------\n"
+             "\n");
+
+    system_read_write_mutex_lock(pool_ptr->access_mutex,
+                                 ACCESS_READ);
+    {
+        uint32_t n_hashes = 0;
+
+        system_hash64map_get_property(pool_ptr->hash_to_texture_item_vector_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_hashes);
+
+        for (uint32_t n_hash = 0;
+                      n_hash < n_hashes;
+                    ++n_hash)
+        {
+            system_hash64           current_texture_hash;
+            system_resizable_vector current_vector            = nullptr;
+            uint32_t                current_vector_n_elements = 0;
+
+            system_hash64map_get_element_at     (pool_ptr->hash_to_texture_item_vector_map,
+                                                 n_hash,
+                                                &current_vector,
+                                                &current_texture_hash);
+            system_resizable_vector_get_property(current_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 &current_vector_n_elements);
+
+            for (uint32_t n_vector_element = 0;
+                          n_vector_element < current_vector_n_elements;
+                        ++n_vector_element, ++n_textures_dumped)
+            {
+                system_hashed_ansi_string       current_texture_description = nullptr;
+                _ral_texture_pool_texture_item* current_texture_item_ptr    = nullptr;
+                uint32_t                        current_texture_size[3];
+                ral_texture_type                current_texture_type;
+                system_hashed_ansi_string       current_texture_unique_name = nullptr;
+
+                system_resizable_vector_get_element_at(current_vector,
+                                                       n_vector_element,
+                                                      &current_texture_item_ptr);
+
+                ral_texture_get_property(current_texture_item_ptr->texture,
+                                         RAL_TEXTURE_PROPERTY_DESCRIPTION,
+                                        &current_texture_description);
+                ral_texture_get_property(current_texture_item_ptr->texture,
+                                         RAL_TEXTURE_PROPERTY_UNIQUE_NAME,
+                                        &current_texture_unique_name);
+                ral_texture_get_property(current_texture_item_ptr->texture,
+                                         RAL_TEXTURE_PROPERTY_TYPE,
+                                        &current_texture_type);
+
+                ral_texture_get_mipmap_property(current_texture_item_ptr->texture,
+                                                0, /* n_layer  */
+                                                0, /* n_mipmap */
+                                                RAL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
+                                                current_texture_size + 0);
+                ral_texture_get_mipmap_property(current_texture_item_ptr->texture,
+                                                0, /* n_layer  */
+                                                0, /* n_mipmap */
+                                                RAL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
+                                                current_texture_size + 1);
+                ral_texture_get_mipmap_property(current_texture_item_ptr->texture,
+                                                0, /* n_layer  */
+                                                0, /* n_mipmap */
+                                                RAL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+                                                current_texture_size + 2);
+
+                LOG_INFO("Texture [%d]: Description:[%s] Unique name:[%s] Type:[%s] Resolution:[%dx%dx%d]",
+                         n_textures_dumped,
+                         (current_texture_description != nullptr) ? system_hashed_ansi_string_get_buffer(current_texture_description) : "NULL",
+                         (current_texture_unique_name != nullptr) ? system_hashed_ansi_string_get_buffer(current_texture_unique_name) : "NULL",
+                         (current_texture_type == RAL_TEXTURE_TYPE_1D)                   ? "1D"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_1D_ARRAY)             ? "1D Array"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_2D)                   ? "2D"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_2D_ARRAY)             ? "2D Array"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_3D)                   ? "3D"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_CUBE_MAP)             ? "Cube map"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_CUBE_MAP_ARRAY)       ? "Cube map array"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_MULTISAMPLE_2D)       ? "2D MS"
+                       : (current_texture_type == RAL_TEXTURE_TYPE_MULTISAMPLE_2D_ARRAY) ? "2D Array MS"
+                       : "?!",
+                         current_texture_size[0],
+                         current_texture_size[1],
+                         current_texture_size[2]);
+            }
+        }
+    }
+    system_read_write_mutex_unlock(pool_ptr->access_mutex,
+                                   ACCESS_READ);
 }
 
 /** Please see header for specification */

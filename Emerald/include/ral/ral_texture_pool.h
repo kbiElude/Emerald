@@ -35,6 +35,9 @@ PUBLIC ral_texture_pool ral_texture_pool_create();
 PUBLIC void ral_texture_pool_detach_context(ral_texture_pool pool,
                                             ral_context      context);
 
+/** TODO */
+PUBLIC void ral_texture_pool_dump_status(ral_texture_pool pool);
+
 /** Releases all textures maintained by the texture pool. Should precede the release call. */
 PUBLIC void ral_texture_pool_empty(ral_texture_pool pool);
 

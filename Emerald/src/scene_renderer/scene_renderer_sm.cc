@@ -51,13 +51,6 @@ typedef struct
 
 } _scene_renderer_sm_mesh_item;
 
-typedef struct
-{
-    bool             is_color_sm_tv;
-    ral_texture_view final_tv;
-    scene_light      light;
-} _scene_renderer_sm_light_update;
-
 /** TODO */
 typedef struct _scene_renderer_sm
 {

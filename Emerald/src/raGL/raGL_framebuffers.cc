@@ -182,7 +182,6 @@ PUBLIC void raGL_framebuffers_delete_fbos_with_attachment(raGL_framebuffers     
     }
 
 }
-
 /** Please see header for specification */
 PUBLIC void raGL_framebuffers_get_framebuffer(raGL_framebuffers       in_framebuffers,
                                               uint32_t                in_n_attachments,

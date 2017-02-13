@@ -86,6 +86,7 @@ typedef struct _ral_context
 
     system_hashed_ansi_string name;
     ral_rendering_handler     rendering_handler;
+    system_resizable_vector   texture_views_to_release;
     demo_window               window_demo;
     system_window             window_system;
 
@@ -114,16 +115,17 @@ typedef struct _ral_context
         object_to_refcount_cs     = system_critical_section_create();
         object_to_refcount_map    = system_hash64map_create       (sizeof(uint32_t) );
         rendering_handler         = nullptr;
-        programs                  = system_resizable_vector_create(sizeof(ral_program) );
+        programs                  = system_resizable_vector_create(4); /* capacity */
         programs_by_name_map      = system_hash64map_create       (sizeof(ral_program) );
         programs_cs               = system_critical_section_create();
-        samplers                  = system_resizable_vector_create(sizeof(ral_sampler) );
+        samplers                  = system_resizable_vector_create(4); /* capacity */
         samplers_cs               = system_critical_section_create();
-        shaders                   = system_resizable_vector_create(sizeof(ral_shader) );
+        shaders                   = system_resizable_vector_create(4); /* capacity */
         shaders_by_name_map       = system_hash64map_create       (sizeof(ral_shader) );
         shaders_cs                = system_critical_section_create();
-        texture_views             = system_resizable_vector_create(sizeof(ral_texture_view) );
+        texture_views             = system_resizable_vector_create(4); /* capacity */
         texture_views_cs          = system_critical_section_create();
+        texture_views_to_release  = system_resizable_vector_create(16); /* capacity */
         texture_pool              = nullptr;
         textures_by_filename_map  = system_hash64map_create       (sizeof(ral_texture) );
         textures_by_name_map      = system_hash64map_create       (sizeof(ral_texture) );
@@ -170,7 +172,8 @@ typedef struct _ral_context
             &programs,
             &samplers,
             &shaders,
-            &texture_views
+            &texture_views,
+            &texture_views_to_release,
         };
 
         const uint32_t n_cses_to_release     = sizeof(cses_to_release)     / sizeof(cses_to_release    [0]);
@@ -1013,6 +1016,19 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
 
         case RAL_CONTEXT_OBJECT_TYPE_TEXTURE:
         {
+            #ifdef _DEBUG
+            {
+                uint32_t n_texture_views_cached_for_release = 0;
+
+                system_resizable_vector_get_property(context_ptr->texture_views_to_release,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_texture_views_cached_for_release);
+
+                ASSERT_DEBUG_SYNC(n_texture_views_cached_for_release == 0,
+                                  "This should never happwen");
+            }
+            #endif
+
             system_callback_manager_call_back(context_ptr->callback_manager,
                                               RAL_CONTEXT_CALLBACK_ID_TEXTURES_DELETED,
                                              &callback_arg);
@@ -1096,6 +1112,23 @@ PRIVATE bool _ral_context_delete_objects(_ral_context*           context_ptr,
         }
     }
     system_critical_section_leave(cs);
+
+    #ifdef _DEBUG
+    {
+        /* There should be no texture views associated with the texture at this point */
+        if (object_type == RAL_CONTEXT_OBJECT_TYPE_TEXTURE)
+        {
+            uint32_t n_texture_views = 0;
+
+            system_resizable_vector_get_property(context_ptr->texture_views_to_release,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_texture_views);
+
+            ASSERT_DEBUG_SYNC(n_texture_views == 0,
+                              "Texture view leak detected");
+        }
+    }
+    #endif
 
     result = true;
 

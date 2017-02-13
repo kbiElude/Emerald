@@ -1318,39 +1318,40 @@ PUBLIC EMERALD_API ral_texture_view ral_texture_get_view(const ral_texture_view_
     texture_ptr = reinterpret_cast<_ral_texture*>(create_info_ptr->texture);
 
     system_critical_section_enter(texture_ptr->views_cs);
-
-    /* If the specified view has already been created, return it immediately. */
-    view_hash = _ral_texture_get_view_hash(create_info_ptr);
-
-    if (system_hash64map_get(texture_ptr->views,
-                             view_hash,
-                            &result) )
     {
+        /* If the specified view has already been created, return it immediately. */
+        view_hash = _ral_texture_get_view_hash(create_info_ptr);
+
+        if (system_hash64map_get(texture_ptr->views,
+                                 view_hash,
+                                &result) )
+        {
+            ASSERT_DEBUG_SYNC(result != nullptr,
+                              "Null ral_texture_view instance cached for a ral_texture instance");
+
+            goto end;
+        }
+
+        /* If not, we need to create a new view. We also retain the object, since ultimately this texture
+         * should have the last word in terms of whether or not a given view can be safely released */
+        ral_context_get_private_property(texture_ptr->context,
+                                         RAL_CONTEXT_PRIVATE_PROPERTY_CREATE_TEXTURE_VIEW_FUNC_PTR,
+                                        &pfn_create_texture_view_ptr);
+
+        pfn_create_texture_view_ptr(texture_ptr->context,
+                                    1, /* n_texture_views */
+                                    create_info_ptr,
+                                   &result);
+
         ASSERT_DEBUG_SYNC(result != nullptr,
-                          "Null ral_texture_view instance cached for a ral_texture instance");
+                          "Texture view failed to create");
 
-        goto end;
+        system_hash64map_insert(texture_ptr->views,
+                                view_hash,
+                                result,
+                                nullptr,  /* on_removal_callback          */
+                                nullptr); /* on_removal_callback_user_arg */
     }
-
-    /* If not, we need to create a new view. We also retain the object, since ultimately this texture
-     * should have the last word in terms of whether or not a given view can be safely released */
-    ral_context_get_private_property(texture_ptr->context,
-                                     RAL_CONTEXT_PRIVATE_PROPERTY_CREATE_TEXTURE_VIEW_FUNC_PTR,
-                                    &pfn_create_texture_view_ptr);
-
-    pfn_create_texture_view_ptr(texture_ptr->context,
-                                1, /* n_texture_views */
-                                create_info_ptr,
-                               &result);
-
-    ASSERT_DEBUG_SYNC(result != nullptr,
-                      "Texture view failed to create");
-
-    system_hash64map_insert(texture_ptr->views,
-                            view_hash,
-                            result,
-                            nullptr,  /* on_removal_callback          */
-                            nullptr); /* on_removal_callback_user_arg */
 
 end:
     if (create_info_ptr != nullptr)
