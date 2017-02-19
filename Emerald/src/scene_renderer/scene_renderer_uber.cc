@@ -3596,9 +3596,17 @@ PUBLIC ral_present_task scene_renderer_uber_rendering_stop(scene_renderer_uber u
         {
             if (is_processing_inputs)
             {
-                /* Inputs. */
-                n_tvs = uber_ptr->n_active_sm_rts;
-                tvs   = uber_ptr->active_sm_rts;
+                if (uber_ptr->n_active_sm_rts > 0)
+                {
+                    /* Inputs. */
+                    n_tvs = uber_ptr->n_active_sm_rts;
+                    tvs   = uber_ptr->active_sm_rts;
+                }
+                else
+                {
+                    n_tvs = n_sm_rts;
+                    tvs   = sm_rts;
+                }
             }
             else
             {

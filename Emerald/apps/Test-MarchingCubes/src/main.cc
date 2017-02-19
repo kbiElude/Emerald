@@ -548,6 +548,11 @@ PRIVATE ral_present_job _render(ral_context                                     
                                                                   _rt_depth_view);
 
     /* Form the result job */
+    uint32_t clear_rts_task_color_view_output_id = -1;
+    uint32_t clear_rts_task_depth_view_output_id = -1;
+    uint32_t render_task_color_view_input_id     = -1;
+    uint32_t render_task_depth_view_input_id     = -1;
+
     result_job = ral_present_job_create();
 
     ral_present_job_add_task(result_job,
@@ -566,17 +571,38 @@ PRIVATE ral_present_job _render(ral_context                                     
                              uv_data_update_task,
                             &uv_data_update_task_id);
 
+    ral_present_task_get_io_index(_clear_rts_present_task,
+                                  RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  _rt_color_view,
+                                  &clear_rts_task_color_view_output_id);
+    ral_present_task_get_io_index(_clear_rts_present_task,
+                                  RAL_PRESENT_TASK_IO_TYPE_OUTPUT,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  _rt_depth_view,
+                                  &clear_rts_task_depth_view_output_id);
+    ral_present_task_get_io_index(render_task,
+                                  RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  _rt_color_view,
+                                  &render_task_color_view_input_id);
+    ral_present_task_get_io_index(render_task,
+                                  RAL_PRESENT_TASK_IO_TYPE_INPUT,
+                                  RAL_CONTEXT_OBJECT_TYPE_TEXTURE_VIEW,
+                                  _rt_depth_view,
+                                  &render_task_depth_view_input_id);
+
     ral_present_job_connect_tasks(result_job,
                                   clear_rts_task_id,
-                                  0, /* n_src_task_output */
+                                  clear_rts_task_color_view_output_id,
                                   render_task_id,
-                                  0,        /* n_dst_task_input          */
+                                  render_task_color_view_input_id,
                                   nullptr); /* out_opt_connection_id_ptr */
     ral_present_job_connect_tasks(result_job,
                                   clear_rts_task_id,
-                                  1,        /* n_src_task_output */
+                                  clear_rts_task_depth_view_output_id,
                                   render_task_id,
-                                  1,        /* n_dst_task_input          */
+                                  render_task_depth_view_input_id,
                                   nullptr); /* out_opt_connection_id_ptr */
     ral_present_job_connect_tasks(result_job,
                                   scalar_field_update_task_id,
